@@ -23,15 +23,33 @@ import { Roles } from '../common/decorators/roles.decorator';
 @Controller('admin')
 export class AdminController {
   constructor(
-    @Inject('ADMIN_SERVICE')   private readonly adminClient: ClientProxy,
-    @Inject('USER_SERVICE')    private readonly userClient: ClientProxy,
-    @Inject('EVENT_SERVICE')   private readonly eventClient: ClientProxy,
-    @Inject('TICKET_SERVICE')  private readonly ticketClient: ClientProxy,
-    @Inject('PAYMENT_SERVICE') private readonly paymentClient: ClientProxy,
+    @Inject('ADMIN_SERVICE')        private readonly adminClient: ClientProxy,
+    @Inject('USER_SERVICE')         private readonly userClient: ClientProxy,
+    @Inject('EVENT_SERVICE')        private readonly eventClient: ClientProxy,
+    @Inject('TICKET_SERVICE')       private readonly ticketClient: ClientProxy,
+    @Inject('PAYMENT_SERVICE')      private readonly paymentClient: ClientProxy,
+    @Inject('AUTH_SERVICE')         private readonly authClient: ClientProxy,
+    @Inject('NOTIFICATION_SERVICE') private readonly notifClient: ClientProxy,
   ) {}
 
   private ip(req: Request): string {
     return (req.headers['x-forwarded-for'] as string)?.split(',')[0] ?? req.ip ?? '';
+  }
+
+  private notifyOrganizer(
+    organizerId: string,
+    pattern: string,
+    extra: Record<string, unknown>,
+  ): void {
+    firstValueFrom(this.authClient.send('auth.get_user', { id: organizerId }))
+      .then((u: { email: string; first_name: string }) => {
+        this.notifClient.emit(pattern, {
+          email: u.email,
+          firstName: u.first_name,
+          ...extra,
+        });
+      })
+      .catch(() => { /* log silencieux — la notif est best-effort */ });
   }
 
   private audit(
@@ -163,6 +181,9 @@ export class AdminController {
       this.eventClient.send('event.approve', { id, admin_id: user.sub }),
     );
     this.audit(user, req, 'EVENT_APPROVED', 'EVENT', id);
+    this.notifyOrganizer(result.organizer_id, 'notification.event_published', {
+      event_name: result.title,
+    });
     return result;
   }
 
@@ -179,6 +200,10 @@ export class AdminController {
       this.eventClient.send('event.reject', { id, admin_id: user.sub, reason: dto.reason }),
     );
     this.audit(user, req, 'EVENT_REJECTED', 'EVENT', id, dto.reason);
+    this.notifyOrganizer(result.organizer_id, 'notification.event_rejected', {
+      event_name: result.title,
+      reason: dto.reason,
+    });
     return result;
   }
 
@@ -305,6 +330,7 @@ export class AdminController {
       }),
     );
     this.audit(user, req, 'KYC_APPROVED', 'USER', userId);
+    this.notifyOrganizer(userId, 'notification.kyc_approved', {});
     return result;
   }
 
@@ -324,6 +350,7 @@ export class AdminController {
       }),
     );
     this.audit(user, req, 'KYC_REJECTED', 'USER', userId, dto.reason);
+    this.notifyOrganizer(userId, 'notification.kyc_rejected', { reason: dto.reason });
     return result;
   }
 

@@ -93,4 +93,9 @@ export class AuthController {
   get2faStatus(@Payload() data: { user_id: string }) {
     return this.twoFactorService.isTwoFactorRequired(data.user_id);
   }
+
+  @MessagePattern('auth.get_user')
+  getUser(@Payload() data: { id: string }) {
+    return this.authService.getUserById(data.id);
+  }
 }

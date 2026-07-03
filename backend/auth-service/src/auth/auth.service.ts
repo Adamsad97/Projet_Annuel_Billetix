@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { RpcException } from '@nestjs/microservices';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
@@ -26,6 +26,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    @Inject('NOTIFICATION_SERVICE') private readonly notifClient: ClientProxy,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -49,9 +50,16 @@ export class AuthService {
     const verifyToken = randomUUID();
     await this.redis.set(`email_verify:${verifyToken}`, user.id, 'EX', EMAIL_VERIFY_TTL);
 
-    // TODO : publier auth.user_registered sur RabbitMQ → notification-service envoie l'email
-    // Le verify_token ne doit jamais être retourné dans la réponse HTTP en production.
-    // Il voyage uniquement par email (lien de type /auth/verify-email?token=xxx).
+    this.notifClient.emit('notification.welcome', {
+      email: user.email,
+      firstName: user.first_name,
+    });
+
+    this.notifClient.emit('notification.email_verification', {
+      email: user.email,
+      firstName: user.first_name,
+      token: verifyToken,
+    });
 
     return {
       ...this.generateTokens(user),
@@ -186,9 +194,13 @@ export class AuthService {
     const token = randomUUID();
     await this.redis.set(`reset_password:${token}`, user.id, 'EX', RESET_TOKEN_TTL);
 
-    // TODO : émettre un événement RabbitMQ pour que notification-service envoie l'email
-    // Pour l'instant on retourne le token pour tests en dev
-    return { success: true, debug_token: this.config.get('NODE_ENV') !== 'production' ? token : undefined };
+    this.notifClient.emit('notification.password_reset', {
+      email: user.email,
+      firstName: user.first_name,
+      token,
+    });
+
+    return { success: true };
   }
 
   async resetPassword(dto: ResetPasswordDto) {
@@ -207,6 +219,12 @@ export class AuthService {
     await this.redis.del(`reset_password:${dto.token}`);
 
     return { success: true };
+  }
+
+  async getUserById(id: string) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) throw new RpcException({ statusCode: 404, message: 'Utilisateur introuvable' });
+    return this.sanitize(user);
   }
 
   async verifyEmail(token: string) {

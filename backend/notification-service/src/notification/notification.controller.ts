@@ -143,37 +143,71 @@ export class NotificationController {
 
   @EventPattern('notification.event_published')
   async onEventPublished(
-    @Payload() data: { organizer_id: string; event_id: string; event_name: string },
+    @Payload() data: { email: string; firstName: string; event_name: string },
     @Ctx() ctx: RmqContext,
   ) {
-    // La notification est envoyée à l'organisateur — son email doit être résolu par l'api-gateway
-    // Ici on logue simplement et on ACK (l'organisateur est notifié via son profil)
+    await this.mail.send({
+      to: data.email,
+      subject: `Votre événement "${data.event_name}" est publié — BilletiX`,
+      template: 'event-published',
+      context: { firstName: data.firstName, eventName: data.event_name, eventsUrl: this.appUrl },
+    });
     this.ack(ctx);
   }
 
   @EventPattern('notification.event_rejected')
   async onEventRejected(
-    @Payload() data: {
-      organizer_id: string;
-      event_id: string;
-      event_name: string;
-      reason?: string;
-    },
+    @Payload() data: { email: string; firstName: string; event_name: string; reason?: string },
     @Ctx() ctx: RmqContext,
   ) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Votre événement "${data.event_name}" a été refusé — BilletiX`,
+      template: 'event-rejected',
+      context: { firstName: data.firstName, eventName: data.event_name, reason: data.reason, appUrl: this.appUrl },
+    });
     this.ack(ctx);
   }
 
   @EventPattern('notification.event_suspended')
   async onEventSuspended(
-    @Payload() data: {
-      organizer_id: string;
-      event_id: string;
-      event_name: string;
-      reason?: string;
-    },
+    @Payload() data: { email: string; firstName: string; event_name: string; reason?: string },
     @Ctx() ctx: RmqContext,
   ) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Votre événement "${data.event_name}" a été suspendu — BilletiX`,
+      template: 'event-rejected',
+      context: { firstName: data.firstName, eventName: data.event_name, reason: data.reason, appUrl: this.appUrl },
+    });
+    this.ack(ctx);
+  }
+
+  @EventPattern('notification.kyc_approved')
+  async onKycApproved(
+    @Payload() data: { email: string; firstName: string },
+    @Ctx() ctx: RmqContext,
+  ) {
+    await this.mail.send({
+      to: data.email,
+      subject: 'Votre identité a été vérifiée — BilletiX',
+      template: 'kyc-approved',
+      context: { firstName: data.firstName, appUrl: this.appUrl },
+    });
+    this.ack(ctx);
+  }
+
+  @EventPattern('notification.kyc_rejected')
+  async onKycRejected(
+    @Payload() data: { email: string; firstName: string; reason?: string },
+    @Ctx() ctx: RmqContext,
+  ) {
+    await this.mail.send({
+      to: data.email,
+      subject: 'Vérification d\'identité refusée — BilletiX',
+      template: 'kyc-rejected',
+      context: { firstName: data.firstName, reason: data.reason, appUrl: this.appUrl },
+    });
     this.ack(ctx);
   }
 
