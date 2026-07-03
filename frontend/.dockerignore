@@ -1,6 +1,64 @@
+# Dépendances — réinstallées dans le conteneur
 node_modules
-dist
+
+# Build Next.js — reconstruit dans le conteneur
 .next
+out
+dist
+
+# Tests
 coverage
-*.log
+**/*.spec.ts
+**/*.test.ts
+**/*.spec.tsx
+**/*.test.tsx
+test/
+jest.config.*
+jest.config.js
+jest.config.ts
+
+# Environnement — injecté via docker-compose
 .env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+*.md
+README*
+CHANGELOG*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Cache npm/yarn
+.npm
+.yarn
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Storybook (si présent)
+storybook-static/
