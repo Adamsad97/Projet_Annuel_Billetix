@@ -387,3 +387,45 @@ api-gateway — nouvelles routes events :
 ├───────────────────────────────┼───────────┤
 │ POST /events/:id/request-info │ ADMIN │
 └───────────────────────────────┴───────────┘
+
+api-gateway — nouvelles routes orders :
+
+┌────────────────────────────┬───────────────────┐
+│ Route │ Accès │
+├────────────────────────────┼───────────────────┤
+│ POST /orders │ Connecté │
+├────────────────────────────┼───────────────────┤
+│ GET /orders/me │ Connecté │
+├────────────────────────────┼───────────────────┤
+│ GET /orders/:id │ Connecté │
+├────────────────────────────┼───────────────────┤
+│ POST /orders/:id/cancel │ Connecté │
+├────────────────────────────┼───────────────────┤
+│ GET /orders/event/:eventId │ ORGANIZER / ADMIN │
+└────────────────────────────┴───────────────────┘
+
+api-gateway — nouvelles routes tickets :
+
+┌──────────────────────────────────┬───────────────────┐
+│ Route │ Accès │
+├──────────────────────────────────┼───────────────────┤
+│ GET /tickets/order/:orderId │ Connecté │
+├──────────────────────────────────┼───────────────────┤
+│ GET /tickets/:id │ Connecté │
+├──────────────────────────────────┼───────────────────┤
+│ POST /tickets/scan │ AGENT / ORGANIZER │
+├──────────────────────────────────┼───────────────────┤
+│ POST /tickets/sync-offline │ AGENT / ORGANIZER │
+├──────────────────────────────────┼───────────────────┤
+│ GET /tickets/event/:id/scan-logs │ ORGANIZER / ADMIN │
+├──────────────────────────────────┼───────────────────┤
+│ POST /tickets/event/:id/agents │ ORGANIZER │
+├──────────────────────────────────┼───────────────────┤
+│ GET /tickets/event/:id/agents │ ORGANIZER / ADMIN │
+├──────────────────────────────────┼───────────────────┤
+│ POST /tickets/session/start │ AGENT / ORGANIZER │
+├──────────────────────────────────┼───────────────────┤
+│ POST /tickets/session/end │ AGENT / ORGANIZER │
+├──────────────────────────────────┼───────────────────┤
+│ POST /tickets/:id/invalidate │ ADMIN │
+└──────────────────────────────────┴───────────────────┘
