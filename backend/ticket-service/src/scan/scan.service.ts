@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Ticket, TicketStatus } from '../ticket/ticket.entity';
 import { TicketService } from '../ticket/ticket.service';
-import { TicketStatus } from '../ticket/ticket.entity';
 import { ScanLog, ScanResult } from './scan-log.entity';
 
 export interface ScanDto {
@@ -15,6 +14,13 @@ export interface ScanDto {
   scanned_at?: string;
 }
 
+export interface ScanResponse {
+  result: ScanResult;
+  ticket_id: string;
+  // Renseigné uniquement si result === SUCCESS — utilisé par l'api-gateway pour le push WS
+  ticket?: Ticket;
+}
+
 @Injectable()
 export class ScanService {
   constructor(
@@ -22,11 +28,12 @@ export class ScanService {
     private readonly ticketService: TicketService,
   ) {}
 
-  async scan(dto: ScanDto): Promise<{ result: ScanResult; ticket_id: string }> {
+  async scan(dto: ScanDto): Promise<ScanResponse> {
     const scannedAt = dto.scanned_at ? new Date(dto.scanned_at) : new Date();
 
     let ticketId: string;
     let result: ScanResult;
+    let scannedTicket: Ticket | undefined;
 
     try {
       const { ticket } = await this.ticketService.verifyQr(dto.qr_token);
@@ -35,20 +42,19 @@ export class ScanService {
       if (ticket.event_id !== dto.event_id) {
         result = ScanResult.INVALID;
       } else {
-        await this.ticketService.markUsed(ticket.id, dto.agent_id, dto.device_info);
+        scannedTicket = await this.ticketService.markUsed(ticket.id, dto.agent_id, dto.device_info);
         result = ScanResult.SUCCESS;
       }
     } catch (err: any) {
       const message = err?.error?.message ?? '';
       if (message.includes('déjà utilisé')) {
         result = ScanResult.ALREADY_USED;
-        // Récupère l'id depuis le token malgré l'erreur
         const existing = await this.logRepo.findOne({
           where: { event_id: dto.event_id },
           order: { created_at: 'DESC' },
         });
         ticketId = existing?.ticket_id ?? 'unknown';
-      } else if (message.includes('annulé')) {
+      } else if (message.includes('annulé') || message.includes('remboursé')) {
         result = ScanResult.CANCELLED;
         ticketId = 'unknown';
       } else {
@@ -69,7 +75,7 @@ export class ScanService {
       }),
     );
 
-    return { result, ticket_id: ticketId };
+    return { result, ticket_id: ticketId, ticket: scannedTicket };
   }
 
   async getLogsByEvent(eventId: string): Promise<ScanLog[]> {

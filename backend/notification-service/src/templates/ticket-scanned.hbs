@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Votre billet a été validé</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #22c55e; padding: 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0; font-size: 28px; }
+    .body { padding: 32px; color: #333; line-height: 1.6; }
+    .check { font-size: 60px; text-align: center; margin: 16px 0; }
+    .event-box { background: #f0fdf4; border-radius: 8px; padding: 20px; margin: 20px 0; }
+    .event-name { font-size: 18px; font-weight: bold; color: #1a1a1a; }
+    .detail { color: #555; font-size: 14px; margin: 4px 0; }
+    .scan-time { background: #e9e3ff; border-radius: 4px; padding: 8px 12px; display: inline-block; font-size: 13px; color: #4c1d95; margin-top: 12px; }
+    .footer { padding: 20px 32px; background: #f9f9f9; color: #999; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>✓ Billet validé</h1></div>
+    <div class="body">
+      <div class="check">🎟</div>
+      <p>Bonjour {{firstName}},</p>
+      <p>Votre billet a été scanné et validé à l'entrée de l'événement.</p>
+      <div class="event-box">
+        <div class="event-name">{{eventName}}</div>
+        <div class="detail">📅 {{eventDate}}</div>
+        <div class="detail">📍 {{venueName}} — {{eventCity}}</div>
+        <div class="detail">🎭 {{artistName}}</div>
+        <div class="detail">🎫 {{categoryName}} — {{holderName}}</div>
+        <div class="scan-time">Validé le {{scannedAt}}</div>
+      </div>
+      <p>Profitez bien du spectacle !</p>
+    </div>
+    <div class="footer">© {{year}} BilletiX — Tous droits réservés</div>
+  </div>
+</body>
+</html>

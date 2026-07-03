@@ -29,14 +29,61 @@ export class Ticket {
   @Column()
   order_item_id: string;
 
+  // ─── Infos événement (dénormalisées) ────────────────────────────────────────
+
   @Column()
   event_id: string;
+
+  @Column()
+  event_name: string;
+
+  @Column({ type: 'timestamptz' })
+  event_start_at: Date;
+
+  @Column({ nullable: true })
+  event_end_at: Date | null;
+
+  @Column()
+  event_venue_name: string;
+
+  @Column()
+  event_venue_address: string;
+
+  @Column()
+  event_city: string;
+
+  @Column({ type: 'text', nullable: true })
+  event_poster_url: string | null;
+
+  // ─── Infos artiste / spectacle ───────────────────────────────────────────────
+
+  @Column()
+  artist_name: string;
+
+  @Column({ type: 'text', nullable: true })
+  artist_description: string | null;
+
+  // ─── Infos catégorie ─────────────────────────────────────────────────────────
 
   @Column()
   ticket_category_id: string;
 
   @Column()
+  ticket_category_name: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  unit_price_ttc: number;
+
+  @Column({ nullable: true })
+  seat_info: string | null;
+
+  // ─── Infos acheteur & porteur ────────────────────────────────────────────────
+
+  @Column()
   buyer_id: string;
+
+  @Column()
+  buyer_email: string;
 
   @Column()
   holder_first_name: string;
@@ -44,9 +91,7 @@ export class Ticket {
   @Column()
   holder_last_name: string;
 
-  // Date de début du spectacle — stockée ici pour la vérification 24h sans appel externe
-  @Column({ type: 'timestamptz' })
-  event_start_at: Date;
+  // ─── QR code ──────────────────────────────────────────────────────────────────
 
   // Token unique signé HMAC-SHA256 — embarqué dans le QR code
   @Column({ unique: true })
@@ -57,6 +102,8 @@ export class Ticket {
 
   @Column({ nullable: true })
   pdf_url: string | null;
+
+  // ─── Statut & scan ────────────────────────────────────────────────────────────
 
   @Column({ type: 'enum', enum: TicketStatus, default: TicketStatus.GENERATED })
   status: TicketStatus;

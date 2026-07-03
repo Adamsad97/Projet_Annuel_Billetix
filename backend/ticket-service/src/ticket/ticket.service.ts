@@ -18,7 +18,6 @@ export class TicketService {
   ) {}
 
   async generate(dto: GenerateTicketsDto): Promise<Ticket[]> {
-    const eventStartAt = new Date(dto.event_start_at);
     const tickets: Ticket[] = [];
 
     for (const item of dto.items) {
@@ -27,12 +26,28 @@ export class TicketService {
           reference: this.generateReference(),
           order_id: dto.order_id,
           order_item_id: item.order_item_id,
-          event_id: dto.event_id,
-          event_start_at: eventStartAt,
-          ticket_category_id: item.ticket_category_id,
           buyer_id: dto.buyer_id,
+          buyer_email: dto.buyer_email,
           holder_first_name: item.holder_first_name,
           holder_last_name: item.holder_last_name,
+          // Événement
+          event_id: dto.event_id,
+          event_name: dto.event_name,
+          event_start_at: new Date(dto.event_start_at),
+          event_end_at: dto.event_end_at ? new Date(dto.event_end_at) : null,
+          event_venue_name: dto.event_venue_name,
+          event_venue_address: dto.event_venue_address,
+          event_city: dto.event_city,
+          event_poster_url: dto.event_poster_url ?? null,
+          // Artiste
+          artist_name: dto.artist_name,
+          artist_description: dto.artist_description ?? null,
+          // Catégorie
+          ticket_category_id: item.ticket_category_id,
+          ticket_category_name: item.ticket_category_name,
+          unit_price_ttc: item.unit_price_ttc,
+          seat_info: item.seat_info ?? null,
+          // QR
           qr_code_token: this.generateQrToken(dto.order_id, dto.event_id),
         });
 

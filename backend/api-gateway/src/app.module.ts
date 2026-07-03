@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
+import { EventsModule } from './events/events.module';
 import { EventModule } from './event/event.module';
 import { OrderModule } from './order/order.module';
 import { PaymentModule } from './payment/payment.module';
@@ -91,6 +92,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     OrderModule,
     TicketModule,
     PaymentModule,
+    EventsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

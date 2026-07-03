@@ -166,6 +166,31 @@ export class NotificationController {
     this.ack(ctx);
   }
 
+  @EventPattern('notification.ticket_scanned')
+  async onTicketScanned(
+    @Payload() data: {
+      email: string;
+      firstName: string;
+      eventName: string;
+      eventDate: string;
+      venueName: string;
+      eventCity: string;
+      artistName: string;
+      categoryName: string;
+      holderName: string;
+      scannedAt: string;
+    },
+    @Ctx() ctx: RmqContext,
+  ) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Billet validé — ${data.eventName}`,
+      template: 'ticket-scanned',
+      context: { ...data },
+    });
+    this.ack(ctx);
+  }
+
   @EventPattern('notification.event_reminder')
   async onEventReminder(
     @Payload() data: {

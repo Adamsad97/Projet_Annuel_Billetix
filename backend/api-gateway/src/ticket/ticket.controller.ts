@@ -7,7 +7,6 @@ import {
   Inject,
   Param,
   Post,
-  Query,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -15,6 +14,8 @@ import { firstValueFrom } from 'rxjs';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { TicketsGateway } from '../events/tickets.gateway';
+import { ScanResult } from './scan-result.enum';
 
 @ApiTags('tickets')
 @ApiBearerAuth()
@@ -24,6 +25,7 @@ export class TicketController {
     @Inject('TICKET_SERVICE') private readonly ticketClient: ClientProxy,
     @Inject('ORDER_SERVICE') private readonly orderClient: ClientProxy,
     @Inject('PAYMENT_SERVICE') private readonly paymentClient: ClientProxy,
+    private readonly ticketsGateway: TicketsGateway,
   ) {}
 
   // ─── Acheteur ────────────────────────────────────────────────────────────────
@@ -197,13 +199,29 @@ export class TicketController {
   @HttpCode(HttpStatus.OK)
   @Roles('AGENT', 'ORGANIZER')
   @ApiOperation({ summary: 'Scanner un QR code (AGENT/ORGANIZER)' })
-  scan(
+  async scan(
     @CurrentUser() user: JwtPayload,
     @Body() dto: { qr_token: string; event_id: string; device_info?: string },
   ) {
-    return firstValueFrom(
+    const response = await firstValueFrom(
       this.ticketClient.send('ticket.scan', { ...dto, agent_id: user.sub }),
     );
+
+    // Push temps réel vers le profil de l'acheteur si scan valide
+    if (response.result === ScanResult.SUCCESS && response.ticket) {
+      const t = response.ticket;
+      this.ticketsGateway.notifyTicketScanned(t.buyer_id, {
+        ticket_id: t.id,
+        event_name: t.event_name,
+        ticket_category_name: t.ticket_category_name,
+        holder_first_name: t.holder_first_name,
+        holder_last_name: t.holder_last_name,
+        scanned_at: t.scanned_at,
+        status: t.status,
+      });
+    }
+
+    return response;
   }
 
   @Post('sync-offline')
