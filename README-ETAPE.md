@@ -7,28 +7,25 @@
 
 ## État actuel du projet
 
-**Stade : Étape 0 terminée — Scaffolding microservices complet**
+**Stade : Étape 1 en cours — auth-service implémenté, api-gateway à câbler**
 
 | Livrable CDC | État | Détail |
 |---|---|---|
-| API Gateway | 🟡 Scaffolding | `services/api-gateway/` — NestJS HTTP, Swagger, ThrottlerModule, 7 clients TCP |
-| auth-service | 🟡 Scaffolding | `services/auth-service/` — NestJS TCP, dépendances JWT/bcrypt/TypeORM installées |
-| user-service | 🟡 Scaffolding | `services/user-service/` — NestJS TCP |
-| event-service | 🟡 Scaffolding | `services/event-service/` — NestJS TCP + RabbitMQ |
-| order-service | 🟡 Scaffolding | `services/order-service/` — NestJS TCP + Redis + RabbitMQ |
-| ticket-service | 🟡 Scaffolding | `services/ticket-service/` — NestJS TCP + Redis + RabbitMQ + qrcode |
-| payment-service | 🟡 Scaffolding | `services/payment-service/` — NestJS TCP + Stripe |
-| notification-service | 🟡 Scaffolding | `services/notification-service/` — NestJS RMQ consumer |
-| pdf-service | 🟡 Scaffolding | `services/pdf-service/` — NestJS RMQ consumer + Puppeteer |
-| admin-service | 🟡 Scaffolding | `services/admin-service/` — NestJS TCP + TypeORM |
-| Frontend Web (Next.js) | 🟡 Scaffolding | `frontend/` — Next.js 16, standalone mode activé, Dockerfile créé |
-| App mobile de scan | ❌ Absent | Aucun code, aucun projet React Native |
-| Infrastructure Docker | ✅ Prêt | `docker-compose.yml` + `docker-compose.dev.yml` complets |
-| Message broker (RabbitMQ) | ✅ Configuré | Inclus dans docker-compose |
-| Base de données | 🟡 Configuré | `infra/postgres/init.sql` — 7 schemas créés, ORM non encore câblé |
-| Shared | ✅ Prêt | `shared/` — constants, events (RabbitMQ), interfaces TypeScript |
-
-> `backend/` (ancien monolithe) supprimé. Architecture microservices en place.
+| Infrastructure Docker | ✅ Terminé | 16 conteneurs Up, health checks OK, volumes persistants |
+| Base de données | ✅ Terminé | 7 schemas PostgreSQL créés, extensions uuid-ossp + pg_trgm |
+| Shared | ✅ Terminé | `backend/shared/` — constants, events RabbitMQ, interfaces TypeScript |
+| auth-service | ✅ Implémenté | register · login · refresh · logout · validate_token · forgot/reset password · verify email — bcrypt cost 12, JWT 15m/30d, Redis blacklist, table `auth.users` auto-créée |
+| api-gateway | 🟡 Scaffolding | NestJS HTTP, Swagger, ThrottlerModule, 7 clients TCP — routes à câbler |
+| user-service | 🟡 Scaffolding | `backend/user-service/` — NestJS TCP |
+| event-service | 🟡 Scaffolding | `backend/event-service/` — NestJS TCP + RabbitMQ |
+| order-service | 🟡 Scaffolding | `backend/order-service/` — NestJS TCP + Redis + RabbitMQ |
+| ticket-service | 🟡 Scaffolding | `backend/ticket-service/` — NestJS TCP + Redis + RabbitMQ + qrcode |
+| payment-service | 🟡 Scaffolding | `backend/payment-service/` — NestJS TCP + Stripe |
+| notification-service | 🟡 Scaffolding | `backend/notification-service/` — NestJS RMQ consumer |
+| pdf-service | 🟡 Scaffolding | `backend/pdf-service/` — NestJS RMQ consumer + Puppeteer |
+| admin-service | 🟡 Scaffolding | `backend/admin-service/` — NestJS TCP + TypeORM |
+| Frontend Web (Next.js) | 🟡 Scaffolding | `frontend/` — Next.js 16, standalone mode activé, Dockerfile |
+| App mobile de scan | ❌ Absent | Phase 3 — aucun code React Native |
 
 ---
 
@@ -453,26 +450,22 @@ BILLETIX/
 │   ├── Dockerfile
 │   └── package.json
 │
-├── services/
-│   ├── api-gateway/            ← NestJS (port 3000)
-│   │   ├── src/
-│   │   ├── Dockerfile
-│   │   └── package.json
-│   ├── auth-service/           ← NestJS (port 3001)
-│   ├── user-service/           ← NestJS (port 3002)
-│   ├── event-service/          ← NestJS (port 3003)
-│   ├── order-service/          ← NestJS (port 3004)
-│   ├── ticket-service/         ← NestJS (port 3005)
-│   ├── payment-service/        ← NestJS (port 3006)
-│   ├── notification-service/   ← NestJS (port 3007)
-│   ├── pdf-service/            ← NestJS + Puppeteer (port 3008)
-│   └── admin-service/          ← NestJS (port 3009)
-│
-└── shared/                     ← code partagé (pas de runtime séparé)
-    ├── dto/                    ← DTOs communs inter-services
-    ├── events/                 ← Définitions des messages RabbitMQ
-    ├── interfaces/             ← Interfaces TypeScript partagées
-    └── constants/              ← Constantes (statuts, rôles, etc.)
+└── backend/
+    ├── api-gateway/            ← NestJS HTTP (port 3000) — 🟡 routes à câbler
+    │   ├── src/
+    │   ├── Dockerfile
+    │   └── package.json
+    ├── auth-service/           ← NestJS TCP (port 3001) — ✅ Implémenté
+    ├── user-service/           ← NestJS TCP (port 3002) — 🟡 Scaffolding
+    ├── event-service/          ← NestJS TCP (port 3003) — 🟡 Scaffolding
+    ├── order-service/          ← NestJS TCP (port 3004) — 🟡 Scaffolding
+    ├── ticket-service/         ← NestJS TCP (port 3005) — 🟡 Scaffolding
+    ├── payment-service/        ← NestJS TCP (port 3006) — 🟡 Scaffolding
+    ├── notification-service/   ← NestJS RMQ consumer (port 3007) — 🟡 Scaffolding
+    ├── pdf-service/            ← NestJS + Puppeteer RMQ (port 3008) — 🟡 Scaffolding
+    ├── admin-service/          ← NestJS TCP (port 3009) — 🟡 Scaffolding
+    ├── shared/                 ← constantes, events RabbitMQ, interfaces TypeScript
+    └── infra/postgres/         ← init.sql : 7 schemas créés au démarrage
 ```
 
 ---
@@ -569,7 +562,7 @@ Chaque service a son propre utilisateur PostgreSQL avec accès limité à son sc
 | F7 | Fonctionnel | Événements récurrents / multi-représentations | P2 | ⏳ | event-service |
 | F8 | Fonctionnel | Plan de salle numéroté absent | P3 | ❌ Hors périmètre | — |
 | T1 | Technique | Mode hors ligne vs temps réel → résolu par policy 4h + delta-sync | P1 | ✅ Résolu (design) | ticket-service |
-| T2 | Technique | Refresh token + révocation → définis dans auth-service | P1 | ✅ Résolu (design) | auth-service |
+| T2 | Technique | Refresh token + révocation → implémenté dans auth-service (jti + Redis blacklist) | P1 | ✅ Implémenté | auth-service |
 | T3 | Technique | Clés HMAC QR → env var secrets, rotation à planifier | P1 | 🔄 Partiel | ticket-service |
 | T4 | Technique | Versioning API → `/api/v1/` via api-gateway | P2 | ⏳ | api-gateway |
 | T5 | Technique | Backup / disaster recovery non définis | P2 | ⏳ | infra |
@@ -578,7 +571,7 @@ Chaque service a son propre utilisateur PostgreSQL avec accès limité à son sc
 | T8 | Technique | CORS → centralisé dans api-gateway | P3 | ✅ Résolu (design) | api-gateway |
 | S1 | Sécurité | 2FA obligatoire si IBAN → enforced dans auth-service | P1 | ⏳ | auth-service |
 | S2 | Sécurité | IBAN chiffré AES-256 → défini dans user-service | P1 | ⏳ | user-service |
-| S3 | Sécurité | Politique mots de passe à définir | P2 | ⏳ | auth-service |
+| S3 | Sécurité | Politique mots de passe → MinLength 8 + bcrypt cost 12 implémentés | P2 | ✅ Implémenté | auth-service |
 | S4 | Sécurité | Brute force → @nestjs/throttler dans api-gateway | P2 | ⏳ | api-gateway |
 | S5 | Sécurité | Agents voient nom complet → afficher prénom + initiale | P2 | ⏳ | ticket-service |
 | R1 | RGPD | Durées de conservation non définies | P1 | ⏳ | tous |
@@ -611,52 +604,54 @@ Chaque service a son propre utilisateur PostgreSQL avec accès limité à son sc
 
 ## Prochaines étapes
 
-### Étape 0 — Fondations (semaine 1) ← MAINTENANT
+### Étape 0 — Fondations ✅ TERMINÉ (0 jour restant)
 
-- [ ] Restructurer le repo : créer `services/` et déplacer/supprimer l'ancien `backend/`
-- [ ] Créer `.env.example` avec toutes les variables (DB, Redis, RabbitMQ, Stripe, HMAC, JWT...)
-- [ ] Créer `docker-compose.yml` (postgres, redis, rabbitmq, minio, mailhog)
-- [ ] Créer `docker-compose.dev.yml` (surcharges hot-reload)
-- [ ] Scaffolding de chaque service NestJS (`nest new auth-service`, etc.)
-- [ ] Créer le dossier `shared/` avec les interfaces et constantes communes
-- [ ] Configurer un Dockerfile par service (multi-stage build)
-- [ ] Créer un `.env.example` documenté
+- [x] Restructurer le repo : `backend/` microservices (suppression de l'ancien monolithe)
+- [x] Créer `.env.example` avec toutes les variables (DB, Redis, RabbitMQ, Stripe, HMAC, JWT...)
+- [x] Créer `docker-compose.yml` (postgres, redis, rabbitmq, minio, mailhog + 10 services + frontend)
+- [x] Créer `docker-compose.dev.yml` (surcharges hot-reload, volumes)
+- [x] Scaffolding de chaque service NestJS (10 services + api-gateway)
+- [x] Créer `backend/shared/` avec constants, events RabbitMQ, interfaces TypeScript
+- [x] Configurer un Dockerfile multi-stage par service (base / dev / builder / prod)
+- [x] Lancer l'appli complète — 16 conteneurs Up, infra healthy
 
-### Étape 1 — Auth & User (semaine 2-4)
+### Étape 1 — Auth & User 🔄 EN COURS
 
-- [ ] `auth-service` : register, login, JWT, refresh, reset password
-- [ ] `user-service` : profils acheteur et organisateur, IBAN chiffré
-- [ ] `api-gateway` : routing TCP, auth guard, Swagger, rate limiting
+- [x] `auth-service` : register, login, JWT access+refresh, logout, validate_token, forgot/reset password, verify email, bcrypt cost 12, Redis blacklist
+- [ ] `api-gateway` : routes HTTP /auth/*, auth guard JWT, Swagger, rate limiting ← **PROCHAIN**
+- [ ] `user-service` : profils acheteur et organisateur, IBAN chiffré AES-256
 
-### Étape 2 — Événements (semaine 4-7)
+### Étape 2 — Événements
 
-- [ ] `event-service` : CRUD, workflow validation, catalogue public
-- [ ] Intégration MinIO pour upload images
+- [ ] `event-service` : CRUD, workflow DRAFT→PUBLISHED, catalogue public filtrable
+- [ ] Intégration MinIO pour upload affiches événements
 - [ ] Tableau de bord organisateur (frontend)
 - [ ] Back-office validation admin (frontend + admin-service)
 
-### Étape 3 — Achat & Billets (semaine 7-14)
+### Étape 3 — Achat & Billets
 
-- [ ] `order-service` : tunnel d'achat, lock Redis, statuts
-- [ ] `payment-service` : Stripe Connect, webhooks
-- [ ] `ticket-service` : génération QR HMAC, validation scan
-- [ ] `pdf-service` : génération PDF, upload MinIO
-- [ ] `notification-service` : email billet, confirmations
+- [ ] `order-service` : tunnel d'achat, lock Redis anti-race-condition, statuts
+- [ ] `payment-service` : Stripe Connect, webhooks, reversements
+- [ ] `ticket-service` : génération QR HMAC-SHA256, validation scan, mode hors ligne
+- [ ] `pdf-service` : génération PDF Puppeteer, upload MinIO
+- [ ] `notification-service` : email billet, confirmations, rappels
 
 ---
 
 ## Planning ajusté
 
-| Phase | Périmètre | Durée CDC | Durée réaliste | Statut |
+| Phase | Périmètre | Durée estimée | Jours restants | Statut |
 |---|---|---|---|---|
-| Étape 0 — Fondations micro | Repo, Docker, scaffolding services | Non planifiée | 1 semaine | ⏳ |
-| Design UI/UX | Maquettes, système de design | Non planifiée | 2-3 semaines | ⏳ |
-| Phase 1 — MVP | Auth, événements, achat, billets QR, scan basique | 3-4 mois | 5-6 mois | ⏳ |
-| Phase 2 — Financier | Commissions, reversements, back-office, KYC | 2 mois | 2-3 mois | ⏳ |
-| Phase 3 — Scan complet | Hors ligne, supervision, multi-agents, temps réel | 4-6 semaines | 4-6 semaines | ⏳ |
-| Phase 4 — Optimisation | SEO, promos, analytics, A/B testing | 1-2 mois | 1-2 mois | ⏳ |
-| Tests de charge | Validation performance avant prod | Non planifiée | 2-3 semaines | ⏳ |
-| **Total** | | **7-9 mois** | **12-16 mois** | |
+| Étape 0 — Fondations | Repo, Docker, scaffolding 10 services, infra | 1 semaine | **0 j** | ✅ Terminé |
+| Étape 1 — Auth & User | auth-service, api-gateway, user-service | 2-3 semaines | ~10 j | 🔄 En cours |
+| Étape 2 — Événements | event-service, catalogue, admin validation | 3 semaines | ~21 j | ⏳ |
+| Étape 3 — Achat & Billets | order, payment, ticket, pdf, notification | 6-7 semaines | ~45 j | ⏳ |
+| Design UI/UX + Frontend | Maquettes, pages Next.js | 2-3 semaines | ~21 j | ⏳ |
+| Phase 2 — Financier | Commissions, reversements, KYC complet | 2-3 mois | ~70 j | ⏳ |
+| Phase 3 — Scan complet | Hors ligne, supervision, multi-agents | 4-6 semaines | ~35 j | ⏳ |
+| Phase 4 — Optimisation | SEO, promos, analytics | 1-2 mois | ~45 j | ⏳ |
+| Tests de charge | Validation performance avant prod | 2-3 semaines | ~18 j | ⏳ |
+| **Total restant** | | | **~265 j** | |
 
 > Le passage en microservices ajoute ~1-2 mois de setup initial par rapport à un monolithe, mais facilite grandement le déploiement, le scaling et la séparation du travail entre développeurs.
 
@@ -670,3 +665,5 @@ Chaque service a son propre utilisateur PostgreSQL avec accès limité à son sc
 | 2026-07-03 | 1.1 | Audit du code existant — projet au stade scaffolding, 0 % de code métier |
 | 2026-07-03 | 1.2 | Décision architecture microservices — décomposition complète en 9 services + API Gateway |
 | 2026-07-03 | 1.3 | Étape 0 terminée — scaffolding complet : 10 services NestJS, Dockerfiles multi-stage, docker-compose, .env.example, shared/, infra/postgres/init.sql |
+| 2026-07-03 | 1.4 | Lancement complet — 16 conteneurs Up (infra healthy, services en mode dev hot-reload) |
+| 2026-07-03 | 1.5 | auth-service implémenté — register, login, refresh, logout, validate_token, forgot/reset password, verify email · bcrypt cost 12 · JWT 15m/30d · Redis blacklist jti · table auth.users auto-créée · Étape 0 : 0 j restant |
