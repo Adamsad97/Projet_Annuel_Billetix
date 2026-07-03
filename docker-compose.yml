@@ -109,8 +109,8 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      PORT: 3000
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      PORT: 4000
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       AUTH_SERVICE_HOST: auth-service
       AUTH_SERVICE_PORT: 3001
@@ -137,9 +137,9 @@ services:
       MINIO_BUCKET_DOCUMENTS: ${MINIO_BUCKET_DOCUMENTS:-documents}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/api/v1/auth/google/callback}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:4000/api/v1/auth/google/callback}
     ports:
-      - "3000:3000"
+      - "4000:4000"
     depends_on:
       auth-service:
         condition: service_started
@@ -176,7 +176,7 @@ services:
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      APP_URL: ${APP_URL:-http://localhost:3000}
+      APP_URL: ${APP_URL:-http://localhost:4000}
     depends_on:
       postgres:
         condition: service_healthy
@@ -325,7 +325,7 @@ services:
       SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@billetix.fr}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-BilletiX}
-      APP_URL: ${APP_URL:-http://localhost:3000}
+      APP_URL: ${APP_URL:-http://localhost:4000}
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -384,9 +384,9 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api/v1}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
     ports:
-      - "80:3000"
+      - "3000:3000"
     depends_on:
       - api-gateway
     networks:
