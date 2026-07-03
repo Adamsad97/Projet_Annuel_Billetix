@@ -7,10 +7,12 @@ import {
   Inject,
   Param,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { firstValueFrom } from 'rxjs';
+import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 
@@ -20,9 +22,11 @@ import { Roles } from '../common/decorators/roles.decorator';
 export class TicketController {
   constructor(
     @Inject('TICKET_SERVICE') private readonly ticketClient: ClientProxy,
+    @Inject('ORDER_SERVICE') private readonly orderClient: ClientProxy,
+    @Inject('PAYMENT_SERVICE') private readonly paymentClient: ClientProxy,
   ) {}
 
-  // --- Acheteur ---
+  // ─── Acheteur ────────────────────────────────────────────────────────────────
 
   @Get('order/:orderId')
   @ApiOperation({ summary: 'Billets d\'une commande' })
@@ -36,13 +40,167 @@ export class TicketController {
     return firstValueFrom(this.ticketClient.send('ticket.get', { id }));
   }
 
-  // --- Agent de contrôle : scan ---
+  // ─── Revente ────────────────────────────────────────────────────────────────
+
+  @Post(':id/request-resale')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Remettre un billet en vente' })
+  requestResale(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: { original_order_id: string; resale_price: number },
+  ) {
+    return firstValueFrom(
+      this.ticketClient.send('ticket.request_resale', {
+        ticket_id: id,
+        buyer_id: user.sub,
+        original_order_id: dto.original_order_id,
+        resale_price: dto.resale_price,
+      }),
+    );
+  }
+
+  @Post(':id/cancel')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Annuler un billet (bloqué à -24h du spectacle — proposer la revente)' })
+  cancel(@Param('id') id: string) {
+    return firstValueFrom(this.ticketClient.send('ticket.cancel', { id }));
+  }
+
+  @Public()
+  @Get('resale/event/:eventId')
+  @ApiOperation({ summary: 'Billets en revente pour un événement (public)' })
+  listResaleByEvent(@Param('eventId') eventId: string) {
+    return firstValueFrom(
+      this.ticketClient.send('ticket.list_resale_by_event', { event_id: eventId }),
+    );
+  }
+
+  @Get('resale/:resaleId')
+  @ApiOperation({ summary: 'Détail d\'une offre de revente' })
+  getResale(@Param('resaleId') resaleId: string) {
+    return firstValueFrom(this.ticketClient.send('ticket.get_resale', { id: resaleId }));
+  }
+
+  /**
+   * Achat d'un billet en revente — crée une nouvelle commande + payment intent.
+   * Le frontend complète le paiement via Stripe.js puis appelle POST /resale/:id/complete.
+   */
+  @Post('resale/:resaleId/purchase')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Acheter un billet en revente' })
+  async purchaseResale(
+    @CurrentUser() user: JwtPayload,
+    @Param('resaleId') resaleId: string,
+    @Body() dto: {
+      billing_first_name: string;
+      billing_last_name: string;
+      billing_email: string;
+      billing_address_line1: string;
+      billing_address_line2?: string;
+      billing_city: string;
+      billing_postal_code: string;
+      billing_country: string;
+      payment_method: string;
+      commission_rate: number;
+    },
+  ) {
+    // 1. Récupérer l'offre de revente
+    const resale = await firstValueFrom(
+      this.ticketClient.send('ticket.get_resale', { id: resaleId }),
+    );
+
+    // 2. Créer une commande pour le nouvel acheteur
+    const { order } = await firstValueFrom(
+      this.orderClient.send('order.create', {
+        buyer_id: user.sub,
+        event_id: resale.event_id,
+        items: [{
+          ticket_category_id: resale.ticket_category_id,
+          quantity: 1,
+          unit_price_ht: resale.resale_price,
+          holder_first_name: dto.billing_first_name,
+          holder_last_name: dto.billing_last_name,
+        }],
+        commission_rate: dto.commission_rate,
+        ...dto,
+      }),
+    );
+
+    // 3. Créer le payment intent Stripe
+    const payment = await firstValueFrom(
+      this.paymentClient.send('payment.create_intent', {
+        order_id: order.id,
+        amount_ttc: order.total_amount_ttc,
+        buyer_email: user.email,
+      }),
+    );
+
+    return { resale_id: resaleId, order_id: order.id, client_secret: payment.client_secret };
+  }
+
+  /**
+   * Finalisation après paiement confirmé par Stripe.
+   * Transfère le billet + rembourse l'acheteur original.
+   */
+  @Post('resale/:resaleId/complete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Finaliser l\'achat d\'une revente après paiement' })
+  async completeResale(
+    @CurrentUser() user: JwtPayload,
+    @Param('resaleId') resaleId: string,
+    @Body() dto: { order_id: string },
+  ) {
+    // 1. Vérifier que le paiement est bien confirmé
+    const payment = await firstValueFrom(
+      this.paymentClient.send('payment.get_by_order', { order_id: dto.order_id }),
+    );
+    if (payment.status !== 'PAID') {
+      return { success: false, message: 'Paiement non encore confirmé' };
+    }
+
+    // 2. Transférer le billet + marquer la revente SOLD
+    const { resale, originalOrderId } = await firstValueFrom(
+      this.ticketClient.send('ticket.complete_resale', {
+        resale_id: resaleId,
+        new_buyer_id: user.sub,
+        new_order_id: dto.order_id,
+      }),
+    );
+
+    // 3. Rembourser l'acheteur original
+    await firstValueFrom(
+      this.paymentClient.send('payment.refund', { order_id: originalOrderId }),
+    );
+
+    return { success: true, resale };
+  }
+
+  @Post('resale/:resaleId/withdraw')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Retirer un billet de la revente' })
+  withdrawResale(
+    @CurrentUser() user: JwtPayload,
+    @Param('resaleId') resaleId: string,
+  ) {
+    return firstValueFrom(
+      this.ticketClient.send('ticket.withdraw_resale', {
+        resale_id: resaleId,
+        buyer_id: user.sub,
+      }),
+    );
+  }
+
+  // ─── Agent de contrôle : scan ────────────────────────────────────────────────
 
   @Post('scan')
   @HttpCode(HttpStatus.OK)
   @Roles('AGENT', 'ORGANIZER')
   @ApiOperation({ summary: 'Scanner un QR code (AGENT/ORGANIZER)' })
-  scan(@CurrentUser() user: JwtPayload, @Body() dto: { qr_token: string; event_id: string; device_info?: string }) {
+  scan(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { qr_token: string; event_id: string; device_info?: string },
+  ) {
     return firstValueFrom(
       this.ticketClient.send('ticket.scan', { ...dto, agent_id: user.sub }),
     );
@@ -52,7 +210,10 @@ export class TicketController {
   @HttpCode(HttpStatus.OK)
   @Roles('AGENT', 'ORGANIZER')
   @ApiOperation({ summary: 'Synchroniser les scans hors-ligne (AGENT/ORGANIZER)' })
-  syncOffline(@CurrentUser() user: JwtPayload, @Body() dto: { event_id: string; entries: unknown[] }) {
+  syncOffline(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { event_id: string; entries: unknown[] },
+  ) {
     return firstValueFrom(
       this.ticketClient.send('ticket.sync_offline', { agent_id: user.sub, ...dto }),
     );
@@ -65,12 +226,16 @@ export class TicketController {
     return firstValueFrom(this.ticketClient.send('ticket.get_scan_logs', { event_id: eventId }));
   }
 
-  // --- Organisateur : gestion des agents ---
+  // ─── Organisateur : gestion des agents ──────────────────────────────────────
 
   @Post('event/:eventId/agents')
   @Roles('ORGANIZER')
   @ApiOperation({ summary: 'Assigner un agent à l\'événement (ORGANIZER)' })
-  assignAgent(@CurrentUser() user: JwtPayload, @Param('eventId') eventId: string, @Body() dto: { user_id: string; is_supervisor?: boolean }) {
+  assignAgent(
+    @CurrentUser() user: JwtPayload,
+    @Param('eventId') eventId: string,
+    @Body() dto: { user_id: string; is_supervisor?: boolean },
+  ) {
     return firstValueFrom(
       this.ticketClient.send('ticket.assign_agent', { ...dto, event_id: eventId, assigned_by: user.sub }),
     );
@@ -83,13 +248,16 @@ export class TicketController {
     return firstValueFrom(this.ticketClient.send('ticket.get_agents', { event_id: eventId }));
   }
 
-  // --- Agent : session mobile ---
+  // ─── Agent : session mobile ──────────────────────────────────────────────────
 
   @Post('session/start')
   @HttpCode(HttpStatus.OK)
   @Roles('AGENT', 'ORGANIZER')
   @ApiOperation({ summary: 'Démarrer une session de scan mobile' })
-  startSession(@CurrentUser() user: JwtPayload, @Body() dto: { event_id: string }) {
+  startSession(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { event_id: string },
+  ) {
     return firstValueFrom(
       this.ticketClient.send('ticket.start_session', { user_id: user.sub, event_id: dto.event_id }),
     );
@@ -99,19 +267,26 @@ export class TicketController {
   @HttpCode(HttpStatus.OK)
   @Roles('AGENT', 'ORGANIZER')
   @ApiOperation({ summary: 'Terminer la session de scan' })
-  endSession(@CurrentUser() user: JwtPayload, @Body() dto: { event_id: string }) {
+  endSession(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { event_id: string },
+  ) {
     return firstValueFrom(
       this.ticketClient.send('ticket.end_session', { user_id: user.sub, event_id: dto.event_id }),
     );
   }
 
-  // --- Admin ---
+  // ─── Admin ───────────────────────────────────────────────────────────────────
 
   @Post(':id/invalidate')
   @HttpCode(HttpStatus.OK)
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Invalider un billet (ADMIN)' })
-  invalidate(@CurrentUser() user: JwtPayload, @Param('id') id: string, @Body() dto: { reason: string }) {
+  invalidate(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: { reason: string },
+  ) {
     return firstValueFrom(
       this.ticketClient.send('ticket.invalidate', { id, admin_id: user.sub, reason: dto.reason }),
     );

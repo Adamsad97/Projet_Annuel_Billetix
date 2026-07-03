@@ -8,6 +8,8 @@ import { Repository } from 'typeorm';
 import { GenerateTicketsDto } from './dto/generate-tickets.dto';
 import { Ticket, TicketStatus } from './ticket.entity';
 
+const CANCEL_DEADLINE_HOURS = 24;
+
 @Injectable()
 export class TicketService {
   constructor(
@@ -16,6 +18,7 @@ export class TicketService {
   ) {}
 
   async generate(dto: GenerateTicketsDto): Promise<Ticket[]> {
+    const eventStartAt = new Date(dto.event_start_at);
     const tickets: Ticket[] = [];
 
     for (const item of dto.items) {
@@ -25,6 +28,7 @@ export class TicketService {
           order_id: dto.order_id,
           order_item_id: item.order_item_id,
           event_id: dto.event_id,
+          event_start_at: eventStartAt,
           ticket_category_id: item.ticket_category_id,
           buyer_id: dto.buyer_id,
           holder_first_name: item.holder_first_name,
@@ -62,6 +66,9 @@ export class TicketService {
     if (ticket.status === TicketStatus.CANCELLED || ticket.status === TicketStatus.REFUNDED) {
       throw new RpcException({ statusCode: 400, message: 'Billet annulé ou remboursé' });
     }
+    if (ticket.status === TicketStatus.FOR_RESALE) {
+      throw new RpcException({ statusCode: 400, message: 'Billet en cours de revente' });
+    }
 
     return { valid: true, ticket };
   }
@@ -80,10 +87,45 @@ export class TicketService {
     return this.repo.save(ticket);
   }
 
+  // Annulation normale — bloquée à moins de 24h du spectacle
   async cancel(id: string): Promise<Ticket> {
     const ticket = await this.getById(id);
+    this.assertCancellable(ticket);
+    this.assertNotWithin24h(ticket);
     ticket.status = TicketStatus.CANCELLED;
     return this.repo.save(ticket);
+  }
+
+  async markForResale(id: string): Promise<Ticket> {
+    const ticket = await this.getById(id);
+    this.assertCancellable(ticket);
+
+    if (ticket.event_start_at <= new Date()) {
+      throw new RpcException({ statusCode: 400, message: 'L\'événement est déjà passé' });
+    }
+
+    ticket.status = TicketStatus.FOR_RESALE;
+    return this.repo.save(ticket);
+  }
+
+  // Appelé quand le nouvel acheteur a payé — transfert du billet
+  async transferToNewBuyer(id: string, newBuyerId: string, newOrderId: string): Promise<Ticket> {
+    const ticket = await this.getById(id);
+    if (ticket.status !== TicketStatus.FOR_RESALE) {
+      throw new RpcException({ statusCode: 400, message: 'Ce billet n\'est pas en revente' });
+    }
+    ticket.buyer_id = newBuyerId;
+    ticket.order_id = newOrderId;
+    ticket.status = TicketStatus.SENT;
+    // Nouveau QR code pour invaliditer l'ancien
+    ticket.qr_code_token = this.generateQrToken(newOrderId, ticket.event_id);
+    ticket.qr_code_url = await this.generateQrImage(ticket.qr_code_token);
+    return this.repo.save(ticket);
+  }
+
+  // Remet un billet FOR_RESALE en SENT quand le vendeur retire son offre
+  async cancelResaleAndRestore(id: string): Promise<void> {
+    await this.repo.update(id, { status: TicketStatus.SENT });
   }
 
   async invalidate(id: string, adminId: string, reason: string): Promise<Ticket> {
@@ -98,6 +140,33 @@ export class TicketService {
   async setPdfUrl(id: string, url: string): Promise<Ticket> {
     await this.repo.update(id, { pdf_url: url });
     return this.repo.findOne({ where: { id } });
+  }
+
+  private assertCancellable(ticket: Ticket): void {
+    const nonCancellable: TicketStatus[] = [
+      TicketStatus.USED,
+      TicketStatus.CANCELLED,
+      TicketStatus.REFUNDED,
+    ];
+    if (nonCancellable.includes(ticket.status)) {
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Ce billet ne peut pas être annulé',
+      });
+    }
+  }
+
+  private assertNotWithin24h(ticket: Ticket): void {
+    const hoursBeforeEvent =
+      (ticket.event_start_at.getTime() - Date.now()) / (1000 * 60 * 60);
+
+    if (hoursBeforeEvent < CANCEL_DEADLINE_HOURS) {
+      throw new RpcException({
+        statusCode: 403,
+        message: `Annulation impossible à moins de ${CANCEL_DEADLINE_HOURS}h du spectacle. Vous pouvez remettre votre billet en vente.`,
+        resaleAvailable: true,
+      });
+    }
   }
 
   private generateReference(): string {

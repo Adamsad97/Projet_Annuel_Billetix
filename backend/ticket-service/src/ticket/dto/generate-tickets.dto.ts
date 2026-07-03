@@ -9,6 +9,7 @@ export interface TicketItemDto {
 export interface GenerateTicketsDto {
   order_id: string;
   event_id: string;
+  event_start_at: string; // ISO 8601
   buyer_id: string;
   items: TicketItemDto[];
 }

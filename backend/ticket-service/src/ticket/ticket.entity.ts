@@ -9,6 +9,7 @@ import {
 export enum TicketStatus {
   GENERATED = 'GENERATED',
   SENT = 'SENT',
+  FOR_RESALE = 'FOR_RESALE',
   USED = 'USED',
   CANCELLED = 'CANCELLED',
   REFUNDED = 'REFUNDED',
@@ -42,6 +43,10 @@ export class Ticket {
 
   @Column()
   holder_last_name: string;
+
+  // Date de début du spectacle — stockée ici pour la vérification 24h sans appel externe
+  @Column({ type: 'timestamptz' })
+  event_start_at: Date;
 
   // Token unique signé HMAC-SHA256 — embarqué dans le QR code
   @Column({ unique: true })

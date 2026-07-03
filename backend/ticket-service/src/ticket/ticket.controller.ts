@@ -42,6 +42,11 @@ export class TicketController {
     return this.ticketService.cancel(data.id);
   }
 
+  @MessagePattern('ticket.transfer_to_new_buyer')
+  transferToNewBuyer(@Payload() data: { id: string; new_buyer_id: string; new_order_id: string }) {
+    return this.ticketService.transferToNewBuyer(data.id, data.new_buyer_id, data.new_order_id);
+  }
+
   @MessagePattern('ticket.invalidate')
   invalidate(@Payload() data: { id: string; admin_id: string; reason: string }) {
     return this.ticketService.invalidate(data.id, data.admin_id, data.reason);
