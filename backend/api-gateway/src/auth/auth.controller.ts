@@ -8,7 +8,11 @@ import {
   Inject,
   Post,
   Query,
+  Req,
+  Res,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { ClientProxy } from '@nestjs/microservices';
 import {
   ApiBearerAuth,
@@ -18,7 +22,9 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { Request, Response } from 'express';
 import { firstValueFrom } from 'rxjs';
+import { ConfigService } from '@nestjs/config';
 import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -31,9 +37,14 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
+  private readonly frontendUrl: string;
+
   constructor(
     @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
-  ) {}
+    private readonly config: ConfigService,
+  ) {
+    this.frontendUrl = this.config.get('FRONTEND_URL', 'http://localhost');
+  }
 
   @Public()
   @Post('register')
@@ -113,6 +124,41 @@ export class AuthController {
   @ApiOperation({ summary: 'Récupérer le profil de l\'utilisateur connecté' })
   me(@CurrentUser() user: JwtPayload) {
     return user;
+  }
+
+  // ──────────────── OAuth Google ────────────────
+
+  @Public()
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  @ApiOperation({ summary: 'Redirection vers Google pour connexion OAuth' })
+  googleAuth() {
+    // Passport redirige vers Google — ce handler ne s'exécute pas
+  }
+
+  @Public()
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  @ApiOperation({ summary: 'Callback Google OAuth — retourne les tokens JWT via redirection' })
+  async googleCallback(@Req() req: Request, @Res() res: Response) {
+    const oauthUser = req.user as {
+      provider: 'GOOGLE';
+      oauth_id: string;
+      email: string;
+      first_name: string;
+      last_name: string;
+    };
+
+    const result = await firstValueFrom(
+      this.authClient.send('auth.oauth_login', oauthUser),
+    );
+
+    const params = new URLSearchParams({
+      access_token: result.access_token,
+      refresh_token: result.refresh_token,
+    });
+
+    res.redirect(`${this.frontendUrl}/auth/callback?${params.toString()}`);
   }
 
   // ──────────────── 2FA TOTP ────────────────
