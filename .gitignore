@@ -1,0 +1,40 @@
+# Variables d'environnement — NE JAMAIS committer
+.env
+.env.local
+.env.*.local
+
+# Dépendances
+node_modules/
+**/node_modules/
+
+# Build
+dist/
+**/dist/
+.next/
+**/.next/
+
+# Logs
+*.log
+logs/
+**/logs/
+
+# Coverage
+coverage/
+**/coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker volumes locaux
+.docker/
+
+# Cache
+.eslintcache
+*.tsbuildinfo

@@ -1,0 +1,134 @@
+# Surcharges pour le développement local
+# Usage : docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+
+  # Infrastructure : ports exposés pour accès direct depuis l'hôte
+  postgres:
+    ports:
+      - "5432:5432"
+  redis:
+    ports:
+      - "6379:6379"
+  rabbitmq:
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+  minio:
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+  mailhog:
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  # Services métier : hot reload activé via volume mount
+  api-gateway:
+    build:
+      target: development
+    volumes:
+      - ./backend/api-gateway:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+    command: npm run start:dev
+    ports:
+      - "3000:3000"
+
+  auth-service:
+    build:
+      target: development
+    volumes:
+      - ./backend/auth-service:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+    command: npm run start:dev
+  user-service:
+    build:
+      target: development
+    volumes:
+      - ./backend/user-service:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+    command: npm run start:dev
+  event-service:
+    build:
+      target: development
+    volumes:
+      - ./backend/event-service:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+    command: npm run start:dev
+  order-service:
+    build:
+      target: development
+    volumes:
+      - ./backend/order-service:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+    command: npm run start:dev
+  ticket-service:
+    build:
+      target: development
+    volumes:
+      - ./backend/ticket-service:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+    command: npm run start:dev
+  payment-service:
+    build:
+      target: development
+    volumes:
+      - ./backend/payment-service:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+    command: npm run start:dev
+  notification-service:
+    build:
+      target: development
+    volumes:
+      - ./backend/notification-service:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+    command: npm run start:dev
+  pdf-service:
+    build:
+      target: development
+    volumes:
+      - ./backend/pdf-service:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+    command: npm run start:dev
+  admin-service:
+    build:
+      target: development
+    volumes:
+      - ./backend/admin-service:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+    command: npm run start:dev
+  frontend:
+    build:
+      target: development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      NODE_ENV: development
+    command: npm run dev
+    ports:
+      - "80:3000"
+  
