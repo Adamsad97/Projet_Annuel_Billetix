@@ -117,6 +117,41 @@ export class Order {
   @Column({ nullable: true })
   invoice_url: string | null;
 
+  // Snapshot événement (nécessaire pour ticket-service après paiement)
+  @Column({ nullable: true })
+  event_name: string | null;
+
+  @Column({ nullable: true })
+  event_start_at: Date | null;
+
+  @Column({ nullable: true })
+  event_venue_name: string | null;
+
+  @Column({ nullable: true })
+  event_venue_address: string | null;
+
+  @Column({ nullable: true })
+  event_city: string | null;
+
+  @Column({ nullable: true })
+  event_poster_url: string | null;
+
+  @Column({ nullable: true })
+  artist_name: string | null;
+
+  @Column({ nullable: true })
+  artist_description: string | null;
+
+  // Snapshot acheteur
+  @Column({ nullable: true })
+  buyer_email: string | null;
+
+  @Column({ nullable: true })
+  buyer_first_name: string | null;
+
+  @Column({ nullable: true })
+  buyer_last_name: string | null;
+
   @CreateDateColumn()
   created_at: Date;
 

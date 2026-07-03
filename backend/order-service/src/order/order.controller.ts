@@ -1,11 +1,25 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { CreateOrderDto } from './dto/create-order.dto';
+import { StockReservationService } from '../reservation/stock-reservation.service';
+import { CreateOrderDto, ReserveStockDto } from './dto/create-order.dto';
 import { OrderService } from './order.service';
 
 @Controller()
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(
+    private readonly orderService: OrderService,
+    private readonly reservationService: StockReservationService,
+  ) {}
+
+  @MessagePattern('order.reserve_stock')
+  reserveStock(@Payload() dto: ReserveStockDto) {
+    return this.reservationService.reserve(dto.buyer_id, dto.event_id, dto.items);
+  }
+
+  @MessagePattern('order.release_reservation')
+  releaseReservation(@Payload() data: { reservation_token: string }) {
+    return this.reservationService.release(data.reservation_token);
+  }
 
   @MessagePattern('order.create')
   create(@Payload() dto: CreateOrderDto) {

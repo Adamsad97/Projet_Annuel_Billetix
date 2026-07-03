@@ -23,6 +23,11 @@ export class EventController {
     return this.eventService.listPublished(filters);
   }
 
+  @MessagePattern('event.list_pending')
+  listPending() {
+    return this.eventService.listPending();
+  }
+
   @MessagePattern('event.list_by_organizer')
   listByOrganizer(@Payload() data: { organizer_id: string }) {
     return this.eventService.listByOrganizer(data.organizer_id);

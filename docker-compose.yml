@@ -127,6 +127,14 @@ services:
       ADMIN_SERVICE_HOST: admin-service
       ADMIN_SERVICE_PORT: 3009
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_POSTERS: ${MINIO_BUCKET_POSTERS:-posters}
+      MINIO_BUCKET_AVATARS: ${MINIO_BUCKET_AVATARS:-avatars}
+      MINIO_BUCKET_DOCUMENTS: ${MINIO_BUCKET_DOCUMENTS:-documents}
     ports:
       - "3000:3000"
     depends_on:
@@ -234,6 +242,8 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       STOCK_RESERVATION_TTL_SECONDS: ${STOCK_RESERVATION_TTL_SECONDS:-600}
+      EVENT_SERVICE_HOST: event-service
+      EVENT_SERVICE_PORT: 3003
     depends_on:
       postgres:
         condition: service_healthy
@@ -241,6 +251,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      event-service:
+        condition: service_started
     networks:
       - billetix-net
 

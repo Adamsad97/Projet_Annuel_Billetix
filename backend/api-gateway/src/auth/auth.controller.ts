@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -112,5 +113,45 @@ export class AuthController {
   @ApiOperation({ summary: 'Récupérer le profil de l\'utilisateur connecté' })
   me(@CurrentUser() user: JwtPayload) {
     return user;
+  }
+
+  // ──────────────── 2FA TOTP ────────────────
+
+  @Post('2fa/setup')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Initialiser la 2FA TOTP — retourne QR code + secret' })
+  setup2fa(@CurrentUser() user: JwtPayload) {
+    return firstValueFrom(this.authClient.send('auth.2fa.setup', { user_id: user.sub }));
+  }
+
+  @Post('2fa/confirm')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Confirmer la 2FA avec un code TOTP — active la 2FA et retourne les codes de secours' })
+  confirm2fa(@CurrentUser() user: JwtPayload, @Body() body: { code: string }) {
+    return firstValueFrom(this.authClient.send('auth.2fa.confirm', { user_id: user.sub, code: body.code }));
+  }
+
+  @Post('2fa/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Vérifier un code TOTP (lors de la connexion si 2FA activée)' })
+  verify2fa(@CurrentUser() user: JwtPayload, @Body() body: { code: string }) {
+    return firstValueFrom(this.authClient.send('auth.2fa.verify', { user_id: user.sub, code: body.code }));
+  }
+
+  @Delete('2fa')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Désactiver la 2FA (code TOTP requis)' })
+  disable2fa(@CurrentUser() user: JwtPayload, @Body() body: { code: string }) {
+    return firstValueFrom(this.authClient.send('auth.2fa.disable', { user_id: user.sub, code: body.code }));
+  }
+
+  @Get('2fa/status')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Vérifier si la 2FA est activée pour l\'utilisateur connecté' })
+  get2faStatus(@CurrentUser() user: JwtPayload) {
+    return firstValueFrom(this.authClient.send('auth.2fa.status', { user_id: user.sub }));
   }
 }

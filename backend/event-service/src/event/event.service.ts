@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
+import { Inject, Injectable } from '@nestjs/common';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AdminActionDto } from './dto/admin-action.dto';
@@ -13,6 +13,8 @@ export class EventService {
   constructor(
     @InjectRepository(Event)
     private readonly repo: Repository<Event>,
+    @Inject('NOTIFICATION_SERVICE')
+    private readonly notifClient: ClientProxy,
   ) {}
 
   async create(organizerId: string, dto: CreateEventDto): Promise<Event> {
@@ -45,6 +47,13 @@ export class EventService {
 
     const [data, total] = await qb.getManyAndCount();
     return { data, total };
+  }
+
+  async listPending(): Promise<Event[]> {
+    return this.repo.find({
+      where: { status: EventStatus.PENDING_VALIDATION },
+      order: { validation_requested_at: 'ASC' },
+    });
   }
 
   async listByOrganizer(organizerId: string): Promise<Event[]> {
@@ -84,7 +93,15 @@ export class EventService {
     event.status = EventStatus.PUBLISHED;
     event.validated_at = new Date();
     event.validated_by = adminId;
-    return this.repo.save(event);
+    await this.repo.save(event);
+
+    this.notifClient.emit('notification.event_published', {
+      organizer_id: event.organizer_id,
+      event_id: event.id,
+      event_name: event.title,
+    });
+
+    return event;
   }
 
   async reject(id: string, adminId: string, dto: AdminActionDto): Promise<Event> {
@@ -96,7 +113,16 @@ export class EventService {
     event.rejected_at = new Date();
     event.rejected_by = adminId;
     event.rejection_reason = dto.reason ?? null;
-    return this.repo.save(event);
+    await this.repo.save(event);
+
+    this.notifClient.emit('notification.event_rejected', {
+      organizer_id: event.organizer_id,
+      event_id: event.id,
+      event_name: event.title,
+      reason: dto.reason,
+    });
+
+    return event;
   }
 
   async suspend(id: string, adminId: string, dto: AdminActionDto): Promise<Event> {
@@ -105,7 +131,16 @@ export class EventService {
     event.suspended_at = new Date();
     event.suspended_by = adminId;
     event.suspension_reason = dto.reason ?? null;
-    return this.repo.save(event);
+    await this.repo.save(event);
+
+    this.notifClient.emit('notification.event_suspended', {
+      organizer_id: event.organizer_id,
+      event_id: event.id,
+      event_name: event.title,
+      reason: dto.reason,
+    });
+
+    return event;
   }
 
   async cancel(id: string, actorId: string, dto: AdminActionDto): Promise<Event> {
@@ -117,6 +152,16 @@ export class EventService {
     event.cancelled_at = new Date();
     event.cancelled_by = actorId;
     event.cancellation_reason = dto.reason ?? null;
-    return this.repo.save(event);
+    await this.repo.save(event);
+
+    this.notifClient.emit('notification.event_canceled', {
+      organizer_id: event.organizer_id,
+      event_id: event.id,
+      event_name: event.title,
+      reason: dto.reason,
+      cancellation_date: new Date().toISOString(),
+    });
+
+    return event;
   }
 }

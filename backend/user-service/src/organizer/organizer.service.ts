@@ -69,6 +69,13 @@ export class OrganizerService {
     return { iban, bank_owner_name: profile.bank_owner_name! };
   }
 
+  async listKycPending(): Promise<OrganizerProfile[]> {
+    return this.repo.find({
+      where: { kyc_status: KycStatus.SUBMITTED },
+      order: { kyc_submitted_at: 'ASC' },
+    });
+  }
+
   async updateKyc(userId: string, dto: UpdateKycDto): Promise<OrganizerProfile> {
     const profile = await this.getByUserId(userId);
     profile.kyc_status = dto.kyc_status;

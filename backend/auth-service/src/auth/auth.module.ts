@@ -6,6 +6,7 @@ import { RedisModule } from '../redis/redis.module';
 import { User } from '../user/user.entity';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { TwoFactorService } from './two-factor.service';
 
 @Module({
   imports: [
@@ -23,6 +24,6 @@ import { AuthService } from './auth.service';
     RedisModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, TwoFactorService],
 })
 export class AuthModule {}

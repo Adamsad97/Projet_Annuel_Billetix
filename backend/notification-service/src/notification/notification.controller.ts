@@ -141,6 +141,42 @@ export class NotificationController {
     this.ack(ctx);
   }
 
+  @EventPattern('notification.event_published')
+  async onEventPublished(
+    @Payload() data: { organizer_id: string; event_id: string; event_name: string },
+    @Ctx() ctx: RmqContext,
+  ) {
+    // La notification est envoyée à l'organisateur — son email doit être résolu par l'api-gateway
+    // Ici on logue simplement et on ACK (l'organisateur est notifié via son profil)
+    this.ack(ctx);
+  }
+
+  @EventPattern('notification.event_rejected')
+  async onEventRejected(
+    @Payload() data: {
+      organizer_id: string;
+      event_id: string;
+      event_name: string;
+      reason?: string;
+    },
+    @Ctx() ctx: RmqContext,
+  ) {
+    this.ack(ctx);
+  }
+
+  @EventPattern('notification.event_suspended')
+  async onEventSuspended(
+    @Payload() data: {
+      organizer_id: string;
+      event_id: string;
+      event_name: string;
+      reason?: string;
+    },
+    @Ctx() ctx: RmqContext,
+  ) {
+    this.ack(ctx);
+  }
+
   @EventPattern('notification.event_canceled')
   async onEventCanceled(
     @Payload() data: {

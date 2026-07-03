@@ -39,4 +39,9 @@ export class OrganizerController {
   updateKyc(@Payload() data: { user_id: string; dto: UpdateKycDto }) {
     return this.organizerService.updateKyc(data.user_id, data.dto);
   }
+
+  @MessagePattern('user.list_kyc_pending')
+  listKycPending() {
+    return this.organizerService.listKycPending();
+  }
 }

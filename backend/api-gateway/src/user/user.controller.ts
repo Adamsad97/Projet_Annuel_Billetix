@@ -83,4 +83,34 @@ export class UserController {
       this.userClient.send('user.update_iban', { user_id: user.sub, dto }),
     );
   }
+
+  @Post('organizer/kyc')
+  @HttpCode(HttpStatus.OK)
+  @Roles('ORGANIZER')
+  @ApiOperation({ summary: 'Soumettre le KYC — fournir l\'URL du document uploadé via POST /upload/document' })
+  submitKyc(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { document_url: string },
+  ) {
+    return firstValueFrom(
+      this.userClient.send('user.update_kyc', {
+        user_id: user.sub,
+        dto: { kyc_status: 'SUBMITTED', kyc_document_url: body.document_url },
+      }),
+    );
+  }
+
+  @Get('organizer/kyc')
+  @Roles('ORGANIZER')
+  @ApiOperation({ summary: 'Consulter son statut KYC' })
+  getKycStatus(@CurrentUser() user: JwtPayload) {
+    return firstValueFrom(
+      this.userClient.send('user.get_organizer_profile', { user_id: user.sub }),
+    ).then((p: { kyc_status: string; kyc_submitted_at: Date | null; kyc_verified_at: Date | null; kyc_rejected_reason: string | null }) => ({
+      kyc_status: p.kyc_status,
+      kyc_submitted_at: p.kyc_submitted_at,
+      kyc_verified_at: p.kyc_verified_at,
+      kyc_rejected_reason: p.kyc_rejected_reason,
+    }));
+  }
 }

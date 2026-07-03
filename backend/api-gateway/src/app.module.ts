@@ -6,6 +6,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
+import { UploadModule } from './upload/upload.module';
 import { EventsModule } from './events/events.module';
 import { EventModule } from './event/event.module';
 import { OrderModule } from './order/order.module';
@@ -115,6 +116,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     PaymentModule,
     EventsModule,
     AdminModule,
+    UploadModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

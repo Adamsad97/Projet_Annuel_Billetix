@@ -16,11 +16,23 @@ export class OrderItemInputDto {
   @IsString()
   ticket_category_id: string;
 
+  @IsString() @IsOptional()
+  ticket_category_name?: string;
+
   @IsInt() @Min(1)
   quantity: number;
 
   @IsNumber() @Min(0)
   unit_price_ht: number;
+
+  @IsString() @IsOptional()
+  holder_first_name?: string;
+
+  @IsString() @IsOptional()
+  holder_last_name?: string;
+
+  @IsString() @IsOptional()
+  seat_info?: string;
 }
 
 export class CreateOrderDto {
@@ -29,6 +41,10 @@ export class CreateOrderDto {
 
   @IsString()
   event_id: string;
+
+  // Token de réservation Redis (obligatoire — anti-race-condition F1)
+  @IsString()
+  reservation_token: string;
 
   @IsArray()
   @ValidateNested({ each: true })
@@ -43,6 +59,31 @@ export class CreateOrderDto {
 
   @IsNumber()
   commission_rate: number;
+
+  // Snapshot événement (transmis depuis api-gateway)
+  @IsString() @IsOptional()
+  event_name?: string;
+
+  @IsString() @IsOptional()
+  event_start_at?: string;
+
+  @IsString() @IsOptional()
+  event_venue_name?: string;
+
+  @IsString() @IsOptional()
+  event_venue_address?: string;
+
+  @IsString() @IsOptional()
+  event_city?: string;
+
+  @IsString() @IsOptional()
+  event_poster_url?: string;
+
+  @IsString() @IsOptional()
+  artist_name?: string;
+
+  @IsString() @IsOptional()
+  artist_description?: string;
 
   // Facturation
   @IsString()
@@ -71,4 +112,17 @@ export class CreateOrderDto {
 
   @IsEnum(PaymentMethod)
   payment_method: PaymentMethod;
+}
+
+export class ReserveStockDto {
+  @IsString()
+  buyer_id: string;
+
+  @IsString()
+  event_id: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OrderItemInputDto)
+  items: OrderItemInputDto[];
 }

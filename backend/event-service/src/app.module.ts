@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Event } from './event/event.entity';
 import { EventModule } from './event/event.module';
@@ -25,6 +26,22 @@ import { ValidationRequestModule } from './validation-request/validation-request
         logging: config.get('NODE_ENV') === 'development',
       }),
     }),
+
+    ClientsModule.registerAsync([
+      {
+        name: 'NOTIFICATION_SERVICE',
+        inject: [ConfigService],
+        useFactory: (config: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [config.get('RABBITMQ_URL', 'amqp://guest:guest@localhost:5672')],
+            queue: 'notification_queue',
+            queueOptions: { durable: true },
+            noAck: true,
+          },
+        }),
+      },
+    ]),
 
     EventModule,
     TicketCategoryModule,

@@ -282,6 +282,51 @@ export class AdminController {
     return result;
   }
 
+  // ─── KYC organisateurs ───────────────────────────────────────────────────────
+
+  @Get('kyc/pending')
+  @ApiOperation({ summary: 'Profils organisateurs en attente de vérification KYC' })
+  getPendingKyc() {
+    return firstValueFrom(this.userClient.send('user.list_kyc_pending', {}));
+  }
+
+  @Post('kyc/:userId/approve')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Approuver le KYC d\'un organisateur' })
+  async approveKyc(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param('userId') userId: string,
+  ) {
+    const result = await firstValueFrom(
+      this.userClient.send('user.update_kyc', {
+        user_id: userId,
+        dto: { kyc_status: 'VERIFIED' },
+      }),
+    );
+    this.audit(user, req, 'KYC_APPROVED', 'USER', userId);
+    return result;
+  }
+
+  @Post('kyc/:userId/reject')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Rejeter le KYC d\'un organisateur' })
+  async rejectKyc(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param('userId') userId: string,
+    @Body() dto: { reason: string },
+  ) {
+    const result = await firstValueFrom(
+      this.userClient.send('user.update_kyc', {
+        user_id: userId,
+        dto: { kyc_status: 'REJECTED', kyc_rejected_reason: dto.reason },
+      }),
+    );
+    this.audit(user, req, 'KYC_REJECTED', 'USER', userId, dto.reason);
+    return result;
+  }
+
   // ─── Remboursement forcé ──────────────────────────────────────────────────────
 
   @Post('orders/:orderId/force-refund')
