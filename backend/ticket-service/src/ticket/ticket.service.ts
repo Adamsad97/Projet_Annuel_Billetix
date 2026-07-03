@@ -20,16 +20,16 @@ export class TicketService {
   async generate(dto: GenerateTicketsDto): Promise<Ticket[]> {
     const tickets: Ticket[] = [];
 
-    for (const item of dto.items) {
-      for (let i = 0; i < item.quantity; i++) {
+    for (const orderItem of dto.items) {
+      for (let ticketIndex = 0; ticketIndex < orderItem.quantity; ticketIndex++) {
         const ticket = this.repo.create({
           reference: this.generateReference(),
           order_id: dto.order_id,
-          order_item_id: item.order_item_id,
+          order_item_id: orderItem.order_item_id,
           buyer_id: dto.buyer_id,
           buyer_email: dto.buyer_email,
-          holder_first_name: item.holder_first_name,
-          holder_last_name: item.holder_last_name,
+          holder_first_name: orderItem.holder_first_name,
+          holder_last_name: orderItem.holder_last_name,
           // Événement
           event_id: dto.event_id,
           event_name: dto.event_name,
@@ -43,10 +43,10 @@ export class TicketService {
           artist_name: dto.artist_name,
           artist_description: dto.artist_description ?? null,
           // Catégorie
-          ticket_category_id: item.ticket_category_id,
-          ticket_category_name: item.ticket_category_name,
-          unit_price_ttc: item.unit_price_ttc,
-          seat_info: item.seat_info ?? null,
+          ticket_category_id: orderItem.ticket_category_id,
+          ticket_category_name: orderItem.ticket_category_name,
+          unit_price_ttc: orderItem.unit_price_ttc,
+          seat_info: orderItem.seat_info ?? null,
           // QR
           qr_code_token: this.generateQrToken(dto.order_id, dto.event_id),
         });

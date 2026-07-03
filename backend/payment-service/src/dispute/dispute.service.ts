@@ -22,9 +22,9 @@ export class DisputeService {
   }
 
   async getById(id: string): Promise<Dispute> {
-    const d = await this.repo.findOne({ where: { id } });
-    if (!d) throw new RpcException({ statusCode: 404, message: 'Litige introuvable' });
-    return d;
+    const foundDispute = await this.repo.findOne({ where: { id } });
+    if (!foundDispute) throw new RpcException({ statusCode: 404, message: 'Litige introuvable' });
+    return foundDispute;
   }
 
   async getByOrder(orderId: string): Promise<Dispute[]> {

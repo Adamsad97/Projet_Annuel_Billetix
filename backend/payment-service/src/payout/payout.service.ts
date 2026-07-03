@@ -49,11 +49,11 @@ export class PayoutService {
   }> {
     const payouts = await this.repo.find({ where: { organizer_id: organizerId } });
     const pending_balance = payouts
-      .filter((p) => p.status === PayoutStatus.PENDING || p.status === PayoutStatus.PROCESSING)
-      .reduce((sum, p) => sum + Number(p.net_amount), 0);
+      .filter((payout) => payout.status === PayoutStatus.PENDING || payout.status === PayoutStatus.PROCESSING)
+      .reduce((sum, payout) => sum + Number(payout.net_amount), 0);
     const total_earned = payouts
-      .filter((p) => p.status === PayoutStatus.COMPLETED)
-      .reduce((sum, p) => sum + Number(p.net_amount), 0);
+      .filter((payout) => payout.status === PayoutStatus.COMPLETED)
+      .reduce((sum, payout) => sum + Number(payout.net_amount), 0);
     return {
       pending_balance: parseFloat(pending_balance.toFixed(2)),
       total_earned: parseFloat(total_earned.toFixed(2)),
@@ -62,9 +62,9 @@ export class PayoutService {
   }
 
   async getById(id: string): Promise<Payout> {
-    const p = await this.repo.findOne({ where: { id } });
-    if (!p) throw new RpcException({ statusCode: 404, message: 'Reversement introuvable' });
-    return p;
+    const foundPayout = await this.repo.findOne({ where: { id } });
+    if (!foundPayout) throw new RpcException({ statusCode: 404, message: 'Reversement introuvable' });
+    return foundPayout;
   }
 
   async getByOrganizer(organizerId: string): Promise<Payout[]> {

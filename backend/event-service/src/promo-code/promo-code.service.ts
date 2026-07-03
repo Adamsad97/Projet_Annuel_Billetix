@@ -70,4 +70,20 @@ export class PromoCodeService {
       [id],
     );
   }
+
+  async deactivate(id: string, organizerId: string): Promise<PromoCode> {
+    const promoCode = await this.repo.findOne({ where: { id } });
+    if (!promoCode) throw new RpcException({ statusCode: 404, message: 'Code promo introuvable' });
+
+    const eventRecord = await this.dataSource.query(
+      `SELECT organizer_id FROM events.events WHERE id = $1`,
+      [promoCode.event_id],
+    );
+    if (!eventRecord[0] || eventRecord[0].organizer_id !== organizerId) {
+      throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
+    }
+
+    promoCode.is_active = false;
+    return this.repo.save(promoCode);
+  }
 }

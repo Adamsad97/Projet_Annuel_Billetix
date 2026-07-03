@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -99,6 +100,36 @@ export class EventController {
   @ApiOperation({ summary: 'Créer un code promo (ORGANIZER)' })
   createPromoCode(@Param('id') id: string, @Body() dto: Record<string, unknown>) {
     return firstValueFrom(this.eventClient.send('event.create_promo_code', { event_id: id, ...dto }));
+  }
+
+  @Get(':id/promo-codes')
+  @Roles('ORGANIZER', 'ADMIN')
+  @ApiOperation({ summary: 'Lister les codes promo d\'un événement (ORGANIZER/ADMIN)' })
+  listPromoCodes(@Param('id') id: string) {
+    return firstValueFrom(this.eventClient.send('event.get_promo_codes', { event_id: id }));
+  }
+
+  @Delete(':id/promo-codes/:codeId')
+  @HttpCode(HttpStatus.OK)
+  @Roles('ORGANIZER')
+  @ApiOperation({ summary: 'Désactiver un code promo (ORGANIZER)' })
+  deactivatePromoCode(
+    @CurrentUser() user: JwtPayload,
+    @Param('codeId') codeId: string,
+  ) {
+    return firstValueFrom(
+      this.eventClient.send('event.deactivate_promo_code', { id: codeId, organizer_id: user.sub }),
+    );
+  }
+
+  @Public()
+  @Post('validate-promo')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Valider un code promo (public — avant commande)' })
+  validatePromoCode(@Body() dto: { event_id: string; code: string }) {
+    return firstValueFrom(
+      this.eventClient.send('event.validate_promo_code', { event_id: dto.event_id, code: dto.code }),
+    );
   }
 
   @Post(':id/cancel')

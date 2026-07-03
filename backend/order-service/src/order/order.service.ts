@@ -28,24 +28,24 @@ export class OrderService {
 
       let subtotal_ht = 0;
       let free_ticket_fees = 0;
-      const itemsData = dto.items.map((i) => {
-        const unit_ht = Number(i.unit_price_ht);
+      const itemsData = dto.items.map((itemInput) => {
+        const unit_ht = Number(itemInput.unit_price_ht);
         const unit_ttc = parseFloat((unit_ht * (1 + TVA_RATE)).toFixed(2));
-        const total_ht = parseFloat((unit_ht * i.quantity).toFixed(2));
-        const total_ttc = parseFloat((unit_ttc * i.quantity).toFixed(2));
+        const total_ht = parseFloat((unit_ht * itemInput.quantity).toFixed(2));
+        const total_ttc = parseFloat((unit_ttc * itemInput.quantity).toFixed(2));
         subtotal_ht += total_ht;
-        if (unit_ht === 0) free_ticket_fees += FREE_TICKET_FEE * i.quantity;
+        if (unit_ht === 0) free_ticket_fees += FREE_TICKET_FEE * itemInput.quantity;
         return {
-          ticket_category_id: i.ticket_category_id,
-          ticket_category_name: i.ticket_category_name ?? '',
-          quantity: i.quantity,
+          ticket_category_id: itemInput.ticket_category_id,
+          ticket_category_name: itemInput.ticket_category_name ?? '',
+          quantity: itemInput.quantity,
           unit_price_ht: unit_ht,
           unit_price_ttc: unit_ttc,
           total_price_ht: total_ht,
           total_price_ttc: total_ttc,
-          holder_first_name: i.holder_first_name,
-          holder_last_name: i.holder_last_name,
-          seat_info: i.seat_info ?? null,
+          holder_first_name: itemInput.holder_first_name,
+          holder_last_name: itemInput.holder_last_name,
+          seat_info: itemInput.seat_info ?? null,
         };
       });
 
@@ -94,7 +94,7 @@ export class OrderService {
       await manager.save(order);
 
       const items = await manager.save(
-        itemsData.map((i) => manager.create(OrderItem, { ...i, order_id: order.id })),
+        itemsData.map((itemData) => manager.create(OrderItem, { ...itemData, order_id: order.id })),
       );
 
       // Consommer le token — la réservation est définitivement engagée

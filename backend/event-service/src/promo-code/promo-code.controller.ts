@@ -25,4 +25,9 @@ export class PromoCodeController {
   incrementUses(@Payload() data: { id: string }) {
     return this.service.incrementUses(data.id);
   }
+
+  @MessagePattern('event.deactivate_promo_code')
+  deactivate(@Payload() data: { id: string; organizer_id: string }) {
+    return this.service.deactivate(data.id, data.organizer_id);
+  }
 }

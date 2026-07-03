@@ -93,8 +93,8 @@ export class AuditLogService {
 
     return {
       total_logs,
-      by_action: Object.fromEntries(byAction.map((r) => [r.action, parseInt(r.count)])),
-      by_entity: Object.fromEntries(byEntity.map((r) => [r.entity_type, parseInt(r.count)])),
+      by_action: Object.fromEntries(byAction.map((row) => [row.action, parseInt(row.count)])),
+      by_entity: Object.fromEntries(byEntity.map((row) => [row.entity_type, parseInt(row.count)])),
       recent,
     };
   }

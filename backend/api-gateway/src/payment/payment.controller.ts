@@ -305,10 +305,10 @@ export class PaymentController {
     }>;
 
     // 2c. Pour chaque billet : déclencher génération PDF + notification (fire-and-forget)
-    const ticketList = tickets.map((t) => ({
-      ticket_id: t.id,
-      qr_code_url: t.qr_code_url,
-      ticket_category_name: t.ticket_category_name,
+    const ticketList = tickets.map((ticket) => ({
+      ticket_id: ticket.id,
+      qr_code_url: ticket.qr_code_url,
+      ticket_category_name: ticket.ticket_category_name,
     }));
 
     for (const ticket of tickets) {
