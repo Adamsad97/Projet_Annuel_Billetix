@@ -5,6 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
+import { UserModule } from './user/user.module';
 import { JwtGuard } from './common/guards/jwt.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 
@@ -81,6 +82,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     ]),
 
     AuthModule,
+    UserModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

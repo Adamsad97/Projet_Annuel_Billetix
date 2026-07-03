@@ -15,45 +15,6 @@ npm start              # 2. Construire et lancer toute l'application
 > Premier lancement : 5 à 10 minutes (téléchargement des images Docker + installation des dépendances).  
 > Relances suivantes : `npm run dev` (rapide, sans rebuild).
 
----
-
-## Sommaire
-
-- [Stack technique](#stack-technique)
-- [Architecture](#architecture)
-- [Structure du projet](#structure-du-projet)
-- [Prérequis](#prérequis)
-- [Installation](#installation)
-- [Démarrage](#démarrage)
-- [URLs et ports](#urls-et-ports)
-- [Commandes utiles](#commandes-utiles)
-- [Développement par service](#développement-par-service)
-- [Tests](#tests)
-- [Variables d'environnement](#variables-denvironnement)
-- [Suivi du projet](#suivi-du-projet)
-
----
-
-## Stack technique
-
-| Couche | Technologie |
-|---|---|
-| Frontend web | Next.js 16, React 19, Tailwind CSS 4 |
-| Application mobile | React Native (iOS & Android) — à venir |
-| Backend | NestJS 11 — architecture microservices |
-| Communication synchrone | TCP (NestJS microservices transport) |
-| Communication asynchrone | RabbitMQ (AMQP) |
-| Base de données | PostgreSQL 16 — un schema par service |
-| Cache et verrous | Redis 7 |
-| Stockage fichiers | MinIO (compatible AWS S3) |
-| Génération PDF billets | Puppeteer |
-| Paiement | Stripe Connect, PayPal, Orange Money, Wave |
-| Emails transactionnels | SendGrid (production) / MailHog (développement) |
-| Conteneurisation | Docker + Docker Compose |
-| Documentation API | Swagger / OpenAPI 3 |
-
----
-
 ## Architecture
 
 ```
@@ -92,6 +53,7 @@ npm start              # 2. Construire et lancer toute l'application
 ```
 
 **Flux principal d'un achat :**
+
 ```
 Acheteur → api-gateway → order-service → [order.confirmed] → ticket-service
                                                             → [ticket.created] → pdf-service → [ticket.pdf.ready]
@@ -130,20 +92,6 @@ BILLETIX/
 ├── README.md                  # Ce fichier
 └── README-ETAPE.md            # Audit CDC et suivi d'avancement
 ```
-
----
-
-## Prérequis
-
-| Outil | Version minimale | Vérification |
-|---|---|---|
-| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | 4.x (Compose v2) | `docker compose version` |
-| [Node.js](https://nodejs.org/) | 22 LTS | `node --version` |
-| Git | — | `git --version` |
-
-> Node.js est uniquement nécessaire pour générer les secrets et le développement local hors Docker. Tout le reste tourne dans Docker.
-
----
 
 ## Installation
 
@@ -187,7 +135,7 @@ Variables obligatoires pour le démarrage :
 POSTGRES_USER=billetix
 POSTGRES_PASSWORD=<mot_de_passe_fort>
 POSTGRES_DB=billetix
-
+AES
 # Cache
 REDIS_PASSWORD=<mot_de_passe_fort>
 
@@ -235,37 +183,21 @@ npm run infra
 npm run up:build
 ```
 
----
-
-## URLs et ports
-
-### Ports exposés sur la machine hôte
-
-| Port | Service | URL | Description |
-|---|---|---|---|
-| **80** | Frontend (Next.js) | `http://localhost` | Application web |
-| **3000** | api-gateway | `http://localhost:3000/api/docs` | API REST + Swagger |
-| **5432** | PostgreSQL | — | Accès direct BDD (dev) |
-| **6379** | Redis | — | Accès direct cache (dev) |
-| **5672 / 15672** | RabbitMQ | `http://localhost:15672` | Broker + interface de gestion |
-| **9000 / 9001** | MinIO | `http://localhost:9001` | Stockage S3 + console |
-| **1025 / 8025** | MailHog | `http://localhost:8025` | SMTP dev + interface emails |
-
 ### Ports internes Docker (non accessibles depuis l'hôte)
 
 Ces ports sont uniquement visibles sur le réseau interne `billetix-net` :
 
-| Service | Port interne | Protocole |
-|---|---|---|
-| auth-service | 3001 | TCP |
-| user-service | 3002 | TCP |
-| event-service | 3003 | TCP |
-| order-service | 3004 | TCP |
-| ticket-service | 3005 | TCP |
-| payment-service | 3006 | TCP |
-| notification-service | 3007 | RabbitMQ |
-| pdf-service | 3008 | RabbitMQ |
-| admin-service | 3009 | TCP |
+| Service              | Port interne | Protocole |
+| -------------------- | ------------ | --------- |
+| auth-service         | 3001         | TCP       |
+| user-service         | 3002         | TCP       |
+| event-service        | 3003         | TCP       |
+| order-service        | 3004         | TCP       |
+| ticket-service       | 3005         | TCP       |
+| payment-service      | 3006         | TCP       |
+| notification-service | 3007         | RabbitMQ  |
+| pdf-service          | 3008         | RabbitMQ  |
+| admin-service        | 3009         | TCP       |
 
 > Seuls **le port 80** (frontend) et **le port 3000** (api-gateway) sont les points d'entrée de l'application. Tous les autres services backend communiquent exclusivement entre eux via le réseau Docker interne.
 
@@ -363,6 +295,7 @@ npm run test:e2e
 ## Variables d'environnement
 
 Voir [`.env.example`](.env.example) pour la liste complète et documentée de toutes les variables, organisées par catégorie :
+
 - PostgreSQL, Redis, RabbitMQ, MinIO, MailHog
 - JWT (secrets, durées d'expiration)
 - Sécurité (HMAC QR codes, chiffrement IBAN)
@@ -375,7 +308,32 @@ Voir [`.env.example`](.env.example) pour la liste complète et documentée de to
 ## Suivi du projet
 
 Voir [`README-ETAPE.md`](README-ETAPE.md) pour :
+
 - L'audit complet du cahier des charges
 - L'état d'avancement de chaque livrable
 - Les points d'audit ouverts et résolus
 - Le planning ajusté
+
+Routes disponibles :
+
+┌─────────┬──────────────────────────────────┬────────────┐
+│ Méthode │ Route │ Auth │
+├─────────┼──────────────────────────────────┼────────────┤
+│ POST │ /api/v1/auth/register │ Public │
+├─────────┼──────────────────────────────────┼────────────┤
+│ POST │ /api/v1/auth/login │ Public │
+├─────────┼──────────────────────────────────┼────────────┤
+│ POST │ /api/v1/auth/refresh │ Public │
+├─────────┼──────────────────────────────────┼────────────┤
+│ POST │ /api/v1/auth/logout │ JWT requis │
+├─────────┼──────────────────────────────────┼────────────┤
+│ POST │ /api/v1/auth/forgot-password │ Public │
+├─────────┼──────────────────────────────────┼────────────┤
+│ POST │ /api/v1/auth/reset-password │ Public │
+├─────────┼──────────────────────────────────┼────────────┤
+│ GET │ /api/v1/auth/verify-email?token= │ Public │
+├─────────┼──────────────────────────────────┼────────────┤
+│ POST │ /api/v1/auth/oauth │ Public │
+├─────────┼──────────────────────────────────┼────────────┤
+│ GET │ /api/v1/auth/me │ JWT requis │
+└─────────┴──────────────────────────────────┴────────────┘
