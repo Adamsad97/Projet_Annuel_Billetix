@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Événement annulé</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #ef4444; padding: 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0; font-size: 28px; }
+    .body { padding: 32px; color: #333; line-height: 1.6; }
+    .alert { background: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 16px 0; color: #7f1d1d; }
+    .refund-box { background: #f0fdf4; border-radius: 6px; padding: 16px; margin: 20px 0; }
+    .refund-box h3 { color: #16a34a; margin: 0 0 8px; }
+    .btn { display: inline-block; margin: 24px 0; padding: 14px 32px; background: #6c3de0; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; }
+    .footer { padding: 20px 32px; background: #f9f9f9; color: #999; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>Événement annulé</h1></div>
+    <div class="body">
+      <p>Bonjour {{firstName}},</p>
+      <div class="alert">
+        <strong>L'événement suivant a été annulé :</strong><br/>
+        <strong>{{eventName}}</strong><br/>
+        Prévu le {{eventDate}} à {{eventVenue}}
+        {{#if cancellationReason}}<br/><em>Motif : {{cancellationReason}}</em>{{/if}}
+      </div>
+      <p>Nous sommes désolés pour ce désagrément.</p>
+      <div class="refund-box">
+        <h3>Remboursement automatique</h3>
+        <p style="margin:0;">Un remboursement de <strong>{{refundAmount}} €</strong> sera effectué sur votre moyen de paiement d'origine sous 5 à 10 jours ouvrés.</p>
+      </div>
+      <p>Pour toute question, notre équipe support est disponible à <a href="mailto:support@billetix.fr">support@billetix.fr</a>.</p>
+      <a href="{{eventsUrl}}" class="btn">Voir d'autres événements</a>
+    </div>
+    <div class="footer">© {{year}} BilletiX — Tous droits réservés</div>
+  </div>
+</body>
+</html>

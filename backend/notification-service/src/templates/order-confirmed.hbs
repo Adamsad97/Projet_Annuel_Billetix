@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirmation de commande</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #6c3de0; padding: 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0; font-size: 28px; }
+    .body { padding: 32px; color: #333; line-height: 1.6; }
+    .order-box { background: #f3f0ff; border-radius: 6px; padding: 20px; margin: 20px 0; }
+    .order-ref { font-size: 20px; font-weight: bold; color: #6c3de0; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    th { text-align: left; padding: 8px; background: #e9e3ff; color: #4c1d95; font-size: 13px; }
+    td { padding: 10px 8px; border-bottom: 1px solid #eee; font-size: 14px; }
+    .total { font-weight: bold; font-size: 16px; }
+    .btn { display: inline-block; margin: 24px 0; padding: 14px 32px; background: #6c3de0; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; }
+    .footer { padding: 20px 32px; background: #f9f9f9; color: #999; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>BilletiX</h1></div>
+    <div class="body">
+      <h2>Commande confirmée !</h2>
+      <p>Bonjour {{firstName}},</p>
+      <p>Votre commande a bien été enregistrée. Voici le récapitulatif :</p>
+      <div class="order-box">
+        <div class="order-ref">{{orderReference}}</div>
+        <div style="margin-top:8px; color:#555;">{{eventName}}</div>
+        <div style="color:#888; font-size:13px;">{{eventDate}} — {{eventVenue}}</div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Catégorie</th><th>Qté</th><th>Prix unitaire</th><th>Total</th></tr>
+        </thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <td>{{this.categoryName}}</td>
+            <td>{{this.quantity}}</td>
+            <td>{{this.unitPrice}} €</td>
+            <td>{{this.totalPrice}} €</td>
+          </tr>
+          {{/each}}
+        </tbody>
+        <tfoot>
+          <tr><td colspan="3" class="total">Total TTC</td><td class="total">{{totalTtc}} €</td></tr>
+        </tfoot>
+      </table>
+      <p>Vos billets seront disponibles après confirmation du paiement.</p>
+      <a href="{{ordersUrl}}" class="btn">Voir mes commandes</a>
+    </div>
+    <div class="footer">© {{year}} BilletiX — Tous droits réservés</div>
+  </div>
+</body>
+</html>
