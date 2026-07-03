@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  Logger,
   Param,
   Post,
   RawBodyRequest,
@@ -24,8 +25,14 @@ import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 @ApiBearerAuth()
 @Controller('payments')
 export class PaymentController {
+  private readonly logger = new Logger(PaymentController.name);
+
   constructor(
-    @Inject('PAYMENT_SERVICE') private readonly paymentClient: ClientProxy,
+    @Inject('PAYMENT_SERVICE')      private readonly paymentClient: ClientProxy,
+    @Inject('ORDER_SERVICE')        private readonly orderClient: ClientProxy,
+    @Inject('TICKET_SERVICE')       private readonly ticketClient: ClientProxy,
+    @Inject('PDF_SERVICE')          private readonly pdfClient: ClientProxy,
+    @Inject('NOTIFICATION_SERVICE') private readonly notifClient: ClientProxy,
   ) {}
 
   @Post('intent')
@@ -191,21 +198,152 @@ export class PaymentController {
     );
   }
 
-  // ─── Webhook Stripe (public, pas de JWT) ────────────────────────────────────
+  // ─── Webhook Stripe ─────────────────────────────────────────────────────────
 
   @Public()
   @Post('webhook/stripe')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Webhook Stripe (signature vérifiée côté payment-service)' })
-  stripeWebhook(
+  async stripeWebhook(
     @Req() req: RawBodyRequest<Request>,
     @Headers('stripe-signature') signature: string,
   ) {
-    return firstValueFrom(
+    // 1. Vérifier signature + confirmer paiement dans payment-service
+    const confirmed = await firstValueFrom(
       this.paymentClient.send('payment.confirm_webhook', {
         payload: req.rawBody?.toString('utf8') ?? '',
         signature,
       }),
+    ) as { received: boolean; order_id?: string; already_processed?: boolean };
+
+    if (!confirmed.order_id || confirmed.already_processed) {
+      return { received: true };
+    }
+
+    // 2. Post-confirmation asynchrone — ne bloque pas la réponse à Stripe
+    this.postPaymentConfirmed(confirmed.order_id).catch((err) =>
+      this.logger.error(`Erreur post-paiement order ${confirmed.order_id}: ${err?.message}`),
     );
+
+    return { received: true };
+  }
+
+  // ─── Orchestration post-paiement ────────────────────────────────────────────
+
+  private async postPaymentConfirmed(orderId: string): Promise<void> {
+    // 2a. Récupérer la commande (buyer + items + event info)
+    const order = await firstValueFrom(
+      this.orderClient.send('order.get', { id: orderId }),
+    ) as {
+      id: string;
+      buyer_id: string;
+      buyer_email: string;
+      buyer_first_name: string;
+      buyer_last_name: string;
+      total_amount_ttc: number;
+      items: {
+        ticket_category_id: string;
+        ticket_category_name: string;
+        unit_price_ttc: number;
+        quantity: number;
+        holder_first_name: string;
+        holder_last_name: string;
+        seat_info?: string;
+      }[];
+      event_id: string;
+      event_name: string;
+      event_start_at: string;
+      event_end_at?: string;
+      event_venue_name: string;
+      event_venue_address: string;
+      event_city: string;
+      event_poster_url?: string;
+      artist_name: string;
+      artist_description?: string;
+    };
+
+    // 2b. Générer les billets dans ticket-service
+    const tickets = await firstValueFrom(
+      this.ticketClient.send('ticket.generate', {
+        order_id: orderId,
+        buyer_id: order.buyer_id,
+        buyer_email: order.buyer_email,
+        event_id: order.event_id,
+        event_name: order.event_name,
+        event_start_at: order.event_start_at,
+        event_end_at: order.event_end_at,
+        event_venue_name: order.event_venue_name,
+        event_venue_address: order.event_venue_address,
+        event_city: order.event_city,
+        event_poster_url: order.event_poster_url,
+        artist_name: order.artist_name,
+        artist_description: order.artist_description,
+        items: order.items,
+      }),
+    ) as Array<{
+      id: string;
+      reference: string;
+      qr_code_url: string;
+      ticket_category_name: string;
+      unit_price_ttc: number;
+      seat_info?: string;
+      holder_first_name: string;
+      holder_last_name: string;
+    }>;
+
+    // 2c. Pour chaque billet : déclencher génération PDF + notification (fire-and-forget)
+    const ticketList = tickets.map((t) => ({
+      ticket_id: t.id,
+      qr_code_url: t.qr_code_url,
+      ticket_category_name: t.ticket_category_name,
+    }));
+
+    for (const ticket of tickets) {
+      // PDF
+      this.pdfClient.emit('pdf.generate_ticket', {
+        ticket_id: ticket.id,
+        reference: ticket.reference,
+        order_id: orderId,
+        event_name: order.event_name,
+        event_start_at: order.event_start_at,
+        event_venue_name: order.event_venue_name,
+        event_venue_address: order.event_venue_address,
+        event_city: order.event_city,
+        event_poster_url: order.event_poster_url,
+        artist_name: order.artist_name,
+        ticket_category_name: ticket.ticket_category_name,
+        unit_price_ttc: ticket.unit_price_ttc,
+        seat_info: ticket.seat_info,
+        holder_first_name: ticket.holder_first_name,
+        holder_last_name: ticket.holder_last_name,
+        buyer_email: order.buyer_email,
+        qr_code_url: ticket.qr_code_url,
+      });
+    }
+
+    // Notification : commande + billets confirmés (un seul email groupé)
+    this.notifClient.emit('notification.payment_confirmed', {
+      email: order.buyer_email,
+      first_name: order.buyer_first_name,
+      last_name: order.buyer_last_name,
+      order_id: orderId,
+      event_name: order.event_name,
+      event_date: order.event_start_at,
+      event_venue: order.event_venue_name,
+      tickets: ticketList,
+      total_amount_ttc: order.total_amount_ttc,
+    });
+
+    this.notifClient.emit('notification.ticket_ready', {
+      email: order.buyer_email,
+      first_name: order.buyer_first_name,
+      last_name: order.buyer_last_name,
+      event_name: order.event_name,
+      event_date: order.event_start_at,
+      event_venue: order.event_venue_name,
+      tickets: ticketList,
+    });
+
+    this.logger.log(`Post-paiement traité : ${tickets.length} billet(s) générés pour commande ${orderId}`);
   }
 }

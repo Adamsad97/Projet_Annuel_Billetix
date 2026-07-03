@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { EventsModule } from './events/events.module';
 import { EventModule } from './event/event.module';
@@ -84,6 +85,26 @@ import { RolesGuard } from './common/guards/roles.guard';
           port: parseInt(process.env.ADMIN_SERVICE_PORT ?? '3009'),
         },
       },
+      {
+        name: 'PDF_SERVICE',
+        transport: Transport.RMQ,
+        options: {
+          urls: [process.env.RABBITMQ_URL ?? 'amqp://guest:guest@localhost:5672'],
+          queue: 'pdf_queue',
+          queueOptions: { durable: true },
+          noAck: true,
+        },
+      },
+      {
+        name: 'NOTIFICATION_SERVICE',
+        transport: Transport.RMQ,
+        options: {
+          urls: [process.env.RABBITMQ_URL ?? 'amqp://guest:guest@localhost:5672'],
+          queue: 'notification_queue',
+          queueOptions: { durable: true },
+          noAck: true,
+        },
+      },
     ]),
 
     AuthModule,
@@ -93,6 +114,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     TicketModule,
     PaymentModule,
     EventsModule,
+    AdminModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

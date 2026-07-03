@@ -32,7 +32,14 @@ export class PaymentController {
     }
 
     const intent = event.data.object as { id: string };
-    return this.paymentService.confirmFromWebhook(intent.id);
+    const payment = await this.paymentService.confirmFromWebhook(intent.id);
+
+    // already_processed : le paiement était déjà PAID → ne pas re-déclencher la génération de billets
+    return {
+      received: true,
+      order_id: payment.order_id,
+      already_processed: payment._wasAlreadyPaid,
+    };
   }
 
   @MessagePattern('payment.get_by_order')

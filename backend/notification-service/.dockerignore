@@ -1,6 +1,58 @@
+# Dépendances — réinstallées dans le conteneur via npm install
 node_modules
+
+# Build TypeScript — reconstruit dans le conteneur
 dist
-.next
+*.tsbuildinfo
+
+# Tests — inutiles en production
 coverage
-*.log
+**/*.spec.ts
+**/*.test.ts
+test/
+jest.config.*
+jest.config.js
+jest.config.ts
+
+# Environnement — injecté via docker-compose / secrets
 .env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Git — peut faire plusieurs centaines de Mo
+.git
+.gitignore
+.gitattributes
+
+# Docker — inutile dans l'image elle-même
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+*.md
+README*
+CHANGELOG*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Cache npm/yarn
+.npm
+.yarn
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -38,13 +38,19 @@ export class PaymentService {
     return { client_secret, payment_id: payment.id };
   }
 
-  async confirmFromWebhook(paymentIntentId: string): Promise<Payment> {
+  async confirmFromWebhook(paymentIntentId: string): Promise<Payment & { _wasAlreadyPaid: boolean }> {
     const payment = await this.repo.findOne({ where: { provider_payment_id: paymentIntentId } });
     if (!payment) {
       throw new RpcException({ statusCode: 404, message: 'Paiement introuvable' });
     }
-    payment.status = PaymentStatus.PAID;
-    return this.repo.save(payment);
+
+    const wasAlreadyPaid = payment.status === PaymentStatus.PAID;
+    if (!wasAlreadyPaid) {
+      payment.status = PaymentStatus.PAID;
+      await this.repo.save(payment);
+    }
+
+    return Object.assign(payment, { _wasAlreadyPaid: wasAlreadyPaid });
   }
 
   async getByOrder(orderId: string): Promise<Payment> {

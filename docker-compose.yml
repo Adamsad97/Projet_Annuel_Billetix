@@ -126,6 +126,7 @@ services:
       PAYMENT_SERVICE_PORT: 3006
       ADMIN_SERVICE_HOST: admin-service
       ADMIN_SERVICE_PORT: 3009
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
     ports:
       - "3000:3000"
     depends_on:
@@ -143,6 +144,8 @@ services:
         condition: service_started
       admin-service:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     networks:
       - billetix-net
 
@@ -329,11 +332,15 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET_TICKETS: ${MINIO_BUCKET_TICKETS:-tickets}
+      TICKET_SERVICE_HOST: ticket-service
+      TICKET_SERVICE_PORT: 3005
     depends_on:
       rabbitmq:
         condition: service_healthy
       minio:
         condition: service_healthy
+      ticket-service:
+        condition: service_started
     networks:
       - billetix-net
 

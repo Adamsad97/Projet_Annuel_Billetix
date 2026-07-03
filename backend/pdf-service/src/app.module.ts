@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { TicketPdfModule } from './pdf/ticket-pdf.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    // À venir : PdfGeneratorModule (Puppeteer), MinioModule (upload S3)
+    TicketPdfModule,
   ],
 })
 export class AppModule {}
