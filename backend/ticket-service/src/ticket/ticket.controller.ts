@@ -56,4 +56,9 @@ export class TicketController {
   setPdfUrl(@Payload() data: { id: string; url: string }) {
     return this.ticketService.setPdfUrl(data.id, data.url);
   }
+
+  @MessagePattern('ticket.cancel_by_event')
+  cancelByEvent(@Payload() data: { event_id: string }) {
+    return this.ticketService.cancelByEvent(data.event_id);
+  }
 }

@@ -151,6 +151,10 @@ export class Event {
   @Column({ type: 'text', nullable: true })
   cancellation_reason: string | null;
 
+  // Seuils de remplissage déjà notifiés (ex: [25, 50])
+  @Column({ type: 'simple-json', default: '[]' })
+  fill_thresholds_notified: number[];
+
   @CreateDateColumn()
   created_at: Date;
 

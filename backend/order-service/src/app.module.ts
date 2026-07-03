@@ -1,14 +1,17 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrderItem } from './order/order-item.entity';
 import { Order } from './order/order.entity';
 import { OrderModule } from './order/order.module';
+import { ReminderModule } from './scheduler/reminder.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -22,7 +25,6 @@ import { OrderModule } from './order/order.module';
       }),
     }),
 
-    // Client TCP vers event-service pour decrement/restore quota
     ClientsModule.registerAsync([
       {
         name: 'EVENT_SERVICE',
@@ -35,9 +37,23 @@ import { OrderModule } from './order/order.module';
           },
         }),
       },
+      {
+        name: 'NOTIFICATION_SERVICE',
+        inject: [ConfigService],
+        useFactory: (config: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [config.get('RABBITMQ_URL', 'amqp://guest:guest@localhost:5672')],
+            queue: 'notification_queue',
+            queueOptions: { durable: true },
+            noAck: true,
+          },
+        }),
+      },
     ]),
 
     OrderModule,
+    ReminderModule,
   ],
 })
 export class AppModule {}

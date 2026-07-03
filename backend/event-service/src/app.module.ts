@@ -41,6 +41,17 @@ import { ValidationRequestModule } from './validation-request/validation-request
           },
         }),
       },
+      {
+        name: 'AUTH_SERVICE',
+        inject: [ConfigService],
+        useFactory: (config: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host: config.get('AUTH_SERVICE_HOST', 'auth-service'),
+            port: parseInt(config.get('AUTH_SERVICE_PORT', '3001')),
+          },
+        }),
+      },
     ]),
 
     EventModule,

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seuil de remplissage atteint</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #6c3de0; padding: 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0; font-size: 28px; }
+    .body { padding: 32px; color: #333; line-height: 1.6; }
+    .badge { display: inline-block; background: #ede9fe; color: #6c3de0; border-radius: 20px; padding: 8px 20px; font-weight: bold; font-size: 22px; margin: 12px 0; }
+    .stats { background: #f9f7ff; border-left: 4px solid #6c3de0; padding: 16px; border-radius: 4px; margin: 16px 0; font-size: 15px; }
+    .stats span { font-weight: bold; color: #6c3de0; }
+    .btn { display: inline-block; margin: 24px 0; padding: 14px 32px; background: #6c3de0; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; }
+    .footer { padding: 20px 32px; background: #f9f9f9; color: #999; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>BilletiX</h1></div>
+    <div class="body">
+      <h2>Bonjour {{firstName}},</h2>
+      <p>Votre événement <strong>{{eventName}}</strong> vient d'atteindre un nouveau seuil de remplissage :</p>
+      <div class="badge">🎯 {{threshold}}% complet</div>
+      <div class="stats">
+        <p>Places vendues : <span>{{soldCount}} / {{totalCapacity}}</span></p>
+      </div>
+      {{#if (eq threshold 100)}}
+      <p>🎉 Félicitations ! Votre événement est <strong>complet</strong>. Pensez à activer la liste d'attente si ce n'est pas déjà fait.</p>
+      {{else}}
+      <p>Continuez sur cette lancée ! Consultez votre tableau de bord pour suivre les ventes en temps réel.</p>
+      {{/if}}
+      <a href="{{dashboardUrl}}" class="btn">Voir mon tableau de bord</a>
+    </div>
+    <div class="footer">© {{year}} BilletiX — Tous droits réservés</div>
+  </div>
+</body>
+</html>

@@ -143,6 +143,19 @@ export class TicketService {
     await this.repo.update(id, { status: TicketStatus.SENT });
   }
 
+  async cancelByEvent(eventId: string): Promise<{ cancelled_count: number }> {
+    const result = await this.repo
+      .createQueryBuilder()
+      .update(Ticket)
+      .set({ status: TicketStatus.CANCELLED })
+      .where('event_id = :eventId', { eventId })
+      .andWhere('status NOT IN (:...excluded)', {
+        excluded: [TicketStatus.CANCELLED, TicketStatus.REFUNDED, TicketStatus.USED],
+      })
+      .execute();
+    return { cancelled_count: result.affected ?? 0 };
+  }
+
   async invalidate(id: string, adminId: string, reason: string): Promise<Ticket> {
     const ticket = await this.getById(id);
     ticket.status = TicketStatus.CANCELLED;

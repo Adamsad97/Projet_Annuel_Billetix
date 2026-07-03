@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -80,10 +81,15 @@ export class OrderController {
         this.eventClient.send('event.validate_promo_code', { event_id: eventId, code: promoCode }),
       ) as {
         valid: boolean;
-        discount_type: 'PERCENTAGE' | 'FIXED';
-        discount_value: number;
-        promo_code_id: string;
+        message?: string;
+        discount_type?: 'PERCENTAGE' | 'FIXED';
+        discount_value?: number;
+        promo_code_id?: string;
       };
+
+      if (!promoResult.valid) {
+        throw new BadRequestException(promoResult.message ?? 'Code promo invalide.');
+      }
 
       promoCodeId = promoResult.promo_code_id;
 

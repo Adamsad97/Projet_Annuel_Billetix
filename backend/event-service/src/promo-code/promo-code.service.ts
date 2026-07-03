@@ -38,21 +38,27 @@ export class PromoCodeService {
 
   async validate(eventId: string, code: string): Promise<{
     valid: boolean;
-    discount_type: DiscountType;
-    discount_value: number;
-    promo_code_id: string;
+    message?: string;
+    discount_type?: DiscountType;
+    discount_value?: number;
+    promo_code_id?: string;
   }> {
     const now = new Date();
     const promo = await this.repo.findOne({
       where: { event_id: eventId, code, is_active: true },
     });
 
-    if (!promo) throw new RpcException({ statusCode: 404, message: 'Code promo invalide' });
-    if (promo.valid_from > now || promo.valid_until < now) {
-      throw new RpcException({ statusCode: 400, message: 'Code promo expiré ou pas encore valide' });
+    if (!promo) {
+      return { valid: false, message: 'Ce code promo n\'existe pas ou a été désactivé.' };
+    }
+    if (promo.valid_until < now) {
+      return { valid: false, message: 'Ce code promo est expiré.' };
+    }
+    if (promo.valid_from > now) {
+      return { valid: false, message: 'Ce code promo n\'est pas encore actif.' };
     }
     if (promo.max_uses !== null && promo.current_uses >= promo.max_uses) {
-      throw new RpcException({ statusCode: 400, message: 'Code promo épuisé' });
+      return { valid: false, message: 'Ce code promo a atteint son nombre maximum d\'utilisations.' };
     }
 
     return {

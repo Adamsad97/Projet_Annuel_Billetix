@@ -236,6 +236,36 @@ export class NotificationController {
     this.ack(ctx);
   }
 
+  @EventPattern('notification.fill_threshold_reached')
+  async onFillThresholdReached(
+    @Payload() data: {
+      email: string | null;
+      firstName: string | null;
+      event_name: string;
+      threshold: number;
+      sold_count: number;
+      total_capacity: number;
+    },
+    @Ctx() ctx: RmqContext,
+  ) {
+    if (data.email) {
+      await this.mail.send({
+        to: data.email,
+        subject: `${data.threshold}% de vos places vendues — ${data.event_name}`,
+        template: 'fill-threshold',
+        context: {
+          firstName: data.firstName ?? 'Organisateur',
+          eventName: data.event_name,
+          threshold: data.threshold,
+          soldCount: data.sold_count,
+          totalCapacity: data.total_capacity,
+          dashboardUrl: `${this.appUrl}/organizer/events`,
+        },
+      });
+    }
+    this.ack(ctx);
+  }
+
   @EventPattern('notification.ticket_scanned')
   async onTicketScanned(
     @Payload() data: {

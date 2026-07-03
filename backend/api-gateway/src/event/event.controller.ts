@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  Logger,
   Param,
   Patch,
   Post,
@@ -17,13 +18,20 @@ import { firstValueFrom } from 'rxjs';
 import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Order, OrderStatus } from './types/order-snapshot.type';
 
 @ApiTags('events')
 @ApiBearerAuth()
 @Controller('events')
 export class EventController {
+  private readonly logger = new Logger(EventController.name);
+
   constructor(
-    @Inject('EVENT_SERVICE') private readonly eventClient: ClientProxy,
+    @Inject('EVENT_SERVICE')    private readonly eventClient: ClientProxy,
+    @Inject('ORDER_SERVICE')    private readonly orderClient: ClientProxy,
+    @Inject('PAYMENT_SERVICE')  private readonly paymentClient: ClientProxy,
+    @Inject('TICKET_SERVICE')   private readonly ticketClient: ClientProxy,
+    @Inject('NOTIFICATION_SERVICE') private readonly notifClient: ClientProxy,
   ) {}
 
   // --- Routes publiques ---
@@ -134,10 +142,72 @@ export class EventController {
 
   @Post(':id/cancel')
   @HttpCode(HttpStatus.OK)
-  @Roles('ORGANIZER')
-  @ApiOperation({ summary: 'Annuler son événement (ORGANIZER)' })
-  cancel(@CurrentUser() user: JwtPayload, @Param('id') id: string, @Body() dto: { reason?: string }) {
-    return firstValueFrom(this.eventClient.send('event.cancel', { id, actor_id: user.sub, dto }));
+  @Roles('ORGANIZER', 'ADMIN')
+  @ApiOperation({ summary: 'Annuler un événement et rembourser tous les acheteurs (ORGANIZER/ADMIN)' })
+  async cancel(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: { reason?: string },
+  ) {
+    const cancelledEvent = await firstValueFrom(
+      this.eventClient.send('event.cancel', { id, actor_id: user.sub, dto }),
+    ) as { id: string; title: string; start_date: string; venue_name: string; organizer_id: string };
+
+    // Cascade de remboursements (fire-and-forget — ne bloque pas la réponse)
+    this.refundAllOrdersForEvent(cancelledEvent, dto.reason).catch((err) =>
+      this.logger.error(`Erreur cascade remboursement event ${id}: ${err?.message}`),
+    );
+
+    return cancelledEvent;
+  }
+
+  private async refundAllOrdersForEvent(
+    event: { id: string; title: string; start_date: string; venue_name: string },
+    cancellationReason?: string,
+  ): Promise<void> {
+    const orders = await firstValueFrom(
+      this.orderClient.send('order.list_by_event', { event_id: event.id }),
+    ) as Order[];
+
+    const paidOrders = orders.filter(
+      (order) => order.status === OrderStatus.CONFIRMED || order.status === OrderStatus.TICKETS_SENT,
+    );
+
+    // Annulation en masse des billets (une seule requête)
+    if (paidOrders.length > 0) {
+      await firstValueFrom(
+        this.ticketClient.send('ticket.cancel_by_event', { event_id: event.id }),
+      );
+    }
+
+    // Remboursement individuel par commande
+    for (const order of paidOrders) {
+      try {
+        await firstValueFrom(
+          this.paymentClient.send('payment.refund', { order_id: order.id }),
+        );
+        await firstValueFrom(
+          this.orderClient.send('order.mark_refunded', { id: order.id }),
+        );
+        this.notifClient.emit('notification.event_canceled', {
+          email: order.buyer_email,
+          firstName: order.buyer_first_name,
+          eventName: event.title,
+          eventDate: event.start_date,
+          eventVenue: event.venue_name,
+          refundAmount: Number(order.total_amount_ttc).toFixed(2),
+          cancellationReason: cancellationReason,
+        });
+      } catch (refundError) {
+        this.logger.error(
+          `Échec remboursement commande ${order.id}: ${refundError?.message}`,
+        );
+      }
+    }
+
+    this.logger.log(
+      `Cascade annulation event ${event.id} : ${paidOrders.length} commande(s) remboursée(s)`,
+    );
   }
 
   // --- Routes admin ---
