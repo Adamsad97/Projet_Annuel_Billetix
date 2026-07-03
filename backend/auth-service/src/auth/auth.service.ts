@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto';
 import { Redis } from 'ioredis';
 import { Repository } from 'typeorm';
 import { REDIS_CLIENT } from '../redis/redis.module';
-import { User, UserRole } from '../user/user.entity';
+import { OAuthProvider, User, UserRole } from '../user/user.entity';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -40,6 +40,7 @@ export class AuthService {
       password_hash,
       first_name: dto.first_name,
       last_name: dto.last_name,
+      phone: dto.phone ?? null,
       role: dto.role ?? UserRole.BUYER,
     });
 
@@ -48,10 +49,13 @@ export class AuthService {
     const verifyToken = randomUUID();
     await this.redis.set(`email_verify:${verifyToken}`, user.id, 'EX', EMAIL_VERIFY_TTL);
 
+    // TODO : publier auth.user_registered sur RabbitMQ → notification-service envoie l'email
+    // Le verify_token ne doit jamais être retourné dans la réponse HTTP en production.
+    // Il voyage uniquement par email (lien de type /auth/verify-email?token=xxx).
+
     return {
       ...this.generateTokens(user),
       user: this.sanitize(user),
-      verify_token: verifyToken,
     };
   }
 
@@ -65,11 +69,14 @@ export class AuthService {
     if (!user) {
       throw new RpcException({ statusCode: 401, message: 'Identifiants invalides' });
     }
+    if (!user.is_active) {
+      throw new RpcException({ statusCode: 403, message: 'Compte désactivé' });
+    }
     if (user.is_suspended) {
       throw new RpcException({ statusCode: 403, message: 'Compte suspendu' });
     }
     if (!user.password_hash) {
-      throw new RpcException({ statusCode: 401, message: 'Connexion via Google requise' });
+      throw new RpcException({ statusCode: 401, message: 'Connexion via OAuth requise' });
     }
 
     const valid = await bcrypt.compare(dto.password, user.password_hash);
@@ -96,7 +103,7 @@ export class AuthService {
     }
 
     const user = await this.userRepo.findOne({ where: { id: payload.sub } });
-    if (!user || user.is_suspended) {
+    if (!user || !user.is_active || user.is_suspended) {
       throw new RpcException({ statusCode: 401, message: 'Utilisateur introuvable ou suspendu' });
     }
 
@@ -117,6 +124,46 @@ export class AuthService {
       // token malformé — déconnexion côté client suffit
     }
     return { success: true };
+  }
+
+  async oauthLogin(data: {
+    provider: OAuthProvider;
+    oauth_id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+  }) {
+    let user = await this.userRepo.findOne({
+      where: { oauth_provider: data.provider, oauth_id: data.oauth_id },
+    });
+
+    if (!user) {
+      // Vérifier si l'email existe déjà (liaison de compte)
+      user = await this.userRepo.findOne({ where: { email: data.email } });
+      if (user) {
+        user.oauth_provider = data.provider;
+        user.oauth_id = data.oauth_id;
+        await this.userRepo.save(user);
+      } else {
+        user = this.userRepo.create({
+          email: data.email,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          oauth_provider: data.provider,
+          oauth_id: data.oauth_id,
+          is_email_verified: true,
+          email_verified_at: new Date(),
+          role: UserRole.BUYER,
+        });
+        await this.userRepo.save(user);
+      }
+    }
+
+    if (!user.is_active || user.is_suspended) {
+      throw new RpcException({ statusCode: 403, message: 'Compte suspendu ou désactivé' });
+    }
+
+    return { ...this.generateTokens(user), user: this.sanitize(user) };
   }
 
   async validateToken(token: string) {

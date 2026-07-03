@@ -1,5 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
+import { OAuthProvider } from '../user/user.entity';
 import { AuthService } from './auth.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
@@ -49,5 +50,16 @@ export class AuthController {
   @MessagePattern('auth.verify_email')
   verifyEmail(@Payload() data: { token: string }) {
     return this.authService.verifyEmail(data.token);
+  }
+
+  @MessagePattern('auth.oauth_login')
+  oauthLogin(@Payload() data: {
+    provider: OAuthProvider;
+    oauth_id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+  }) {
+    return this.authService.oauthLogin(data);
   }
 }

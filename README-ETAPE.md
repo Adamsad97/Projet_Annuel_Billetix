@@ -143,7 +143,7 @@ L'application est construite en architecture microservices pour permettre :
 
 **Base de données (schema `auth`) :**
 ```
-users           (id, email, password_hash, roles, email_verified, created_at)
+users           (id, email, password_hash, first_name, last_name, phone, role, is_email_verified, google_id, is_suspended, created_at, updated_at)
 refresh_tokens  (id, user_id, token_hash, expires_at, revoked)
 password_resets (id, user_id, token_hash, expires_at, used)
 ```
@@ -181,8 +181,9 @@ ioredis @nestjs/config class-validator class-transformer
 
 **Base de données (schema `users`) :**
 ```
-buyer_profiles      (id, user_id, phone, billing_address)
-organizer_profiles  (id, user_id, name, description, logo_url, iban_encrypted, kyc_status)
+buyer_profiles      (id, user_id, billing_address)
+organizer_profiles  (id, user_id, company_name, description, logo_url, iban_encrypted, kyc_status)
+-- nom, prénom, email, phone centralisés dans auth.users (communs à tous les rôles)
 agent_profiles      (id, user_id, organizer_id, assigned_events[])
 kyc_documents       (id, organizer_id, doc_type, file_url, status, reviewed_at)
 ```
