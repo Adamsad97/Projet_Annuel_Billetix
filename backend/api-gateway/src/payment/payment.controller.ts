@@ -76,6 +76,15 @@ export class PaymentController {
 
   // ─── Reversements ───────────────────────────────────────────────────────────
 
+  @Get('balance/me')
+  @Roles('ORGANIZER')
+  @ApiOperation({ summary: 'Solde virtuel de l\'organisateur (ORGANIZER)' })
+  myBalance(@CurrentUser() user: JwtPayload) {
+    return firstValueFrom(
+      this.paymentClient.send('payment.get_organizer_balance', { organizer_id: user.sub }),
+    );
+  }
+
   @Get('payouts/me')
   @Roles('ORGANIZER')
   @ApiOperation({ summary: 'Mes reversements (ORGANIZER)' })
@@ -240,7 +249,11 @@ export class PaymentController {
       buyer_email: string;
       buyer_first_name: string;
       buyer_last_name: string;
+      total_amount_ht: number;
       total_amount_ttc: number;
+      total_commission: number;
+      total_payment_fees: number;
+      organizer_id?: string;
       items: {
         ticket_category_id: string;
         ticket_category_name: string;
@@ -343,6 +356,19 @@ export class PaymentController {
       event_venue: order.event_venue_name,
       tickets: ticketList,
     });
+
+    // Créer le reversement organisateur (D+3 après événement)
+    if (order.organizer_id) {
+      const stripeFeesCents = Math.round(Number(order.total_amount_ttc) * 100 * 0.029 + 30);
+      this.paymentClient.send('payment.create_payout', {
+        organizer_id: order.organizer_id,
+        event_id: order.event_id,
+        gross_amount: Number(order.total_amount_ht),
+        commission_amount: Number(order.total_commission),
+        payment_fees_amount: parseFloat((stripeFeesCents / 100).toFixed(2)),
+        event_end_at: order.event_end_at,
+      }).subscribe();
+    }
 
     this.logger.log(`Post-paiement traité : ${tickets.length} billet(s) générés pour commande ${orderId}`);
   }

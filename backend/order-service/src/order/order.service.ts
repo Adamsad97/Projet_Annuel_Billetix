@@ -8,6 +8,7 @@ import { OrderItem } from './order-item.entity';
 import { Order, OrderStatus, PaymentStatus } from './order.entity';
 
 const TVA_RATE = 0.20;
+const FREE_TICKET_FEE = 0.50; // frais par billet gratuit (F2)
 
 @Injectable()
 export class OrderService {
@@ -26,12 +27,14 @@ export class OrderService {
       const discount = dto.discount_amount ?? 0;
 
       let subtotal_ht = 0;
+      let free_ticket_fees = 0;
       const itemsData = dto.items.map((i) => {
         const unit_ht = Number(i.unit_price_ht);
         const unit_ttc = parseFloat((unit_ht * (1 + TVA_RATE)).toFixed(2));
         const total_ht = parseFloat((unit_ht * i.quantity).toFixed(2));
         const total_ttc = parseFloat((unit_ttc * i.quantity).toFixed(2));
         subtotal_ht += total_ht;
+        if (unit_ht === 0) free_ticket_fees += FREE_TICKET_FEE * i.quantity;
         return {
           ticket_category_id: i.ticket_category_id,
           ticket_category_name: i.ticket_category_name ?? '',
@@ -47,16 +50,19 @@ export class OrderService {
       });
 
       const total_ht = parseFloat((subtotal_ht - discount).toFixed(2));
-      const total_ttc = parseFloat((total_ht * (1 + TVA_RATE)).toFixed(2));
+      const total_ttc = parseFloat((total_ht * (1 + TVA_RATE) + free_ticket_fees).toFixed(2));
       const commission = parseFloat((total_ht * (dto.commission_rate / 100)).toFixed(2));
       const net_organizer = parseFloat((total_ht - commission).toFixed(2));
+      free_ticket_fees = parseFloat(free_ticket_fees.toFixed(2));
 
       const order = manager.create(Order, {
         reference: this.generateReference(),
         buyer_id: dto.buyer_id,
         event_id: reservation.event_id,
+        organizer_id: dto.organizer_id ?? null,
         event_name: dto.event_name,
         event_start_at: dto.event_start_at,
+        event_end_at: dto.event_end_at ?? null,
         event_venue_name: dto.event_venue_name,
         event_venue_address: dto.event_venue_address,
         event_city: dto.event_city,
@@ -69,6 +75,7 @@ export class OrderService {
         total_amount_ht: total_ht,
         total_amount_ttc: total_ttc,
         total_commission: commission,
+        free_ticket_fees,
         total_payment_fees: 0,
         net_organizer_amount: net_organizer,
         promo_code_id: dto.promo_code_id ?? null,

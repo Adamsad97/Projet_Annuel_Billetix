@@ -62,10 +62,16 @@ export class CreateOrderDto {
 
   // Snapshot événement (transmis depuis api-gateway)
   @IsString() @IsOptional()
+  organizer_id?: string;
+
+  @IsString() @IsOptional()
   event_name?: string;
 
   @IsString() @IsOptional()
   event_start_at?: string;
+
+  @IsString() @IsOptional()
+  event_end_at?: string;
 
   @IsString() @IsOptional()
   event_venue_name?: string;

@@ -13,8 +13,14 @@ export class PayoutController {
     gross_amount: number;
     commission_amount: number;
     payment_fees_amount: number;
+    event_end_at?: string;
   }) {
     return this.payoutService.create(data);
+  }
+
+  @MessagePattern('payment.get_organizer_balance')
+  getOrganizerBalance(@Payload() data: { organizer_id: string }) {
+    return this.payoutService.getOrganizerBalance(data.organizer_id);
   }
 
   @MessagePattern('payment.get_payout')

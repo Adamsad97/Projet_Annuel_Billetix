@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { StripeService } from '../stripe/stripe.service';
 import { Payout, PayoutStatus } from './payout.entity';
 
-const PAYOUT_DELAY_DAYS = 7;
+const PAYOUT_DELAY_DAYS = 3; // D+3 après la fin de l'événement
 
 @Injectable()
 export class PayoutService {
@@ -20,18 +20,45 @@ export class PayoutService {
     gross_amount: number;
     commission_amount: number;
     payment_fees_amount: number;
+    event_end_at?: string;
   }): Promise<Payout> {
     const net = data.gross_amount - data.commission_amount - data.payment_fees_amount;
-    const scheduled = new Date();
+
+    // D+3 calculé depuis la fin de l'événement ; si inconnue, depuis maintenant
+    const base = data.event_end_at ? new Date(data.event_end_at) : new Date();
+    const scheduled = new Date(base);
     scheduled.setDate(scheduled.getDate() + PAYOUT_DELAY_DAYS);
 
     return this.repo.save(
       this.repo.create({
-        ...data,
+        organizer_id: data.organizer_id,
+        event_id: data.event_id,
+        gross_amount: data.gross_amount,
+        commission_amount: data.commission_amount,
+        payment_fees_amount: data.payment_fees_amount,
         net_amount: parseFloat(net.toFixed(2)),
         scheduled_at: scheduled,
       }),
     );
+  }
+
+  async getOrganizerBalance(organizerId: string): Promise<{
+    pending_balance: number;
+    total_earned: number;
+    payouts_count: number;
+  }> {
+    const payouts = await this.repo.find({ where: { organizer_id: organizerId } });
+    const pending_balance = payouts
+      .filter((p) => p.status === PayoutStatus.PENDING || p.status === PayoutStatus.PROCESSING)
+      .reduce((sum, p) => sum + Number(p.net_amount), 0);
+    const total_earned = payouts
+      .filter((p) => p.status === PayoutStatus.COMPLETED)
+      .reduce((sum, p) => sum + Number(p.net_amount), 0);
+    return {
+      pending_balance: parseFloat(pending_balance.toFixed(2)),
+      total_earned: parseFloat(total_earned.toFixed(2)),
+      payouts_count: payouts.length,
+    };
   }
 
   async getById(id: string): Promise<Payout> {

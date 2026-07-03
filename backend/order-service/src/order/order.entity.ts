@@ -117,12 +117,21 @@ export class Order {
   @Column({ nullable: true })
   invoice_url: string | null;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  free_ticket_fees: number;
+
   // Snapshot événement (nécessaire pour ticket-service après paiement)
+  @Column({ nullable: true })
+  organizer_id: string | null;
+
   @Column({ nullable: true })
   event_name: string | null;
 
   @Column({ nullable: true })
   event_start_at: Date | null;
+
+  @Column({ nullable: true })
+  event_end_at: Date | null;
 
   @Column({ nullable: true })
   event_venue_name: string | null;
