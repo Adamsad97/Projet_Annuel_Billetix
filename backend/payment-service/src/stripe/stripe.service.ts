@@ -10,7 +10,7 @@ export class StripeService implements OnModuleInit {
 
   onModuleInit() {
     this.stripe = new Stripe(this.config.get<string>('STRIPE_SECRET_KEY'), {
-      apiVersion: '2025-05-28.basil',
+      apiVersion: '2024-06-20',
     });
   }
 

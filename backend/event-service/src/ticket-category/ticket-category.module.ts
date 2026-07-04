@@ -18,7 +18,7 @@ import { TicketCategoryService } from './ticket-category.service';
         useFactory: (config: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: [config.get('RABBITMQ_URL', 'amqp://guest:guest@localhost:5672')],
+            urls: [config.get<string>('RABBITMQ_URL', 'amqp://guest:guest@localhost:5672')],
             queue: 'notification_queue',
             queueOptions: { durable: true },
             noAck: true,

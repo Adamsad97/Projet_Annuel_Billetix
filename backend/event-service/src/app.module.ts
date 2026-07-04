@@ -10,6 +10,7 @@ import { TicketCategory } from './ticket-category/ticket-category.entity';
 import { TicketCategoryModule } from './ticket-category/ticket-category.module';
 import { ValidationRequest } from './validation-request/validation-request.entity';
 import { ValidationRequestModule } from './validation-request/validation-request.module';
+import { PlatformConfigModule } from './platform-config/platform-config.module';
 
 @Module({
   imports: [
@@ -34,7 +35,7 @@ import { ValidationRequestModule } from './validation-request/validation-request
         useFactory: (config: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: [config.get('RABBITMQ_URL', 'amqp://guest:guest@localhost:5672')],
+            urls: [config.get<string>('RABBITMQ_URL', 'amqp://guest:guest@localhost:5672')],
             queue: 'notification_queue',
             queueOptions: { durable: true },
             noAck: true,
@@ -54,6 +55,7 @@ import { ValidationRequestModule } from './validation-request/validation-request
       },
     ]),
 
+    PlatformConfigModule,
     EventModule,
     TicketCategoryModule,
     PromoCodeModule,

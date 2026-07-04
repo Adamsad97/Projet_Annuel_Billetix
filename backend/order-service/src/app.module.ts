@@ -7,6 +7,7 @@ import { OrderItem } from './order/order-item.entity';
 import { Order } from './order/order.entity';
 import { OrderModule } from './order/order.module';
 import { ReminderModule } from './scheduler/reminder.module';
+import { PlatformConfigModule } from './platform-config/platform-config.module';
 
 @Module({
   imports: [
@@ -43,7 +44,7 @@ import { ReminderModule } from './scheduler/reminder.module';
         useFactory: (config: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: [config.get('RABBITMQ_URL', 'amqp://guest:guest@localhost:5672')],
+            urls: [config.get<string>('RABBITMQ_URL', 'amqp://guest:guest@localhost:5672')],
             queue: 'notification_queue',
             queueOptions: { durable: true },
             noAck: true,
@@ -52,6 +53,7 @@ import { ReminderModule } from './scheduler/reminder.module';
       },
     ]),
 
+    PlatformConfigModule,
     OrderModule,
     ReminderModule,
   ],

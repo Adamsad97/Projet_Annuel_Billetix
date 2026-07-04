@@ -9,9 +9,9 @@ export class CryptoService {
   private readonly key: Buffer;
 
   constructor(private readonly config: ConfigService) {
-    const hex = this.config.get<string>('ENCRYPTION_KEY');
+    const hex = this.config.get<string>('IBAN_ENCRYPTION_KEY');
     if (!hex || hex.length !== 64) {
-      throw new Error('ENCRYPTION_KEY doit être une chaîne hex de 64 caractères (32 bytes)');
+      throw new Error('IBAN_ENCRYPTION_KEY doit être une chaîne hex de 64 caractères (32 bytes)');
     }
     this.key = Buffer.from(hex, 'hex');
   }
