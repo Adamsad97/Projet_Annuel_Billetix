@@ -9,5 +9,6 @@ import { ScanService } from './scan.service';
   imports: [TypeOrmModule.forFeature([ScanLog]), TicketModule],
   controllers: [ScanController],
   providers: [ScanService],
+  exports: [ScanService],
 })
 export class ScanModule {}

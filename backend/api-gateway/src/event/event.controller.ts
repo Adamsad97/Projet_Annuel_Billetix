@@ -150,7 +150,12 @@ export class EventController {
     @Body() dto: { reason?: string },
   ) {
     const cancelledEvent = await firstValueFrom(
-      this.eventClient.send('event.cancel', { id, actor_id: user.sub, dto }),
+      this.eventClient.send('event.cancel', {
+        id,
+        actor_id: user.sub,
+        dto,
+        is_admin: user.role === 'ADMIN',
+      }),
     ) as { id: string; title: string; start_date: string; venue_name: string; organizer_id: string };
 
     // Cascade de remboursements (fire-and-forget — ne bloque pas la réponse)

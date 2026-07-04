@@ -33,6 +33,7 @@ export class PaymentController {
     @Inject('TICKET_SERVICE')       private readonly ticketClient: ClientProxy,
     @Inject('PDF_SERVICE')          private readonly pdfClient: ClientProxy,
     @Inject('NOTIFICATION_SERVICE') private readonly notifClient: ClientProxy,
+    @Inject('ADMIN_SERVICE')        private readonly adminClient: ClientProxy,
   ) {}
 
   @Post('intent')
@@ -357,15 +358,25 @@ export class PaymentController {
       tickets: ticketList,
     });
 
-    // Créer le reversement organisateur (D+3 après événement)
+    // Créer le reversement organisateur
     if (order.organizer_id) {
-      const stripeFeesCents = Math.round(Number(order.total_amount_ttc) * 100 * 0.029 + 30);
+      const platformConfig = await firstValueFrom(
+        this.adminClient.send<{ stripe_fee_percent: number; stripe_fee_fixed_eur: number }>(
+          'admin.get_platform_config', {},
+        ),
+      ).catch(() => ({ stripe_fee_percent: 2.9, stripe_fee_fixed_eur: 0.30 }));
+
+      const amountTtc = Number(order.total_amount_ttc);
+      const stripeFees = parseFloat(
+        (amountTtc * (platformConfig.stripe_fee_percent / 100) + platformConfig.stripe_fee_fixed_eur).toFixed(2),
+      );
+
       this.paymentClient.send('payment.create_payout', {
         organizer_id: order.organizer_id,
         event_id: order.event_id,
         gross_amount: Number(order.total_amount_ht),
         commission_amount: Number(order.total_commission),
-        payment_fees_amount: parseFloat((stripeFeesCents / 100).toFixed(2)),
+        payment_fees_amount: stripeFees,
         event_end_at: order.event_end_at,
       }).subscribe();
     }

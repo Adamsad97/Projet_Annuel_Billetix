@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
-import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
+import { MicroserviceClientsModule } from './microservice-clients.module';
 import { UploadModule } from './upload/upload.module';
 import { EventsModule } from './events/events.module';
 import { EventModule } from './event/event.module';
@@ -29,84 +29,7 @@ import { RolesGuard } from './common/guards/roles.guard';
       }),
     }),
 
-    ClientsModule.register([
-      {
-        name: 'AUTH_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: process.env.AUTH_SERVICE_HOST ?? 'localhost',
-          port: parseInt(process.env.AUTH_SERVICE_PORT ?? '3001'),
-        },
-      },
-      {
-        name: 'USER_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: process.env.USER_SERVICE_HOST ?? 'localhost',
-          port: parseInt(process.env.USER_SERVICE_PORT ?? '3002'),
-        },
-      },
-      {
-        name: 'EVENT_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: process.env.EVENT_SERVICE_HOST ?? 'localhost',
-          port: parseInt(process.env.EVENT_SERVICE_PORT ?? '3003'),
-        },
-      },
-      {
-        name: 'ORDER_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: process.env.ORDER_SERVICE_HOST ?? 'localhost',
-          port: parseInt(process.env.ORDER_SERVICE_PORT ?? '3004'),
-        },
-      },
-      {
-        name: 'TICKET_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: process.env.TICKET_SERVICE_HOST ?? 'localhost',
-          port: parseInt(process.env.TICKET_SERVICE_PORT ?? '3005'),
-        },
-      },
-      {
-        name: 'PAYMENT_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: process.env.PAYMENT_SERVICE_HOST ?? 'localhost',
-          port: parseInt(process.env.PAYMENT_SERVICE_PORT ?? '3006'),
-        },
-      },
-      {
-        name: 'ADMIN_SERVICE',
-        transport: Transport.TCP,
-        options: {
-          host: process.env.ADMIN_SERVICE_HOST ?? 'localhost',
-          port: parseInt(process.env.ADMIN_SERVICE_PORT ?? '3009'),
-        },
-      },
-      {
-        name: 'PDF_SERVICE',
-        transport: Transport.RMQ,
-        options: {
-          urls: [process.env.RABBITMQ_URL ?? 'amqp://guest:guest@localhost:5672'],
-          queue: 'pdf_queue',
-          queueOptions: { durable: true },
-          noAck: true,
-        },
-      },
-      {
-        name: 'NOTIFICATION_SERVICE',
-        transport: Transport.RMQ,
-        options: {
-          urls: [process.env.RABBITMQ_URL ?? 'amqp://guest:guest@localhost:5672'],
-          queue: 'notification_queue',
-          queueOptions: { durable: true },
-          noAck: true,
-        },
-      },
-    ]),
+    MicroserviceClientsModule,
 
     AuthModule,
     UserModule,

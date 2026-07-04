@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Inject,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -124,7 +125,7 @@ export class AdminController {
     @Body() dto: { reason: string },
   ) {
     const result = await firstValueFrom(
-      this.userClient.send('user.suspend', { id, admin_id: user.sub, reason: dto.reason }),
+      this.authClient.send('auth.suspend_user', { id, admin_id: user.sub, reason: dto.reason }),
     );
     this.audit(user, req, 'USER_SUSPENDED', 'USER', id, dto.reason);
     return result;
@@ -139,7 +140,7 @@ export class AdminController {
     @Param('id') id: string,
   ) {
     const result = await firstValueFrom(
-      this.userClient.send('user.unsuspend', { id, admin_id: user.sub }),
+      this.authClient.send('auth.unsuspend_user', { id, admin_id: user.sub }),
     );
     this.audit(user, req, 'USER_UNSUSPENDED', 'USER', id);
     return result;
@@ -155,7 +156,7 @@ export class AdminController {
     @Body() dto: { role: string },
   ) {
     const result = await firstValueFrom(
-      this.userClient.send('user.change_role', { id, role: dto.role, admin_id: user.sub }),
+      this.authClient.send('auth.change_role', { id, role: dto.role, admin_id: user.sub }),
     );
     this.audit(user, req, 'USER_ROLE_CHANGED', 'USER', id, undefined, { new_role: dto.role });
     return result;
@@ -178,12 +179,10 @@ export class AdminController {
     @Param('id') id: string,
   ) {
     const result = await firstValueFrom(
-      this.eventClient.send('event.approve', { id, admin_id: user.sub }),
+      this.eventClient.send('event.validate', { id, admin_id: user.sub }),
     );
     this.audit(user, req, 'EVENT_APPROVED', 'EVENT', id);
-    this.notifyOrganizer(result.organizer_id, 'notification.event_published', {
-      event_name: result.title,
-    });
+    // Notification organisateur envoyée par event-service (validate()) — pas de doublon ici.
     return result;
   }
 
@@ -197,19 +196,16 @@ export class AdminController {
     @Body() dto: { reason: string },
   ) {
     const result = await firstValueFrom(
-      this.eventClient.send('event.reject', { id, admin_id: user.sub, reason: dto.reason }),
+      this.eventClient.send('event.reject', { id, admin_id: user.sub, dto: { reason: dto.reason } }),
     );
     this.audit(user, req, 'EVENT_REJECTED', 'EVENT', id, dto.reason);
-    this.notifyOrganizer(result.organizer_id, 'notification.event_rejected', {
-      event_name: result.title,
-      reason: dto.reason,
-    });
+    // Notification organisateur envoyée par event-service (reject()) — pas de doublon ici.
     return result;
   }
 
   @Post('events/:id/cancel')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Annuler un événement (remboursement automatique)' })
+  @ApiOperation({ summary: 'Annuler un événement (ADMIN) — le remboursement des acheteurs se déclenche via POST /events/:id/cancel' })
   async cancelEvent(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
@@ -217,7 +213,12 @@ export class AdminController {
     @Body() dto: { reason: string },
   ) {
     const result = await firstValueFrom(
-      this.eventClient.send('event.cancel', { id, admin_id: user.sub, reason: dto.reason }),
+      this.eventClient.send('event.cancel', {
+        id,
+        actor_id: user.sub,
+        dto: { reason: dto.reason },
+        is_admin: true,
+      }),
     );
     this.audit(user, req, 'EVENT_CANCELED', 'EVENT', id, dto.reason);
     return result;
@@ -351,6 +352,30 @@ export class AdminController {
     );
     this.audit(user, req, 'KYC_REJECTED', 'USER', userId, dto.reason);
     this.notifyOrganizer(userId, 'notification.kyc_rejected', { reason: dto.reason });
+    return result;
+  }
+
+  // ─── Configuration plateforme ────────────────────────────────────────────────
+
+  @Get('config')
+  @ApiOperation({ summary: 'Liste tous les paramètres configurables de la plateforme' })
+  getPlatformConfig() {
+    return firstValueFrom(this.adminClient.send('admin.list_platform_settings', {}));
+  }
+
+  @Patch('config/:key')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Modifier un paramètre de la plateforme' })
+  async updatePlatformConfig(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param('key') key: string,
+    @Body() dto: { value: string },
+  ) {
+    const result = await firstValueFrom(
+      this.adminClient.send('admin.update_platform_setting', { key, value: dto.value }),
+    );
+    this.audit(user, req, 'CUSTOM', 'PAYMENT', undefined, `Config ${key} → ${dto.value}`, { key, value: dto.value });
     return result;
   }
 
