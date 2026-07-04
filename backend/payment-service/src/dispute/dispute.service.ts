@@ -27,6 +27,10 @@ export class DisputeService {
     return foundDispute;
   }
 
+  async getAll(): Promise<Dispute[]> {
+    return this.repo.find({ order: { created_at: 'DESC' } });
+  }
+
   async getByOrder(orderId: string): Promise<Dispute[]> {
     return this.repo.find({ where: { order_id: orderId }, order: { created_at: 'DESC' } });
   }

@@ -2,9 +2,9 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { randomBytes } from 'crypto';
+import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { RedisService } from '../redis/redis.service';
 
-const RESERVATION_TTL = 600; // 10 minutes
 const KEY_PREFIX = 'reservation:';
 
 export interface ReservationItem {
@@ -24,6 +24,7 @@ export class StockReservationService {
   constructor(
     private readonly redis: RedisService,
     @Inject('EVENT_SERVICE') private readonly eventClient: ClientProxy,
+    private readonly platformConfig: PlatformConfigCache,
   ) {}
 
   async reserve(
@@ -52,12 +53,13 @@ export class StockReservationService {
       });
     }
 
-    // Stocker la réservation dans Redis avec TTL 10 min
+    const config = await this.platformConfig.get();
+    const ttl = config.stock_reservation_ttl_seconds;
     const token = randomBytes(32).toString('hex');
-    const expires_at = new Date(Date.now() + RESERVATION_TTL * 1000);
+    const expires_at = new Date(Date.now() + ttl * 1000);
 
     const data: ReservationData = { buyer_id, event_id, items, expires_at: expires_at.toISOString() };
-    await this.redis.set(`${KEY_PREFIX}${token}`, JSON.stringify(data), RESERVATION_TTL);
+    await this.redis.set(`${KEY_PREFIX}${token}`, JSON.stringify(data), ttl);
 
     return { reservation_token: token, expires_at };
   }

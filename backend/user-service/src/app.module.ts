@@ -1,3 +1,4 @@
+import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -18,6 +19,8 @@ import { OrganizerModule } from './organizer/organizer.module';
         schema: 'users',
         entities: [BuyerProfile, OrganizerProfile],
         synchronize: config.get('NODE_ENV') !== 'production',
+        migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
+        migrationsRun: config.get('NODE_ENV') === 'production',
         logging: config.get('NODE_ENV') === 'development',
       }),
     }),

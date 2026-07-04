@@ -1,3 +1,4 @@
+import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -11,6 +12,7 @@ import { ScanLog } from './scan/scan-log.entity';
 import { ScanModule } from './scan/scan.module';
 import { Ticket } from './ticket/ticket.entity';
 import { TicketModule } from './ticket/ticket.module';
+import { PlatformConfigModule } from './platform-config/platform-config.module';
 
 @Module({
   imports: [
@@ -24,10 +26,13 @@ import { TicketModule } from './ticket/ticket.module';
         schema: 'tickets',
         entities: [Ticket, ScanLog, OfflineSyncLog, ControlAgent, TicketResale],
         synchronize: config.get('NODE_ENV') !== 'production',
+        migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
+        migrationsRun: config.get('NODE_ENV') === 'production',
         logging: config.get('NODE_ENV') === 'development',
       }),
     }),
 
+    PlatformConfigModule,
     TicketModule,
     TicketResaleModule,
     ScanModule,

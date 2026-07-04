@@ -78,20 +78,20 @@ export enum TicketCategoryVisibility {
   HIDDEN = 'HIDDEN',
 }
 
-// Commissions
-export const COMMISSION = {
-  STANDARD_PERCENT: 10,
-  LARGE_EVENT_PERCENT: 8,
-  LARGE_EVENT_THRESHOLD: 1000,
-  FREE_TICKET_FEE_EUR: 0.5,
-} as const;
-
-// Délais (en millisecondes)
-export const DELAYS = {
-  STOCK_RESERVATION_TTL_MS: 10 * 60 * 1000,  // 10 minutes
-  EMAIL_RETRY_INTERVAL_MS: 10 * 60 * 1000,    // 10 minutes
-  EMAIL_MAX_RETRIES: 3,
-  PAYOUT_DAYS_AFTER_EVENT: 5,
-  DISPUTE_MAX_DAYS: 30,
-  OFFLINE_SYNC_MAX_HOURS: 4,
+// Valeurs de fallback uniquement — toutes ces valeurs sont pilotées par
+// admin-service (table platform_settings) et injectées via PlatformConfigCache.
+// Ne pas les utiliser directement dans le code métier.
+export const PLATFORM_CONFIG_FALLBACK = {
+  tva_rate: 0.20,
+  free_ticket_fee_eur: 0.50,
+  commission_standard_percent: 10,
+  commission_large_event_percent: 8,
+  large_event_threshold: 1000,
+  payout_delay_days: 5,
+  stripe_fee_percent: 2.9,
+  stripe_fee_fixed_eur: 0.30,
+  stock_reservation_ttl_seconds: 600,
+  cancel_deadline_hours: 24,
+  agent_session_hours: 12,
+  fill_thresholds: [25, 50, 75, 100],
 } as const;

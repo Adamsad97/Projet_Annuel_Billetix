@@ -1,3 +1,4 @@
+import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
@@ -22,6 +23,8 @@ import { PlatformConfigModule } from './platform-config/platform-config.module';
         schema: 'orders',
         entities: [Order, OrderItem],
         synchronize: config.get('NODE_ENV') !== 'production',
+        migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
+        migrationsRun: config.get('NODE_ENV') === 'production',
         logging: config.get('NODE_ENV') === 'development',
       }),
     }),

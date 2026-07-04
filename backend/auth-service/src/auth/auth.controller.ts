@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { OAuthProvider } from '../user/user.entity';
+import { OAuthProvider, UserRole } from '../user/user.entity';
 import { AuthService } from './auth.service';
 import { TwoFactorService } from './two-factor.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -97,5 +97,22 @@ export class AuthController {
   @MessagePattern('auth.get_user')
   getUser(@Payload() data: { id: string }) {
     return this.authService.getUserById(data.id);
+  }
+
+  // ──────────────── Administration des comptes ────────────────
+
+  @MessagePattern('auth.suspend_user')
+  suspendUser(@Payload() data: { id: string; admin_id: string; reason: string }) {
+    return this.authService.suspendUser(data.id, data.admin_id, data.reason);
+  }
+
+  @MessagePattern('auth.unsuspend_user')
+  unsuspendUser(@Payload() data: { id: string; admin_id: string }) {
+    return this.authService.unsuspendUser(data.id);
+  }
+
+  @MessagePattern('auth.change_role')
+  changeRole(@Payload() data: { id: string; role: UserRole; admin_id: string }) {
+    return this.authService.changeRole(data.id, data.role);
   }
 }

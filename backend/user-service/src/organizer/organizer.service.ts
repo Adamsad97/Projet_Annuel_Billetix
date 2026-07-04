@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
+import { Inject, Injectable } from '@nestjs/common';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
+import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
 import { CryptoService } from '../crypto/crypto.service';
 import { CreateOrganizerProfileDto } from './dto/create-organizer-profile.dto';
@@ -15,6 +16,7 @@ export class OrganizerService {
     @InjectRepository(OrganizerProfile)
     private readonly repo: Repository<OrganizerProfile>,
     private readonly crypto: CryptoService,
+    @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
   ) {}
 
   async create(userId: string, dto: CreateOrganizerProfileDto): Promise<OrganizerProfile> {
@@ -41,6 +43,16 @@ export class OrganizerService {
   }
 
   async updateIban(userId: string, dto: UpdateIbanDto): Promise<{ success: boolean }> {
+    const user = await firstValueFrom(
+      this.authClient.send<{ two_factor_enabled: boolean }>('auth.get_user', { id: userId }),
+    );
+    if (!user?.two_factor_enabled) {
+      throw new RpcException({
+        statusCode: 403,
+        message: 'La double authentification (2FA) doit être activée avant d\'enregistrer un IBAN',
+      });
+    }
+
     const profile = await this.getByUserId(userId);
     const { encrypted, iv, tag } = this.crypto.encrypt(dto.iban);
     profile.iban_encrypted = encrypted;

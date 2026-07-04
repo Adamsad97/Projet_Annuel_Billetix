@@ -5,16 +5,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createHmac, randomBytes } from 'crypto';
 import * as QRCode from 'qrcode';
 import { Repository } from 'typeorm';
+import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { GenerateTicketsDto } from './dto/generate-tickets.dto';
 import { Ticket, TicketStatus } from './ticket.entity';
-
-const CANCEL_DEADLINE_HOURS = 24;
 
 @Injectable()
 export class TicketService {
   constructor(
     @InjectRepository(Ticket) private readonly repo: Repository<Ticket>,
     private readonly config: ConfigService,
+    private readonly platformConfig: PlatformConfigCache,
   ) {}
 
   async generate(dto: GenerateTicketsDto): Promise<Ticket[]> {
@@ -102,11 +102,10 @@ export class TicketService {
     return this.repo.save(ticket);
   }
 
-  // Annulation normale — bloquée à moins de 24h du spectacle
   async cancel(id: string): Promise<Ticket> {
     const ticket = await this.getById(id);
     this.assertCancellable(ticket);
-    this.assertNotWithin24h(ticket);
+    await this.assertNotWithinDeadline(ticket);
     ticket.status = TicketStatus.CANCELLED;
     return this.repo.save(ticket);
   }
@@ -184,14 +183,15 @@ export class TicketService {
     }
   }
 
-  private assertNotWithin24h(ticket: Ticket): void {
+  private async assertNotWithinDeadline(ticket: Ticket): Promise<void> {
+    const config = await this.platformConfig.get();
     const hoursBeforeEvent =
       (ticket.event_start_at.getTime() - Date.now()) / (1000 * 60 * 60);
 
-    if (hoursBeforeEvent < CANCEL_DEADLINE_HOURS) {
+    if (hoursBeforeEvent < config.cancel_deadline_hours) {
       throw new RpcException({
         statusCode: 403,
-        message: `Annulation impossible à moins de ${CANCEL_DEADLINE_HOURS}h du spectacle. Vous pouvez remettre votre billet en vente.`,
+        message: `Annulation impossible à moins de ${config.cancel_deadline_hours}h du spectacle. Vous pouvez remettre votre billet en vente.`,
         resaleAvailable: true,
       });
     }

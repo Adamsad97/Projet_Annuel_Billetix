@@ -59,7 +59,7 @@ export class EventController {
   }
 
   @MessagePattern('event.cancel')
-  cancel(@Payload() data: { id: string; actor_id: string; dto: AdminActionDto }) {
-    return this.eventService.cancel(data.id, data.actor_id, data.dto);
+  cancel(@Payload() data: { id: string; actor_id: string; dto: AdminActionDto; is_admin?: boolean }) {
+    return this.eventService.cancel(data.id, data.actor_id, data.dto, data.is_admin ?? false);
   }
 }

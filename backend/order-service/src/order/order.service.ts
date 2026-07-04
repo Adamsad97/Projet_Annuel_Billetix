@@ -2,13 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { StockReservationService } from '../reservation/stock-reservation.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderItem } from './order-item.entity';
 import { Order, OrderStatus, PaymentStatus } from './order.entity';
-
-const TVA_RATE = 0.20;
-const FREE_TICKET_FEE = 0.50; // frais par billet gratuit (F2)
 
 @Injectable()
 export class OrderService {
@@ -17,11 +15,12 @@ export class OrderService {
     @InjectRepository(OrderItem) private readonly itemRepo: Repository<OrderItem>,
     private readonly dataSource: DataSource,
     private readonly reservationService: StockReservationService,
+    private readonly platformConfig: PlatformConfigCache,
   ) {}
 
   async create(dto: CreateOrderDto): Promise<{ order: Order; items: OrderItem[] }> {
-    // Valider et consommer le token de réservation (bloquant — F1)
     const reservation = await this.reservationService.validate(dto.reservation_token, dto.buyer_id);
+    const config = await this.platformConfig.get();
 
     return this.dataSource.transaction(async (manager) => {
       const discount = dto.discount_amount ?? 0;
@@ -30,11 +29,11 @@ export class OrderService {
       let free_ticket_fees = 0;
       const itemsData = dto.items.map((itemInput) => {
         const unit_ht = Number(itemInput.unit_price_ht);
-        const unit_ttc = parseFloat((unit_ht * (1 + TVA_RATE)).toFixed(2));
+        const unit_ttc = parseFloat((unit_ht * (1 + config.tva_rate)).toFixed(2));
         const total_ht = parseFloat((unit_ht * itemInput.quantity).toFixed(2));
         const total_ttc = parseFloat((unit_ttc * itemInput.quantity).toFixed(2));
         subtotal_ht += total_ht;
-        if (unit_ht === 0) free_ticket_fees += FREE_TICKET_FEE * itemInput.quantity;
+        if (unit_ht === 0) free_ticket_fees += config.free_ticket_fee_eur * itemInput.quantity;
         return {
           ticket_category_id: itemInput.ticket_category_id,
           ticket_category_name: itemInput.ticket_category_name ?? '',
@@ -50,7 +49,7 @@ export class OrderService {
       });
 
       const total_ht = parseFloat((subtotal_ht - discount).toFixed(2));
-      const total_ttc = parseFloat((total_ht * (1 + TVA_RATE) + free_ticket_fees).toFixed(2));
+      const total_ttc = parseFloat((total_ht * (1 + config.tva_rate) + free_ticket_fees).toFixed(2));
       const commission = parseFloat((total_ht * (dto.commission_rate / 100)).toFixed(2));
       const net_organizer = parseFloat((total_ht - commission).toFixed(2));
       free_ticket_fees = parseFloat(free_ticket_fees.toFixed(2));

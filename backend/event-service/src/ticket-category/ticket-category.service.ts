@@ -4,10 +4,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { DataSource, Repository } from 'typeorm';
 import { Event } from '../event/event.entity';
+import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { CreateTicketCategoryDto } from './dto/create-ticket-category.dto';
 import { TicketCategory } from './ticket-category.entity';
-
-const FILL_THRESHOLDS = [25, 50, 75, 100];
 
 @Injectable()
 export class TicketCategoryService {
@@ -21,6 +20,7 @@ export class TicketCategoryService {
     @Inject('AUTH_SERVICE')
     private readonly authClient: ClientProxy,
     private readonly dataSource: DataSource,
+    private readonly platformConfig: PlatformConfigCache,
   ) {}
 
   async create(dto: CreateTicketCategoryDto): Promise<TicketCategory> {
@@ -92,7 +92,8 @@ export class TicketCategoryService {
       ? event.fill_thresholds_notified
       : [];
 
-    const newThresholds = FILL_THRESHOLDS.filter(
+    const config = await this.platformConfig.get();
+    const newThresholds = config.fill_thresholds.filter(
       (threshold) => fillRate >= threshold && !alreadyNotified.includes(threshold),
     );
 

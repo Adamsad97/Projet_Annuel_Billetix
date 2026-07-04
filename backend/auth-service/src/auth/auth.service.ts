@@ -14,6 +14,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { TwoFactorService } from './two-factor.service';
 
 const BCRYPT_ROUNDS = 12;
 const RESET_TOKEN_TTL = 60 * 60;       // 1 heure
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly config: ConfigService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @Inject('NOTIFICATION_SERVICE') private readonly notifClient: ClientProxy,
+    private readonly twoFactorService: TwoFactorService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -90,6 +92,16 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.password, user.password_hash);
     if (!valid) {
       throw new RpcException({ statusCode: 401, message: 'Identifiants invalides' });
+    }
+
+    if (user.two_factor_enabled) {
+      if (!dto.totp_code) {
+        return { requires_2fa: true };
+      }
+      const validCode = await this.twoFactorService.verifyTotp(user.id, dto.totp_code);
+      if (!validCode) {
+        throw new RpcException({ statusCode: 401, message: 'Code 2FA invalide' });
+      }
     }
 
     return { ...this.generateTokens(user), user: this.sanitize(user) };
@@ -237,6 +249,46 @@ export class AuthService {
     await this.redis.del(`email_verify:${token}`);
 
     return { success: true };
+  }
+
+  async suspendUser(id: string, adminId: string, reason: string) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) throw new RpcException({ statusCode: 404, message: 'Utilisateur introuvable' });
+
+    user.is_suspended = true;
+    user.suspension_reason = reason;
+    user.suspended_at = new Date();
+    user.suspended_by = adminId;
+    await this.userRepo.save(user);
+
+    return this.sanitize(user);
+  }
+
+  async unsuspendUser(id: string) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) throw new RpcException({ statusCode: 404, message: 'Utilisateur introuvable' });
+
+    user.is_suspended = false;
+    user.suspension_reason = null;
+    user.suspended_at = null;
+    user.suspended_by = null;
+    await this.userRepo.save(user);
+
+    return this.sanitize(user);
+  }
+
+  async changeRole(id: string, role: UserRole) {
+    if (!Object.values(UserRole).includes(role)) {
+      throw new RpcException({ statusCode: 400, message: 'Rôle invalide' });
+    }
+
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) throw new RpcException({ statusCode: 404, message: 'Utilisateur introuvable' });
+
+    user.role = role;
+    await this.userRepo.save(user);
+
+    return this.sanitize(user);
   }
 
   // --- Helpers ---

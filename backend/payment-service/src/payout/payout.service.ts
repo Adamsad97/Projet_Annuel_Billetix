@@ -1,17 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { LessThanOrEqual, Repository } from 'typeorm';
+import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { StripeService } from '../stripe/stripe.service';
 import { Payout, PayoutStatus } from './payout.entity';
-
-const PAYOUT_DELAY_DAYS = 3; // D+3 après la fin de l'événement
 
 @Injectable()
 export class PayoutService {
   constructor(
     @InjectRepository(Payout) private readonly repo: Repository<Payout>,
     private readonly stripe: StripeService,
+    private readonly platformConfig: PlatformConfigCache,
   ) {}
 
   async create(data: {
@@ -22,12 +22,12 @@ export class PayoutService {
     payment_fees_amount: number;
     event_end_at?: string;
   }): Promise<Payout> {
+    const config = await this.platformConfig.get();
     const net = data.gross_amount - data.commission_amount - data.payment_fees_amount;
 
-    // D+3 calculé depuis la fin de l'événement ; si inconnue, depuis maintenant
     const base = data.event_end_at ? new Date(data.event_end_at) : new Date();
     const scheduled = new Date(base);
-    scheduled.setDate(scheduled.getDate() + PAYOUT_DELAY_DAYS);
+    scheduled.setDate(scheduled.getDate() + config.payout_delay_days);
 
     return this.repo.save(
       this.repo.create({
@@ -69,6 +69,12 @@ export class PayoutService {
 
   async getByOrganizer(organizerId: string): Promise<Payout[]> {
     return this.repo.find({ where: { organizer_id: organizerId }, order: { scheduled_at: 'DESC' } });
+  }
+
+  async getDuePayouts(): Promise<Payout[]> {
+    return this.repo.find({
+      where: { status: PayoutStatus.PENDING, scheduled_at: LessThanOrEqual(new Date()) },
+    });
   }
 
   async process(id: string, stripeAccountId: string): Promise<Payout> {

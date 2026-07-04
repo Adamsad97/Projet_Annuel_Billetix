@@ -27,11 +27,11 @@ export const EVENTS = {
   // scheduler (notification-service) → notification-service
   EVENT_REMINDER_J1: 'event.reminder_j1',
 
-  // event-service → notification-service (seuils de remplissage)
-  EVENT_THRESHOLD_25: 'event.threshold.25',
-  EVENT_THRESHOLD_50: 'event.threshold.50',
-  EVENT_THRESHOLD_75: 'event.threshold.75',
-  EVENT_THRESHOLD_100: 'event.threshold.100',
+  // event-service → notification-service — seuil de remplissage atteint.
+  // Un seul événement dynamique (le seuil est une donnée du payload, cf.
+  // ticket-category.service.ts::checkAndNotifyFillThresholds), la liste des
+  // seuils elle-même vient de platform-config (fill_thresholds), jamais figée en dur.
+  EVENT_FILL_THRESHOLD_REACHED: 'notification.fill_threshold_reached',
 } as const;
 
 // Noms des patterns TCP entre api-gateway et services

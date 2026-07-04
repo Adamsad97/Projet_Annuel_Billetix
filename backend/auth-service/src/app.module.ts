@@ -1,3 +1,4 @@
+import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
@@ -32,6 +33,8 @@ import { User } from './user/user.entity';
         schema: 'auth',
         entities: [User],
         synchronize: config.get('NODE_ENV') !== 'production',
+        migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
+        migrationsRun: config.get('NODE_ENV') === 'production',
         logging: config.get('NODE_ENV') === 'development',
       }),
     }),

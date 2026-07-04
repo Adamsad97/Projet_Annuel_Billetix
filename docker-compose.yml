@@ -204,11 +204,15 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET_AVATARS: ${MINIO_BUCKET_AVATARS:-avatars}
+      AUTH_SERVICE_HOST: auth-service
+      AUTH_SERVICE_PORT: 3001
     depends_on:
       postgres:
         condition: service_healthy
       minio:
         condition: service_healthy
+      auth-service:
+        condition: service_started
     networks:
       - billetix-net
 
@@ -228,11 +232,17 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET_POSTERS: ${MINIO_BUCKET_POSTERS:-posters}
+      ADMIN_SERVICE_HOST: admin-service
+      ADMIN_SERVICE_PORT: 3009
+      AUTH_SERVICE_HOST: auth-service
+      AUTH_SERVICE_PORT: 3001
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      admin-service:
+        condition: service_started
     networks:
       - billetix-net
 
@@ -250,6 +260,8 @@ services:
       STOCK_RESERVATION_TTL_SECONDS: ${STOCK_RESERVATION_TTL_SECONDS:-600}
       EVENT_SERVICE_HOST: event-service
       EVENT_SERVICE_PORT: 3003
+      ADMIN_SERVICE_HOST: admin-service
+      ADMIN_SERVICE_PORT: 3009
     depends_on:
       postgres:
         condition: service_healthy
@@ -258,6 +270,8 @@ services:
       rabbitmq:
         condition: service_healthy
       event-service:
+        condition: service_started
+      admin-service:
         condition: service_started
     networks:
       - billetix-net
@@ -275,6 +289,8 @@ services:
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       QR_HMAC_SECRET: ${QR_HMAC_SECRET}
       OFFLINE_SYNC_MAX_HOURS: ${OFFLINE_SYNC_MAX_HOURS:-4}
+      ADMIN_SERVICE_HOST: admin-service
+      ADMIN_SERVICE_PORT: 3009
     depends_on:
       postgres:
         condition: service_healthy
@@ -282,6 +298,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      admin-service:
+        condition: service_started
     networks:
       - billetix-net
 
@@ -300,15 +318,19 @@ services:
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID}
       PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET}
       PAYPAL_MODE: ${PAYPAL_MODE:-sandbox}
-      COMMISSION_STANDARD_PERCENT: ${COMMISSION_STANDARD_PERCENT:-10}
-      COMMISSION_LARGE_PERCENT: ${COMMISSION_LARGE_PERCENT:-8}
-      COMMISSION_LARGE_THRESHOLD: ${COMMISSION_LARGE_THRESHOLD:-1000}
-      COMMISSION_FREE_TICKET_FEE: ${COMMISSION_FREE_TICKET_FEE:-0.50}
+      ADMIN_SERVICE_HOST: admin-service
+      ADMIN_SERVICE_PORT: 3009
+      USER_SERVICE_HOST: user-service
+      USER_SERVICE_PORT: 3002
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      admin-service:
+        condition: service_started
+      user-service:
+        condition: service_started
     networks:
       - billetix-net
 

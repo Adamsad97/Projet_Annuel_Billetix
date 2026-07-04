@@ -1,12 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
+import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
+import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { AdminActionDto } from './dto/admin-action.dto';
 import { CreateEventDto } from './dto/create-event.dto';
 import { Event, EventStatus } from './event.entity';
-
-const DEFAULT_COMMISSION = 5.00;
 
 @Injectable()
 export class EventService {
@@ -15,16 +15,46 @@ export class EventService {
     private readonly repo: Repository<Event>,
     @Inject('NOTIFICATION_SERVICE')
     private readonly notifClient: ClientProxy,
+    @Inject('AUTH_SERVICE')
+    private readonly authClient: ClientProxy,
+    private readonly platformConfig: PlatformConfigCache,
   ) {}
 
+  /** Résout email/prénom de l'organisateur — nécessaire au bon format attendu par notification-service. */
+  private async getOrganizerContact(organizerId: string): Promise<{ email: string | null; firstName: string | null }> {
+    try {
+      const organizer = await firstValueFrom(
+        this.authClient.send('auth.get_user', { id: organizerId }),
+      ) as { email: string; first_name: string } | null;
+      return { email: organizer?.email ?? null, firstName: organizer?.first_name ?? null };
+    } catch {
+      return { email: null, firstName: null };
+    }
+  }
+
   async create(organizerId: string, dto: CreateEventDto): Promise<Event> {
+    const commission_rate = await this.computeCommissionRate(dto.total_capacity, false);
+
     const event = this.repo.create({
       ...dto,
       organizer_id: organizerId,
-      commission_rate: DEFAULT_COMMISSION,
+      commission_rate,
       status: EventStatus.DRAFT,
     });
     return this.repo.save(event);
+  }
+
+  /**
+   * Taux standard/dégressif selon la jauge (config plateforme). L'exonération
+   * "à but non lucratif" du CDC ne s'applique qu'une fois le justificatif
+   * validé par l'admin (cf. validate()), pas dès la création du brouillon.
+   */
+  private async computeCommissionRate(totalCapacity: number, isNonProfitValidated: boolean): Promise<number> {
+    if (isNonProfitValidated) return 0;
+    const config = await this.platformConfig.get();
+    return totalCapacity > config.large_event_threshold
+      ? config.commission_large_event_percent
+      : config.commission_standard_percent;
   }
 
   async getById(id: string): Promise<Event> {
@@ -90,16 +120,20 @@ export class EventService {
     if (event.status !== EventStatus.PENDING_VALIDATION) {
       throw new RpcException({ statusCode: 400, message: 'L\'événement n\'est pas en attente de validation' });
     }
+    event.commission_rate = await this.computeCommissionRate(event.total_capacity, event.is_non_profit);
     event.status = EventStatus.PUBLISHED;
     event.validated_at = new Date();
     event.validated_by = adminId;
     await this.repo.save(event);
 
-    this.notifClient.emit('notification.event_published', {
-      organizer_id: event.organizer_id,
-      event_id: event.id,
-      event_name: event.title,
-    });
+    const { email, firstName } = await this.getOrganizerContact(event.organizer_id);
+    if (email) {
+      this.notifClient.emit('notification.event_published', {
+        email,
+        firstName,
+        event_name: event.title,
+      });
+    }
 
     return event;
   }
@@ -115,12 +149,15 @@ export class EventService {
     event.rejection_reason = dto.reason ?? null;
     await this.repo.save(event);
 
-    this.notifClient.emit('notification.event_rejected', {
-      organizer_id: event.organizer_id,
-      event_id: event.id,
-      event_name: event.title,
-      reason: dto.reason,
-    });
+    const { email, firstName } = await this.getOrganizerContact(event.organizer_id);
+    if (email) {
+      this.notifClient.emit('notification.event_rejected', {
+        email,
+        firstName,
+        event_name: event.title,
+        reason: dto.reason,
+      });
+    }
 
     return event;
   }
@@ -133,19 +170,22 @@ export class EventService {
     event.suspension_reason = dto.reason ?? null;
     await this.repo.save(event);
 
-    this.notifClient.emit('notification.event_suspended', {
-      organizer_id: event.organizer_id,
-      event_id: event.id,
-      event_name: event.title,
-      reason: dto.reason,
-    });
+    const { email, firstName } = await this.getOrganizerContact(event.organizer_id);
+    if (email) {
+      this.notifClient.emit('notification.event_suspended', {
+        email,
+        firstName,
+        event_name: event.title,
+        reason: dto.reason,
+      });
+    }
 
     return event;
   }
 
-  async cancel(id: string, actorId: string, dto: AdminActionDto): Promise<Event> {
+  async cancel(id: string, actorId: string, dto: AdminActionDto, isAdmin: boolean): Promise<Event> {
     const event = await this.getById(id);
-    if (event.organizer_id !== actorId && !dto.reason) {
+    if (!isAdmin && event.organizer_id !== actorId) {
       throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
     }
     event.status = EventStatus.CANCELLED;
@@ -154,14 +194,8 @@ export class EventService {
     event.cancellation_reason = dto.reason ?? null;
     await this.repo.save(event);
 
-    this.notifClient.emit('notification.event_canceled', {
-      organizer_id: event.organizer_id,
-      event_id: event.id,
-      event_name: event.title,
-      reason: dto.reason,
-      cancellation_date: new Date().toISOString(),
-    });
-
+    // Note : la notification d'annulation aux acheteurs (avec remboursement) est
+    // gérée par l'API Gateway (cascade par commande, cf. refundAllOrdersForEvent).
     return event;
   }
 }
