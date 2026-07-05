@@ -9,6 +9,7 @@ import { Order } from './order/order.entity';
 import { OrderModule } from './order/order.module';
 import { ReminderModule } from './scheduler/reminder.module';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { PlatformConfigModule } from './platform-config/platform-config.module';
     PlatformConfigModule,
     OrderModule,
     ReminderModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

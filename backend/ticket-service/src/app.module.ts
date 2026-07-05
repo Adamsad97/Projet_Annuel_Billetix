@@ -13,6 +13,7 @@ import { ScanModule } from './scan/scan.module';
 import { Ticket } from './ticket/ticket.entity';
 import { TicketModule } from './ticket/ticket.module';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { PlatformConfigModule } from './platform-config/platform-config.module';
     ScanModule,
     OfflineSyncModule,
     ControlAgentModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

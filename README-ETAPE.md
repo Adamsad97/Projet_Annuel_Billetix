@@ -176,10 +176,10 @@ C'est la partie la plus importante à combler avant une mise en production réel
 | ----------------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Migrations de base de données**         | ✅ **Corrigé 2026-07-04** | Migration `InitSchema` générée pour les 7 services (DDL réel extrait via `pg_dump` du schéma dev, validé par exécution complète sur une base de test via le vrai CLI TypeORM). `migrationsRun: true` activé en production dans chaque `app.module.ts` (les migrations s'exécutent automatiquement au démarrage), `synchronize` reste réservé au dev. Scripts `migration:generate/run/revert` ajoutés à chaque `package.json` pour les évolutions futures. |
 | **Tests automatisés**                     | ✅ **Corrigé 2026-07-04** | Jest n'était en réalité pas fonctionnel (package `jest` jamais installé, aucune config) — corrigé sur les 10 services. **54 tests unitaires** écrits et passants, au moins une suite par service, couvrant les points les plus sensibles : `AuthService.login` (2FA), `StockReservationService` (anti-survente + rollback), `PayoutService`/`PayoutSchedulerService` (reversements, KYC), `ScanService` (scan QR), `EventService` (commissions dynamiques), `OrganizerService` (IBAN + 2FA), `PlatformConfigService` (config dynamique), `MailService` (retry), `TicketPdfService` (échappement HTML/XSS), `RolesGuard` (contrôle d'accès). Reste à faire : tests e2e (bout-en-bout avec base de test réelle) et davantage de couverture par service. |
-| **CI/CD**                                 | ✅ **Corrigé 2026-07-04** | `.github/workflows/backend-ci.yml` : matrice sur les 10 microservices, à chaque push/PR sur `main`/`develop` touchant `backend/**` — `npm ci --legacy-peer-deps`, lint (`--if-present`), `npm run build`, `npm test`. Le job lint échouait réellement en CI sur `auth-service`/`api-gateway` (`eslint` jamais installé, aucune config malgré le script déclaré) — corrigé avec ESLint 9 (flat config) + dépendances, validé en local (exit 0 sur les deux, build/tests toujours au vert). |
-| **Health checks Docker**                  | ❌              | Seuls postgres/redis/rabbitmq/minio ont un `healthcheck` dans `docker-compose.yml`. Les 10 microservices + gateway démarrent sans vérification de disponibilité réelle ; `depends_on: condition: service_started` garantit seulement que le conteneur a démarré, pas que l'application NestJS écoute. |
-| **Arrêt propre (graceful shutdown)**      | ❌              | Aucun service n'appelle `enableShutdownHooks()` ni ne gère `SIGTERM` — un redéploiement peut couper des requêtes/transactions en cours.                                                                                                                                                               |
-| **Observabilité**                         | ❌              | Logger par défaut de NestJS uniquement, pas de logs structurés/corrélés entre microservices, pas de métriques (Prometheus/Grafana), pas d'endpoint `/health`.                                                                                                                                         |
+| **CI/CD**                                 | ✅ **Corrigé 2026-07-04** | `.github/workflows/ci.yml` : job `build-and-test` (matrice sur les 10 microservices — install, lint, build, test) + job `publish` (build et push des images Docker vers GHCR à chaque push sur `main`/`develop`, une fois les tests au vert). Le CD s'est immédiatement révélé utile : il a détecté que **le stage `production` de tous les Dockerfiles était cassé** (`npm install --omit=dev` sans `--legacy-peer-deps` → conflit de peer dependencies jamais vu car le dev local n'utilise que le stage `development`). Corrigé et validé par un vrai build `--target production` des 10 services en local. |
+| **Health checks Docker**                  | ✅ **Corrigé 2026-07-05** | Les 10 microservices + la gateway sont passés en mode **hybride** (HTTP + TCP/RMQ) via `@nestjs/terminus` : chacun expose un vrai `/health` (ping DB réelle pour les 7 services avec base, heap mémoire pour les 3 sans base). `docker-compose.yml` a un `healthcheck` Node.js (portable alpine/slim) sur les 10 services, et les `depends_on` en aval sont passés de `service_started` à `service_healthy`. Validé par un cycle complet `down` + `up --build -V` : les 15 conteneurs démarrent en cascade selon leurs dépendances réelles et finissent tous `healthy`. |
+| **Arrêt propre (graceful shutdown)**      | ✅ **Corrigé 2026-07-05** | `app.enableShutdownHooks()` ajouté aux 10 microservices + la gateway. Validé par un `docker stop` réel sur `order-service` : arrêt avec `ExitCode 0` (signal géré proprement), pas de kill forcé après le délai de grâce. |
+| **Observabilité**                         | ⚠️ **Partiellement corrigé 2026-07-05** | Endpoint `/health` désormais disponible partout (voir ligne health checks) — c'est la brique de base de l'observabilité (liveness/readiness). Reste à faire : logs structurés JSON (ex. `nestjs-pino`), corrélation de requêtes entre microservices, métriques (Prometheus/Grafana). |
 | **Documentation API**                     | ✅              | Swagger complet sur l'API Gateway (point d'entrée public) — cohérent, les microservices internes n'ont pas besoin de leur propre doc.                                                                                                                                                                 |
 | **Gestion des secrets**                   | ✅              | Toutes les valeurs sensibles passent par des variables d'environnement (`${VAR}`), rien en dur dans `docker-compose.yml`.                                                                                                                                                                             |
 | **Validation des entrées (services TCP)** | ✅              | `ValidationPipe` global (`whitelist`, `transform`) sur les 8 microservices TCP + la gateway.                                                                                                                                                                                                          |
@@ -187,17 +187,24 @@ C'est la partie la plus importante à combler avant une mise en production réel
 
 ---
 
-## Hors périmètre de cet audit (sur demande)
+## Sécurité du dépôt git
 
-- **Frontend web** (`frontend/`) : squelette `create-next-app` par défaut, aucune page métier — non détaillé ici.
-- **Application mobile de contrôle d'accès** (React Native) : n'existe pas — non détaillée ici.
+**Incident résolu le 2026-07-04** : `.gitignore` contenait `**/env` au lieu de `.env` — ce motif ne matchait jamais le fichier réel, qui restait donc suivi par git avec de vrais secrets dedans (dont un Client ID/Secret Google OAuth). GitHub a bloqué le push (protection contre les secrets) avant toute exposition publique — confirmé qu'aucun des commits concernés n'avait jamais atteint le remote. `.gitignore` corrigé, `.env` définitivement retiré du suivi, historique local réécrit par rebase (sans risque : les commits concernés n'étaient encore jamais partagés), objets orphelins purgés (`git gc --prune=now`). Recommandation : régénérer le secret Google OAuth par précaution.
+
+## Frontend web et application mobile
+
+- **Frontend web** (`frontend/`) : ❌ squelette `create-next-app` par défaut, aucune page métier, aucune dépendance métier (pas d'axios/stripe-js/socket.io-client). Tout reste à construire : inscription/connexion, catalogue, tunnel d'achat, mes billets, profil, dashboard organisateur, back-office admin, bandeau cookies RGPD.
+- **Application mobile de contrôle d'accès** (React Native) : ❌ n'existe pas du tout. Le back-end support (agents, scan, sync offline) est prêt et fonctionnel, mais rien ne le consomme.
 
 ## Priorités suggérées pour la suite
 
-1. **Écrire les migrations TypeORM** (ou au minimum un script d'init SQL versionné) — sans ça, aucune mise en production n'est possible.
-2. **Ajouter des tests** au moins sur les flux critiques (paiement, génération/scan de billets, réservation de stock, auth).
-3. **Mettre en place un pipeline CI** (lint + build + tests) même minimal.
-4. Ajouter des `healthcheck` Docker sur les microservices applicatifs et un `enableShutdownHooks()` global.
-5. Combler les moyens de paiement alternatifs si le CDC les exige pour le MVP (PayPal en priorité, plus simple que le mobile money).
-6. Dashboard KPIs admin + exports comptables (valeur business élevée pour la soutenance/démo).
-7. Volet RGPD (droit à l'effacement, politique de confidentialité) — nécessaire même en version académique si des données réelles sont utilisées.
+1. ~~Migrations TypeORM~~ ✅ fait
+2. ~~Tests sur les flux critiques~~ ✅ fait
+3. ~~Pipeline CI~~ ✅ fait
+4. ~~CD (publication Docker)~~ ✅ fait
+5. Ajouter des `healthcheck` Docker sur les microservices applicatifs et un `enableShutdownHooks()` global.
+6. Démarrer le frontend — c'est aujourd'hui le plus gros écart avec le CDC (0% fait).
+7. Combler les moyens de paiement alternatifs si le CDC les exige pour le MVP (PayPal en priorité, plus simple que le mobile money).
+8. Dashboard KPIs admin + exports comptables (valeur business élevée pour la soutenance/démo).
+9. Volet RGPD (droit à l'effacement, politique de confidentialité) — nécessaire même en version académique si des données réelles sont utilisées.
+10. Décider du sort de l'application mobile de contrôle (hors périmètre MVP ou à démarrer).

@@ -1,23 +1,26 @@
-import { NestFactory } from '@nestjs/core';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { ValidationPipe } from '@nestjs/common';
-import { AppModule } from './app.module';
+import { NestFactory } from "@nestjs/core";
+import { MicroserviceOptions, Transport } from "@nestjs/microservices";
+import { ValidationPipe } from "@nestjs/common";
+import { AppModule } from "./app.module";
 
 async function bootstrap() {
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(
-    AppModule,
-    {
-      transport: Transport.TCP,
-      options: {
-        host: '0.0.0.0',
-        port: parseInt(process.env.PORT ?? '3001'),
-      },
-    },
-  );
+  const app = await NestFactory.create(AppModule);
 
+  app.enableShutdownHooks();
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  await app.listen();
-  console.log(`[Auth Service] En écoute sur le port ${process.env.PORT ?? 3001}`);
+  const port = parseInt(process.env.PORT ?? "3001");
+  const healthPort = parseInt(process.env.HEALTH_PORT ?? `${port + 6000}`);
+
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.TCP,
+    options: { host: "0.0.0.0", port },
+  });
+
+  await app.startAllMicroservices();
+  await app.listen(healthPort);
+
+  console.log(`[Auth Service] En écoute sur le port ${port}`);
+  console.log(`[Auth Service] Health check sur le port ${healthPort}`);
 }
 bootstrap();

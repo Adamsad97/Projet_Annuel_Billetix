@@ -11,6 +11,7 @@ import { PayoutModule } from './payout/payout.module';
 import { DisputeModule } from './dispute/dispute.module';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
 import { PayoutSchedulerModule } from './scheduler/payout-scheduler.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { PayoutSchedulerModule } from './scheduler/payout-scheduler.module';
     PayoutModule,
     DisputeModule,
     PayoutSchedulerModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

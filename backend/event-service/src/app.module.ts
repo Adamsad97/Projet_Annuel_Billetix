@@ -12,6 +12,7 @@ import { TicketCategoryModule } from './ticket-category/ticket-category.module';
 import { ValidationRequest } from './validation-request/validation-request.entity';
 import { ValidationRequestModule } from './validation-request/validation-request.module';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { PlatformConfigModule } from './platform-config/platform-config.module';
     TicketCategoryModule,
     PromoCodeModule,
     ValidationRequestModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

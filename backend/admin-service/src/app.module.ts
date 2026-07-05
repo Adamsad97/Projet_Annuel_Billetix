@@ -6,6 +6,7 @@ import { AuditLog } from './audit-log/audit-log.entity';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { PlatformSetting } from './platform-config/platform-config.entity';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { PlatformConfigModule } from './platform-config/platform-config.module';
 
     AuditLogModule,
     PlatformConfigModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

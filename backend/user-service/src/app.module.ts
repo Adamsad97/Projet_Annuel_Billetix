@@ -6,6 +6,7 @@ import { BuyerProfile } from './buyer/buyer-profile.entity';
 import { BuyerModule } from './buyer/buyer.module';
 import { OrganizerProfile } from './organizer/organizer-profile.entity';
 import { OrganizerModule } from './organizer/organizer.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { OrganizerModule } from './organizer/organizer.module';
 
     BuyerModule,
     OrganizerModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
