@@ -1,23 +1,23 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
-import { ClientProxy, RpcException } from '@nestjs/microservices';
-import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
-import { randomUUID } from 'crypto';
-import { Redis } from 'ioredis';
-import { Repository } from 'typeorm';
-import { REDIS_CLIENT } from '../redis/redis.module';
-import { OAuthProvider, User, UserRole } from '../user/user.entity';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { RegisterDto } from './dto/register.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { TwoFactorService } from './two-factor.service';
+import { Inject, Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { JwtService } from "@nestjs/jwt";
+import { ClientProxy, RpcException } from "@nestjs/microservices";
+import { InjectRepository } from "@nestjs/typeorm";
+import * as bcrypt from "bcrypt";
+import { randomUUID } from "crypto";
+import { Redis } from "ioredis";
+import { Repository } from "typeorm";
+import { REDIS_CLIENT } from "../redis/redis.module";
+import { OAuthProvider, User, UserRole } from "../user/user.entity";
+import { ForgotPasswordDto } from "./dto/forgot-password.dto";
+import { LoginDto } from "./dto/login.dto";
+import { RefreshTokenDto } from "./dto/refresh-token.dto";
+import { RegisterDto } from "./dto/register.dto";
+import { ResetPasswordDto } from "./dto/reset-password.dto";
+import { TwoFactorService } from "./two-factor.service";
 
 const BCRYPT_ROUNDS = 12;
-const RESET_TOKEN_TTL = 60 * 60;       // 1 heure
+const RESET_TOKEN_TTL = 60 * 60; // 1 heure
 const EMAIL_VERIFY_TTL = 24 * 60 * 60; // 24 heures
 
 @Injectable()
@@ -27,14 +27,19 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
-    @Inject('NOTIFICATION_SERVICE') private readonly notifClient: ClientProxy,
+    @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     private readonly twoFactorService: TwoFactorService,
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.userRepo.findOne({ where: { email: dto.email } });
+    const existing = await this.userRepo.findOne({
+      where: { email: dto.email },
+    });
     if (existing) {
-      throw new RpcException({ statusCode: 409, message: 'Email déjà utilisé' });
+      throw new RpcException({
+        statusCode: 409,
+        message: "Email déjà utilisé",
+      });
     }
 
     const password_hash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
@@ -50,14 +55,19 @@ export class AuthService {
     await this.userRepo.save(user);
 
     const verifyToken = randomUUID();
-    await this.redis.set(`email_verify:${verifyToken}`, user.id, 'EX', EMAIL_VERIFY_TTL);
+    await this.redis.set(
+      `email_verify:${verifyToken}`,
+      user.id,
+      "EX",
+      EMAIL_VERIFY_TTL,
+    );
 
-    this.notifClient.emit('notification.welcome', {
+    this.notifClient.emit("notification.welcome", {
       email: user.email,
       firstName: user.first_name,
     });
 
-    this.notifClient.emit('notification.email_verification', {
+    this.notifClient.emit("notification.email_verification", {
       email: user.email,
       firstName: user.first_name,
       token: verifyToken,
@@ -71,36 +81,51 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.userRepo
-      .createQueryBuilder('u')
-      .addSelect('u.password_hash')
-      .where('u.email = :email', { email: dto.email })
+      .createQueryBuilder("u")
+      .addSelect("u.password_hash")
+      .where("u.email = :email", { email: dto.email })
       .getOne();
 
     if (!user) {
-      throw new RpcException({ statusCode: 401, message: 'Identifiants invalides' });
+      throw new RpcException({
+        statusCode: 401,
+        message: "Identifiants invalides",
+      });
     }
     if (!user.is_active) {
-      throw new RpcException({ statusCode: 403, message: 'Compte désactivé' });
+      throw new RpcException({ statusCode: 403, message: "Compte désactivé" });
     }
     if (user.is_suspended) {
-      throw new RpcException({ statusCode: 403, message: 'Compte suspendu' });
+      throw new RpcException({ statusCode: 403, message: "Compte suspendu" });
     }
     if (!user.password_hash) {
-      throw new RpcException({ statusCode: 401, message: 'Connexion via OAuth requise' });
+      throw new RpcException({
+        statusCode: 401,
+        message: "Connexion via OAuth requise",
+      });
     }
 
     const valid = await bcrypt.compare(dto.password, user.password_hash);
     if (!valid) {
-      throw new RpcException({ statusCode: 401, message: 'Identifiants invalides' });
+      throw new RpcException({
+        statusCode: 401,
+        message: "Identifiants invalides",
+      });
     }
 
     if (user.two_factor_enabled) {
       if (!dto.totp_code) {
         return { requires_2fa: true };
       }
-      const validCode = await this.twoFactorService.verifyTotp(user.id, dto.totp_code);
+      const validCode = await this.twoFactorService.verifyTotp(
+        user.id,
+        dto.totp_code,
+      );
       if (!validCode) {
-        throw new RpcException({ statusCode: 401, message: 'Code 2FA invalide' });
+        throw new RpcException({
+          statusCode: 401,
+          message: "Code 2FA invalide",
+        });
       }
     }
 
@@ -111,20 +136,29 @@ export class AuthService {
     let payload: { sub: string; jti: string; exp: number };
     try {
       payload = this.jwtService.verify(dto.refresh_token, {
-        secret: this.config.get<string>('JWT_REFRESH_SECRET'),
+        secret: this.config.get<string>("JWT_REFRESH_SECRET"),
       });
     } catch {
-      throw new RpcException({ statusCode: 401, message: 'Refresh token invalide ou expiré' });
+      throw new RpcException({
+        statusCode: 401,
+        message: "Refresh token invalide ou expiré",
+      });
     }
 
     const blacklisted = await this.redis.get(`blacklist:${payload.jti}`);
     if (blacklisted) {
-      throw new RpcException({ statusCode: 401, message: 'Refresh token révoqué' });
+      throw new RpcException({
+        statusCode: 401,
+        message: "Refresh token révoqué",
+      });
     }
 
     const user = await this.userRepo.findOne({ where: { id: payload.sub } });
     if (!user || !user.is_active || user.is_suspended) {
-      throw new RpcException({ statusCode: 401, message: 'Utilisateur introuvable ou suspendu' });
+      throw new RpcException({
+        statusCode: 401,
+        message: "Utilisateur introuvable ou suspendu",
+      });
     }
 
     const access_token = this.signAccess(user);
@@ -133,11 +167,14 @@ export class AuthService {
 
   async logout(dto: RefreshTokenDto) {
     try {
-      const payload = this.jwtService.decode(dto.refresh_token) as { jti?: string; exp?: number };
+      const payload = this.jwtService.decode(dto.refresh_token) as {
+        jti?: string;
+        exp?: number;
+      };
       if (payload?.jti && payload?.exp) {
         const ttl = payload.exp - Math.floor(Date.now() / 1000);
         if (ttl > 0) {
-          await this.redis.set(`blacklist:${payload.jti}`, '1', 'EX', ttl);
+          await this.redis.set(`blacklist:${payload.jti}`, "1", "EX", ttl);
         }
       }
     } catch {
@@ -180,7 +217,10 @@ export class AuthService {
     }
 
     if (!user.is_active || user.is_suspended) {
-      throw new RpcException({ statusCode: 403, message: 'Compte suspendu ou désactivé' });
+      throw new RpcException({
+        statusCode: 403,
+        message: "Compte suspendu ou désactivé",
+      });
     }
 
     return { ...this.generateTokens(user), user: this.sanitize(user) };
@@ -188,13 +228,17 @@ export class AuthService {
 
   async validateToken(token: string) {
     try {
-      const payload = this.jwtService.verify<{ sub: string; email: string; role: UserRole }>(
-        token,
-        { secret: this.config.get<string>('JWT_ACCESS_SECRET') },
-      );
+      const payload = this.jwtService.verify<{
+        sub: string;
+        email: string;
+        role: UserRole;
+      }>(token, { secret: this.config.get<string>("JWT_ACCESS_SECRET") });
       return { sub: payload.sub, email: payload.email, role: payload.role };
     } catch {
-      throw new RpcException({ statusCode: 401, message: 'Token invalide ou expiré' });
+      throw new RpcException({
+        statusCode: 401,
+        message: "Token invalide ou expiré",
+      });
     }
   }
 
@@ -204,9 +248,14 @@ export class AuthService {
     if (!user) return { success: true };
 
     const token = randomUUID();
-    await this.redis.set(`reset_password:${token}`, user.id, 'EX', RESET_TOKEN_TTL);
+    await this.redis.set(
+      `reset_password:${token}`,
+      user.id,
+      "EX",
+      RESET_TOKEN_TTL,
+    );
 
-    this.notifClient.emit('notification.password_reset', {
+    this.notifClient.emit("notification.password_reset", {
       email: user.email,
       firstName: user.first_name,
       token,
@@ -218,12 +267,18 @@ export class AuthService {
   async resetPassword(dto: ResetPasswordDto) {
     const userId = await this.redis.get(`reset_password:${dto.token}`);
     if (!userId) {
-      throw new RpcException({ statusCode: 400, message: 'Token invalide ou expiré' });
+      throw new RpcException({
+        statusCode: 400,
+        message: "Token invalide ou expiré",
+      });
     }
 
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
-      throw new RpcException({ statusCode: 404, message: 'Utilisateur introuvable' });
+      throw new RpcException({
+        statusCode: 404,
+        message: "Utilisateur introuvable",
+      });
     }
 
     user.password_hash = await bcrypt.hash(dto.new_password, BCRYPT_ROUNDS);
@@ -235,14 +290,21 @@ export class AuthService {
 
   async getUserById(id: string) {
     const user = await this.userRepo.findOne({ where: { id } });
-    if (!user) throw new RpcException({ statusCode: 404, message: 'Utilisateur introuvable' });
+    if (!user)
+      throw new RpcException({
+        statusCode: 404,
+        message: "Utilisateur introuvable",
+      });
     return this.sanitize(user);
   }
 
   async verifyEmail(token: string) {
     const userId = await this.redis.get(`email_verify:${token}`);
     if (!userId) {
-      throw new RpcException({ statusCode: 400, message: 'Token de vérification invalide ou expiré' });
+      throw new RpcException({
+        statusCode: 400,
+        message: "Token de vérification invalide ou expiré",
+      });
     }
 
     await this.userRepo.update(userId, { is_email_verified: true });
@@ -253,7 +315,11 @@ export class AuthService {
 
   async suspendUser(id: string, adminId: string, reason: string) {
     const user = await this.userRepo.findOne({ where: { id } });
-    if (!user) throw new RpcException({ statusCode: 404, message: 'Utilisateur introuvable' });
+    if (!user)
+      throw new RpcException({
+        statusCode: 404,
+        message: "Utilisateur introuvable",
+      });
 
     user.is_suspended = true;
     user.suspension_reason = reason;
@@ -266,7 +332,11 @@ export class AuthService {
 
   async unsuspendUser(id: string) {
     const user = await this.userRepo.findOne({ where: { id } });
-    if (!user) throw new RpcException({ statusCode: 404, message: 'Utilisateur introuvable' });
+    if (!user)
+      throw new RpcException({
+        statusCode: 404,
+        message: "Utilisateur introuvable",
+      });
 
     user.is_suspended = false;
     user.suspension_reason = null;
@@ -279,11 +349,15 @@ export class AuthService {
 
   async changeRole(id: string, role: UserRole) {
     if (!Object.values(UserRole).includes(role)) {
-      throw new RpcException({ statusCode: 400, message: 'Rôle invalide' });
+      throw new RpcException({ statusCode: 400, message: "Rôle invalide" });
     }
 
     const user = await this.userRepo.findOne({ where: { id } });
-    if (!user) throw new RpcException({ statusCode: 404, message: 'Utilisateur introuvable' });
+    if (!user)
+      throw new RpcException({
+        statusCode: 404,
+        message: "Utilisateur introuvable",
+      });
 
     user.role = role;
     await this.userRepo.save(user);
@@ -293,7 +367,10 @@ export class AuthService {
 
   // --- Helpers ---
 
-  private generateTokens(user: User): { access_token: string; refresh_token: string } {
+  private generateTokens(user: User): {
+    access_token: string;
+    refresh_token: string;
+  } {
     const jti = randomUUID();
 
     const access_token = this.signAccess(user);
@@ -301,8 +378,8 @@ export class AuthService {
     const refresh_token = this.jwtService.sign(
       { sub: user.id, jti },
       {
-        secret: this.config.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '30d',
+        secret: this.config.get<string>("JWT_REFRESH_SECRET"),
+        expiresIn: this.config.get<string>("JWT_REFRESH_EXPIRES_IN") ?? "30d",
       },
     );
 
@@ -313,14 +390,16 @@ export class AuthService {
     return this.jwtService.sign(
       { sub: user.id, email: user.email, role: user.role },
       {
-        secret: this.config.get<string>('JWT_ACCESS_SECRET'),
-        expiresIn: this.config.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '15m',
+        secret: this.config.get<string>("JWT_ACCESS_SECRET"),
+        expiresIn: this.config.get<string>("JWT_ACCESS_EXPIRES_IN") ?? "15m",
       },
     );
   }
 
   private sanitize(user: User) {
-    const { password_hash, ...safe } = user as User & { password_hash?: string };
+    const { password_hash, ...safe } = user as User & {
+      password_hash?: string;
+    };
     return safe;
   }
 }

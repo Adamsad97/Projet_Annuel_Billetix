@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { authenticator } from 'otplib';
-import * as QRCode from 'qrcode';
-import { TwoFactorMethod, User } from '../user/user.entity';
+import { Injectable } from "@nestjs/common";
+import { RpcException } from "@nestjs/microservices";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { authenticator } from "otplib";
+import * as QRCode from "qrcode";
+import { TwoFactorMethod, User } from "../user/user.entity";
 
 @Injectable()
 export class TwoFactorService {
@@ -12,14 +12,16 @@ export class TwoFactorService {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {}
 
-  async setupTotp(userId: string): Promise<{ secret: string; otpauthUrl: string; qrCodeDataUrl: string }> {
+  async setupTotp(
+    userId: string,
+  ): Promise<{ secret: string; otpauthUrl: string; qrCodeDataUrl: string }> {
     const user = await this.getUser(userId);
     if (user.two_factor_enabled) {
-      throw new RpcException({ statusCode: 409, message: '2FA déjà activée' });
+      throw new RpcException({ statusCode: 409, message: "2FA déjà activée" });
     }
 
     const secret = authenticator.generateSecret();
-    const appName = 'BilletiX';
+    const appName = "BilletiX";
     const otpauthUrl = authenticator.keyuri(user.email, appName, secret);
     const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
 
@@ -28,26 +30,38 @@ export class TwoFactorService {
       .createQueryBuilder()
       .update(User)
       .set({ two_factor_secret: secret })
-      .where('id = :id', { id: userId })
+      .where("id = :id", { id: userId })
       .execute();
 
     return { secret, otpauthUrl, qrCodeDataUrl };
   }
 
-  async confirmTotp(userId: string, code: string): Promise<{ success: boolean; backup_codes: string[] }> {
+  async confirmTotp(
+    userId: string,
+    code: string,
+  ): Promise<{ success: boolean; backup_codes: string[] }> {
     const user = await this.userRepo
-      .createQueryBuilder('u')
-      .addSelect('u.two_factor_secret')
-      .where('u.id = :id', { id: userId })
+      .createQueryBuilder("u")
+      .addSelect("u.two_factor_secret")
+      .where("u.id = :id", { id: userId })
       .getOne();
 
     if (!user?.two_factor_secret) {
-      throw new RpcException({ statusCode: 400, message: 'Aucune configuration 2FA en attente' });
+      throw new RpcException({
+        statusCode: 400,
+        message: "Aucune configuration 2FA en attente",
+      });
     }
 
-    const valid = authenticator.verify({ token: code, secret: user.two_factor_secret });
+    const valid = authenticator.verify({
+      token: code,
+      secret: user.two_factor_secret,
+    });
     if (!valid) {
-      throw new RpcException({ statusCode: 400, message: 'Code TOTP invalide' });
+      throw new RpcException({
+        statusCode: 400,
+        message: "Code TOTP invalide",
+      });
     }
 
     await this.userRepo.update(userId, {
@@ -65,29 +79,39 @@ export class TwoFactorService {
 
   async verifyTotp(userId: string, code: string): Promise<boolean> {
     const user = await this.userRepo
-      .createQueryBuilder('u')
-      .addSelect('u.two_factor_secret')
-      .where('u.id = :id', { id: userId })
+      .createQueryBuilder("u")
+      .addSelect("u.two_factor_secret")
+      .where("u.id = :id", { id: userId })
       .getOne();
 
     if (!user?.two_factor_enabled || !user.two_factor_secret) {
-      throw new RpcException({ statusCode: 400, message: '2FA non activée' });
+      throw new RpcException({ statusCode: 400, message: "2FA non activée" });
     }
 
-    return authenticator.verify({ token: code, secret: user.two_factor_secret });
+    return authenticator.verify({
+      token: code,
+      secret: user.two_factor_secret,
+    });
   }
 
   async disable(userId: string, code: string): Promise<{ success: boolean }> {
     const valid = await this.verifyTotp(userId, code);
     if (!valid) {
-      throw new RpcException({ statusCode: 400, message: 'Code TOTP invalide' });
+      throw new RpcException({
+        statusCode: 400,
+        message: "Code TOTP invalide",
+      });
     }
 
     await this.userRepo
       .createQueryBuilder()
       .update(User)
-      .set({ two_factor_enabled: false, two_factor_method: null, two_factor_secret: null })
-      .where('id = :id', { id: userId })
+      .set({
+        two_factor_enabled: false,
+        two_factor_method: null,
+        two_factor_secret: null,
+      })
+      .where("id = :id", { id: userId })
       .execute();
 
     return { success: true };
@@ -100,7 +124,11 @@ export class TwoFactorService {
 
   private async getUser(userId: string): Promise<User> {
     const user = await this.userRepo.findOne({ where: { id: userId } });
-    if (!user) throw new RpcException({ statusCode: 404, message: 'Utilisateur introuvable' });
+    if (!user)
+      throw new RpcException({
+        statusCode: 404,
+        message: "Utilisateur introuvable",
+      });
     return user;
   }
 }

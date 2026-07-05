@@ -1,5 +1,12 @@
-import { IsEmail, IsEnum, IsOptional, IsPhoneNumber, IsString, MinLength } from 'class-validator';
-import { UserRole } from '../../user/user.entity';
+import {
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsPhoneNumber,
+  IsString,
+  MinLength,
+} from "class-validator";
+import { UserRole } from "../../user/user.entity";
 
 // Seuls BUYER et ORGANIZER sont autorisés à l'inscription publique.
 // AGENT est créé par un organisateur, ADMIN uniquement en back-office.

@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class InitSchema1720051200000 implements MigrationInterface {
-  name = 'InitSchema1720051200000';
+  name = "InitSchema1720051200000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`CREATE TYPE auth.users_oauth_provider_enum AS ENUM (
@@ -50,8 +50,12 @@ export class InitSchema1720051200000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE IF EXISTS auth.users CASCADE`);
-    await queryRunner.query(`DROP TYPE IF EXISTS auth.users_two_factor_method_enum`);
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS auth.users_two_factor_method_enum`,
+    );
     await queryRunner.query(`DROP TYPE IF EXISTS auth.users_role_enum`);
-    await queryRunner.query(`DROP TYPE IF EXISTS auth.users_oauth_provider_enum`);
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS auth.users_oauth_provider_enum`,
+    );
   }
 }

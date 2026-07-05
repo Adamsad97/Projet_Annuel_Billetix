@@ -5,28 +5,28 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-} from 'typeorm';
+} from "typeorm";
 
 export enum UserRole {
-  BUYER = 'BUYER',
-  ORGANIZER = 'ORGANIZER',
-  AGENT = 'AGENT',
-  ADMIN = 'ADMIN',
+  BUYER = "BUYER",
+  ORGANIZER = "ORGANIZER",
+  AGENT = "AGENT",
+  ADMIN = "ADMIN",
 }
 
 export enum OAuthProvider {
-  GOOGLE = 'GOOGLE',
-  FACEBOOK = 'FACEBOOK',
+  GOOGLE = "GOOGLE",
+  FACEBOOK = "FACEBOOK",
 }
 
 export enum TwoFactorMethod {
-  SMS = 'SMS',
-  TOTP = 'TOTP',
+  SMS = "SMS",
+  TOTP = "TOTP",
 }
 
-@Entity({ name: 'users', schema: 'auth' })
+@Entity({ name: "users", schema: "auth" })
 export class User {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
   @Column({ unique: true })
@@ -44,11 +44,11 @@ export class User {
   @Column({ nullable: true })
   phone: string | null;
 
-  @Column({ type: 'enum', enum: UserRole, default: UserRole.BUYER })
+  @Column({ type: "enum", enum: UserRole, default: UserRole.BUYER })
   role: UserRole;
 
   // OAuth
-  @Column({ type: 'enum', enum: OAuthProvider, nullable: true })
+  @Column({ type: "enum", enum: OAuthProvider, nullable: true })
   oauth_provider: OAuthProvider | null;
 
   @Column({ nullable: true })
@@ -65,7 +65,7 @@ export class User {
   @Column({ default: false })
   two_factor_enabled: boolean;
 
-  @Column({ type: 'enum', enum: TwoFactorMethod, nullable: true })
+  @Column({ type: "enum", enum: TwoFactorMethod, nullable: true })
   two_factor_method: TwoFactorMethod | null;
 
   @Column({ nullable: true, select: false })
@@ -78,7 +78,7 @@ export class User {
   @Column({ default: false })
   is_suspended: boolean;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   suspension_reason: string | null;
 
   @Column({ nullable: true })
