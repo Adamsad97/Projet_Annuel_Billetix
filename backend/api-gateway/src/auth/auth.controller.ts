@@ -11,117 +11,127 @@ import {
   Req,
   Res,
   UseGuards,
-} from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { ClientProxy } from '@nestjs/microservices';
+} from "@nestjs/common";
+import { AuthGuard } from "@nestjs/passport";
+import { ClientProxy } from "@nestjs/microservices";
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiQuery,
   ApiResponse,
   ApiTags,
-} from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
-import { Request, Response } from 'express';
-import { firstValueFrom } from 'rxjs';
-import { ConfigService } from '@nestjs/config';
-import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
-import { Public } from '../common/decorators/public.decorator';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { LoginDto } from './dto/login.dto';
-import { OAuthLoginDto } from './dto/oauth-login.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { RegisterDto } from './dto/register.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
+} from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
+import { Request, Response } from "express";
+import { firstValueFrom } from "rxjs";
+import { ConfigService } from "@nestjs/config";
+import {
+  CurrentUser,
+  JwtPayload,
+} from "../common/decorators/current-user.decorator";
+import { Public } from "../common/decorators/public.decorator";
+import { ForgotPasswordDto } from "./dto/forgot-password.dto";
+import { LoginDto } from "./dto/login.dto";
+import { OAuthLoginDto } from "./dto/oauth-login.dto";
+import { RefreshTokenDto } from "./dto/refresh-token.dto";
+import { RegisterDto } from "./dto/register.dto";
+import { ResetPasswordDto } from "./dto/reset-password.dto";
 
-@ApiTags('auth')
-@Controller('auth')
+@ApiTags("auth")
+@Controller("auth")
 export class AuthController {
   private readonly frontendUrl: string;
 
   constructor(
-    @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
+    @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     private readonly config: ConfigService,
   ) {
-    this.frontendUrl = this.config.get('FRONTEND_URL', 'http://localhost');
+    this.frontendUrl = this.config.get("FRONTEND_URL", "http://localhost");
   }
 
   @Public()
-  @Post('register')
+  @Post("register")
   @Throttle({ default: { ttl: 60_000, limit: 5 } })
-  @ApiOperation({ summary: 'Inscription (acheteur ou organisateur)' })
-  @ApiResponse({ status: 201, description: 'Compte créé, tokens retournés' })
-  @ApiResponse({ status: 409, description: 'Email déjà utilisé' })
+  @ApiOperation({ summary: "Inscription (acheteur ou organisateur)" })
+  @ApiResponse({ status: 201, description: "Compte créé, tokens retournés" })
+  @ApiResponse({ status: 409, description: "Email déjà utilisé" })
   register(@Body() dto: RegisterDto) {
-    return firstValueFrom(this.authClient.send('auth.register', dto));
+    return firstValueFrom(this.authClient.send("auth.register", dto));
   }
 
   @Public()
-  @Post('login')
+  @Post("login")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
-  @ApiOperation({ summary: 'Connexion avec email et mot de passe' })
-  @ApiResponse({ status: 200, description: 'Connexion réussie, tokens retournés' })
-  @ApiResponse({ status: 401, description: 'Identifiants invalides' })
+  @ApiOperation({ summary: "Connexion avec email et mot de passe" })
+  @ApiResponse({
+    status: 200,
+    description: "Connexion réussie, tokens retournés",
+  })
+  @ApiResponse({ status: 401, description: "Identifiants invalides" })
   login(@Body() dto: LoginDto) {
-    return firstValueFrom(this.authClient.send('auth.login', dto));
+    return firstValueFrom(this.authClient.send("auth.login", dto));
   }
 
   @Public()
-  @Post('refresh')
+  @Post("refresh")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Renouveler l\'access token via le refresh token' })
-  @ApiResponse({ status: 200, description: 'Nouvel access token' })
+  @ApiOperation({ summary: "Renouveler l'access token via le refresh token" })
+  @ApiResponse({ status: 200, description: "Nouvel access token" })
   refresh(@Body() dto: RefreshTokenDto) {
-    return firstValueFrom(this.authClient.send('auth.refresh', dto));
+    return firstValueFrom(this.authClient.send("auth.refresh", dto));
   }
 
-  @Post('logout')
+  @Post("logout")
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Déconnexion (révocation du refresh token)' })
+  @ApiOperation({ summary: "Déconnexion (révocation du refresh token)" })
   logout(@Body() dto: RefreshTokenDto) {
-    return firstValueFrom(this.authClient.send('auth.logout', dto));
+    return firstValueFrom(this.authClient.send("auth.logout", dto));
   }
 
   @Public()
-  @Post('forgot-password')
+  @Post("forgot-password")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60_000, limit: 3 } })
-  @ApiOperation({ summary: 'Demande de réinitialisation de mot de passe' })
-  @ApiResponse({ status: 200, description: 'Email envoyé si le compte existe' })
+  @ApiOperation({ summary: "Demande de réinitialisation de mot de passe" })
+  @ApiResponse({ status: 200, description: "Email envoyé si le compte existe" })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
-    return firstValueFrom(this.authClient.send('auth.forgot_password', dto));
+    return firstValueFrom(this.authClient.send("auth.forgot_password", dto));
   }
 
   @Public()
-  @Post('reset-password')
+  @Post("reset-password")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Réinitialisation du mot de passe via token email' })
+  @ApiOperation({ summary: "Réinitialisation du mot de passe via token email" })
   resetPassword(@Body() dto: ResetPasswordDto) {
-    return firstValueFrom(this.authClient.send('auth.reset_password', dto));
+    return firstValueFrom(this.authClient.send("auth.reset_password", dto));
   }
 
   @Public()
-  @Get('verify-email')
-  @ApiOperation({ summary: 'Vérification de l\'adresse email via lien reçu par email' })
-  @ApiQuery({ name: 'token', required: true })
-  @ApiResponse({ status: 200, description: 'Email vérifié avec succès' })
-  verifyEmail(@Query('token') token: string) {
-    return firstValueFrom(this.authClient.send('auth.verify_email', { token }));
+  @Get("verify-email")
+  @ApiOperation({
+    summary: "Vérification de l'adresse email via lien reçu par email",
+  })
+  @ApiQuery({ name: "token", required: true })
+  @ApiResponse({ status: 200, description: "Email vérifié avec succès" })
+  verifyEmail(@Query("token") token: string) {
+    return firstValueFrom(this.authClient.send("auth.verify_email", { token }));
   }
 
   @Public()
-  @Post('oauth')
+  @Post("oauth")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Connexion / inscription via OAuth (Google, Facebook)' })
+  @ApiOperation({
+    summary: "Connexion / inscription via OAuth (Google, Facebook)",
+  })
   oauthLogin(@Body() dto: OAuthLoginDto) {
-    return firstValueFrom(this.authClient.send('auth.oauth_login', dto));
+    return firstValueFrom(this.authClient.send("auth.oauth_login", dto));
   }
 
-  @Get('me')
+  @Get("me")
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Récupérer le profil de l\'utilisateur connecté' })
+  @ApiOperation({ summary: "Récupérer le profil de l'utilisateur connecté" })
   me(@CurrentUser() user: JwtPayload) {
     return user;
   }
@@ -129,20 +139,22 @@ export class AuthController {
   // ──────────────── OAuth Google ────────────────
 
   @Public()
-  @Get('google')
-  @UseGuards(AuthGuard('google'))
-  @ApiOperation({ summary: 'Redirection vers Google pour connexion OAuth' })
+  @Get("google")
+  @UseGuards(AuthGuard("google"))
+  @ApiOperation({ summary: "Redirection vers Google pour connexion OAuth" })
   googleAuth() {
     // Passport redirige vers Google — ce handler ne s'exécute pas
   }
 
   @Public()
-  @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
-  @ApiOperation({ summary: 'Callback Google OAuth — retourne les tokens JWT via redirection' })
+  @Get("google/callback")
+  @UseGuards(AuthGuard("google"))
+  @ApiOperation({
+    summary: "Callback Google OAuth — retourne les tokens JWT via redirection",
+  })
   async googleCallback(@Req() req: Request, @Res() res: Response) {
     const oauthUser = req.user as {
-      provider: 'GOOGLE';
+      provider: "GOOGLE";
       oauth_id: string;
       email: string;
       first_name: string;
@@ -150,7 +162,7 @@ export class AuthController {
     };
 
     const result = await firstValueFrom(
-      this.authClient.send('auth.oauth_login', oauthUser),
+      this.authClient.send("auth.oauth_login", oauthUser),
     );
 
     const params = new URLSearchParams({
@@ -163,41 +175,69 @@ export class AuthController {
 
   // ──────────────── 2FA TOTP ────────────────
 
-  @Post('2fa/setup')
+  @Post("2fa/setup")
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Initialiser la 2FA TOTP — retourne QR code + secret' })
+  @ApiOperation({
+    summary: "Initialiser la 2FA TOTP — retourne QR code + secret",
+  })
   setup2fa(@CurrentUser() user: JwtPayload) {
-    return firstValueFrom(this.authClient.send('auth.2fa.setup', { user_id: user.sub }));
+    return firstValueFrom(
+      this.authClient.send("auth.2fa.setup", { user_id: user.sub }),
+    );
   }
 
-  @Post('2fa/confirm')
+  @Post("2fa/confirm")
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Confirmer la 2FA avec un code TOTP — active la 2FA et retourne les codes de secours' })
+  @ApiOperation({
+    summary:
+      "Confirmer la 2FA avec un code TOTP — active la 2FA et retourne les codes de secours",
+  })
   confirm2fa(@CurrentUser() user: JwtPayload, @Body() body: { code: string }) {
-    return firstValueFrom(this.authClient.send('auth.2fa.confirm', { user_id: user.sub, code: body.code }));
+    return firstValueFrom(
+      this.authClient.send("auth.2fa.confirm", {
+        user_id: user.sub,
+        code: body.code,
+      }),
+    );
   }
 
-  @Post('2fa/verify')
+  @Post("2fa/verify")
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Vérifier un code TOTP (lors de la connexion si 2FA activée)' })
+  @ApiOperation({
+    summary: "Vérifier un code TOTP (lors de la connexion si 2FA activée)",
+  })
   verify2fa(@CurrentUser() user: JwtPayload, @Body() body: { code: string }) {
-    return firstValueFrom(this.authClient.send('auth.2fa.verify', { user_id: user.sub, code: body.code }));
+    return firstValueFrom(
+      this.authClient.send("auth.2fa.verify", {
+        user_id: user.sub,
+        code: body.code,
+      }),
+    );
   }
 
-  @Delete('2fa')
+  @Delete("2fa")
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Désactiver la 2FA (code TOTP requis)' })
+  @ApiOperation({ summary: "Désactiver la 2FA (code TOTP requis)" })
   disable2fa(@CurrentUser() user: JwtPayload, @Body() body: { code: string }) {
-    return firstValueFrom(this.authClient.send('auth.2fa.disable', { user_id: user.sub, code: body.code }));
+    return firstValueFrom(
+      this.authClient.send("auth.2fa.disable", {
+        user_id: user.sub,
+        code: body.code,
+      }),
+    );
   }
 
-  @Get('2fa/status')
+  @Get("2fa/status")
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Vérifier si la 2FA est activée pour l\'utilisateur connecté' })
+  @ApiOperation({
+    summary: "Vérifier si la 2FA est activée pour l'utilisateur connecté",
+  })
   get2faStatus(@CurrentUser() user: JwtPayload) {
-    return firstValueFrom(this.authClient.send('auth.2fa.status', { user_id: user.sub }));
+    return firstValueFrom(
+      this.authClient.send("auth.2fa.status", { user_id: user.sub }),
+    );
   }
 }

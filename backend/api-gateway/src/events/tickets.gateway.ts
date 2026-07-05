@@ -1,19 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { Injectable, Logger } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
   WebSocketGateway,
   WebSocketServer,
-} from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+} from "@nestjs/websockets";
+import { Server, Socket } from "socket.io";
 
 @Injectable()
 @WebSocketGateway({
-  cors: { origin: '*' },
-  namespace: '/tickets',
+  cors: { origin: "*" },
+  namespace: "/tickets",
 })
-export class TicketsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class TicketsGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -24,7 +26,7 @@ export class TicketsGateway implements OnGatewayConnection, OnGatewayDisconnect 
   async handleConnection(client: Socket) {
     const token =
       client.handshake.auth?.token ??
-      client.handshake.headers?.authorization?.replace('Bearer ', '');
+      client.handshake.headers?.authorization?.replace("Bearer ", "");
 
     if (!token) {
       client.disconnect();
@@ -49,15 +51,18 @@ export class TicketsGateway implements OnGatewayConnection, OnGatewayDisconnect 
   }
 
   // Appelé par le TicketController après un scan réussi
-  notifyTicketScanned(buyerId: string, ticketData: {
-    ticket_id: string;
-    event_name: string;
-    ticket_category_name: string;
-    holder_first_name: string;
-    holder_last_name: string;
-    scanned_at: Date;
-    status: string;
-  }) {
-    this.server.to(`buyer:${buyerId}`).emit('ticket:scanned', ticketData);
+  notifyTicketScanned(
+    buyerId: string,
+    ticketData: {
+      ticket_id: string;
+      event_name: string;
+      ticket_category_name: string;
+      holder_first_name: string;
+      holder_last_name: string;
+      scanned_at: Date;
+      status: string;
+    },
+  ) {
+    this.server.to(`buyer:${buyerId}`).emit("ticket:scanned", ticketData);
   }
 }

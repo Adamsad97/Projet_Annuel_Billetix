@@ -1,9 +1,14 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Reflector } from '@nestjs/core';
-import { JwtService } from '@nestjs/jwt';
-import { Request } from 'express';
-import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Reflector } from "@nestjs/core";
+import { JwtService } from "@nestjs/jwt";
+import { Request } from "express";
+import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
 
 @Injectable()
 export class JwtGuard implements CanActivate {
@@ -22,22 +27,22 @@ export class JwtGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractToken(request);
-    if (!token) throw new UnauthorizedException('Token manquant');
+    if (!token) throw new UnauthorizedException("Token manquant");
 
     try {
       const payload = this.jwtService.verify(token, {
-        secret: this.config.get<string>('JWT_ACCESS_SECRET'),
+        secret: this.config.get<string>("JWT_ACCESS_SECRET"),
       });
-      request['user'] = payload;
+      request["user"] = payload;
     } catch {
-      throw new UnauthorizedException('Token invalide ou expiré');
+      throw new UnauthorizedException("Token invalide ou expiré");
     }
 
     return true;
   }
 
   private extractToken(request: Request): string | null {
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : null;
+    const [type, token] = request.headers.authorization?.split(" ") ?? [];
+    return type === "Bearer" ? token : null;
   }
 }

@@ -1,13 +1,13 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, OnModuleInit } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import {
   CreateBucketCommand,
   HeadBucketCommand,
   PutObjectCommand,
   S3Client,
-} from '@aws-sdk/client-s3';
-import { randomUUID } from 'crypto';
-import { extname } from 'path';
+} from "@aws-sdk/client-s3";
+import { randomUUID } from "crypto";
+import { extname } from "path";
 
 @Injectable()
 export class UploadService implements OnModuleInit {
@@ -17,18 +17,18 @@ export class UploadService implements OnModuleInit {
   constructor(private readonly config: ConfigService) {}
 
   onModuleInit() {
-    const endpoint = this.config.get('MINIO_ENDPOINT', 'minio');
-    const port = this.config.get('MINIO_PORT', '9000');
-    const ssl = this.config.get('MINIO_USE_SSL', 'false') === 'true';
+    const endpoint = this.config.get("MINIO_ENDPOINT", "minio");
+    const port = this.config.get("MINIO_PORT", "9000");
+    const ssl = this.config.get("MINIO_USE_SSL", "false") === "true";
 
-    this.publicBase = `${ssl ? 'https' : 'http'}://${endpoint}:${port}`;
+    this.publicBase = `${ssl ? "https" : "http"}://${endpoint}:${port}`;
 
     this.client = new S3Client({
       endpoint: this.publicBase,
-      region: 'us-east-1',
+      region: "us-east-1",
       credentials: {
-        accessKeyId: this.config.get('MINIO_ACCESS_KEY', 'minioadmin'),
-        secretAccessKey: this.config.get('MINIO_SECRET_KEY', 'minioadmin'),
+        accessKeyId: this.config.get("MINIO_ACCESS_KEY", "minioadmin"),
+        secretAccessKey: this.config.get("MINIO_SECRET_KEY", "minioadmin"),
       },
       forcePathStyle: true,
     });
@@ -42,7 +42,7 @@ export class UploadService implements OnModuleInit {
   ): Promise<string> {
     await this.ensureBucket(bucket);
 
-    const ext = extname(originalName) || '.bin';
+    const ext = extname(originalName) || ".bin";
     const key = `${randomUUID()}${ext}`;
 
     await this.client.send(

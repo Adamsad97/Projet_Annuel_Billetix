@@ -1,5 +1,5 @@
-import { Module } from '@nestjs/common';
-import { OrderController } from './order.controller';
+import { Module } from "@nestjs/common";
+import { OrderController } from "./order.controller";
 
 @Module({
   controllers: [OrderController],
