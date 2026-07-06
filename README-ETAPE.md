@@ -51,6 +51,7 @@ Corrigé :
 
 - Inscription (nom/prénom/email/password/rôle), vérification email par lien, mot de passe oublié, JWT access/refresh configurables, bcrypt coût 12.
 - OAuth Google fonctionnel.
+- OAuth Facebook fonctionnel (corrigé le 2026-07-06 : au passage, un bug latent partagé par les deux stratégies a été trouvé et corrigé — `passport-oauth2` fait planter tout le processus au démarrage si `clientID` est vide, ce qui aurait aussi cassé Google si ses vraies clés n'avaient pas été déjà configurées).
 - 2FA TOTP complète (setup/confirm/verify/disable) **et désormais appliquée au login**.
 - IBAN organisateur chiffré AES-256-GCM, **désormais impossible à enregistrer sans 2FA activée**.
 - Profil acheteur (infos, adresse facturation, historique commandes).
@@ -59,7 +60,6 @@ Corrigé :
 
 **Reste à faire**
 
-- OAuth Facebook (enum présent, aucune stratégie implémentée).
 - 2FA par SMS (seul TOTP est implémenté).
 - Renvoi de billets par email depuis l'espace acheteur (aucune route).
 - Téléchargement de facture côté acheteur (`invoice_url` existe côté order-service mais n'est jamais généré/rempli, et n'est pas exposé par la gateway).

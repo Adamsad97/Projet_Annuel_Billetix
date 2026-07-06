@@ -173,6 +173,43 @@ export class AuthController {
     res.redirect(`${this.frontendUrl}/auth/callback?${params.toString()}`);
   }
 
+  // ──────────────── OAuth Facebook ────────────────
+
+  @Public()
+  @Get("facebook")
+  @UseGuards(AuthGuard("facebook"))
+  @ApiOperation({ summary: "Redirection vers Facebook pour connexion OAuth" })
+  facebookAuth() {
+    // Passport redirige vers Facebook — ce handler ne s'exécute pas
+  }
+
+  @Public()
+  @Get("facebook/callback")
+  @UseGuards(AuthGuard("facebook"))
+  @ApiOperation({
+    summary: "Callback Facebook OAuth — retourne les tokens JWT via redirection",
+  })
+  async facebookCallback(@Req() req: Request, @Res() res: Response) {
+    const oauthUser = req.user as {
+      provider: "FACEBOOK";
+      oauth_id: string;
+      email: string;
+      first_name: string;
+      last_name: string;
+    };
+
+    const result = await firstValueFrom(
+      this.authClient.send("auth.oauth_login", oauthUser),
+    );
+
+    const params = new URLSearchParams({
+      access_token: result.access_token,
+      refresh_token: result.refresh_token,
+    });
+
+    res.redirect(`${this.frontendUrl}/auth/callback?${params.toString()}`);
+  }
+
   // ──────────────── 2FA TOTP ────────────────
 
   @Post("2fa/setup")

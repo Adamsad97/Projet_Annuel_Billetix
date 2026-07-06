@@ -7,8 +7,12 @@ import { Profile, Strategy } from "passport-google-oauth20";
 export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
   constructor(config: ConfigService) {
     super({
-      clientID: config.get<string>("GOOGLE_CLIENT_ID", ""),
-      clientSecret: config.get<string>("GOOGLE_CLIENT_SECRET", ""),
+      // OAuth2Strategy (base de passport-google-oauth20) plante au démarrage si
+      // vide — valeur de repli non vide pour ne jamais bloquer le boot de la
+      // gateway quand Google OAuth n'est pas configuré.
+      clientID: config.get<string>("GOOGLE_CLIENT_ID", "") || "not_configured",
+      clientSecret:
+        config.get<string>("GOOGLE_CLIENT_SECRET", "") || "not_configured",
       callbackURL: config.get<string>(
         "GOOGLE_CALLBACK_URL",
         "http://localhost:3000/api/v1/auth/google/callback",
