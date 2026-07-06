@@ -190,6 +190,21 @@ export class AuthService {
     first_name: string;
     last_name: string;
   }) {
+    if (!data.email) {
+      // Sans email, la recherche par email ci-dessous ferait correspondre
+      // n'importe quel autre compte sans email (collision sur chaîne vide),
+      // et la contrainte UNIQUE sur `email` casserait toute création
+      // suivante. La billetterie dépend entièrement de l'email (envoi des
+      // billets) : un compte sans email n'est de toute façon pas exploitable.
+      throw new RpcException({
+        statusCode: 400,
+        message:
+          "Votre compte " +
+          data.provider +
+          " ne fournit pas d'adresse email accessible. Vérifiez qu'un email est confirmé sur votre compte, ou inscrivez-vous avec email et mot de passe.",
+      });
+    }
+
     let user = await this.userRepo.findOne({
       where: { oauth_provider: data.provider, oauth_id: data.oauth_id },
     });

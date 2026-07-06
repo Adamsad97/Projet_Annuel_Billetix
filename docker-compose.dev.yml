@@ -33,8 +33,6 @@ services:
     environment:
       NODE_ENV: development
     command: npm run start:dev
-    ports:
-      - "3000:3000"
 
   auth-service:
     build:
@@ -130,5 +128,5 @@ services:
       NODE_ENV: development
     command: npm run dev
     ports:
-      - "80:3000"
+      - "3000:3000"
   

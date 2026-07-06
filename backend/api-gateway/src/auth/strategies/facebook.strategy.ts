@@ -18,8 +18,12 @@ export class FacebookStrategy extends PassportStrategy(Strategy, "facebook") {
         "FACEBOOK_CALLBACK_URL",
         "http://localhost:3000/api/v1/auth/facebook/callback",
       ),
+      // passport-facebook pointe par défaut sur l'API Graph v3.2, dépréciée
+      // depuis longtemps chez Meta — cause l'erreur "Invalid Scopes: email"
+      // au niveau du dialogue OAuth. Version courante en 2026 : v25.0.
+      graphAPIVersion: "v21.0",
       profileFields: ["id", "emails", "name"],
-      scope: ["email"],
+      scope: ["public_profile", "email"],
     });
   }
 

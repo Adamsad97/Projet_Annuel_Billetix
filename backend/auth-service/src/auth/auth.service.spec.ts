@@ -5,7 +5,7 @@ import { RpcException } from "@nestjs/microservices";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
 import { REDIS_CLIENT } from "../redis/redis.module";
-import { User, UserRole } from "../user/user.entity";
+import { OAuthProvider, User, UserRole } from "../user/user.entity";
 import { AuthService } from "./auth.service";
 import { TwoFactorService } from "./two-factor.service";
 
@@ -176,6 +176,20 @@ describe("AuthService", () => {
         "user-1",
         "123456",
       );
+    });
+  });
+
+  describe("oauthLogin", () => {
+    it("rejette une connexion OAuth sans email (évite une collision sur chaîne vide et la violation de contrainte unique)", async () => {
+      await expect(
+        service.oauthLogin({
+          provider: OAuthProvider.FACEBOOK,
+          oauth_id: "fb-123",
+          email: "",
+          first_name: "Jean",
+          last_name: "Dupont",
+        }),
+      ).rejects.toThrow(RpcException);
     });
   });
 });
