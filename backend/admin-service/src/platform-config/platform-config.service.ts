@@ -20,6 +20,8 @@ export interface PlatformConfig {
   platform_siret: string;
   platform_vat_number: string;
   platform_address: string;
+  dispute_alert_threshold: number;
+  refund_alert_threshold_24h: number;
 }
 
 const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
@@ -39,6 +41,8 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'platform_siret',                 value: '',              type: 'string',  description: 'Numéro SIRET de la plateforme (en-tête facture)' },
   { key: 'platform_vat_number',            value: '',              type: 'string',  description: 'Numéro de TVA intracommunautaire de la plateforme' },
   { key: 'platform_address',               value: '',              type: 'string',  description: 'Adresse légale de la plateforme (en-tête facture)' },
+  { key: 'dispute_alert_threshold',        value: '5',             type: 'number',  description: 'Nombre de litiges ouverts déclenchant une alerte admin' },
+  { key: 'refund_alert_threshold_24h',     value: '10',            type: 'number',  description: 'Nombre de remboursements sur 24h déclenchant une alerte "remboursements massifs"' },
 ];
 
 @Injectable()
@@ -79,6 +83,8 @@ export class PlatformConfigService implements OnModuleInit {
       platform_siret:                 map.platform_siret ?? '',
       platform_vat_number:            map.platform_vat_number ?? '',
       platform_address:               map.platform_address ?? '',
+      dispute_alert_threshold:        parseInt(map.dispute_alert_threshold ?? '5'),
+      refund_alert_threshold_24h:     parseInt(map.refund_alert_threshold_24h ?? '10'),
     };
   }
 

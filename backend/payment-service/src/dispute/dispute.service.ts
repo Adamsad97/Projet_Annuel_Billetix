@@ -31,6 +31,16 @@ export class DisputeService {
     return this.repo.find({ order: { created_at: 'DESC' } });
   }
 
+  /** Litiges "ouverts" = pas encore tranchés (OPEN ou UNDER_REVIEW) — base des alertes admin. */
+  async getOpenCount(): Promise<number> {
+    return this.repo.count({
+      where: [
+        { status: DisputeStatus.OPEN },
+        { status: DisputeStatus.UNDER_REVIEW },
+      ],
+    });
+  }
+
   async getByOrder(orderId: string): Promise<Dispute[]> {
     return this.repo.find({ where: { order_id: orderId }, order: { created_at: 'DESC' } });
   }

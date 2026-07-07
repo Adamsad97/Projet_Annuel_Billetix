@@ -1,4 +1,4 @@
-✅ Fait depuis le 2026-07-07 : facture automatique (2.4/4.3) et tableau de bord organisateur temps réel (2.5, `GET /events/me/dashboard` + `GET /events/:id/dashboard`, push WebSocket sur vente/scan).
+✅ Fait depuis le 2026-07-07 : facture automatique (2.4/4.3), tableau de bord organisateur temps réel (2.5), et **dashboard KPIs admin** (8.1 : `GET /admin/dashboard` — revenu plateforme, tendance 30 jours, litiges ouverts, solde reversements, répartition événements/utilisateurs — avec alertes temps réel "remboursements massifs"/"pic de litiges" configurables via `platform-config`, poussées en direct aux admins connectés via WebSocket. Validé par test réel : seuil franchi → alerte reçue en moins d'une seconde par un client connecté).
 
 ❌ TABLEAU 2 — CE QUI N'EST PAS FAIT
 
@@ -27,19 +27,17 @@
 ├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ 11 │ 6.2-6.7 │ Compteurs temps réel, saisie manuelle billet, supervision salle, confort app mobile │
 ├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 12 │ 8.1 │ Dashboard KPIs admin, graphiques tendance, alertes fraude temps réel │
+│ 12 │ 8.4 │ Export comptable (grand livre, TVA, CSV/PDF) — la vue globale des soldes en attente est désormais dans le dashboard admin │
 ├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 13 │ 8.4 │ Vue globale soldes en attente, export comptable (grand livre, TVA, CSV/PDF) │
+│ 13 │ 8.2 │ Workflow « demande de complément d'info » pour un compte utilisateur │
 ├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 14 │ 8.2 │ Workflow « demande de complément d'info » pour un compte utilisateur │
+│ 14 │ 9.1-9.2 │ Rappel J-1 push, notif modification événement, remboursement/renvoi billets, première vente, reversement effectué, litige ouvert │
 ├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 15 │ 9.1-9.2 │ Rappel J-1 push, notif modification événement, remboursement/renvoi billets, première vente, reversement effectué, litige ouvert │
+│ 15 │ 10.4 │ RGPD (effacement/portabilité, politique confidentialité, cookies, DPO) │
 ├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 16 │ 10.4 │ RGPD (effacement/portabilité, politique confidentialité, cookies, DPO) │
+│ 16 │ 10.3 │ Tests de pénétration/PCI-DSS documentés, validation payloads RabbitMQ (notification/pdf-service) │
 ├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 17 │ 10.3 │ Tests de pénétration/PCI-DSS documentés, validation payloads RabbitMQ (notification/pdf-service) │
+│ 17 │ — │ Observabilité avancée (logs structurés JSON, corrélation, métriques Prometheus/Grafana) │
 ├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 18 │ — │ Observabilité avancée (logs structurés JSON, corrélation, métriques Prometheus/Grafana) │
-├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 19 │ — │ Tests e2e (seuls des tests unitaires existent) │
+│ 18 │ — │ Tests e2e (seuls des tests unitaires existent) │
 └─────┴─────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘

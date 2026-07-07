@@ -33,6 +33,11 @@ export class EventController {
     return this.eventService.listByOrganizer(data.organizer_id);
   }
 
+  @MessagePattern('event.get_count_by_status')
+  getCountByStatus() {
+    return this.eventService.getCountByStatus();
+  }
+
   @MessagePattern('event.update')
   update(@Payload() data: { id: string; organizer_id: string; dto: Partial<CreateEventDto> }) {
     return this.eventService.update(data.id, data.organizer_id, data.dto);

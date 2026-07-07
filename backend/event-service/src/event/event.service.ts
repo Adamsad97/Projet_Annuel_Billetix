@@ -90,6 +90,20 @@ export class EventService {
     return this.repo.find({ where: { organizer_id: organizerId }, order: { created_at: 'DESC' } });
   }
 
+  /** Répartition des événements par statut — utilisé par le dashboard KPIs admin. */
+  async getCountByStatus(): Promise<Record<string, number>> {
+    const rows = await this.repo
+      .createQueryBuilder('e')
+      .select('e.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('e.status')
+      .getRawMany<{ status: string; count: string }>();
+
+    const counts: Record<string, number> = {};
+    for (const row of rows) counts[row.status] = parseInt(row.count, 10);
+    return counts;
+  }
+
   async update(id: string, organizerId: string, dto: Partial<CreateEventDto>): Promise<Event> {
     const event = await this.getById(id);
     if (event.organizer_id !== organizerId) {

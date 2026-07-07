@@ -68,16 +68,18 @@ export class PaymentController {
   @HttpCode(HttpStatus.OK)
   @Roles("ADMIN")
   @ApiOperation({ summary: "Rembourser une commande (ADMIN)" })
-  refund(
+  async refund(
     @Param("orderId") orderId: string,
     @Body() dto: { amount_cents?: number },
   ) {
-    return firstValueFrom(
+    const result = await firstValueFrom(
       this.paymentClient.send("payment.refund", {
         order_id: orderId,
         amount_cents: dto.amount_cents,
       }),
     );
+    this.checkRefundAlert().catch(() => undefined);
+    return result;
   }
 
   // ─── Reversements ───────────────────────────────────────────────────────────
@@ -153,7 +155,7 @@ export class PaymentController {
   @Post("disputes")
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: "Ouvrir un litige" })
-  createDispute(
+  async createDispute(
     @CurrentUser() user: JwtPayload,
     @Body()
     dto: {
@@ -163,12 +165,14 @@ export class PaymentController {
       description?: string;
     },
   ) {
-    return firstValueFrom(
+    const result = await firstValueFrom(
       this.paymentClient.send("payment.create_dispute", {
         ...dto,
         buyer_id: user.sub,
       }),
     );
+    this.checkDisputeAlert().catch(() => undefined);
+    return result;
   }
 
   @Get("disputes/me")
@@ -484,5 +488,49 @@ export class PaymentController {
     this.logger.log(
       `Post-paiement traité : ${tickets.length} billet(s) générés pour commande ${orderId}`,
     );
+  }
+
+  // ─── Alertes admin temps réel ───────────────────────────────────────────────
+
+  private async checkRefundAlert(): Promise<void> {
+    const [count, config] = await Promise.all([
+      firstValueFrom(
+        this.orderClient.send("order.get_recent_refund_count", { hours: 24 }),
+      ),
+      firstValueFrom(
+        this.adminClient.send<{ refund_alert_threshold_24h: number }>(
+          "admin.get_platform_config",
+          {},
+        ),
+      ),
+    ]);
+
+    if ((count as number) >= config.refund_alert_threshold_24h) {
+      this.ticketsGateway.notifyAdminAlert({
+        type: "mass_refunds",
+        severity: "critical",
+        message: `${count} remboursement(s) sur les dernières 24h — seuil d'alerte : ${config.refund_alert_threshold_24h}`,
+      });
+    }
+  }
+
+  private async checkDisputeAlert(): Promise<void> {
+    const [count, config] = await Promise.all([
+      firstValueFrom(this.paymentClient.send("payment.get_open_dispute_count", {})),
+      firstValueFrom(
+        this.adminClient.send<{ dispute_alert_threshold: number }>(
+          "admin.get_platform_config",
+          {},
+        ),
+      ),
+    ]);
+
+    if ((count as number) >= config.dispute_alert_threshold) {
+      this.ticketsGateway.notifyAdminAlert({
+        type: "dispute_spike",
+        severity: "warning",
+        message: `${count} litige(s) ouvert(s) — seuil d'alerte : ${config.dispute_alert_threshold}`,
+      });
+    }
   }
 }

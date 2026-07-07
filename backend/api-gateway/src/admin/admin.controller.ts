@@ -31,6 +31,7 @@ export class AdminController {
     @Inject("USER_SERVICE") private readonly userClient: ClientProxy,
     @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
     @Inject("TICKET_SERVICE") private readonly ticketClient: ClientProxy,
+    @Inject("ORDER_SERVICE") private readonly orderClient: ClientProxy,
     @Inject("PAYMENT_SERVICE") private readonly paymentClient: ClientProxy,
     @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
@@ -90,6 +91,95 @@ export class AdminController {
   @ApiOperation({ summary: "Statistiques de l'audit log" })
   getStats() {
     return firstValueFrom(this.adminClient.send("admin.get_stats", {}));
+  }
+
+  @Get("dashboard")
+  @ApiOperation({
+    summary:
+      "Tableau de bord KPIs plateforme (ventes, litiges, reversements, tendance, alertes)",
+  })
+  async getDashboard() {
+    const [
+      revenue,
+      openDisputes,
+      platformBalance,
+      eventsByStatus,
+      userStats,
+      trend,
+      recentRefundCount,
+      platformConfig,
+    ] = await Promise.all([
+      firstValueFrom(
+        this.orderClient.send("order.get_platform_revenue", {}),
+      ).catch(() => ({ orders_count: 0, revenue_ht: 0, revenue_ttc: 0, total_commission: 0 })),
+      firstValueFrom(
+        this.paymentClient.send("payment.get_open_dispute_count", {}),
+      ).catch(() => 0),
+      firstValueFrom(
+        this.paymentClient.send("payment.get_platform_balance", {}),
+      ).catch(() => ({ pending_balance: 0, total_paid_out: 0 })),
+      firstValueFrom(
+        this.eventClient.send("event.get_count_by_status", {}),
+      ).catch(() => ({})),
+      firstValueFrom(this.authClient.send("auth.get_user_stats", {})).catch(
+        () => ({ by_role: {}, suspended_count: 0, total: 0 }),
+      ),
+      firstValueFrom(
+        this.orderClient.send("order.get_revenue_trend", { days: 30 }),
+      ).catch(() => []),
+      firstValueFrom(
+        this.orderClient.send("order.get_recent_refund_count", { hours: 24 }),
+      ).catch(() => 0),
+      firstValueFrom(
+        this.adminClient.send("admin.get_platform_config", {}),
+      ).catch(() => ({
+        dispute_alert_threshold: 5,
+        refund_alert_threshold_24h: 10,
+      })),
+    ]);
+
+    const alerts: Array<{
+      type: string;
+      severity: "warning" | "critical";
+      message: string;
+    }> = [];
+
+    const disputeThreshold = (
+      platformConfig as { dispute_alert_threshold: number }
+    ).dispute_alert_threshold;
+    if ((openDisputes as number) >= disputeThreshold) {
+      alerts.push({
+        type: "dispute_spike",
+        severity: "warning",
+        message: `${openDisputes} litige(s) ouvert(s) — seuil d'alerte : ${disputeThreshold}`,
+      });
+    }
+
+    const refundThreshold = (
+      platformConfig as { refund_alert_threshold_24h: number }
+    ).refund_alert_threshold_24h;
+    if ((recentRefundCount as number) >= refundThreshold) {
+      alerts.push({
+        type: "mass_refunds",
+        severity: "critical",
+        message: `${recentRefundCount} remboursement(s) sur les dernières 24h — seuil d'alerte : ${refundThreshold}`,
+      });
+    }
+
+    return {
+      kpis: {
+        ...(revenue as Record<string, unknown>),
+        open_disputes: openDisputes,
+        pending_payout_balance: (platformBalance as { pending_balance: number })
+          .pending_balance,
+        total_paid_out: (platformBalance as { total_paid_out: number })
+          .total_paid_out,
+        events_by_status: eventsByStatus,
+        users: userStats,
+      },
+      trend,
+      alerts,
+    };
   }
 
   // ─── Audit logs ───────────────────────────────────────────────────────────────

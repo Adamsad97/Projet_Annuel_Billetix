@@ -148,6 +148,68 @@ export class OrderService {
     };
   }
 
+  /** Revenu agrégé toute la plateforme — mêmes règles que getRevenueByEvent, sans filtre event_id. */
+  async getPlatformRevenue(): Promise<{
+    orders_count: number;
+    revenue_ht: number;
+    revenue_ttc: number;
+    total_commission: number;
+  }> {
+    const row = await this.orderRepo
+      .createQueryBuilder('o')
+      .select('COUNT(*)', 'orders_count')
+      .addSelect('COALESCE(SUM(o.total_amount_ht), 0)', 'revenue_ht')
+      .addSelect('COALESCE(SUM(o.total_amount_ttc), 0)', 'revenue_ttc')
+      .addSelect('COALESCE(SUM(o.total_commission), 0)', 'total_commission')
+      .where('o.status IN (:...statuses)', {
+        statuses: [OrderStatus.CONFIRMED, OrderStatus.TICKETS_SENT],
+      })
+      .getRawOne<Record<string, string>>();
+
+    return {
+      orders_count: parseInt(row?.orders_count ?? '0', 10),
+      revenue_ht: parseFloat(row?.revenue_ht ?? '0'),
+      revenue_ttc: parseFloat(row?.revenue_ttc ?? '0'),
+      total_commission: parseFloat(row?.total_commission ?? '0'),
+    };
+  }
+
+  /** Tendance de revenu par jour sur les N derniers jours (paid_at — reflète l'encaissement réel). */
+  async getRevenueTrend(
+    days: number,
+  ): Promise<Array<{ day: string; orders_count: number; revenue_ttc: number }>> {
+    const rows = await this.orderRepo
+      .createQueryBuilder('o')
+      .select("to_char(date_trunc('day', o.paid_at), 'YYYY-MM-DD')", 'day')
+      .addSelect('COUNT(*)', 'orders_count')
+      .addSelect('COALESCE(SUM(o.total_amount_ttc), 0)', 'revenue_ttc')
+      .where('o.status IN (:...statuses)', {
+        statuses: [OrderStatus.CONFIRMED, OrderStatus.TICKETS_SENT],
+      })
+      .andWhere("o.paid_at >= now() - (:days || ' days')::interval", { days })
+      .groupBy("date_trunc('day', o.paid_at)")
+      .orderBy("date_trunc('day', o.paid_at)", 'ASC')
+      .getRawMany<{ day: string; orders_count: string; revenue_ttc: string }>();
+
+    return rows.map((r) => ({
+      day: r.day,
+      orders_count: parseInt(r.orders_count, 10),
+      revenue_ttc: parseFloat(r.revenue_ttc),
+    }));
+  }
+
+  /** Nombre de commandes remboursées sur une fenêtre récente — base du signal "remboursements massifs". */
+  async getRecentRefundCount(hours: number): Promise<number> {
+    const count = await this.orderRepo
+      .createQueryBuilder('o')
+      .where('o.status = :status', { status: OrderStatus.REFUNDED })
+      .andWhere("o.refunded_at >= now() - (:hours || ' hours')::interval", {
+        hours,
+      })
+      .getCount();
+    return count;
+  }
+
   async confirmPayment(id: string, paymentIntentId: string, fees: number): Promise<Order> {
     const order = await this.orderRepo.findOne({ where: { id } });
     if (!order) throw new RpcException({ statusCode: 404, message: 'Commande introuvable' });

@@ -29,6 +29,11 @@ export class DisputeController {
     return this.disputeService.getAll();
   }
 
+  @MessagePattern('payment.get_open_dispute_count')
+  getOpenCount() {
+    return this.disputeService.getOpenCount();
+  }
+
   @MessagePattern('payment.get_disputes_by_order')
   getByOrder(@Payload() data: { order_id: string }) {
     return this.disputeService.getByOrder(data.order_id);

@@ -61,6 +61,29 @@ export class PayoutService {
     };
   }
 
+  /** Solde en attente toute la plateforme — agrégat SQL (pas de find()+reduce, volume potentiellement important). */
+  async getPlatformBalance(): Promise<{
+    pending_balance: number;
+    total_paid_out: number;
+  }> {
+    const row = await this.repo
+      .createQueryBuilder('p')
+      .select(
+        "COALESCE(SUM(p.net_amount) FILTER (WHERE p.status IN ('PENDING', 'PROCESSING')), 0)",
+        'pending_balance',
+      )
+      .addSelect(
+        "COALESCE(SUM(p.net_amount) FILTER (WHERE p.status = 'COMPLETED'), 0)",
+        'total_paid_out',
+      )
+      .getRawOne<Record<string, string>>();
+
+    return {
+      pending_balance: parseFloat(row?.pending_balance ?? '0'),
+      total_paid_out: parseFloat(row?.total_paid_out ?? '0'),
+    };
+  }
+
   async getById(id: string): Promise<Payout> {
     const foundPayout = await this.repo.findOne({ where: { id } });
     if (!foundPayout) throw new RpcException({ statusCode: 404, message: 'Reversement introuvable' });

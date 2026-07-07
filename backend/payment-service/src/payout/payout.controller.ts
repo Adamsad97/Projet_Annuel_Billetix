@@ -23,6 +23,11 @@ export class PayoutController {
     return this.payoutService.getOrganizerBalance(data.organizer_id);
   }
 
+  @MessagePattern('payment.get_platform_balance')
+  getPlatformBalance() {
+    return this.payoutService.getPlatformBalance();
+  }
+
   @MessagePattern('payment.get_payout')
   getById(@Payload() data: { id: string }) {
     return this.payoutService.getById(data.id);

@@ -321,6 +321,33 @@ export class AuthService {
     return this.sanitize(user);
   }
 
+  /** Répartition des comptes par rôle + nombre de suspensions — utilisé par le dashboard KPIs admin. */
+  async getUserStats(): Promise<{
+    by_role: Record<string, number>;
+    suspended_count: number;
+    total: number;
+  }> {
+    const rows = await this.userRepo
+      .createQueryBuilder("u")
+      .select("u.role", "role")
+      .addSelect("COUNT(*)", "count")
+      .groupBy("u.role")
+      .getRawMany<{ role: string; count: string }>();
+
+    const by_role: Record<string, number> = {};
+    let total = 0;
+    for (const row of rows) {
+      by_role[row.role] = parseInt(row.count, 10);
+      total += by_role[row.role];
+    }
+
+    const suspended_count = await this.userRepo.count({
+      where: { is_suspended: true },
+    });
+
+    return { by_role, suspended_count, total };
+  }
+
   async verifyEmail(token: string) {
     const userId = await this.redis.get(`email_verify:${token}`);
     if (!userId) {

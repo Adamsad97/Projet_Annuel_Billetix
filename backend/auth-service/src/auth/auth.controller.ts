@@ -119,6 +119,11 @@ export class AuthController {
     return this.authService.getUserById(data.id);
   }
 
+  @MessagePattern("auth.get_user_stats")
+  getUserStats() {
+    return this.authService.getUserStats();
+  }
+
   // ──────────────── Administration des comptes ────────────────
 
   @MessagePattern("auth.suspend_user")

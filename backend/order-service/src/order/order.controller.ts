@@ -46,6 +46,21 @@ export class OrderController {
     return this.orderService.getRevenueByEvent(data.event_id);
   }
 
+  @MessagePattern('order.get_platform_revenue')
+  getPlatformRevenue() {
+    return this.orderService.getPlatformRevenue();
+  }
+
+  @MessagePattern('order.get_revenue_trend')
+  getRevenueTrend(@Payload() data: { days: number }) {
+    return this.orderService.getRevenueTrend(data.days);
+  }
+
+  @MessagePattern('order.get_recent_refund_count')
+  getRecentRefundCount(@Payload() data: { hours: number }) {
+    return this.orderService.getRecentRefundCount(data.hours);
+  }
+
   @MessagePattern('order.confirm_payment')
   confirmPayment(@Payload() data: { id: string; payment_intent_id: string; fees: number }) {
     return this.orderService.confirmPayment(data.id, data.payment_intent_id, data.fees);

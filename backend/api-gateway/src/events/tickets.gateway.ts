@@ -41,6 +41,10 @@ export class TicketsGateway
       // Rejoindre une room propre à l'acheteur : "buyer:{userId}"
       await client.join(`buyer:${payload.sub}`);
       client.data.userId = payload.sub;
+      // Les admins rejoignent aussi la room "admin" — alertes fraude/remboursements massifs
+      if (payload.role === "ADMIN") {
+        await client.join("admin");
+      }
       this.logger.log(`Client connecté : ${payload.sub}`);
     } catch {
       client.disconnect();
@@ -90,5 +94,14 @@ export class TicketsGateway
     this.server
       .to(`event:${eventId}`)
       .emit("dashboard:changed", { event_id: eventId, reason });
+  }
+
+  // Poussé aux admins connectés quand un seuil d'alerte (litiges/remboursements) est franchi
+  notifyAdminAlert(alert: {
+    type: string;
+    severity: "warning" | "critical";
+    message: string;
+  }) {
+    this.server.to("admin").emit("admin:alert", alert);
   }
 }
