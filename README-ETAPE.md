@@ -1,4 +1,4 @@
-# AUDIT BILLETIX — Backend (hors front/mobile) — mise à jour 2026-07-04
+# AUDIT BILLETIX — Backend (hors front/mobile) — mise à jour 2026-07-07
 
 > Document vivant de suivi. À mettre à jour à chaque avancée (résolution d'un point, démarrage d'une phase, décision prise).
 > Périmètre de cet audit : **backend uniquement** (10 microservices + API Gateway). Le frontend web et l'application mobile de contrôle sont exclus de la liste ci-dessous (voir note en fin de document).
@@ -53,6 +53,7 @@ Corrigé :
 - OAuth Google fonctionnel.
 - OAuth Facebook fonctionnel (corrigé le 2026-07-06 : au passage, un bug latent partagé par les deux stratégies a été trouvé et corrigé — `passport-oauth2` fait planter tout le processus au démarrage si `clientID` est vide, ce qui aurait aussi cassé Google si ses vraies clés n'avaient pas été déjà configurées).
 - 2FA TOTP complète (setup/confirm/verify/disable) **et désormais appliquée au login**.
+- 2FA par SMS complète (ajoutée le 2026-07-06) : `setup`/`confirm`/`send-code`, envoi via Twilio (ou journalisation en dev si non configuré, comme MailHog pour l'email), codes à 6 chiffres à usage unique (5 min de validité), login détecte la méthode active et envoie automatiquement un nouveau code par SMS quand nécessaire.
 - IBAN organisateur chiffré AES-256-GCM, **désormais impossible à enregistrer sans 2FA activée**.
 - Profil acheteur (infos, adresse facturation, historique commandes).
 - Profil organisateur (entité, réseaux sociaux, IBAN, KYC avec statuts + validation admin).
@@ -60,7 +61,6 @@ Corrigé :
 
 **Reste à faire**
 
-- 2FA par SMS (seul TOTP est implémenté).
 - Renvoi de billets par email depuis l'espace acheteur (aucune route).
 - Téléchargement de facture côté acheteur (`invoice_url` existe côté order-service mais n'est jamais généré/rempli, et n'est pas exposé par la gateway).
 - Tableau de bord / statistiques temps réel pour l'organisateur (aucune route dédiée).
@@ -100,11 +100,13 @@ Corrigé :
 - QR code signé HMAC-SHA256, usage unique (statut « Utilisé »), vérification temps réel, scan avec résultats (valide/déjà utilisé/invalide/annulé).
 - Revente encadrée (J-24h), transfert de billet (nouveau QR, ancien invalidé), invalidation admin.
 - Notifications de commande/billets prêts, retry 3× en cas d'échec d'envoi.
+- **Facture PDF générée automatiquement après paiement** (ajouté le 2026-07-07) : en-tête légal (raison sociale/SIRET/TVA configurables via `platform-config`), détail des lignes HT/TVA/TTC, adresse de facturation. Générée par `pdf-service` (Puppeteer, comme les billets), stockée sur MinIO, URL exposée via `GET /orders/:id/invoice`. Validée par un test réel de bout en bout (génération → upload → téléchargement du PDF, signature `%PDF` confirmée).
+- **Bug critique corrigé au passage** : `order.get` renvoie `{ order, items }`, mais `api-gateway/payment.controller.ts::postPaymentConfirmed()` lisait la réponse comme si elle était plate (`order.buyer_id`, `order.items`...) — tous ces champs valaient `undefined` en réalité. De plus, `order.confirm_payment` n'était **jamais appelé** : après un vrai paiement Stripe, la commande restait indéfiniment `PENDING_PAYMENT`/`PENDING` en base. Les deux corrigés et validés par appels RPC réels (commande passe bien à `CONFIRMED`/`PAID` avec `paid_at` renseigné).
+- **Bug corrigé** : les buckets MinIO (billets et factures) n'avaient aucune politique de lecture publique — une URL stockée et envoyée au client renvoyait 403. Policy `s3:GetObject` publique désormais appliquée à la création de chaque bucket.
 
 **Reste à faire**
 
 - Moyens de paiement alternatifs : PayPal, Apple Pay, Google Pay, Orange Money, Wave (seul Stripe est branché, les autres ne sont que des valeurs d'enum).
-- Génération et envoi automatique de la facture (le champ existe, jamais rempli).
 - Recalcul du reversement net après un remboursement partiel.
 - PDF joint à l'email de confirmation (actuellement un simple lien, pas de pièce jointe).
 - Renvoi manuel de billets par l'acheteur.
@@ -202,9 +204,13 @@ C'est la partie la plus importante à combler avant une mise en production réel
 2. ~~Tests sur les flux critiques~~ ✅ fait
 3. ~~Pipeline CI~~ ✅ fait
 4. ~~CD (publication Docker)~~ ✅ fait
-5. Ajouter des `healthcheck` Docker sur les microservices applicatifs et un `enableShutdownHooks()` global.
-6. Démarrer le frontend — c'est aujourd'hui le plus gros écart avec le CDC (0% fait).
-7. Combler les moyens de paiement alternatifs si le CDC les exige pour le MVP (PayPal en priorité, plus simple que le mobile money).
-8. Dashboard KPIs admin + exports comptables (valeur business élevée pour la soutenance/démo).
-9. Volet RGPD (droit à l'effacement, politique de confidentialité) — nécessaire même en version académique si des données réelles sont utilisées.
-10. Décider du sort de l'application mobile de contrôle (hors périmètre MVP ou à démarrer).
+5. ~~Health checks Docker + graceful shutdown~~ ✅ fait
+6. ~~OAuth Facebook~~ ✅ fait
+7. ~~2FA par SMS~~ ✅ fait (implémentation validée par tests + appels réels ; envoi SMS réel bloqué par une restriction Twilio compte d'essai sur les numéros français, indépendante du code — voir note ci-dessous)
+8. Démarrer le frontend — c'est aujourd'hui le plus gros écart avec le CDC (0% fait).
+9. Combler les moyens de paiement alternatifs si le CDC les exige pour le MVP (PayPal en priorité, plus simple que le mobile money).
+10. Dashboard KPIs admin + exports comptables (valeur business élevée pour la soutenance/démo).
+11. Volet RGPD (droit à l'effacement, politique de confidentialité) — nécessaire même en version académique si des données réelles sont utilisées.
+12. Décider du sort de l'application mobile de contrôle (hors périmètre MVP ou à démarrer).
+
+> **Note Twilio (2026-07-07)** : la 2FA SMS est fonctionnellement complète et validée (setup/confirm/login/disable, codes à usage unique, tests unitaires). L'envoi réel vers un numéro français échoue en compte d'essai Twilio ("Verified Caller IDs" refuse la vérification SMS/appel pour la France sur ce compte) — c'est une restriction du compte Twilio du développeur, pas un bug applicatif. Sans Twilio configuré, le code est journalisé (comportement de repli voulu, comme MailHog pour l'email).

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   CreateBucketCommand,
   HeadBucketCommand,
+  PutBucketPolicyCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -33,20 +34,43 @@ export class MinioService implements OnModuleInit {
     });
   }
 
-  async ensureBucket(): Promise<void> {
+  async ensureBucket(bucket: string = this.bucket): Promise<void> {
     try {
-      await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }));
+      await this.client.send(new HeadBucketCommand({ Bucket: bucket }));
     } catch {
-      await this.client.send(new CreateBucketCommand({ Bucket: this.bucket }));
-      this.logger.log(`Bucket créé : ${this.bucket}`);
+      await this.client.send(new CreateBucketCommand({ Bucket: bucket }));
+      // Lecture publique — les billets/factures sont référencés par URL directe
+      // (pas de mécanisme d'URL signée côté gateway), donc l'objet doit être
+      // accessible sans credentials pour que le lien envoyé au client fonctionne.
+      await this.client.send(
+        new PutBucketPolicyCommand({
+          Bucket: bucket,
+          Policy: JSON.stringify({
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Principal: '*',
+                Action: ['s3:GetObject'],
+                Resource: [`arn:aws:s3:::${bucket}/*`],
+              },
+            ],
+          }),
+        }),
+      );
+      this.logger.log(`Bucket créé (lecture publique) : ${bucket}`);
     }
   }
 
-  async uploadPdf(key: string, buffer: Buffer): Promise<string> {
-    await this.ensureBucket();
+  async uploadPdf(
+    key: string,
+    buffer: Buffer,
+    bucket: string = this.bucket,
+  ): Promise<string> {
+    await this.ensureBucket(bucket);
     await this.client.send(
       new PutObjectCommand({
-        Bucket: this.bucket,
+        Bucket: bucket,
         Key: key,
         Body: buffer,
         ContentType: 'application/pdf',
@@ -56,6 +80,6 @@ export class MinioService implements OnModuleInit {
     const endpoint = this.config.get<string>('MINIO_ENDPOINT', 'minio');
     const port = this.config.get<string>('MINIO_PORT', '9000');
     const useSSL = this.config.get<string>('MINIO_USE_SSL', 'false') === 'true';
-    return `${useSSL ? 'https' : 'http'}://${endpoint}:${port}/${this.bucket}/${key}`;
+    return `${useSSL ? 'https' : 'http'}://${endpoint}:${port}/${bucket}/${key}`;
   }
 }

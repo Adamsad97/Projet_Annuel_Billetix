@@ -226,14 +226,22 @@ export class PaymentController {
         payload: req.rawBody?.toString("utf8") ?? "",
         signature,
       }),
-    )) as { received: boolean; order_id?: string; already_processed?: boolean };
+    )) as {
+      received: boolean;
+      order_id?: string;
+      payment_intent_id?: string;
+      already_processed?: boolean;
+    };
 
     if (!confirmed.order_id || confirmed.already_processed) {
       return { received: true };
     }
 
     // 2. Post-confirmation asynchrone — ne bloque pas la réponse à Stripe
-    this.postPaymentConfirmed(confirmed.order_id).catch((err) =>
+    this.postPaymentConfirmed(
+      confirmed.order_id,
+      confirmed.payment_intent_id ?? "",
+    ).catch((err) =>
       this.logger.error(
         `Erreur post-paiement order ${confirmed.order_id}: ${err?.message}`,
       ),
@@ -244,43 +252,103 @@ export class PaymentController {
 
   // ─── Orchestration post-paiement ────────────────────────────────────────────
 
-  private async postPaymentConfirmed(orderId: string): Promise<void> {
+  private async postPaymentConfirmed(
+    orderId: string,
+    paymentIntentId: string,
+  ): Promise<void> {
     // 2a. Récupérer la commande (buyer + items + event info)
-    const order = (await firstValueFrom(
+    // order.get renvoie { order, items } — bien conserver la forme imbriquée
+    // (bug corrigé : ce code lisait auparavant les champs à plat, ce qui
+    // rendait buyer_id/event_name/items etc. tous `undefined` en pratique).
+    const { order, items } = (await firstValueFrom(
       this.orderClient.send("order.get", { id: orderId }),
     )) as {
-      id: string;
-      buyer_id: string;
-      buyer_email: string;
-      buyer_first_name: string;
-      buyer_last_name: string;
-      total_amount_ht: number;
-      total_amount_ttc: number;
-      total_commission: number;
-      total_payment_fees: number;
-      organizer_id?: string;
+      order: {
+        id: string;
+        reference: string;
+        buyer_id: string;
+        buyer_email: string;
+        buyer_first_name: string;
+        buyer_last_name: string;
+        total_amount_ht: number;
+        total_amount_ttc: number;
+        total_commission: number;
+        total_payment_fees: number;
+        discount_amount: number;
+        free_ticket_fees: number;
+        organizer_id?: string;
+        event_id: string;
+        event_name: string;
+        event_start_at: string;
+        event_end_at?: string;
+        event_venue_name: string;
+        event_venue_address: string;
+        event_city: string;
+        event_poster_url?: string;
+        artist_name: string;
+        artist_description?: string;
+        billing_first_name: string;
+        billing_last_name: string;
+        billing_email: string;
+        billing_address_line1: string;
+        billing_address_line2?: string | null;
+        billing_city: string;
+        billing_postal_code: string;
+        billing_country: string;
+      };
       items: {
         ticket_category_id: string;
         ticket_category_name: string;
+        unit_price_ht: number;
         unit_price_ttc: number;
+        total_price_ht: number;
+        total_price_ttc: number;
         quantity: number;
         holder_first_name: string;
         holder_last_name: string;
         seat_info?: string;
       }[];
-      event_id: string;
-      event_name: string;
-      event_start_at: string;
-      event_end_at?: string;
-      event_venue_name: string;
-      event_venue_address: string;
-      event_city: string;
-      event_poster_url?: string;
-      artist_name: string;
-      artist_description?: string;
     };
 
-    // 2b. Générer les billets dans ticket-service
+    // 2b. Récupérer la config plateforme une seule fois (frais Stripe, TVA, infos légales facture)
+    const platformConfig = await firstValueFrom(
+      this.adminClient.send<{
+        tva_rate: number;
+        stripe_fee_percent: number;
+        stripe_fee_fixed_eur: number;
+        platform_legal_name: string;
+        platform_siret: string;
+        platform_vat_number: string;
+        platform_address: string;
+      }>("admin.get_platform_config", {}),
+    ).catch(() => ({
+      tva_rate: 0.2,
+      stripe_fee_percent: 2.9,
+      stripe_fee_fixed_eur: 0.3,
+      platform_legal_name: "BilletiX SAS",
+      platform_siret: "",
+      platform_vat_number: "",
+      platform_address: "",
+    }));
+
+    const stripeFees = parseFloat(
+      (
+        Number(order.total_amount_ttc) * (platformConfig.stripe_fee_percent / 100) +
+        platformConfig.stripe_fee_fixed_eur
+      ).toFixed(2),
+    );
+
+    // 2c. Marquer la commande comme payée (bug corrigé : jamais appelé auparavant —
+    // le statut/paid_at de la commande ne changeait jamais après un vrai paiement)
+    await firstValueFrom(
+      this.orderClient.send("order.confirm_payment", {
+        id: orderId,
+        payment_intent_id: paymentIntentId,
+        fees: stripeFees,
+      }),
+    );
+
+    // 2d. Générer les billets dans ticket-service
     const tickets = (await firstValueFrom(
       this.ticketClient.send("ticket.generate", {
         order_id: orderId,
@@ -296,7 +364,7 @@ export class PaymentController {
         event_poster_url: order.event_poster_url,
         artist_name: order.artist_name,
         artist_description: order.artist_description,
-        items: order.items,
+        items,
       }),
     )) as Array<{
       id: string;
@@ -362,23 +430,40 @@ export class PaymentController {
       tickets: ticketList,
     });
 
-    // Créer le reversement organisateur
+    // 2e. Générer la facture PDF (fire-and-forget, comme pour les billets)
+    this.pdfClient.emit("pdf.generate_invoice", {
+      order_id: orderId,
+      reference: order.reference,
+      paid_at: new Date().toISOString(),
+      tva_rate: platformConfig.tva_rate,
+      billing_first_name: order.billing_first_name,
+      billing_last_name: order.billing_last_name,
+      billing_email: order.billing_email,
+      billing_address_line1: order.billing_address_line1,
+      billing_address_line2: order.billing_address_line2,
+      billing_city: order.billing_city,
+      billing_postal_code: order.billing_postal_code,
+      billing_country: order.billing_country,
+      items: items.map((item) => ({
+        ticket_category_name: item.ticket_category_name,
+        quantity: item.quantity,
+        unit_price_ht: item.unit_price_ht,
+        unit_price_ttc: item.unit_price_ttc,
+        total_price_ht: item.total_price_ht,
+        total_price_ttc: item.total_price_ttc,
+      })),
+      total_amount_ht: order.total_amount_ht,
+      total_amount_ttc: order.total_amount_ttc,
+      discount_amount: order.discount_amount,
+      free_ticket_fees: order.free_ticket_fees,
+      platform_legal_name: platformConfig.platform_legal_name,
+      platform_siret: platformConfig.platform_siret,
+      platform_vat_number: platformConfig.platform_vat_number,
+      platform_address: platformConfig.platform_address,
+    });
+
+    // Créer le reversement organisateur (stripeFees déjà calculés ci-dessus)
     if (order.organizer_id) {
-      const platformConfig = await firstValueFrom(
-        this.adminClient.send<{
-          stripe_fee_percent: number;
-          stripe_fee_fixed_eur: number;
-        }>("admin.get_platform_config", {}),
-      ).catch(() => ({ stripe_fee_percent: 2.9, stripe_fee_fixed_eur: 0.3 }));
-
-      const amountTtc = Number(order.total_amount_ttc);
-      const stripeFees = parseFloat(
-        (
-          amountTtc * (platformConfig.stripe_fee_percent / 100) +
-          platformConfig.stripe_fee_fixed_eur
-        ).toFixed(2),
-      );
-
       this.paymentClient
         .send("payment.create_payout", {
           organizer_id: order.organizer_id,

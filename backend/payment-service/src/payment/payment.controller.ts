@@ -38,6 +38,7 @@ export class PaymentController {
     return {
       received: true,
       order_id: payment.order_id,
+      payment_intent_id: payment.provider_payment_id,
       already_processed: payment._wasAlreadyPaid,
     };
   }

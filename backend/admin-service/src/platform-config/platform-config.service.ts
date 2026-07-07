@@ -16,6 +16,10 @@ export interface PlatformConfig {
   cancel_deadline_hours: number;
   agent_session_hours: number;
   fill_thresholds: number[];
+  platform_legal_name: string;
+  platform_siret: string;
+  platform_vat_number: string;
+  platform_address: string;
 }
 
 const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
@@ -31,6 +35,10 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'cancel_deadline_hours',          value: '24',            type: 'number',  description: 'Délai avant l\'événement au-delà duquel l\'annulation est bloquée (heures)' },
   { key: 'agent_session_hours',            value: '12',            type: 'number',  description: 'Durée maximale d\'une session agent de contrôle (heures)' },
   { key: 'fill_thresholds',               value: '[25,50,75,100]', type: 'json',    description: 'Seuils de remplissage déclenchant une notification organisateur (%)' },
+  { key: 'platform_legal_name',            value: 'BilletiX SAS',  type: 'string',  description: 'Raison sociale de la plateforme (en-tête facture)' },
+  { key: 'platform_siret',                 value: '',              type: 'string',  description: 'Numéro SIRET de la plateforme (en-tête facture)' },
+  { key: 'platform_vat_number',            value: '',              type: 'string',  description: 'Numéro de TVA intracommunautaire de la plateforme' },
+  { key: 'platform_address',               value: '',              type: 'string',  description: 'Adresse légale de la plateforme (en-tête facture)' },
 ];
 
 @Injectable()
@@ -67,6 +75,10 @@ export class PlatformConfigService implements OnModuleInit {
       cancel_deadline_hours:          parseInt(map.cancel_deadline_hours ?? '24'),
       agent_session_hours:            parseInt(map.agent_session_hours ?? '12'),
       fill_thresholds:                JSON.parse(map.fill_thresholds ?? '[25,50,75,100]'),
+      platform_legal_name:            map.platform_legal_name ?? 'BilletiX SAS',
+      platform_siret:                 map.platform_siret ?? '',
+      platform_vat_number:            map.platform_vat_number ?? '',
+      platform_address:               map.platform_address ?? '',
     };
   }
 

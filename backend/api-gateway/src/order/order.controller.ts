@@ -156,6 +156,23 @@ export class OrderController {
     return firstValueFrom(this.orderClient.send("order.get", { id }));
   }
 
+  @Get(":id/invoice")
+  @ApiOperation({
+    summary: "Télécharger la facture d'une commande (URL du PDF)",
+  })
+  async getInvoice(@Param("id") id: string) {
+    const { order } = (await firstValueFrom(
+      this.orderClient.send("order.get", { id }),
+    )) as { order: { invoice_url: string | null } };
+
+    if (!order.invoice_url) {
+      throw new BadRequestException(
+        "Facture pas encore disponible pour cette commande.",
+      );
+    }
+    return { invoice_url: order.invoice_url };
+  }
+
   @Post(":id/cancel")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Annuler une commande" })

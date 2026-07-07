@@ -63,6 +63,19 @@ describe('PlatformConfigService', () => {
 
       expect(config.commission_standard_percent).toBe(10);
       expect(config.fill_thresholds).toEqual([25, 50, 75, 100]);
+      expect(config.platform_legal_name).toBe('BilletiX SAS');
+    });
+
+    it('lit les infos légales de la plateforme depuis la base', async () => {
+      repo.find.mockResolvedValue([
+        { key: 'platform_siret', value: '123 456 789 00012' },
+        { key: 'platform_vat_number', value: 'FR12345678900' },
+      ]);
+
+      const config = await service.getAll();
+
+      expect(config.platform_siret).toBe('123 456 789 00012');
+      expect(config.platform_vat_number).toBe('FR12345678900');
     });
   });
 
