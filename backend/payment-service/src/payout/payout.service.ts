@@ -17,6 +17,7 @@ export class PayoutService {
   async create(data: {
     organizer_id: string;
     event_id: string;
+    order_id?: string;
     gross_amount: number;
     commission_amount: number;
     payment_fees_amount: number;
@@ -33,11 +34,76 @@ export class PayoutService {
       this.repo.create({
         organizer_id: data.organizer_id,
         event_id: data.event_id,
+        order_id: data.order_id ?? null,
         gross_amount: data.gross_amount,
         commission_amount: data.commission_amount,
         payment_fees_amount: data.payment_fees_amount,
         net_amount: parseFloat(net.toFixed(2)),
         scheduled_at: scheduled,
+      }),
+    );
+  }
+
+  /**
+   * Recalcule le reversement d'une commande après remboursement (total ou
+   * partiel). Si le payout n'a pas encore été versé (PENDING/BLOCKED), son
+   * montant est directement réduit au prorata du remboursement. S'il est
+   * déjà en cours ou versé (PROCESSING/COMPLETED), impossible de le modifier
+   * rétroactivement — un virement Stripe déjà émis ne peut pas être annulé
+   * localement — donc un ajustement compensatoire séparé (montant négatif)
+   * est créé à la place, à récupérer sur un prochain cycle de reversement.
+   */
+  async recalculateForRefund(
+    orderId: string,
+    refundedAmount: number,
+    originalPaymentAmount: number,
+  ): Promise<void> {
+    const payout = await this.repo.findOne({ where: { order_id: orderId } });
+    if (!payout || originalPaymentAmount <= 0) return;
+
+    const refundRatio = Math.min(refundedAmount / originalPaymentAmount, 1);
+
+    if (
+      payout.status === PayoutStatus.PENDING ||
+      payout.status === PayoutStatus.BLOCKED
+    ) {
+      const newGross = parseFloat(
+        (Number(payout.gross_amount) * (1 - refundRatio)).toFixed(2),
+      );
+      const newCommission = parseFloat(
+        (Number(payout.commission_amount) * (1 - refundRatio)).toFixed(2),
+      );
+      payout.gross_amount = newGross;
+      payout.commission_amount = newCommission;
+      payout.net_amount = parseFloat(
+        (newGross - newCommission - Number(payout.payment_fees_amount)).toFixed(2),
+      );
+      await this.repo.save(payout);
+      return;
+    }
+
+    // PROCESSING ou COMPLETED — ajustement compensatoire séparé
+    const adjustmentGross = parseFloat(
+      (Number(payout.gross_amount) * refundRatio * -1).toFixed(2),
+    );
+    const adjustmentCommission = parseFloat(
+      (Number(payout.commission_amount) * refundRatio * -1).toFixed(2),
+    );
+    const adjustmentNet = parseFloat(
+      (adjustmentGross - adjustmentCommission).toFixed(2),
+    );
+
+    await this.repo.save(
+      this.repo.create({
+        organizer_id: payout.organizer_id,
+        event_id: payout.event_id,
+        order_id: orderId,
+        gross_amount: adjustmentGross,
+        commission_amount: adjustmentCommission,
+        payment_fees_amount: 0,
+        net_amount: adjustmentNet,
+        status: PayoutStatus.PENDING,
+        scheduled_at: new Date(),
       }),
     );
   }
@@ -95,9 +161,17 @@ export class PayoutService {
   }
 
   async getDuePayouts(): Promise<Payout[]> {
-    return this.repo.find({
-      where: { status: PayoutStatus.PENDING, scheduled_at: LessThanOrEqual(new Date()) },
-    });
+    // net_amount > 0 uniquement : un virement Stripe ne peut pas être négatif
+    // ou nul. Les ajustements négatifs créés par recalculateForRefund() (sur
+    // un payout déjà versé) restent PENDING mais ne sont jamais transférés
+    // automatiquement — ils doivent être récupérés sur un futur reversement
+    // positif du même organisateur, ou réconciliés manuellement par un admin.
+    return this.repo
+      .createQueryBuilder('payout')
+      .where('payout.status = :status', { status: PayoutStatus.PENDING })
+      .andWhere('payout.scheduled_at <= :now', { now: new Date() })
+      .andWhere('payout.net_amount > 0')
+      .getMany();
   }
 
   async process(id: string, stripeAccountId: string): Promise<Payout> {

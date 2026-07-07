@@ -12,7 +12,10 @@ npm start              # construire et lancer toute l'application
 
 Premier lancement : 5 à 10 minutes (téléchargement des images Docker + installation des dépendances). Relances suivantes : `npm run dev` (rapide, sans rebuild).
 
-Une fois lancé : l'API est sur `http://localhost:4000` (documentation Swagger sur `http://localhost:4000/api/docs`), le frontend sur `http://localhost:3000`.
+Une fois lancé :
+l'API tourne sur :http://localhost:4000
+documentation Swagger tourne sur : http://localhost:4000/api/docs,
+le frontend tourne sur :http://localhost:3000
 
 ## Architecture
 

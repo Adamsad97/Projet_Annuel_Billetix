@@ -562,12 +562,19 @@ export class AdminController {
     @Param("orderId") orderId: string,
     @Body() dto: { reason: string; amount_cents?: number },
   ) {
-    const result = await firstValueFrom(
+    const result = (await firstValueFrom(
       this.paymentClient.send("payment.refund", {
         order_id: orderId,
         amount_cents: dto.amount_cents,
       }),
-    );
+    )) as { status: string };
+
+    if (result.status === "REFUNDED") {
+      this.orderClient
+        .send("order.mark_refunded", { id: orderId })
+        .subscribe();
+    }
+
     this.audit(user, req, "REFUND_FORCED", "ORDER", orderId, dto.reason, {
       amount_cents: dto.amount_cents,
     });

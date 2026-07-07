@@ -1,12 +1,14 @@
-import { Controller } from '@nestjs/common';
+import { Controller, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
-import { MailService } from '../mail/mail.service';
+import * as http from 'http';
+import { MailAttachment, MailService } from '../mail/mail.service';
 import { SmsService } from '../sms/sms.service';
 
 @Controller()
 export class NotificationController {
   private readonly appUrl: string;
+  private readonly logger = new Logger(NotificationController.name);
 
   constructor(
     private readonly mail: MailService,
@@ -18,6 +20,30 @@ export class NotificationController {
 
   private ack(ctx: RmqContext) {
     ctx.getChannelRef().ack(ctx.getMessage());
+  }
+
+  // Les PDF (billets/factures) sont sur MinIO en lecture publique — un
+  // échec de téléchargement ne doit jamais empêcher l'envoi de l'email,
+  // juste faire retomber sur le lien classique (dégradation silencieuse).
+  private fetchPdf(url: string): Promise<Buffer | null> {
+    return new Promise((resolve) => {
+      http
+        .get(url, (res) => {
+          if (res.statusCode !== 200) {
+            this.logger.warn(`PDF inaccessible (${res.statusCode}) : ${url}`);
+            res.resume();
+            resolve(null);
+            return;
+          }
+          const chunks: Buffer[] = [];
+          res.on('data', (chunk) => chunks.push(chunk));
+          res.on('end', () => resolve(Buffer.concat(chunks)));
+        })
+        .on('error', (err) => {
+          this.logger.warn(`Échec téléchargement PDF ${url} : ${err.message}`);
+          resolve(null);
+        });
+    });
   }
 
   @EventPattern('notification.welcome')
@@ -127,10 +153,29 @@ export class NotificationController {
       eventName: string;
       eventDate: string;
       eventVenue: string;
-      tickets: Array<{ ticketNumber: string; categoryName: string; seatInfo?: string; qrCodeUrl: string }>;
+      tickets: Array<{
+        ticketNumber: string;
+        categoryName: string;
+        seatInfo?: string;
+        qrCodeUrl: string;
+        pdfUrl?: string | null;
+      }>;
     },
     @Ctx() ctx: RmqContext,
   ) {
+    const attachments: MailAttachment[] = [];
+    for (const [index, ticket] of data.tickets.entries()) {
+      if (!ticket.pdfUrl) continue;
+      const pdf = await this.fetchPdf(ticket.pdfUrl);
+      if (pdf) {
+        attachments.push({
+          filename: `billet-${ticket.ticketNumber || index + 1}.pdf`,
+          content: pdf,
+          contentType: 'application/pdf',
+        });
+      }
+    }
+
     await this.mail.send({
       to: data.email,
       subject: `Vos billets pour ${data.eventName} — BilletiX`,
@@ -139,6 +184,7 @@ export class NotificationController {
         ...data,
         ticketsUrl: `${this.appUrl}/tickets`,
       },
+      attachments,
     });
     this.ack(ctx);
   }

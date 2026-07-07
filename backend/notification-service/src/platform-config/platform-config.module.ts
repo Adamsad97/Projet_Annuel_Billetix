@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { MailService } from './mail.service';
+import { PlatformConfigCache } from './platform-config.cache';
 
+@Global()
 @Module({
   imports: [
     ClientsModule.registerAsync([
@@ -20,7 +21,7 @@ import { MailService } from './mail.service';
       },
     ]),
   ],
-  providers: [MailService],
-  exports: [MailService],
+  providers: [PlatformConfigCache],
+  exports: [PlatformConfigCache],
 })
-export class MailModule {}
+export class PlatformConfigModule {}

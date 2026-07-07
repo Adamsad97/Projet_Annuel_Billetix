@@ -5,6 +5,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/adapters/handlebars.adapter';
 import { NotificationModule } from './notification/notification.module';
 import { HealthModule } from './health/health.module';
+import { PlatformConfigModule } from './platform-config/platform-config.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { HealthModule } from './health/health.module';
       },
     }),
 
+    PlatformConfigModule,
     NotificationModule,
     HealthModule,
   ],

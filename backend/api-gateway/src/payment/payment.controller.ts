@@ -72,12 +72,22 @@ export class PaymentController {
     @Param("orderId") orderId: string,
     @Body() dto: { amount_cents?: number },
   ) {
-    const result = await firstValueFrom(
+    const result = (await firstValueFrom(
       this.paymentClient.send("payment.refund", {
         order_id: orderId,
         amount_cents: dto.amount_cents,
       }),
-    );
+    )) as { status: string };
+
+    // Ne marquer la commande comme remboursée que si le remboursement
+    // couvre le solde total — un remboursement partiel laisse les billets
+    // valides, la commande reste CONFIRMED/TICKETS_SENT.
+    if (result.status === "REFUNDED") {
+      this.orderClient
+        .send("order.mark_refunded", { id: orderId })
+        .subscribe();
+    }
+
     this.checkRefundAlert().catch(() => undefined);
     return result;
   }
@@ -301,6 +311,7 @@ export class PaymentController {
         billing_city: string;
         billing_postal_code: string;
         billing_country: string;
+        payment_method: string;
       };
       items: {
         ticket_category_id: string;
@@ -326,6 +337,8 @@ export class PaymentController {
         platform_siret: string;
         platform_vat_number: string;
         platform_address: string;
+        ticket_pdf_wait_max_attempts: number;
+        ticket_pdf_wait_delay_seconds: number;
       }>("admin.get_platform_config", {}),
     ).catch(() => ({
       tva_rate: 0.2,
@@ -335,6 +348,8 @@ export class PaymentController {
       platform_siret: "",
       platform_vat_number: "",
       platform_address: "",
+      ticket_pdf_wait_max_attempts: 5,
+      ticket_pdf_wait_delay_seconds: 2,
     }));
 
     const stripeFees = parseFloat(
@@ -383,8 +398,8 @@ export class PaymentController {
       holder_last_name: string;
     }>;
 
-    // 2c. Pour chaque billet : déclencher génération PDF + notification (fire-and-forget)
-    const ticketList = tickets.map((ticket) => ({
+    // 2c. Pour chaque billet : déclencher génération PDF + notification
+    const ticketListBase = tickets.map((ticket) => ({
       ticket_id: ticket.id,
       qr_code_url: ticket.qr_code_url,
       ticket_category_name: ticket.ticket_category_name,
@@ -416,27 +431,57 @@ export class PaymentController {
       });
     }
 
-    // Notification : commande + billets confirmés (un seul email groupé)
+    // Notification : reçu de paiement — noms de champs alignés sur ce que
+    // notification-service/payment-confirmed.hbs attend réellement (bug
+    // corrigé : les deux ne concordaient pas, email envoyé mais quasi vide —
+    // prénom/référence/événement/montant/date/moyen de paiement tous absents).
     this.notifClient.emit("notification.payment_confirmed", {
       email: order.buyer_email,
-      first_name: order.buyer_first_name,
-      last_name: order.buyer_last_name,
-      order_id: orderId,
-      event_name: order.event_name,
-      event_date: order.event_start_at,
-      event_venue: order.event_venue_name,
-      tickets: ticketList,
-      total_amount_ttc: order.total_amount_ttc,
+      firstName: order.buyer_first_name,
+      orderReference: order.reference,
+      eventName: order.event_name,
+      amount: Number(order.total_amount_ttc).toFixed(2),
+      paymentDate: new Date().toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+      paymentMethod: order.payment_method,
     });
 
+    // Attendre (avec un délai borné) que les PDF billets soient générés pour
+    // pouvoir les joindre en pièce jointe à l'email — pas seulement un lien.
+    // Si le délai est dépassé, l'email part quand même, sans pièce jointe
+    // (dégradation silencieuse, ne bloque jamais l'envoi de la notification).
+    const ticketListWithPdf = await Promise.all(
+      tickets.map(async (ticket) => ({
+        ticketNumber: ticket.reference,
+        categoryName: ticket.ticket_category_name,
+        qrCodeUrl: ticket.qr_code_url,
+        seatInfo: ticket.seat_info,
+        pdfUrl: await this.waitForTicketPdf(
+          ticket.id,
+          platformConfig.ticket_pdf_wait_max_attempts,
+          platformConfig.ticket_pdf_wait_delay_seconds * 1000,
+        ),
+      })),
+    );
+
+    // Noms de champs alignés sur ticket-ready.hbs (bug corrigé : le gateway
+    // envoyait du snake_case, le template attendait du camelCase — email
+    // envoyé mais prénom/événement/date/lieu/QR code tous vides).
     this.notifClient.emit("notification.ticket_ready", {
       email: order.buyer_email,
-      first_name: order.buyer_first_name,
-      last_name: order.buyer_last_name,
-      event_name: order.event_name,
-      event_date: order.event_start_at,
-      event_venue: order.event_venue_name,
-      tickets: ticketList,
+      firstName: order.buyer_first_name,
+      eventName: order.event_name,
+      eventDate: new Date(order.event_start_at).toLocaleDateString("fr-FR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+      eventVenue: order.event_venue_name,
+      tickets: ticketListWithPdf,
     });
 
     // 2e. Générer la facture PDF (fire-and-forget, comme pour les billets)
@@ -477,6 +522,7 @@ export class PaymentController {
         .send("payment.create_payout", {
           organizer_id: order.organizer_id,
           event_id: order.event_id,
+          order_id: orderId,
           gross_amount: Number(order.total_amount_ht),
           commission_amount: Number(order.total_commission),
           payment_fees_amount: stripeFees,
@@ -532,5 +578,26 @@ export class PaymentController {
         message: `${count} litige(s) ouvert(s) — seuil d'alerte : ${config.dispute_alert_threshold}`,
       });
     }
+  }
+
+  // Attend (délai borné) que ticket-service ait enregistré le pdf_url d'un
+  // billet — la génération PDF est asynchrone (RMQ), donc pas toujours prête
+  // au moment où la commande vient d'être confirmée.
+  private async waitForTicketPdf(
+    ticketId: string,
+    maxAttempts: number,
+    delayMs: number,
+  ): Promise<string | null> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const ticket = await firstValueFrom(
+        this.ticketClient.send("ticket.get", { id: ticketId }),
+      ).catch(() => null);
+
+      if (ticket?.pdf_url) return ticket.pdf_url;
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    return null;
   }
 }

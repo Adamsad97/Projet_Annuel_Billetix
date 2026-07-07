@@ -25,6 +25,14 @@ export class Payout {
   @Column()
   event_id: string;
 
+  // Lien vers la commande d'origine — permet de retrouver le payout à
+  // ajuster lors d'un remboursement (une commande = un payout, cf.
+  // PayoutService.create() appelé une fois par commande confirmée).
+  // Nullable : les ajustements négatifs créés après remboursement d'un
+  // payout déjà versé référencent aussi la commande via ce même champ.
+  @Column({ nullable: true })
+  order_id: string | null;
+
   @Column({ type: 'enum', enum: PayoutStatus, default: PayoutStatus.PENDING })
   status: PayoutStatus;
 

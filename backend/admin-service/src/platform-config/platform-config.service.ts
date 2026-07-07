@@ -22,6 +22,10 @@ export interface PlatformConfig {
   platform_address: string;
   dispute_alert_threshold: number;
   refund_alert_threshold_24h: number;
+  email_max_retry_attempts: number;
+  email_retry_delay_minutes: number;
+  ticket_pdf_wait_max_attempts: number;
+  ticket_pdf_wait_delay_seconds: number;
 }
 
 const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
@@ -43,6 +47,10 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'platform_address',               value: '',              type: 'string',  description: 'Adresse légale de la plateforme (en-tête facture)' },
   { key: 'dispute_alert_threshold',        value: '5',             type: 'number',  description: 'Nombre de litiges ouverts déclenchant une alerte admin' },
   { key: 'refund_alert_threshold_24h',     value: '10',            type: 'number',  description: 'Nombre de remboursements sur 24h déclenchant une alerte "remboursements massifs"' },
+  { key: 'email_max_retry_attempts',       value: '3',             type: 'number',  description: 'Nombre de tentatives d\'envoi d\'un email avant abandon définitif' },
+  { key: 'email_retry_delay_minutes',      value: '10',            type: 'number',  description: 'Délai entre deux tentatives d\'envoi d\'un email (minutes)' },
+  { key: 'ticket_pdf_wait_max_attempts',   value: '5',             type: 'number',  description: 'Nombre de vérifications avant d\'envoyer l\'email billet sans pièce jointe PDF' },
+  { key: 'ticket_pdf_wait_delay_seconds',  value: '2',             type: 'number',  description: 'Délai entre deux vérifications de disponibilité du PDF billet (secondes)' },
 ];
 
 @Injectable()
@@ -85,6 +93,10 @@ export class PlatformConfigService implements OnModuleInit {
       platform_address:               map.platform_address ?? '',
       dispute_alert_threshold:        parseInt(map.dispute_alert_threshold ?? '5'),
       refund_alert_threshold_24h:     parseInt(map.refund_alert_threshold_24h ?? '10'),
+      email_max_retry_attempts:       parseInt(map.email_max_retry_attempts ?? '3'),
+      email_retry_delay_minutes:      parseInt(map.email_retry_delay_minutes ?? '10'),
+      ticket_pdf_wait_max_attempts:   parseInt(map.ticket_pdf_wait_max_attempts ?? '5'),
+      ticket_pdf_wait_delay_seconds:  parseInt(map.ticket_pdf_wait_delay_seconds ?? '2'),
     };
   }
 
