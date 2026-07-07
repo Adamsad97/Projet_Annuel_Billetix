@@ -81,6 +81,29 @@ export class OrganizerService {
     return { iban, bank_owner_name: profile.bank_owner_name! };
   }
 
+  /** Droit à l'effacement RGPD — efface IBAN, KYC, contact et réseaux sociaux. */
+  async anonymize(userId: string): Promise<{ success: boolean }> {
+    const profile = await this.repo.findOne({ where: { user_id: userId } });
+    if (!profile) return { success: true };
+
+    profile.display_name = 'Organisateur supprimé';
+    profile.description = null;
+    profile.logo_url = null;
+    profile.website_url = null;
+    profile.social_instagram = null;
+    profile.social_facebook = null;
+    profile.social_twitter = null;
+    profile.social_youtube = null;
+    profile.iban_encrypted = null;
+    profile.iban_iv = null;
+    profile.iban_tag = null;
+    profile.bank_owner_name = null;
+    profile.stripe_connect_account_id = null;
+    profile.kyc_document_url = null;
+    await this.repo.save(profile);
+    return { success: true };
+  }
+
   async listKycPending(): Promise<OrganizerProfile[]> {
     return this.repo.find({
       where: { kyc_status: KycStatus.SUBMITTED },

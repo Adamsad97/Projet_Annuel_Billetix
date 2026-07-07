@@ -1,15 +1,19 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
   Inject,
   Patch,
   Post,
+  Req,
 } from "@nestjs/common";
 import { ClientProxy } from "@nestjs/microservices";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Request } from "express";
 import { firstValueFrom } from "rxjs";
 import {
   CurrentUser,
@@ -26,6 +30,10 @@ import { UpdateIbanDto } from "./dto/update-iban.dto";
 export class UserController {
   constructor(
     @Inject("USER_SERVICE") private readonly userClient: ClientProxy,
+    @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
+    @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
+    @Inject("PAYMENT_SERVICE") private readonly paymentClient: ClientProxy,
+    @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
   ) {}
 
   // --- Profil acheteur ---
@@ -149,5 +157,83 @@ export class UserController {
         kyc_rejected_reason: p.kyc_rejected_reason,
       }),
     );
+  }
+
+  // --- Droit à l'effacement (RGPD) ---
+
+  @Delete("me")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Supprimer définitivement son compte (droit à l'effacement RGPD)",
+  })
+  async deleteMyAccount(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Body() dto: { password?: string },
+  ) {
+    // Un organisateur avec des obligations en cours ne peut pas supprimer son
+    // compte tant qu'elles ne sont pas résolues (événements à venir déjà
+    // publiés, ou reversement en attente de versement).
+    if (user.role === "ORGANIZER") {
+      const events = (await firstValueFrom(
+        this.eventClient.send("event.list_by_organizer", {
+          organizer_id: user.sub,
+        }),
+      )) as Array<{ status: string; start_date: string }>;
+
+      const now = new Date();
+      const hasUpcomingPublished = events.some(
+        (event) =>
+          event.status === "PUBLISHED" && new Date(event.start_date) > now,
+      );
+      if (hasUpcomingPublished) {
+        throw new BadRequestException(
+          "Impossible de supprimer votre compte : vous avez un événement publié à venir. Annulez-le ou attendez qu'il soit passé.",
+        );
+      }
+
+      const balance = await firstValueFrom(
+        this.paymentClient.send("payment.get_organizer_balance", {
+          organizer_id: user.sub,
+        }),
+      ).catch(() => ({ pending_balance: 0 }));
+      if ((balance as { pending_balance: number }).pending_balance > 0) {
+        throw new BadRequestException(
+          "Impossible de supprimer votre compte : un reversement est en attente. Contactez le support une fois celui-ci versé.",
+        );
+      }
+    }
+
+    await firstValueFrom(
+      this.authClient.send("auth.delete_account", {
+        id: user.sub,
+        password: dto?.password,
+      }),
+    );
+
+    const anonymizePattern =
+      user.role === "ORGANIZER"
+        ? "user.anonymize_organizer_profile"
+        : "user.anonymize_buyer_profile";
+    this.userClient.send(anonymizePattern, { user_id: user.sub }).subscribe();
+
+    this.adminClient
+      .send("admin.log_action", {
+        action: "USER_DELETED",
+        entity_type: "USER",
+        entity_id: user.sub,
+        performed_by: user.sub,
+        performed_by_email: user.email,
+        reason: "Suppression de compte à la demande de l'utilisateur (RGPD)",
+        metadata: null,
+        ip_address:
+          (req.headers["x-forwarded-for"] as string)?.split(",")[0] ??
+          req.ip ??
+          "",
+      })
+      .subscribe();
+
+    return { success: true };
   }
 }

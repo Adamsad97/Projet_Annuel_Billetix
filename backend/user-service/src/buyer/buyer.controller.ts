@@ -16,4 +16,9 @@ export class BuyerController {
   updateProfile(@Payload() data: { user_id: string; dto: UpdateBuyerProfileDto }) {
     return this.buyerService.update(data.user_id, data.dto);
   }
+
+  @MessagePattern('user.anonymize_buyer_profile')
+  anonymize(@Payload() data: { user_id: string }) {
+    return this.buyerService.anonymize(data.user_id);
+  }
 }

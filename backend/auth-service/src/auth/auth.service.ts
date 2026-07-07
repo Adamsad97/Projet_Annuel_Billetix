@@ -415,6 +415,104 @@ export class AuthService {
     return this.sanitize(user);
   }
 
+  /** Recherche/liste paginée des comptes — admin uniquement. */
+  async listUsers(filters: {
+    q?: string;
+    role?: UserRole;
+    is_suspended?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ data: ReturnType<AuthService["sanitize"]>[]; total: number }> {
+    const limit = Math.min(filters.limit ?? 20, 100);
+    const offset = filters.offset ?? 0;
+
+    const qb = this.userRepo
+      .createQueryBuilder("u")
+      // createQueryBuilder ne filtre pas automatiquement deleted_at
+      // (contrairement à find()/findOne()) — exclusion explicite des
+      // comptes supprimés (RGPD) des résultats de recherche admin.
+      .where("u.deleted_at IS NULL")
+      .orderBy("u.created_at", "DESC")
+      .skip(offset)
+      .take(limit);
+
+    if (filters.q) {
+      qb.andWhere(
+        "(LOWER(u.email) LIKE :q OR LOWER(u.first_name) LIKE :q OR LOWER(u.last_name) LIKE :q)",
+        { q: `%${filters.q.toLowerCase()}%` },
+      );
+    }
+    if (filters.role) qb.andWhere("u.role = :role", { role: filters.role });
+    if (filters.is_suspended !== undefined) {
+      qb.andWhere("u.is_suspended = :is_suspended", {
+        is_suspended: filters.is_suspended,
+      });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data: data.map((user) => this.sanitize(user)), total };
+  }
+
+  /**
+   * Droit à l'effacement RGPD — anonymise les données personnelles (email,
+   * nom, téléphone, 2FA, OAuth) et pose un soft-delete. Les commandes/billets
+   * référençant cet ID sont conservés ailleurs (comptabilité, preuve d'accès
+   * événement) mais anonymisés séparément par user-service ; cette méthode
+   * ne gère que le compte lui-même. La vérification des obligations en cours
+   * (événements à venir, reversements en attente) est faite par l'appelant
+   * (api-gateway), qui seul a la vue sur les autres microservices.
+   */
+  async deleteAccount(
+    id: string,
+    password?: string,
+  ): Promise<{ success: boolean }> {
+    const user = await this.userRepo
+      .createQueryBuilder("u")
+      .addSelect("u.password_hash")
+      .where("u.id = :id", { id })
+      .getOne();
+
+    if (!user) {
+      throw new RpcException({
+        statusCode: 404,
+        message: "Utilisateur introuvable",
+      });
+    }
+
+    if (user.password_hash) {
+      if (!password) {
+        throw new RpcException({
+          statusCode: 400,
+          message: "Mot de passe requis pour confirmer la suppression",
+        });
+      }
+      const valid = await bcrypt.compare(password, user.password_hash);
+      if (!valid) {
+        throw new RpcException({
+          statusCode: 401,
+          message: "Mot de passe incorrect",
+        });
+      }
+    }
+
+    await this.userRepo.update(id, {
+      email: `deleted-${id}@billetix.invalid`,
+      first_name: "Compte",
+      last_name: "supprimé",
+      phone: null,
+      password_hash: null,
+      two_factor_enabled: false,
+      two_factor_method: null,
+      two_factor_secret: null,
+      oauth_provider: null,
+      oauth_id: null,
+      is_active: false,
+    });
+    await this.userRepo.softDelete(id);
+
+    return { success: true };
+  }
+
   // --- Helpers ---
 
   private generateTokens(user: User): {

@@ -44,4 +44,9 @@ export class OrganizerController {
   listKycPending() {
     return this.organizerService.listKycPending();
   }
+
+  @MessagePattern('user.anonymize_organizer_profile')
+  anonymize(@Payload() data: { user_id: string }) {
+    return this.organizerService.anonymize(data.user_id);
+  }
 }

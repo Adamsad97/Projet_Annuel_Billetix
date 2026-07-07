@@ -19,7 +19,20 @@ describe("AuthService", () => {
   let queryBuilder: {
     addSelect: jest.Mock;
     where: jest.Mock;
+    andWhere: jest.Mock;
+    orderBy: jest.Mock;
+    skip: jest.Mock;
+    take: jest.Mock;
     getOne: jest.Mock;
+    getManyAndCount: jest.Mock;
+  };
+  let repo: {
+    createQueryBuilder: jest.Mock;
+    findOne: jest.Mock;
+    update: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+    softDelete: jest.Mock;
   };
   let twoFactorService: {
     verifyTotp: jest.Mock;
@@ -41,12 +54,25 @@ describe("AuthService", () => {
     queryBuilder = {
       addSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
       getOne: jest.fn(),
+      getManyAndCount: jest.fn(),
     };
     twoFactorService = {
       verifyTotp: jest.fn(),
       verify: jest.fn(),
       sendVerificationSms: jest.fn(),
+    };
+    repo = {
+      createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+      findOne: jest.fn(),
+      update: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+      softDelete: jest.fn(),
     };
 
     const module = await Test.createTestingModule({
@@ -54,13 +80,7 @@ describe("AuthService", () => {
         AuthService,
         {
           provide: getRepositoryToken(User),
-          useValue: {
-            createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
-            findOne: jest.fn(),
-            update: jest.fn(),
-            create: jest.fn(),
-            save: jest.fn(),
-          },
+          useValue: repo,
         },
         {
           provide: JwtService,
@@ -233,6 +253,89 @@ describe("AuthService", () => {
           last_name: "Dupont",
         }),
       ).rejects.toThrow(RpcException);
+    });
+  });
+
+  describe("listUsers", () => {
+    it("exclut toujours les comptes déjà supprimés (RGPD) des résultats de recherche", async () => {
+      queryBuilder.getManyAndCount.mockResolvedValue([[baseUser], 1]);
+
+      await service.listUsers({});
+
+      expect(queryBuilder.where).toHaveBeenCalledWith("u.deleted_at IS NULL");
+    });
+
+    it("plafonne la limite à 100 même si une valeur plus grande est demandée", async () => {
+      queryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
+
+      await service.listUsers({ limit: 500 });
+
+      expect(queryBuilder.take).toHaveBeenCalledWith(100);
+    });
+
+    it("retourne les résultats sans exposer password_hash (sanitize)", async () => {
+      queryBuilder.getManyAndCount.mockResolvedValue([
+        [{ ...baseUser, password_hash: "secret-hash" }],
+        1,
+      ]);
+
+      const result = await service.listUsers({ q: "jean" });
+
+      expect(result.total).toBe(1);
+      expect(result.data[0]).not.toHaveProperty("password_hash");
+    });
+  });
+
+  describe("deleteAccount — droit à l'effacement RGPD", () => {
+    it("rejette sans mot de passe quand le compte en a un", async () => {
+      queryBuilder.getOne.mockResolvedValue({
+        id: "user-1",
+        password_hash: "some-hash",
+      });
+
+      await expect(service.deleteAccount("user-1")).rejects.toThrow(
+        RpcException,
+      );
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it("rejette avec un mot de passe incorrect", async () => {
+      const hash = await bcrypt.hash("bon-mot-de-passe", 4);
+      queryBuilder.getOne.mockResolvedValue({ id: "user-1", password_hash: hash });
+
+      await expect(
+        service.deleteAccount("user-1", "mauvais-mot-de-passe"),
+      ).rejects.toThrow(RpcException);
+      expect(repo.softDelete).not.toHaveBeenCalled();
+    });
+
+    it("anonymise le compte et pose le soft-delete avec le bon mot de passe", async () => {
+      const hash = await bcrypt.hash("bon-mot-de-passe", 4);
+      queryBuilder.getOne.mockResolvedValue({ id: "user-1", password_hash: hash });
+
+      const result = await service.deleteAccount("user-1", "bon-mot-de-passe");
+
+      expect(result).toEqual({ success: true });
+      expect(repo.update).toHaveBeenCalledWith(
+        "user-1",
+        expect.objectContaining({
+          email: "deleted-user-1@billetix.invalid",
+          phone: null,
+          password_hash: null,
+          two_factor_enabled: false,
+          is_active: false,
+        }),
+      );
+      expect(repo.softDelete).toHaveBeenCalledWith("user-1");
+    });
+
+    it("ne demande aucun mot de passe pour un compte OAuth (sans password_hash)", async () => {
+      queryBuilder.getOne.mockResolvedValue({ id: "user-2", password_hash: null });
+
+      const result = await service.deleteAccount("user-2");
+
+      expect(result).toEqual({ success: true });
+      expect(repo.softDelete).toHaveBeenCalledWith("user-2");
     });
   });
 });

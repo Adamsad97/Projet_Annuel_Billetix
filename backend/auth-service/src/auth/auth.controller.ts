@@ -144,4 +144,23 @@ export class AuthController {
   ) {
     return this.authService.changeRole(data.id, data.role);
   }
+
+  @MessagePattern("auth.list_users")
+  listUsers(
+    @Payload()
+    data: {
+      q?: string;
+      role?: UserRole;
+      is_suspended?: boolean;
+      limit?: number;
+      offset?: number;
+    },
+  ) {
+    return this.authService.listUsers(data);
+  }
+
+  @MessagePattern("auth.delete_account")
+  deleteAccount(@Payload() data: { id: string; password?: string }) {
+    return this.authService.deleteAccount(data.id, data.password);
+  }
 }

@@ -78,4 +78,44 @@ describe('OrganizerService', () => {
       expect(result.kyc_verified_at).toBeInstanceOf(Date);
     });
   });
+
+  describe('anonymize — droit à l\'effacement RGPD', () => {
+    it("n'échoue pas si l'utilisateur n'a jamais créé de profil organisateur", async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      const result = await service.anonymize('user-sans-profil');
+
+      expect(result).toEqual({ success: true });
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('efface IBAN, KYC et réseaux sociaux', async () => {
+      repo.findOne.mockResolvedValue({
+        user_id: 'user-1',
+        display_name: 'Mon Association',
+        iban_encrypted: 'enc',
+        iban_iv: 'iv',
+        iban_tag: 'tag',
+        bank_owner_name: 'Jean Dupont',
+        stripe_connect_account_id: 'acct_123',
+        kyc_document_url: 'https://minio/doc.pdf',
+        social_instagram: '@jean',
+      });
+
+      const result = await service.anonymize('user-1');
+
+      expect(result).toEqual({ success: true });
+      expect(repo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          iban_encrypted: null,
+          iban_iv: null,
+          iban_tag: null,
+          bank_owner_name: null,
+          stripe_connect_account_id: null,
+          kyc_document_url: null,
+          social_instagram: null,
+        }),
+      );
+    });
+  });
 });

@@ -212,6 +212,30 @@ export class AdminController {
 
   // ─── Gestion des utilisateurs ─────────────────────────────────────────────────
 
+  @Get("users")
+  @ApiOperation({
+    summary:
+      "Recherche/liste globale des utilisateurs (email, nom, rôle, statut)",
+  })
+  searchUsers(
+    @Query("q") q?: string,
+    @Query("role") role?: string,
+    @Query("is_suspended") is_suspended?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+  ) {
+    return firstValueFrom(
+      this.authClient.send("auth.list_users", {
+        q,
+        role,
+        is_suspended:
+          is_suspended === undefined ? undefined : is_suspended === "true",
+        limit: limit ? parseInt(limit) : undefined,
+        offset: offset ? parseInt(offset) : undefined,
+      }),
+    );
+  }
+
   @Post("users/:id/suspend")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Suspendre un compte utilisateur" })

@@ -34,4 +34,18 @@ export class BuyerService {
     Object.assign(profile, dto);
     return this.repo.save(profile);
   }
+
+  /** Droit à l'effacement RGPD — efface l'adresse de facturation. */
+  async anonymize(userId: string): Promise<{ success: boolean }> {
+    const profile = await this.repo.findOne({ where: { user_id: userId } });
+    if (!profile) return { success: true };
+
+    profile.billing_address_line1 = null;
+    profile.billing_address_line2 = null;
+    profile.billing_city = null;
+    profile.billing_postal_code = null;
+    profile.billing_country = null;
+    await this.repo.save(profile);
+    return { success: true };
+  }
 }
