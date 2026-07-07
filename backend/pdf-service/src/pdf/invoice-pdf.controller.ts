@@ -2,7 +2,9 @@ import { Controller, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy, ClientProxyFactory, Ctx, EventPattern, Payload, RmqContext, Transport } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import { InvoicePdfData, InvoicePdfService } from './invoice-pdf.service';
+import { validatePayload } from '../common/validate-payload.util';
+import { InvoicePdfDto } from './dto/invoice-pdf.dto';
+import { InvoicePdfService } from './invoice-pdf.service';
 
 @Controller()
 export class InvoicePdfController {
@@ -25,11 +27,19 @@ export class InvoicePdfController {
 
   @EventPattern('pdf.generate_invoice')
   async generateInvoice(
-    @Payload() data: InvoicePdfData,
+    @Payload() rawData: unknown,
     @Ctx() ctx: RmqContext,
   ) {
     const channel = ctx.getChannelRef();
     const msg = ctx.getMessage();
+
+    const result = await validatePayload(InvoicePdfDto, rawData);
+    if (result.valid === false) {
+      this.logger.error(`Payload pdf.generate_invoice invalide, message écarté : ${result.message}`);
+      channel.ack(msg);
+      return;
+    }
+    const data = result.data;
 
     try {
       const pdfUrl = await this.pdfService.generate(data);

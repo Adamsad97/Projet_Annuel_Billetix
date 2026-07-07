@@ -2,7 +2,9 @@ import { Controller, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy, ClientProxyFactory, Ctx, EventPattern, Payload, RmqContext, Transport } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import { TicketPdfData, TicketPdfService } from './ticket-pdf.service';
+import { validatePayload } from '../common/validate-payload.util';
+import { TicketPdfDto } from './dto/ticket-pdf.dto';
+import { TicketPdfService } from './ticket-pdf.service';
 
 @Controller()
 export class TicketPdfController {
@@ -25,11 +27,19 @@ export class TicketPdfController {
 
   @EventPattern('pdf.generate_ticket')
   async generateTicket(
-    @Payload() data: TicketPdfData,
+    @Payload() rawData: unknown,
     @Ctx() ctx: RmqContext,
   ) {
     const channel = ctx.getChannelRef();
     const msg = ctx.getMessage();
+
+    const result = await validatePayload(TicketPdfDto, rawData);
+    if (result.valid === false) {
+      this.logger.error(`Payload pdf.generate_ticket invalide, message écarté : ${result.message}`);
+      channel.ack(msg);
+      return;
+    }
+    const data = result.data;
 
     try {
       const pdfUrl = await this.pdfService.generate(data);

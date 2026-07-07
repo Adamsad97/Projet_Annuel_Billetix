@@ -4,6 +4,23 @@ import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import * as http from 'http';
 import { MailAttachment, MailService } from '../mail/mail.service';
 import { SmsService } from '../sms/sms.service';
+import { EmailVerificationDto } from './dto/email-verification.dto';
+import { EventCanceledDto } from './dto/event-canceled.dto';
+import { EventInfoRequestedDto } from './dto/event-info-requested.dto';
+import { EventPublishedDto } from './dto/event-published.dto';
+import { EventReminderDto } from './dto/event-reminder.dto';
+import { EventRejectedDto } from './dto/event-rejected.dto';
+import { EventSuspendedDto } from './dto/event-suspended.dto';
+import { FillThresholdReachedDto } from './dto/fill-threshold-reached.dto';
+import { KycApprovedDto } from './dto/kyc-approved.dto';
+import { KycRejectedDto } from './dto/kyc-rejected.dto';
+import { OrderConfirmedDto } from './dto/order-confirmed.dto';
+import { PasswordResetDto } from './dto/password-reset.dto';
+import { PaymentConfirmedDto } from './dto/payment-confirmed.dto';
+import { Sms2faCodeDto } from './dto/sms-2fa-code.dto';
+import { TicketReadyDto } from './dto/ticket-ready.dto';
+import { TicketScannedDto } from './dto/ticket-scanned.dto';
+import { WelcomeDto } from './dto/welcome.dto';
 
 @Controller()
 export class NotificationController {
@@ -47,10 +64,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.welcome')
-  async onWelcome(
-    @Payload() data: { email: string; firstName: string },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onWelcome(@Payload() data: WelcomeDto, @Ctx() ctx: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: 'Bienvenue sur BilletiX !',
@@ -61,10 +75,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.email_verification')
-  async onEmailVerification(
-    @Payload() data: { email: string; firstName: string; token: string },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onEmailVerification(@Payload() data: EmailVerificationDto, @Ctx() ctx: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: 'Vérifiez votre adresse email — BilletiX',
@@ -78,10 +89,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.password_reset')
-  async onPasswordReset(
-    @Payload() data: { email: string; firstName: string; token: string },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onPasswordReset(@Payload() data: PasswordResetDto, @Ctx() ctx: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: 'Réinitialisation de votre mot de passe — BilletiX',
@@ -95,19 +103,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.order_confirmed')
-  async onOrderConfirmed(
-    @Payload() data: {
-      email: string;
-      firstName: string;
-      orderReference: string;
-      eventName: string;
-      eventDate: string;
-      eventVenue: string;
-      items: Array<{ categoryName: string; quantity: number; unitPrice: string; totalPrice: string }>;
-      totalTtc: string;
-    },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onOrderConfirmed(@Payload() data: OrderConfirmedDto, @Ctx() ctx: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Confirmation de commande ${data.orderReference} — BilletiX`,
@@ -121,18 +117,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.payment_confirmed')
-  async onPaymentConfirmed(
-    @Payload() data: {
-      email: string;
-      firstName: string;
-      orderReference: string;
-      eventName: string;
-      amount: string;
-      paymentDate: string;
-      paymentMethod: string;
-    },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onPaymentConfirmed(@Payload() data: PaymentConfirmedDto, @Ctx() ctx: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Paiement confirmé — ${data.orderReference}`,
@@ -146,23 +131,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.ticket_ready')
-  async onTicketReady(
-    @Payload() data: {
-      email: string;
-      firstName: string;
-      eventName: string;
-      eventDate: string;
-      eventVenue: string;
-      tickets: Array<{
-        ticketNumber: string;
-        categoryName: string;
-        seatInfo?: string;
-        qrCodeUrl: string;
-        pdfUrl?: string | null;
-      }>;
-    },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onTicketReady(@Payload() data: TicketReadyDto, @Ctx() ctx: RmqContext) {
     const attachments: MailAttachment[] = [];
     for (const [index, ticket] of data.tickets.entries()) {
       if (!ticket.pdfUrl) continue;
@@ -190,10 +159,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.event_published')
-  async onEventPublished(
-    @Payload() data: { email: string; firstName: string; event_name: string },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onEventPublished(@Payload() data: EventPublishedDto, @Ctx() ctx: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Votre événement "${data.event_name}" est publié — BilletiX`,
@@ -204,10 +170,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.event_rejected')
-  async onEventRejected(
-    @Payload() data: { email: string; firstName: string; event_name: string; reason?: string },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onEventRejected(@Payload() data: EventRejectedDto, @Ctx() ctx: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Votre événement "${data.event_name}" a été refusé — BilletiX`,
@@ -218,10 +181,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.event_info_requested')
-  async onEventInfoRequested(
-    @Payload() data: { email: string; firstName: string; event_name: string; message: string },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onEventInfoRequested(@Payload() data: EventInfoRequestedDto, @Ctx() ctx: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Complément d'information requis pour "${data.event_name}" — BilletiX`,
@@ -232,10 +192,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.event_suspended')
-  async onEventSuspended(
-    @Payload() data: { email: string; firstName: string; event_name: string; reason?: string },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onEventSuspended(@Payload() data: EventSuspendedDto, @Ctx() ctx: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Votre événement "${data.event_name}" a été suspendu — BilletiX`,
@@ -246,10 +203,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.kyc_approved')
-  async onKycApproved(
-    @Payload() data: { email: string; firstName: string },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onKycApproved(@Payload() data: KycApprovedDto, @Ctx() ctx: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: 'Votre identité a été vérifiée — BilletiX',
@@ -260,10 +214,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.kyc_rejected')
-  async onKycRejected(
-    @Payload() data: { email: string; firstName: string; reason?: string },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onKycRejected(@Payload() data: KycRejectedDto, @Ctx() ctx: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: 'Vérification d\'identité refusée — BilletiX',
@@ -274,18 +225,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.event_canceled')
-  async onEventCanceled(
-    @Payload() data: {
-      email: string;
-      firstName: string;
-      eventName: string;
-      eventDate: string;
-      eventVenue: string;
-      refundAmount: string;
-      cancellationReason?: string;
-    },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onEventCanceled(@Payload() data: EventCanceledDto, @Ctx() ctx: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Annulation — ${data.eventName}`,
@@ -299,17 +239,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.fill_threshold_reached')
-  async onFillThresholdReached(
-    @Payload() data: {
-      email: string | null;
-      firstName: string | null;
-      event_name: string;
-      threshold: number;
-      sold_count: number;
-      total_capacity: number;
-    },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onFillThresholdReached(@Payload() data: FillThresholdReachedDto, @Ctx() ctx: RmqContext) {
     if (data.email) {
       await this.mail.send({
         to: data.email,
@@ -329,21 +259,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.ticket_scanned')
-  async onTicketScanned(
-    @Payload() data: {
-      email: string;
-      firstName: string;
-      eventName: string;
-      eventDate: string;
-      venueName: string;
-      eventCity: string;
-      artistName: string;
-      categoryName: string;
-      holderName: string;
-      scannedAt: string;
-    },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onTicketScanned(@Payload() data: TicketScannedDto, @Ctx() ctx: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Billet validé — ${data.eventName}`,
@@ -354,10 +270,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.sms_2fa_code')
-  async onSms2faCode(
-    @Payload() data: { phone: string; code: string },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onSms2faCode(@Payload() data: Sms2faCodeDto, @Ctx() ctx: RmqContext) {
     await this.sms.send(
       data.phone,
       `BilletiX : votre code de vérification est ${data.code}. Il expire dans 5 minutes.`,
@@ -366,19 +279,7 @@ export class NotificationController {
   }
 
   @EventPattern('notification.event_reminder')
-  async onEventReminder(
-    @Payload() data: {
-      email: string;
-      firstName: string;
-      eventName: string;
-      eventDate: string;
-      eventTime: string;
-      eventVenue: string;
-      eventAddress?: string;
-      requiresId?: boolean;
-    },
-    @Ctx() ctx: RmqContext,
-  ) {
+  async onEventReminder(@Payload() data: EventReminderDto, @Ctx() ctx: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Rappel — ${data.eventName} c'est demain !`,

@@ -12,10 +12,13 @@ async function bootstrap() {
   const port = parseInt(process.env.PORT ?? '3004');
   const healthPort = parseInt(process.env.HEALTH_PORT ?? `${port + 6000}`);
 
-  app.connectMicroservice<MicroserviceOptions>({
-    transport: Transport.TCP,
-    options: { host: '0.0.0.0', port },
-  });
+  app.connectMicroservice<MicroserviceOptions>(
+    {
+      transport: Transport.TCP,
+      options: { host: '0.0.0.0', port },
+    },
+    { inheritAppConfig: true },
+  );
 
   await app.startAllMicroservices();
   await app.listen(healthPort);
