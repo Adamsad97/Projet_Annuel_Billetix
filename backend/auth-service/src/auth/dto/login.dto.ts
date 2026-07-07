@@ -9,5 +9,5 @@ export class LoginDto {
 
   @IsOptional()
   @IsString()
-  totp_code?: string;
+  two_factor_code?: string;
 }

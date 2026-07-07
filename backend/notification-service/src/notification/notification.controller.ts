@@ -2,6 +2,7 @@ import { Controller } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import { MailService } from '../mail/mail.service';
+import { SmsService } from '../sms/sms.service';
 
 @Controller()
 export class NotificationController {
@@ -9,6 +10,7 @@ export class NotificationController {
 
   constructor(
     private readonly mail: MailService,
+    private readonly sms: SmsService,
     private readonly config: ConfigService,
   ) {
     this.appUrl = this.config.get<string>('APP_URL', 'http://localhost:3000');
@@ -288,6 +290,18 @@ export class NotificationController {
       template: 'ticket-scanned',
       context: { ...data },
     });
+    this.ack(ctx);
+  }
+
+  @EventPattern('notification.sms_2fa_code')
+  async onSms2faCode(
+    @Payload() data: { phone: string; code: string },
+    @Ctx() ctx: RmqContext,
+  ) {
+    await this.sms.send(
+      data.phone,
+      `BilletiX : votre code de vérification est ${data.code}. Il expire dans 5 minutes.`,
+    );
     this.ack(ctx);
   }
 

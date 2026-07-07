@@ -5,7 +5,12 @@ import { RpcException } from "@nestjs/microservices";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
 import { REDIS_CLIENT } from "../redis/redis.module";
-import { OAuthProvider, User, UserRole } from "../user/user.entity";
+import {
+  OAuthProvider,
+  TwoFactorMethod,
+  User,
+  UserRole,
+} from "../user/user.entity";
 import { AuthService } from "./auth.service";
 import { TwoFactorService } from "./two-factor.service";
 
@@ -16,7 +21,11 @@ describe("AuthService", () => {
     where: jest.Mock;
     getOne: jest.Mock;
   };
-  let twoFactorService: { verifyTotp: jest.Mock };
+  let twoFactorService: {
+    verifyTotp: jest.Mock;
+    verify: jest.Mock;
+    sendVerificationSms: jest.Mock;
+  };
 
   const baseUser: Partial<User> = {
     id: "user-1",
@@ -34,7 +43,11 @@ describe("AuthService", () => {
       where: jest.fn().mockReturnThis(),
       getOne: jest.fn(),
     };
-    twoFactorService = { verifyTotp: jest.fn() };
+    twoFactorService = {
+      verifyTotp: jest.fn(),
+      verify: jest.fn(),
+      sendVerificationSms: jest.fn(),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -118,15 +131,16 @@ describe("AuthService", () => {
 
       expect(result).toHaveProperty("access_token");
       expect(result).toHaveProperty("refresh_token");
-      expect(twoFactorService.verifyTotp).not.toHaveBeenCalled();
+      expect(twoFactorService.verify).not.toHaveBeenCalled();
     });
 
-    it("demande le code 2FA sans délivrer de tokens quand la 2FA est activée et aucun code fourni", async () => {
+    it("demande le code 2FA sans délivrer de tokens quand la 2FA TOTP est activée et aucun code fourni", async () => {
       const hash = await bcrypt.hash("pw", 4);
       queryBuilder.getOne.mockResolvedValue({
         ...baseUser,
         password_hash: hash,
         two_factor_enabled: true,
+        two_factor_method: TwoFactorMethod.TOTP,
       });
 
       const result = await service.login({
@@ -134,8 +148,35 @@ describe("AuthService", () => {
         password: "pw",
       });
 
-      expect(result).toEqual({ requires_2fa: true });
-      expect(twoFactorService.verifyTotp).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        requires_2fa: true,
+        two_factor_method: TwoFactorMethod.TOTP,
+      });
+      expect(twoFactorService.verify).not.toHaveBeenCalled();
+      expect(twoFactorService.sendVerificationSms).not.toHaveBeenCalled();
+    });
+
+    it("envoie un code SMS et ne délivre pas de tokens quand la 2FA SMS est activée et aucun code fourni", async () => {
+      const hash = await bcrypt.hash("pw", 4);
+      queryBuilder.getOne.mockResolvedValue({
+        ...baseUser,
+        password_hash: hash,
+        two_factor_enabled: true,
+        two_factor_method: TwoFactorMethod.SMS,
+      });
+
+      const result = await service.login({
+        email: baseUser.email!,
+        password: "pw",
+      });
+
+      expect(result).toEqual({
+        requires_2fa: true,
+        two_factor_method: TwoFactorMethod.SMS,
+      });
+      expect(twoFactorService.sendVerificationSms).toHaveBeenCalledWith(
+        "user-1",
+      );
     });
 
     it("rejette un code 2FA invalide", async () => {
@@ -144,14 +185,15 @@ describe("AuthService", () => {
         ...baseUser,
         password_hash: hash,
         two_factor_enabled: true,
+        two_factor_method: TwoFactorMethod.TOTP,
       });
-      twoFactorService.verifyTotp.mockResolvedValue(false);
+      twoFactorService.verify.mockResolvedValue(false);
 
       await expect(
         service.login({
           email: baseUser.email!,
           password: "pw",
-          totp_code: "000000",
+          two_factor_code: "000000",
         }),
       ).rejects.toThrow(RpcException);
     });
@@ -162,17 +204,18 @@ describe("AuthService", () => {
         ...baseUser,
         password_hash: hash,
         two_factor_enabled: true,
+        two_factor_method: TwoFactorMethod.TOTP,
       });
-      twoFactorService.verifyTotp.mockResolvedValue(true);
+      twoFactorService.verify.mockResolvedValue(true);
 
       const result = await service.login({
         email: baseUser.email!,
         password: "pw",
-        totp_code: "123456",
+        two_factor_code: "123456",
       });
 
       expect(result).toHaveProperty("access_token");
-      expect(twoFactorService.verifyTotp).toHaveBeenCalledWith(
+      expect(twoFactorService.verify).toHaveBeenCalledWith(
         "user-1",
         "123456",
       );

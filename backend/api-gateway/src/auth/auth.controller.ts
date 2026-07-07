@@ -243,7 +243,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: "Vérifier un code TOTP (lors de la connexion si 2FA activée)",
+    summary: "Vérifier un code 2FA, TOTP ou SMS (lors de la connexion si 2FA activée)",
   })
   verify2fa(@CurrentUser() user: JwtPayload, @Body() body: { code: string }) {
     return firstValueFrom(
@@ -257,7 +257,7 @@ export class AuthController {
   @Delete("2fa")
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: "Désactiver la 2FA (code TOTP requis)" })
+  @ApiOperation({ summary: "Désactiver la 2FA (code TOTP ou SMS requis selon la méthode active)" })
   disable2fa(@CurrentUser() user: JwtPayload, @Body() body: { code: string }) {
     return firstValueFrom(
       this.authClient.send("auth.2fa.disable", {
@@ -275,6 +275,58 @@ export class AuthController {
   get2faStatus(@CurrentUser() user: JwtPayload) {
     return firstValueFrom(
       this.authClient.send("auth.2fa.status", { user_id: user.sub }),
+    );
+  }
+
+  // ──────────────── 2FA SMS ────────────────
+
+  @Post("2fa/sms/setup")
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Initialiser la 2FA par SMS — envoie un code de vérification par SMS",
+  })
+  setupSms2fa(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { phone?: string } = {},
+  ) {
+    return firstValueFrom(
+      this.authClient.send("auth.2fa.sms.setup", {
+        user_id: user.sub,
+        phone: body?.phone,
+      }),
+    );
+  }
+
+  @Post("2fa/sms/confirm")
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Confirmer la 2FA par SMS avec le code reçu — active la 2FA et retourne les codes de secours",
+  })
+  confirmSms2fa(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { code: string },
+  ) {
+    return firstValueFrom(
+      this.authClient.send("auth.2fa.sms.confirm", {
+        user_id: user.sub,
+        code: body.code,
+      }),
+    );
+  }
+
+  @Post("2fa/send-code")
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      "Envoyer un nouveau code par SMS (ex. avant de désactiver la 2FA par SMS)",
+  })
+  sendCode2fa(@CurrentUser() user: JwtPayload) {
+    return firstValueFrom(
+      this.authClient.send("auth.2fa.send_code", { user_id: user.sub }),
     );
   }
 }

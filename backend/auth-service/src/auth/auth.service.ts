@@ -8,7 +8,12 @@ import { randomUUID } from "crypto";
 import { Redis } from "ioredis";
 import { Repository } from "typeorm";
 import { REDIS_CLIENT } from "../redis/redis.module";
-import { OAuthProvider, User, UserRole } from "../user/user.entity";
+import {
+  OAuthProvider,
+  TwoFactorMethod,
+  User,
+  UserRole,
+} from "../user/user.entity";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
@@ -114,12 +119,15 @@ export class AuthService {
     }
 
     if (user.two_factor_enabled) {
-      if (!dto.totp_code) {
-        return { requires_2fa: true };
+      if (!dto.two_factor_code) {
+        if (user.two_factor_method === TwoFactorMethod.SMS) {
+          await this.twoFactorService.sendVerificationSms(user.id);
+        }
+        return { requires_2fa: true, two_factor_method: user.two_factor_method };
       }
-      const validCode = await this.twoFactorService.verifyTotp(
+      const validCode = await this.twoFactorService.verify(
         user.id,
-        dto.totp_code,
+        dto.two_factor_code,
       );
       if (!validCode) {
         throw new RpcException({
