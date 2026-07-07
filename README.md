@@ -1,487 +1,95 @@
 # BilletiX — Plateforme de Billetterie Électronique
 
-Plateforme de vente de billets en ligne avec QR codes à usage unique et contrôle d'accès.  
-Architecture **microservices** · Conteneurisée avec **Docker** · API **RESTful** documentée Swagger.
-
----
+Plateforme de vente de billets en ligne avec QR codes à usage unique et contrôle d'accès.
+Architecture microservices, conteneurisée avec Docker, API REST documentée via Swagger.
 
 ## Démarrage rapide
 
 ```bash
-cp .env.example .env   # 1. Copier et remplir les variables d'environnement
-npm start              # 2. Construire et lancer toute l'application
+cp .env.example .env   # copier et remplir les variables d'environnement
+npm start              # construire et lancer toute l'application
 ```
 
-> Premier lancement : 5 à 10 minutes (téléchargement des images Docker + installation des dépendances).  
-> Relances suivantes : `npm run dev` (rapide, sans rebuild).
+Premier lancement : 5 à 10 minutes (téléchargement des images Docker + installation des dépendances). Relances suivantes : `npm run dev` (rapide, sans rebuild).
+
+Une fois lancé : l'API est sur `http://localhost:4000` (documentation Swagger sur `http://localhost:4000/api/docs`), le frontend sur `http://localhost:3000`.
 
 ## Architecture
 
-```
-                    ┌─────────────────────────────────────┐
-                    │              CLIENTS                 │
-                    │  Navigateur         App mobile       │
-                    └───────┬─────────────────┬───────────┘
-                            │                 │
-                    HTTP :80│           HTTP :3000
-                            ▼                 ▼
-              ┌─────────────────┐   ┌──────────────────────┐
-              │  frontend/      │   │     api-gateway       │
-              │  Next.js  :80   │   │  HTTP/REST  :3000     │
-              │  → interne 3000 │   │  Swagger, Auth Guard  │
-              └─────────────────┘   └──┬───┬───┬───┬───┬───┘
-                                       │   │   │   │   │
-                                       │  TCP (réseau interne Docker)
-                                 ┌─────┘ ┌─┘ ┌─┘ ┌─┘ ┌─┘
-                                 ▼       ▼   ▼   ▼   ▼
-                              auth    user event order ticket payment admin
-                             :3001  :3002 :3003 :3004 :3005  :3006  :3009
+Le backend est composé de 10 microservices NestJS communiquant en interne via TCP (requêtes synchrones) et RabbitMQ (événements asynchrones : emails, génération de PDF), tous derrière une API Gateway unique qui est le seul point d'entrée HTTP public :
 
-                                       │ RabbitMQ (asynchrone)
-                                       ▼
-                        ┌──────────────────────────┐
-                        │         RabbitMQ          │  :5672 / :15672
-                        └──────┬────────────────────┘
-                               │
-                    ┌──────────┴──────────┐
-                    ▼                     ▼
-            notification-svc          pdf-svc
-                :3007                  :3008
+- **api-gateway** — point d'entrée HTTP, Swagger, authentification JWT
+- **auth-service** — comptes, JWT, 2FA (TOTP/SMS), OAuth Google/Facebook
+- **user-service** — profils acheteur/organisateur, KYC
+- **event-service** — événements, catégories de billets, validation admin, catalogue
+- **order-service** — tunnel d'achat, réservation de stock
+- **ticket-service** — génération et vérification des billets (QR signé HMAC-SHA256), scan
+- **payment-service** — paiement Stripe, reversements organisateurs
+- **notification-service** — emails et SMS (consommateur RabbitMQ)
+- **pdf-service** — génération des PDF billets et factures (consommateur RabbitMQ)
+- **admin-service** — back-office, modération, configuration plateforme
 
-                      INFRASTRUCTURE PARTAGÉE
-        PostgreSQL :5432 · Redis :6379 · MinIO :9000 · MailHog :1025
-```
-
-**Flux principal d'un achat :**
-
-```
-Acheteur → api-gateway → order-service → [order.confirmed] → ticket-service
-                                                            → [ticket.created] → pdf-service → [ticket.pdf.ready]
-                                                                                             → notification-service → Email billet
-```
-
----
-
-## Structure du projet
-
-```
-BILLETIX/
-├── backend/
-│   ├── api-gateway/           # Point d'entrée HTTP unique — port 3000
-│   ├── auth-service/          # JWT, 2FA, OAuth Google — port 3001
-│   ├── user-service/          # Profils acheteur / organisateur, KYC — port 3002
-│   ├── event-service/         # Événements, validation admin, catalogue — port 3003
-│   ├── order-service/         # Tunnel d'achat, réservation stock Redis — port 3004
-│   ├── ticket-service/        # QR codes HMAC-SHA256, scan, hors-ligne — port 3005
-│   ├── payment-service/       # Stripe Connect, reversements — port 3006
-│   ├── notification-service/  # Emails et push (consommateur RabbitMQ) — port 3007
-│   ├── pdf-service/           # Génération PDF billets (consommateur RabbitMQ) — port 3008
-│   ├── admin-service/         # Back-office, modération, finances — port 3009
-│   ├── shared/
-│   │   ├── constants/         # Enums : rôles, statuts, catégories, délais
-│   │   ├── events/            # Noms des messages RabbitMQ et patterns TCP
-│   │   └── interfaces/        # Types TypeScript partagés entre services
-│   └── infra/
-│       └── postgres/
-│           └── init.sql       # Création des schemas PostgreSQL au démarrage
-├── frontend/                  # Next.js — acheteurs, organisateurs, back-office admin
-├── docker-compose.yml         # Orchestration complète (production)
-├── docker-compose.dev.yml     # Surcharges développement (hot reload, ports exposés)
-├── .env.example               # Toutes les variables d'environnement documentées
-├── .env                       # Variables locales (non commité)
-├── README.md                  # Ce fichier
-└── README-ETAPE.md            # Audit CDC et suivi d'avancement
-```
+Infrastructure partagée : PostgreSQL, Redis (cache/réservations), RabbitMQ (files d'attente), MinIO (stockage fichiers), MailHog (emails en développement).
 
 ## Installation
 
-### 1. Cloner le dépôt
-
-```bash
-git clone <url-du-repo>
-cd BILLETIX
-```
-
-### 2. Créer le fichier d'environnement
+### 1. Créer le fichier d'environnement
 
 ```bash
 cp .env.example .env
 ```
 
-### 3. Générer les secrets cryptographiques
-
-Lance ces commandes et colle chaque résultat dans le `.env` :
+### 2. Générer les secrets cryptographiques
 
 ```bash
-# JWT_ACCESS_SECRET
+# JWT_ACCESS_SECRET et JWT_REFRESH_SECRET
 node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 
-# JWT_REFRESH_SECRET
-node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-
-# QR_HMAC_SECRET — signature HMAC-SHA256 des QR codes
+# QR_HMAC_SECRET — signature des QR codes
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 # IBAN_ENCRYPTION_KEY — chiffrement AES-256 des coordonnées bancaires
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-### 4. Remplir le `.env`
+Coller chaque résultat dans le `.env`, avec les mots de passe PostgreSQL/Redis/RabbitMQ/MinIO de ton choix.
 
-Variables obligatoires pour le démarrage :
-
-```env
-# Base de données
-POSTGRES_USER=billetix
-POSTGRES_PASSWORD=<mot_de_passe_fort>
-POSTGRES_DB=billetix
-AES
-# Cache
-REDIS_PASSWORD=<mot_de_passe_fort>
-
-# Message broker
-RABBITMQ_USER=billetix
-RABBITMQ_PASSWORD=<mot_de_passe_fort>
-
-# Stockage fichiers
-MINIO_ROOT_USER=billetix
-MINIO_ROOT_PASSWORD=<minimum_8_caracteres>
-
-# Secrets JWT (étape 3)
-JWT_ACCESS_SECRET=<résultat_commande_1>
-JWT_REFRESH_SECRET=<résultat_commande_2>
-
-# Secrets sécurité (étape 3)
-QR_HMAC_SECRET=<résultat_commande_3>
-IBAN_ENCRYPTION_KEY=<résultat_commande_4>
-```
-
-> Les clés **Stripe**, **PayPal**, **SendGrid** et **Google OAuth** peuvent rester vides — ces intégrations ne sont pas encore actives.
-
----
-
-## Démarrage
-
-### Tout lancer en une commande
-
-```bash
-npm start
-```
-
-Démarre les 16 conteneurs : infrastructure (5) + microservices backend (10) + frontend (1).
-
-### Autres modes
-
-```bash
-# Relance rapide sans rebuild (après npm start)
-npm run dev
-
-# Infrastructure seule — utile pour développer un service localement
-npm run infra
-
-# Mode production, conteneurs détachés (pas de logs en console)
-npm run up:build
-```
-
-### Ports internes Docker (non accessibles depuis l'hôte)
-
-Ces ports sont uniquement visibles sur le réseau interne `billetix-net` :
-
-| Service              | Port interne | Protocole |
-| -------------------- | ------------ | --------- |
-| auth-service         | 3001         | TCP       |
-| user-service         | 3002         | TCP       |
-| event-service        | 3003         | TCP       |
-| order-service        | 3004         | TCP       |
-| ticket-service       | 3005         | TCP       |
-| payment-service      | 3006         | TCP       |
-| notification-service | 3007         | RabbitMQ  |
-| pdf-service          | 3008         | RabbitMQ  |
-| admin-service        | 3009         | TCP       |
-
-> Seuls **le port 80** (frontend) et **le port 3000** (api-gateway) sont les points d'entrée de l'application. Tous les autres services backend communiquent exclusivement entre eux via le réseau Docker interne.
-
----
+Les clés Stripe, PayPal, SendGrid, Google/Facebook OAuth et Twilio peuvent rester vides si ces intégrations ne sont pas utilisées — voir `.env.example` pour la liste complète et documentée de toutes les variables.
 
 ## Commandes utiles
 
 ```bash
-# Voir les logs d'un service spécifique
-docker compose logs -f auth-service
-docker compose logs -f api-gateway
-docker compose logs -f order-service
+npm start                                   # tout construire et lancer
+npm run dev                                 # relancer rapidement (sans rebuild)
+npm run infra                                # infrastructure seule (dev d'un service en local)
+npm run logs                                # logs de tous les services
+npm run ps                                  # état de tous les conteneurs
+npm run down                                # arrêter (données conservées)
+npm run down:volumes                        # arrêter et effacer toutes les données
 
-# Voir les logs de tous les services
-npm run logs
-
-# Rebuild et redémarrer un seul service
-docker compose up -d --build auth-service
-
-# Accéder au shell d'un conteneur
-docker compose exec auth-service sh
-docker compose exec postgres psql -U billetix -d billetix
-
-# Voir l'état de tous les conteneurs
-npm run ps
-
-# Arrêter tout (données conservées dans les volumes Docker)
-npm run down
-
-# Arrêter tout et supprimer les données — reset complet
-npm run down:volumes
+docker compose logs -f <service>            # logs d'un service précis
+docker compose up -d --build <service>      # rebuild et redémarrer un seul service
+docker compose exec <service> sh            # shell dans un conteneur
+docker compose exec postgres psql -U billetix -d billetix   # accès direct à la base
 ```
 
----
-
-## Développement par service
-
-Chaque microservice est autonome dans `backend/<nom-du-service>/`.
-
-### Avec Docker (recommandé)
-
-En mode `npm run dev`, les fichiers sources sont montés en volume — les services NestJS redémarrent automatiquement à chaque modification sans rebuild.
-
-### Sans Docker (développement local)
-
-Pour travailler sur un service directement avec Node.js :
+## Développement sur un seul service
 
 ```bash
-# 1. Démarrer l'infrastructure (obligatoire)
-npm run infra
-
-# 2. Aller dans le service
+npm run infra              # démarrer l'infrastructure
 cd backend/auth-service
-
-# 3. Installer les dépendances
 npm install
-
-# 4. Démarrer en mode watch
-npm run start:dev
+npm run start:dev          # mode watch, sans Docker
 ```
-
-Répéter l'étape 2-4 dans des terminaux séparés pour chaque service à développer simultanément.
-
-### Ajouter un module dans un service
-
-```bash
-cd backend/auth-service
-npx @nestjs/cli generate module users
-npx @nestjs/cli generate service users
-npx @nestjs/cli generate controller users
-```
-
----
 
 ## Tests
 
-Chaque service dispose de sa propre suite de tests.
-
 ```bash
-# Tests unitaires d'un service
 cd backend/auth-service
-npm test
-
-# Tests avec couverture
-npm run test:cov
-
-# Tests e2e
-npm run test:e2e
+npm test                   # tests unitaires
+npm run test:cov           # avec couverture
 ```
-
-> Les tests sont en cours de mise en place au fur et à mesure du développement des services.
-
----
-
-## Variables d'environnement
-
-Voir [`.env.example`](.env.example) pour la liste complète et documentée de toutes les variables, organisées par catégorie :
-
-- PostgreSQL, Redis, RabbitMQ, MinIO, MailHog
-- JWT (secrets, durées d'expiration)
-- Sécurité (HMAC QR codes, chiffrement IBAN)
-- OAuth Google, Stripe, PayPal
-- Emails, URL de l'application
-- Paramètres métier (commissions, délais)
-
----
 
 ## Suivi du projet
 
-Voir [`README-ETAPE.md`](README-ETAPE.md) pour :
-
-- L'audit complet du cahier des charges
-- L'état d'avancement de chaque livrable
-- Les points d'audit ouverts et résolus
-- Le planning ajusté
-
-Routes disponibles :
-
-┌─────────┬──────────────────────────────────┬────────────┐
-│ Méthode │ Route │ Auth │
-├─────────┼──────────────────────────────────┼────────────┤
-│ POST │ /api/v1/auth/register │ Public │
-├─────────┼──────────────────────────────────┼────────────┤
-│ POST │ /api/v1/auth/login │ Public │
-├─────────┼──────────────────────────────────┼────────────┤
-│ POST │ /api/v1/auth/refresh │ Public │
-├─────────┼──────────────────────────────────┼────────────┤
-│ POST │ /api/v1/auth/logout │ JWT requis │
-├─────────┼──────────────────────────────────┼────────────┤
-│ POST │ /api/v1/auth/forgot-password │ Public │
-├─────────┼──────────────────────────────────┼────────────┤
-│ POST │ /api/v1/auth/reset-password │ Public │
-├─────────┼──────────────────────────────────┼────────────┤
-│ GET │ /api/v1/auth/verify-email?token= │ Public │
-├─────────┼──────────────────────────────────┼────────────┤
-│ POST │ /api/v1/auth/oauth │ Public │
-├─────────┼──────────────────────────────────┼────────────┤
-│ GET │ /api/v1/auth/me │ JWT requis │
-└─────────┴──────────────────────────────────┴────────────┘
-
-api-gateway — nouvelles routes :
-
-┌─────────┬─────────────────────────────────┬───────────────────────────┐
-│ Méthode │ Route │ Rôle │
-├─────────┼─────────────────────────────────┼───────────────────────────┤
-│ GET │ /api/v1/users/buyer/profile │ Tout utilisateur connecté │
-├─────────┼─────────────────────────────────┼───────────────────────────┤
-│ PATCH │ /api/v1/users/buyer/profile │ Tout utilisateur connecté │
-├─────────┼─────────────────────────────────┼───────────────────────────┤
-│ POST │ /api/v1/users/organizer/profile │ ORGANIZER │
-├─────────┼─────────────────────────────────┼───────────────────────────┤
-│ GET │ /api/v1/users/organizer/profile │ ORGANIZER │
-├─────────┼─────────────────────────────────┼───────────────────────────┤
-│ PATCH │ /api/v1/users/organizer/profile │ ORGANIZER │
-├─────────┼─────────────────────────────────┼───────────────────────────┤
-│ PATCH │ /api/v1/users/organizer/iban │ ORGANIZER │
-└─────────┴─────────────────────────────────┴───────────────────────────┘
-
-api-gateway — nouvelles routes events :
-
-┌───────────────────────────────┬───────────┐
-│ Route │ Accès │
-├───────────────────────────────┼───────────┤
-│ GET /events │ Public │
-├───────────────────────────────┼───────────┤
-│ GET /events/:id │ Public │
-├───────────────────────────────┼───────────┤
-│ GET /events/:id/categories │ Public │
-├───────────────────────────────┼───────────┤
-│ POST /events │ ORGANIZER │
-├───────────────────────────────┼───────────┤
-│ GET /events/me/events │ ORGANIZER │
-├───────────────────────────────┼───────────┤
-│ PATCH /events/:id │ ORGANIZER │
-├───────────────────────────────┼───────────┤
-│ POST /events/:id/submit │ ORGANIZER │
-├───────────────────────────────┼───────────┤
-│ POST /events/:id/categories │ ORGANIZER │
-├───────────────────────────────┼───────────┤
-│ POST /events/:id/promo-codes │ ORGANIZER │
-├───────────────────────────────┼───────────┤
-│ POST /events/:id/validate │ ADMIN │
-├───────────────────────────────┼───────────┤
-│ POST /events/:id/reject │ ADMIN │
-├───────────────────────────────┼───────────┤
-│ POST /events/:id/suspend │ ADMIN │
-├───────────────────────────────┼───────────┤
-│ POST /events/:id/request-info │ ADMIN │
-└───────────────────────────────┴───────────┘
-
-api-gateway — nouvelles routes orders :
-
-┌────────────────────────────┬───────────────────┐
-│ Route │ Accès │
-├────────────────────────────┼───────────────────┤
-│ POST /orders │ Connecté │
-├────────────────────────────┼───────────────────┤
-│ GET /orders/me │ Connecté │
-├────────────────────────────┼───────────────────┤
-│ GET /orders/:id │ Connecté │
-├────────────────────────────┼───────────────────┤
-│ POST /orders/:id/cancel │ Connecté │
-├────────────────────────────┼───────────────────┤
-│ GET /orders/event/:eventId │ ORGANIZER / ADMIN │
-└────────────────────────────┴───────────────────┘
-
-api-gateway — nouvelles routes tickets :
-
-┌──────────────────────────────────┬───────────────────┐
-│ Route │ Accès │
-├──────────────────────────────────┼───────────────────┤
-│ GET /tickets/order/:orderId │ Connecté │
-├──────────────────────────────────┼───────────────────┤
-│ GET /tickets/:id │ Connecté │
-├──────────────────────────────────┼───────────────────┤
-│ POST /tickets/scan │ AGENT / ORGANIZER │
-├──────────────────────────────────┼───────────────────┤
-│ POST /tickets/sync-offline │ AGENT / ORGANIZER │
-├──────────────────────────────────┼───────────────────┤
-│ GET /tickets/event/:id/scan-logs │ ORGANIZER / ADMIN │
-├──────────────────────────────────┼───────────────────┤
-│ POST /tickets/event/:id/agents │ ORGANIZER │
-├──────────────────────────────────┼───────────────────┤
-│ GET /tickets/event/:id/agents │ ORGANIZER / ADMIN │
-├──────────────────────────────────┼───────────────────┤
-│ POST /tickets/session/start │ AGENT / ORGANIZER │
-├──────────────────────────────────┼───────────────────┤
-│ POST /tickets/session/end │ AGENT / ORGANIZER │
-├──────────────────────────────────┼───────────────────┤
-│ POST /tickets/:id/invalidate │ ADMIN │
-└──────────────────────────────────┴───────────────────┘
-
-admin-service ✅ (complet)
-
-┌───────────────────────────────────┬────────────────────────────────────────────────────────────────────┐
-│ Fichier │ Rôle │
-├───────────────────────────────────┼────────────────────────────────────────────────────────────────────┤
-│ audit-log/audit-log.entity.ts │ Entité avec enums AuditAction, AuditEntityType (déjà fait) │
-├───────────────────────────────────┼────────────────────────────────────────────────────────────────────┤
-│ audit-log/audit-log.service.ts │ log(), getLogs() (filtres multiples + pagination), getStats() │
-├───────────────────────────────────┼────────────────────────────────────────────────────────────────────┤
-│ audit-log/audit-log.controller.ts │ 3 patterns TCP : admin.log_action, admin.get_logs, admin.get_stats │
-├───────────────────────────────────┼────────────────────────────────────────────────────────────────────┤
-│ audit-log/audit-log.module.ts │ Module │
-├───────────────────────────────────┼────────────────────────────────────────────────────────────────────┤
-│ app.module.ts │ TypeORM schema admin_logs, ConfigModule global │
-└───────────────────────────────────┴────────────────────────────────────────────────────────────────────┘
-
-api-gateway admin controller ✅
-
-┌──────────────────────────────────────────────────────┬──────────────────────────────────────────────────┐
-│ Route │ Action │
-├──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ GET /admin/stats │ Statistiques audit log │
-├──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ GET /admin/audit-logs │ Journal filtrable (type, entity, admin, date...) │
-├──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ POST /admin/users/:id/suspend/unsuspend/change-role │ Gestion utilisateurs │
-├──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ GET/POST /admin/events/pending/approve/reject/cancel │ Modération événements │
-├──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ POST /admin/tickets/:id/invalidate │ Invalidation billet │
-├──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ POST /admin/payouts/:id/block/approve-early │ Gestion reversements │
-├──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ GET/POST /admin/disputes/... │ Gestion litiges │
-├──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ POST /admin/orders/:id/force-refund │ Remboursement forcé │
-└──────────────────────────────────────────────────────┴──────────────────────────────────────────────────┘
-
-Récapitulatif des changements de ports :
-
-┌───────────────┬──────────────┬──────────────────┐
-│ Service │ Port interne │ Port exposé hôte │
-├───────────────┼──────────────┼──────────────────┤
-│ api-gateway │ 3001 │ 3001 │
-├───────────────┼──────────────┼──────────────────┤
-│ frontend │ 3000 │ 3000 │
-├───────────────┼──────────────┼──────────────────┤
-│ auth-service │ 3001 │ — │
-├───────────────┼──────────────┼──────────────────┤
-│ user-service │ 3002 │ — │
-├───────────────┼──────────────┼──────────────────┤
-│ event-service │ 3003 │ — │
-├───────────────┼──────────────┼──────────────────┤
-│ ... │ ... │ — │
-└───────────────┴──────────────┴──────────────────┘
+Voir [`README-ETAPE.md`](README-ETAPE.md) pour l'état d'avancement par rapport au cahier des charges.
