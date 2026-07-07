@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -99,6 +100,121 @@ export class EventController {
         organizer_id: user.sub,
       }),
     );
+  }
+
+  @Get("me/dashboard")
+  @Roles("ORGANIZER")
+  @ApiOperation({
+    summary:
+      "Tableau de bord organisateur — vue globale (tous événements confondus)",
+  })
+  async myDashboard(@CurrentUser() user: JwtPayload) {
+    const events = (await firstValueFrom(
+      this.eventClient.send("event.list_by_organizer", {
+        organizer_id: user.sub,
+      }),
+    )) as Array<{
+      id: string;
+      title: string;
+      status: string;
+      start_date: string;
+    }>;
+
+    const balance = await firstValueFrom(
+      this.paymentClient.send("payment.get_organizer_balance", {
+        organizer_id: user.sub,
+      }),
+    ).catch(() => ({ pending_balance: 0, total_earned: 0, payouts_count: 0 }));
+
+    const eventsSummary = await Promise.all(
+      events.map(async (event) => {
+        const [fillStats, revenue] = await Promise.all([
+          firstValueFrom(
+            this.eventClient.send("event.get_fill_stats", { event_id: event.id }),
+          ).catch(() => ({ total_quota: 0, remaining: 0, sold: 0, fill_rate: 0 })),
+          firstValueFrom(
+            this.orderClient.send("order.get_revenue_by_event", {
+              event_id: event.id,
+            }),
+          ).catch(() => ({
+            orders_count: 0,
+            revenue_ht: 0,
+            revenue_ttc: 0,
+            total_commission: 0,
+            net_organizer_amount: 0,
+          })),
+        ]);
+
+        return {
+          id: event.id,
+          title: event.title,
+          status: event.status,
+          start_date: event.start_date,
+          sold: (fillStats as { sold: number }).sold,
+          total_quota: (fillStats as { total_quota: number }).total_quota,
+          fill_rate: (fillStats as { fill_rate: number }).fill_rate,
+          revenue_ttc: (revenue as { revenue_ttc: number }).revenue_ttc,
+        };
+      }),
+    );
+
+    const now = new Date();
+    const totals = eventsSummary.reduce(
+      (acc, e) => ({
+        revenue_ttc: acc.revenue_ttc + Number(e.revenue_ttc),
+        tickets_sold: acc.tickets_sold + Number(e.sold),
+      }),
+      { revenue_ttc: 0, tickets_sold: 0 },
+    );
+
+    return {
+      totals: {
+        events_count: events.length,
+        upcoming_events_count: events.filter(
+          (e) => new Date(e.start_date) > now,
+        ).length,
+        revenue_ttc: totals.revenue_ttc,
+        tickets_sold: totals.tickets_sold,
+        pending_balance: (balance as { pending_balance: number })
+          .pending_balance,
+        total_earned: (balance as { total_earned: number }).total_earned,
+      },
+      events: eventsSummary,
+    };
+  }
+
+  @Get(":id/dashboard")
+  @Roles("ORGANIZER")
+  @ApiOperation({
+    summary: "Tableau de bord détaillé d'un événement (ORGANIZER)",
+  })
+  async eventDashboard(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+  ) {
+    const event = (await firstValueFrom(
+      this.eventClient.send("event.get", { id }),
+    )) as { organizer_id: string; [key: string]: unknown };
+
+    if (event.organizer_id !== user.sub) {
+      throw new ForbiddenException(
+        "Ce tableau de bord n'appartient pas à votre compte.",
+      );
+    }
+
+    const [fillStats, revenue, ticketStats] = await Promise.all([
+      firstValueFrom(
+        this.eventClient.send("event.get_fill_stats", { event_id: id }),
+      ),
+      firstValueFrom(
+        this.orderClient.send("order.get_revenue_by_event", { event_id: id }),
+      ),
+      firstValueFrom(
+        this.ticketClient.send("ticket.get_stats_by_event", { event_id: id }),
+      ),
+    ]);
+
+    return { event, fill_stats: fillStats, revenue, tickets: ticketStats };
   }
 
   @Patch(":id")

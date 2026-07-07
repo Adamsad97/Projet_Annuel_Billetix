@@ -22,6 +22,11 @@ export class TicketController {
     return this.ticketService.getByOrder(data.order_id);
   }
 
+  @MessagePattern('ticket.get_stats_by_event')
+  getStatsByEvent(@Payload() data: { event_id: string }) {
+    return this.ticketService.getStatsByEvent(data.event_id);
+  }
+
   @MessagePattern('ticket.verify_qr')
   verifyQr(@Payload() data: { token: string }) {
     return this.ticketService.verifyQr(data.token);

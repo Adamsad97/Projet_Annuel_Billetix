@@ -71,6 +71,37 @@ export class TicketService {
     return this.repo.find({ where: { order_id: orderId } });
   }
 
+  /** Répartition des billets par statut pour un événement — utile pour le suivi temps réel (scans en cours). */
+  async getStatsByEvent(eventId: string): Promise<{
+    total: number;
+    used: number;
+    active: number;
+    cancelled: number;
+    for_resale: number;
+  }> {
+    const rows = await this.repo
+      .createQueryBuilder('t')
+      .select('t.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .where('t.event_id = :eventId', { eventId })
+      .groupBy('t.status')
+      .getRawMany<{ status: TicketStatus; count: string }>();
+
+    const counts: Record<string, number> = {};
+    for (const row of rows) counts[row.status] = parseInt(row.count, 10);
+
+    const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+    return {
+      total,
+      used: counts[TicketStatus.USED] ?? 0,
+      active:
+        (counts[TicketStatus.GENERATED] ?? 0) + (counts[TicketStatus.SENT] ?? 0),
+      cancelled:
+        (counts[TicketStatus.CANCELLED] ?? 0) + (counts[TicketStatus.REFUNDED] ?? 0),
+      for_resale: counts[TicketStatus.FOR_RESALE] ?? 0,
+    };
+  }
+
   async verifyQr(token: string): Promise<{ valid: boolean; ticket: Ticket }> {
     const ticket = await this.repo.findOne({ where: { qr_code_token: token } });
     if (!ticket) throw new RpcException({ statusCode: 404, message: 'QR code invalide' });

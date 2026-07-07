@@ -22,6 +22,7 @@ import {
   CurrentUser,
   JwtPayload,
 } from "../common/decorators/current-user.decorator";
+import { TicketsGateway } from "../events/tickets.gateway";
 import { CreatePaymentIntentDto } from "./dto/create-payment-intent.dto";
 
 @ApiTags("payments")
@@ -37,6 +38,7 @@ export class PaymentController {
     @Inject("PDF_SERVICE") private readonly pdfClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
+    private readonly ticketsGateway: TicketsGateway,
   ) {}
 
   @Post("intent")
@@ -383,6 +385,9 @@ export class PaymentController {
       qr_code_url: ticket.qr_code_url,
       ticket_category_name: ticket.ticket_category_name,
     }));
+
+    // Signal temps réel — le dashboard organisateur ouvert sur cet événement se rafraîchit
+    this.ticketsGateway.notifyDashboardUpdate(order.event_id, "sale");
 
     for (const ticket of tickets) {
       // PDF

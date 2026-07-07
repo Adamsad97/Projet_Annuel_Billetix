@@ -240,6 +240,7 @@ export class TicketController {
         scanned_at: scannedTicket.scanned_at,
         status: scannedTicket.status,
       });
+      this.ticketsGateway.notifyDashboardUpdate(dto.event_id, "scan");
     }
 
     return response;

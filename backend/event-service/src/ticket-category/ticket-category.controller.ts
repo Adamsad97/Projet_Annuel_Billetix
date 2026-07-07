@@ -36,4 +36,9 @@ export class TicketCategoryController {
   restoreQuota(@Payload() data: { id: string; quantity: number }) {
     return this.service.restoreQuota(data.id, data.quantity);
   }
+
+  @MessagePattern('event.get_fill_stats')
+  getFillStats(@Payload() data: { event_id: string }) {
+    return this.service.getFillStats(data.event_id);
+  }
 }

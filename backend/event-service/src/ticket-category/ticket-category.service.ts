@@ -71,19 +71,51 @@ export class TicketCategoryService {
     return { success: true };
   }
 
+  /** Stats de remplissage par catégorie + agrégat — source de vérité "vendu" (compteur dénormalisé, pas recalculé depuis les commandes). */
+  async getFillStats(eventId: string): Promise<{
+    total_quota: number;
+    remaining: number;
+    sold: number;
+    fill_rate: number;
+    categories: Array<{
+      id: string;
+      name: string;
+      quota: number;
+      remaining_quota: number;
+      sold: number;
+      price_ht: number;
+    }>;
+  }> {
+    const categories = await this.repo.find({
+      where: { event_id: eventId, is_active: true },
+    });
+
+    const total_quota = categories.reduce((sum, c) => sum + c.quota, 0);
+    const remaining = categories.reduce((sum, c) => sum + c.remaining_quota, 0);
+    const sold = total_quota - remaining;
+
+    return {
+      total_quota,
+      remaining,
+      sold,
+      fill_rate: total_quota > 0 ? (sold / total_quota) * 100 : 0,
+      categories: categories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        quota: c.quota,
+        remaining_quota: c.remaining_quota,
+        sold: c.quota - c.remaining_quota,
+        price_ht: Number(c.price_ht),
+      })),
+    };
+  }
+
   private async checkAndNotifyFillThresholds(eventId: string): Promise<void> {
-    const [stats] = await this.dataSource.query(
-      `SELECT COALESCE(SUM(quota), 0)::int           AS total_quota,
-              COALESCE(SUM(remaining_quota), 0)::int AS remaining
-       FROM events.ticket_categories
-       WHERE event_id = $1 AND is_active = true`,
-      [eventId],
-    ) as [{ total_quota: number; remaining: number }];
+    const stats = await this.getFillStats(eventId);
+    if (stats.total_quota === 0) return;
 
-    if (!stats || stats.total_quota === 0) return;
-
-    const soldCount = stats.total_quota - stats.remaining;
-    const fillRate = (soldCount / stats.total_quota) * 100;
+    const soldCount = stats.sold;
+    const fillRate = stats.fill_rate;
 
     const event = await this.eventRepo.findOne({ where: { id: eventId } });
     if (!event) return;

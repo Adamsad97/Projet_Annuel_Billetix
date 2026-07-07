@@ -1,216 +1,45 @@
-# AUDIT BILLETIX — Backend (hors front/mobile) — mise à jour 2026-07-07
+✅ Fait depuis le 2026-07-07 : facture automatique (2.4/4.3) et tableau de bord organisateur temps réel (2.5, `GET /events/me/dashboard` + `GET /events/:id/dashboard`, push WebSocket sur vente/scan).
 
-> Document vivant de suivi. À mettre à jour à chaque avancée (résolution d'un point, démarrage d'une phase, décision prise).
-> Périmètre de cet audit : **backend uniquement** (10 microservices + API Gateway). Le frontend web et l'application mobile de contrôle sont exclus de la liste ci-dessous (voir note en fin de document).
-> Référence : `CAHIER DES CHARGES — Plateforme de Billetterie Électronique v1.0` (mai 2026).
-> Légende : ✅ Fait — ⚠️ Partiel — ❌ Manquant
+❌ TABLEAU 2 — CE QUI N'EST PAS FAIT
 
----
-
-## Résumé exécutif
-
-Le backend couvre correctement le cœur métier (comptes, événements, achat, billets QR, paiement, reversements, notifications) et une bonne partie de la sécurité de base. Il reste deux catégories de travail avant une mise en production sérieuse :
-
-1. **Fonctionnel** — des fonctionnalités du CDC encore absentes ou partielles (moyens de paiement alternatifs, KPIs admin, exports comptables, certaines notifications, RGPD).
-2. **Industrialisation / qualité professionnelle** — c'est le point le plus critique actuellement : **aucun test automatisé, aucune migration de base de données, aucun pipeline CI/CD**. Le point des migrations est bloquant : `synchronize` est désactivé en production dans les 10 services (bonne pratique) mais aucune migration n'existe pour créer le schéma → **une mise en production telle quelle démarrerait avec une base de données vide et cassée**.
-
----
-
-## 🚨 Découverte critique du 2026-07-04 : le backend ne démarrait pas réellement
-
-En vérifiant les conteneurs Docker en cours d'exécution (pas seulement le code), il s'est avéré que **la quasi-totalité des microservices ne démarrait jamais avec succès** — erreurs de compilation TypeScript, dépendances déclarées mais jamais installées, et surtout des **bugs d'injection de dépendances NestJS** (un module féature injecte un client `XXX_SERVICE` ou un service d'un autre module sans l'importer/exporter correctement — invisible tant qu'une erreur de compilation empêchait même d'atteindre cette étape). Résultat concret : `event-service`, `user-service`, `ticket-service`, `order-service` et `api-gateway` créaient leurs tables en base **pour la toute première fois** au moment de la correction. Autrement dit, une bonne partie de ce qui était marqué "✅ Fait" dans les audits précédents avait un code correct mais n'avait **jamais tourné**.
-
-Corrigé :
-- `user-service` : variable d'env `IBAN_ENCRYPTION_KEY` (le code lisait `ENCRYPTION_KEY`)
-- `order-service`, `event-service` : generic manquant sur `config.get<string>()` (erreur de type RabbitMQ)
-- `order-service`, `payment-service` : `@nestjs/schedule` incompatible avec NestJS 11, bump vers `^5.0.1`
-- `payment-service` : version d'API Stripe non supportée par le SDK installé
-- `notification-service` : chemin d'import cassé pour `HandlebarsAdapter`
-- `auth-service`, `api-gateway` : dépendances déclarées mais jamais installées (`otplib`, `qrcode`, `@aws-sdk/client-s3`, `multer`, `amqplib`)
-- **Bugs de DI récurrents** (module féature n'exportant/n'importimportant pas un provider utilisé ailleurs) : `EventModule` (NOTIFICATION_SERVICE), `ScanModule` (export manquant de `ScanService` pour `OfflineSyncModule`), `StockReservationModule` (EVENT_SERVICE), `ReminderModule` (NOTIFICATION_SERVICE), `EventsModule`/gateway WebSocket (JwtService)
-- **Refactor structurel côté api-gateway** : les 9 clients TCP/RMQ étaient enregistrés uniquement au niveau `AppModule`, invisibles pour les modules féatures (cause racine de plusieurs bugs ci-dessus côté gateway, ex. `UserModule`). Extraits dans un nouveau module `MicroserviceClientsModule` marqué `@Global()`, à l'image de `PlatformConfigModule` déjà utilisé ailleurs — élimine toute la classe de bug pour l'API Gateway.
-
-**Résultat** : les 10 microservices + la gateway démarrent maintenant tous proprement (`Nest application/microservice successfully started`).
-
-## 🐛 Bugs corrigés le 2026-07-04 (session en cours)
-
-- **Routes admin cassées (RPC sans handler)** — `user.suspend`/`user.unsuspend`/`user.change_role` envoyées au mauvais microservice (USER_SERVICE au lieu d'AUTH_SERVICE, où vit réellement l'entité `User`) ; `payment.get_all_disputes` sans handler. → Corrigé.
-- **Commissions jamais calculées dynamiquement** — taux standard/dégressif (>1000 places) et exonération non lucratif (0%, appliquée à la validation admin) désormais calculés via `platform-config`, plus de taux figé. → Corrigé.
-- **Aucun scheduler de reversement** — nouveau cron quotidien (`payment-service/src/scheduler/`) qui traite les payouts échus, avec vérification Stripe Connect onboardé + KYC validé. → Corrigé.
-- **2FA jamais vérifiée au login** — `AuthService.login()` ignorait totalement `two_factor_enabled`. → Corrigé (`requires_2fa` + `totp_code`). IBAN désormais bloqué sans 2FA activée.
-- **Faille d'autorisation sur l'annulation d'événement** — un organisateur pouvait annuler l'événement d'un autre en fournissant simplement un motif (le motif servait de contournement d'autorisation). → Corrigé avec un flag `isAdmin` réel basé sur le rôle JWT.
-- **Crash sur `/admin/events/:id/reject` et `/admin/events/:id/cancel`** — payloads mal formés vers event-service (`TypeError` garanti à l'exécution). → Corrigé.
-- **Emails organisateur (validation/rejet/suspension) silencieusement jamais envoyés** — mauvais format de payload vers notification-service (manquait `email`/`firstName`). → Corrigé. Un doublon d'email (approve/reject envoyés deux fois) a aussi été supprimé.
-- **Correction d'audit** : contrairement à une conclusion précédente, le remboursement automatique intégral en cas d'annulation par l'organisateur **existe et fonctionne** (`api-gateway/src/event/event.controller.ts::refundAllOrdersForEvent`, cascade par commande avec remboursement Stripe + email acheteur). L'audit du 2026-07-03 l'avait classé à tort comme manquant.
-
----
-
-## 1. Comptes, authentification, profils
-
-**Fait**
-
-- Inscription (nom/prénom/email/password/rôle), vérification email par lien, mot de passe oublié, JWT access/refresh configurables, bcrypt coût 12.
-- OAuth Google fonctionnel.
-- OAuth Facebook fonctionnel (corrigé le 2026-07-06 : au passage, un bug latent partagé par les deux stratégies a été trouvé et corrigé — `passport-oauth2` fait planter tout le processus au démarrage si `clientID` est vide, ce qui aurait aussi cassé Google si ses vraies clés n'avaient pas été déjà configurées).
-- 2FA TOTP complète (setup/confirm/verify/disable) **et désormais appliquée au login**.
-- 2FA par SMS complète (ajoutée le 2026-07-06) : `setup`/`confirm`/`send-code`, envoi via Twilio (ou journalisation en dev si non configuré, comme MailHog pour l'email), codes à 6 chiffres à usage unique (5 min de validité), login détecte la méthode active et envoie automatiquement un nouveau code par SMS quand nécessaire.
-- IBAN organisateur chiffré AES-256-GCM, **désormais impossible à enregistrer sans 2FA activée**.
-- Profil acheteur (infos, adresse facturation, historique commandes).
-- Profil organisateur (entité, réseaux sociaux, IBAN, KYC avec statuts + validation admin).
-- Suspension/désuspension de compte et changement de rôle par l'admin (corrigé aujourd'hui).
-
-**Reste à faire**
-
-- Renvoi de billets par email depuis l'espace acheteur (aucune route).
-- Téléchargement de facture côté acheteur (`invoice_url` existe côté order-service mais n'est jamais généré/rempli, et n'est pas exposé par la gateway).
-- Tableau de bord / statistiques temps réel pour l'organisateur (aucune route dédiée).
-- Recherche/liste globale des utilisateurs côté admin.
-- Suppression de compte (droit à l'effacement RGPD).
-
-## 2. Gestion des événements
-
-**Fait**
-
-- Création d'événement complète (titre, description, catégorie, dates, lieu, géoloc, jauge, dates de vente, politique de remboursement, conditions d'accès).
-- Upload d'affiche sur MinIO (5 Mo, JPG/PNG).
-- Catégories de billets complètes (prix, quota, visibilité publique/code promo/cachée, limite par commande, dates de validité multi-jours).
-- Workflow de validation DRAFT → PENDING → PUBLISHED/DRAFT(rejeté)/SUSPENDED/CANCELLED, demande d'informations complémentaires, notifications email (corrigées aujourd'hui).
-- Catalogue public avec filtres catégorie/ville et pagination.
-- Codes promo (création, validation, application dans le tunnel, désactivation).
-
-**Reste à faire**
-
-- Description riche (WYSIWYG) — actuellement texte simple.
-- Carte interactive / géocodage automatique de l'adresse.
-- Délai réglementaire de 48h ouvrées pour le traitement admin (avec suspension du délai pendant une demande d'info).
-- Transition automatique vers TERMINATED/ARCHIVED après la date de l'événement (les statuts existent, aucun cron ne les déclenche).
-- Critères de validation formalisés (le code ne vérifie que le statut, pas la cohérence des informations).
-- Recherche par mots-clés et filtres avancés (prix min/max, distance géographique) dans le catalogue.
-- Modification/report d'un événement après publication ; événements récurrents/multi-représentations.
-
-## 3. Achat, commandes, billets
-
-**Fait**
-
-- Réservation de stock atomique anti-survente (UPDATE SQL conditionnel — fonctionnellement équivalent à un verrou, même si pas via Redis SETNX comme initialement prévu).
-- Commandes : identifiant unique, statuts complets, historique acheteur.
-- Paiement Stripe (PaymentIntent, webhook signé, anti-doublon).
-- Remboursement automatique intégral en cas d'annulation d'un événement (cascade acheteur par acheteur, voir correction d'audit ci-dessus).
-- Génération de billets PDF individuels avec tout le contenu requis (QR, nom, date, lieu, catégorie, acheteur nominatif).
-- QR code signé HMAC-SHA256, usage unique (statut « Utilisé »), vérification temps réel, scan avec résultats (valide/déjà utilisé/invalide/annulé).
-- Revente encadrée (J-24h), transfert de billet (nouveau QR, ancien invalidé), invalidation admin.
-- Notifications de commande/billets prêts, retry 3× en cas d'échec d'envoi.
-- **Facture PDF générée automatiquement après paiement** (ajouté le 2026-07-07) : en-tête légal (raison sociale/SIRET/TVA configurables via `platform-config`), détail des lignes HT/TVA/TTC, adresse de facturation. Générée par `pdf-service` (Puppeteer, comme les billets), stockée sur MinIO, URL exposée via `GET /orders/:id/invoice`. Validée par un test réel de bout en bout (génération → upload → téléchargement du PDF, signature `%PDF` confirmée).
-- **Bug critique corrigé au passage** : `order.get` renvoie `{ order, items }`, mais `api-gateway/payment.controller.ts::postPaymentConfirmed()` lisait la réponse comme si elle était plate (`order.buyer_id`, `order.items`...) — tous ces champs valaient `undefined` en réalité. De plus, `order.confirm_payment` n'était **jamais appelé** : après un vrai paiement Stripe, la commande restait indéfiniment `PENDING_PAYMENT`/`PENDING` en base. Les deux corrigés et validés par appels RPC réels (commande passe bien à `CONFIRMED`/`PAID` avec `paid_at` renseigné).
-- **Bug corrigé** : les buckets MinIO (billets et factures) n'avaient aucune politique de lecture publique — une URL stockée et envoyée au client renvoyait 403. Policy `s3:GetObject` publique désormais appliquée à la création de chaque bucket.
-
-**Reste à faire**
-
-- Moyens de paiement alternatifs : PayPal, Apple Pay, Google Pay, Orange Money, Wave (seul Stripe est branché, les autres ne sont que des valeurs d'enum).
-- Recalcul du reversement net après un remboursement partiel.
-- PDF joint à l'email de confirmation (actuellement un simple lien, pas de pièce jointe).
-- Renvoi manuel de billets par l'acheteur.
-- Retry email strictement conforme (actuellement 2s/5s/10s, le CDC demande 3 tentatives espacées de 10 minutes) + alerte admin réelle en cas d'échec définitif.
-- Renforcement du token QR (le CDC demande explicitement ID billet + horodatage dans le payload signé, et une vérification par recalcul cryptographique plutôt qu'un simple lookup en base).
-- Alerte active (pas seulement un log) en cas de tentative de double scan.
-
-## 4. Paiement, reversements, back-office admin
-
-**Fait**
-
-- Stripe Connect, solde virtuel organisateur, historique des reversements.
-- Scheduler automatique de déclenchement des reversements avec vérification KYC + Stripe Connect onboardé (ajouté aujourd'hui).
-- Blocage manuel de reversement, demande de reversement anticipé.
-- Gestion des litiges (création, résolution, liste globale — corrigée aujourd'hui).
-- File de modération des événements (valider/rejeter/suspendre), invalidation de billet, validation KYC organisateur.
-- Paramétrage des taux de commission via `platform-config` (aucune valeur codée en dur).
-- Journal d'audit horodaté sur toutes les actions admin sensibles.
-
-**Reste à faire**
-
-- Dashboard KPIs métier pour l'admin (ventes, commissions perçues, litiges ouverts) — actuellement seules des statistiques du journal d'audit sont exposées.
-- Graphiques de tendance, alertes temps réel (fraude, remboursements massifs).
-- Vue globale des soldes en attente de reversement (seul le blocage individuel existe).
-- Export comptable (grand livre, TVA, récapitulatif commissions), export CSV/PDF du dashboard financier organisateur.
-- Règle des 30 jours maximum de blocage des fonds en cas de litige (le blocage est manuel, sans limite automatique).
-- Vérification du délai J+2 minimum avant une demande de reversement anticipé.
-- Workflow « demande de complément d'information » côté admin pour un compte utilisateur (existe déjà pour les événements).
-
-## 5. Notifications
-
-**Fait**
-
-- Confirmation de commande, billets prêts, rappel J-1 (cron quotidien), annulation d'événement, validation/rejet/suspension d'événement (organisateur), seuils de remplissage 25/50/75/100%.
-- Retry 3× en cas d'échec SMTP.
-
-**Reste à faire**
-
-- Rappel J-1 par push (email seul actuellement).
-- Notification de modification d'un événement (acheteur).
-- Email de remboursement effectué (acheteur).
-- Email de renvoi de billets.
-- Email « première vente » (organisateur).
-- Email de reversement effectué (organisateur).
-- Email de litige ouvert (organisateur).
-
-## 6. Sécurité et conformité
-
-**Fait**
-
-- HTTPS/Helmet, CORS, rate limiting global (IP) et par compte (login/register/forgot-password) sur la gateway.
-- bcrypt coût 12, requêtes paramétrées (protection injection SQL), audit trail horodaté.
-- Chiffrement IBAN AES-256-GCM, secrets externalisés (aucun mot de passe/clé en dur dans `docker-compose.yml`, tout passe par variables d'environnement).
-- Préfixe `/api/v1` appliqué sur la gateway.
-
-**Reste à faire**
-
-- RGPD : droit à l'effacement et à la portabilité des données, politique de confidentialité, registre des traitements/DPO (hors code).
-- Tests de pénétration, conformité PCI-DSS documentée (hors code, organisationnel).
-- Validation des payloads sur les consommateurs RabbitMQ (`notification-service`, `pdf-service` n'ont pas de `ValidationPipe` global contrairement aux services TCP — un message malformé n'est pas rejeté proprement).
-
----
-
-## 🏭 Qualité professionnelle / prêt pour la production
-
-C'est la partie la plus importante à combler avant une mise en production réelle — aucun de ces points n'est actuellement en place :
-
-| Sujet                                     | État            | Détail                                                                                                                                                                                                                                                                                                |
-| ----------------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Migrations de base de données**         | ✅ **Corrigé 2026-07-04** | Migration `InitSchema` générée pour les 7 services (DDL réel extrait via `pg_dump` du schéma dev, validé par exécution complète sur une base de test via le vrai CLI TypeORM). `migrationsRun: true` activé en production dans chaque `app.module.ts` (les migrations s'exécutent automatiquement au démarrage), `synchronize` reste réservé au dev. Scripts `migration:generate/run/revert` ajoutés à chaque `package.json` pour les évolutions futures. |
-| **Tests automatisés**                     | ✅ **Corrigé 2026-07-04** | Jest n'était en réalité pas fonctionnel (package `jest` jamais installé, aucune config) — corrigé sur les 10 services. **54 tests unitaires** écrits et passants, au moins une suite par service, couvrant les points les plus sensibles : `AuthService.login` (2FA), `StockReservationService` (anti-survente + rollback), `PayoutService`/`PayoutSchedulerService` (reversements, KYC), `ScanService` (scan QR), `EventService` (commissions dynamiques), `OrganizerService` (IBAN + 2FA), `PlatformConfigService` (config dynamique), `MailService` (retry), `TicketPdfService` (échappement HTML/XSS), `RolesGuard` (contrôle d'accès). Reste à faire : tests e2e (bout-en-bout avec base de test réelle) et davantage de couverture par service. |
-| **CI/CD**                                 | ✅ **Corrigé 2026-07-04** | `.github/workflows/ci.yml` : job `build-and-test` (matrice sur les 10 microservices — install, lint, build, test) + job `publish` (build et push des images Docker vers GHCR à chaque push sur `main`/`develop`, une fois les tests au vert). Le CD s'est immédiatement révélé utile : il a détecté que **le stage `production` de tous les Dockerfiles était cassé** (`npm install --omit=dev` sans `--legacy-peer-deps` → conflit de peer dependencies jamais vu car le dev local n'utilise que le stage `development`). Corrigé et validé par un vrai build `--target production` des 10 services en local. |
-| **Health checks Docker**                  | ✅ **Corrigé 2026-07-05** | Les 10 microservices + la gateway sont passés en mode **hybride** (HTTP + TCP/RMQ) via `@nestjs/terminus` : chacun expose un vrai `/health` (ping DB réelle pour les 7 services avec base, heap mémoire pour les 3 sans base). `docker-compose.yml` a un `healthcheck` Node.js (portable alpine/slim) sur les 10 services, et les `depends_on` en aval sont passés de `service_started` à `service_healthy`. Validé par un cycle complet `down` + `up --build -V` : les 15 conteneurs démarrent en cascade selon leurs dépendances réelles et finissent tous `healthy`. |
-| **Arrêt propre (graceful shutdown)**      | ✅ **Corrigé 2026-07-05** | `app.enableShutdownHooks()` ajouté aux 10 microservices + la gateway. Validé par un `docker stop` réel sur `order-service` : arrêt avec `ExitCode 0` (signal géré proprement), pas de kill forcé après le délai de grâce. |
-| **Observabilité**                         | ⚠️ **Partiellement corrigé 2026-07-05** | Endpoint `/health` désormais disponible partout (voir ligne health checks) — c'est la brique de base de l'observabilité (liveness/readiness). Reste à faire : logs structurés JSON (ex. `nestjs-pino`), corrélation de requêtes entre microservices, métriques (Prometheus/Grafana). |
-| **Documentation API**                     | ✅              | Swagger complet sur l'API Gateway (point d'entrée public) — cohérent, les microservices internes n'ont pas besoin de leur propre doc.                                                                                                                                                                 |
-| **Gestion des secrets**                   | ✅              | Toutes les valeurs sensibles passent par des variables d'environnement (`${VAR}`), rien en dur dans `docker-compose.yml`.                                                                                                                                                                             |
-| **Validation des entrées (services TCP)** | ✅              | `ValidationPipe` global (`whitelist`, `transform`) sur les 8 microservices TCP + la gateway.                                                                                                                                                                                                          |
-| **Vérification que les services démarrent réellement** | ✅ (corrigé 2026-07-04) | Voir la découverte critique en tête de document — plusieurs services n'avaient jamais démarré avec succès avant cette session. Sans CI ni tests, ce type de régression passe inaperçu (voir aussi la ligne CI/CD ci-dessus). |
-
----
-
-## Sécurité du dépôt git
-
-**Incident résolu le 2026-07-04** : `.gitignore` contenait `**/env` au lieu de `.env` — ce motif ne matchait jamais le fichier réel, qui restait donc suivi par git avec de vrais secrets dedans (dont un Client ID/Secret Google OAuth). GitHub a bloqué le push (protection contre les secrets) avant toute exposition publique — confirmé qu'aucun des commits concernés n'avait jamais atteint le remote. `.gitignore` corrigé, `.env` définitivement retiré du suivi, historique local réécrit par rebase (sans risque : les commits concernés n'étaient encore jamais partagés), objets orphelins purgés (`git gc --prune=now`). Recommandation : régénérer le secret Google OAuth par précaution.
-
-## Frontend web et application mobile
-
-- **Frontend web** (`frontend/`) : ❌ squelette `create-next-app` par défaut, aucune page métier, aucune dépendance métier (pas d'axios/stripe-js/socket.io-client). Tout reste à construire : inscription/connexion, catalogue, tunnel d'achat, mes billets, profil, dashboard organisateur, back-office admin, bandeau cookies RGPD.
-- **Application mobile de contrôle d'accès** (React Native) : ❌ n'existe pas du tout. Le back-end support (agents, scan, sync offline) est prêt et fonctionnel, mais rien ne le consomme.
-
-## Priorités suggérées pour la suite
-
-1. ~~Migrations TypeORM~~ ✅ fait
-2. ~~Tests sur les flux critiques~~ ✅ fait
-3. ~~Pipeline CI~~ ✅ fait
-4. ~~CD (publication Docker)~~ ✅ fait
-5. ~~Health checks Docker + graceful shutdown~~ ✅ fait
-6. ~~OAuth Facebook~~ ✅ fait
-7. ~~2FA par SMS~~ ✅ fait (implémentation validée par tests + appels réels ; envoi SMS réel bloqué par une restriction Twilio compte d'essai sur les numéros français, indépendante du code — voir note ci-dessous)
-8. Démarrer le frontend — c'est aujourd'hui le plus gros écart avec le CDC (0% fait).
-9. Combler les moyens de paiement alternatifs si le CDC les exige pour le MVP (PayPal en priorité, plus simple que le mobile money).
-10. Dashboard KPIs admin + exports comptables (valeur business élevée pour la soutenance/démo).
-11. Volet RGPD (droit à l'effacement, politique de confidentialité) — nécessaire même en version académique si des données réelles sont utilisées.
-12. Décider du sort de l'application mobile de contrôle (hors périmètre MVP ou à démarrer).
-
-> **Note Twilio (2026-07-07)** : la 2FA SMS est fonctionnellement complète et validée (setup/confirm/login/disable, codes à usage unique, tests unitaires). L'envoi réel vers un numéro français échoue en compte d'essai Twilio ("Verified Caller IDs" refuse la vérification SMS/appel pour la France sur ce compte) — c'est une restriction du compte Twilio du développeur, pas un bug applicatif. Sans Twilio configuré, le code est journalisé (comportement de repli voulu, comme MailHog pour l'email).
+┌─────┬─────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ # │ Section CDC │ Élément manquant ou incomplet │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 1 │ 8.3 │ Recherche/liste globale utilisateurs (admin), suppression de compte (RGPD) │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 2 │ 3.1 │ Description riche (WYSIWYG), carte interactive/géocodage │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 3 │ 3.3 │ Délai réglementaire 48h ouvrées, transition auto TERMINATED/ARCHIVED │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 4 │ 3.4 │ Recherche par mots-clés, filtres avancés (prix, distance) │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 5 │ 3.1 │ Modification/report d'événement post-publication, événements récurrents │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 6 │ 4.2 │ Moyens de paiement alternatifs (PayPal, Apple Pay, Google Pay, mobile money) │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 7 │ 7.2 │ Recalcul reversement après remboursement partiel, règle 30j litige, délai J+2 │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 8 │ 5.2 │ PDF joint à l'email, retry conforme 10 min, alerte admin réelle │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 9 │ 5.3 │ Renforcement token QR (horodatage + recalcul crypto), alerte active double scan │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 10 │ 6 │ Application mobile de contrôle (React Native) — n'existe pas │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 11 │ 6.2-6.7 │ Compteurs temps réel, saisie manuelle billet, supervision salle, confort app mobile │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 12 │ 8.1 │ Dashboard KPIs admin, graphiques tendance, alertes fraude temps réel │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 13 │ 8.4 │ Vue globale soldes en attente, export comptable (grand livre, TVA, CSV/PDF) │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 14 │ 8.2 │ Workflow « demande de complément d'info » pour un compte utilisateur │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 15 │ 9.1-9.2 │ Rappel J-1 push, notif modification événement, remboursement/renvoi billets, première vente, reversement effectué, litige ouvert │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 16 │ 10.4 │ RGPD (effacement/portabilité, politique confidentialité, cookies, DPO) │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 17 │ 10.3 │ Tests de pénétration/PCI-DSS documentés, validation payloads RabbitMQ (notification/pdf-service) │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 18 │ — │ Observabilité avancée (logs structurés JSON, corrélation, métriques Prometheus/Grafana) │
+├─────┼─────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 19 │ — │ Tests e2e (seuls des tests unitaires existent) │
+└─────┴─────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘

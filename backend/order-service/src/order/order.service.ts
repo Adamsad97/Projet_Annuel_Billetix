@@ -118,6 +118,36 @@ export class OrderService {
     return this.orderRepo.find({ where: { event_id: eventId }, order: { created_at: 'DESC' } });
   }
 
+  /** Revenu agrégé d'un événement — ne compte que les commandes réellement payées (exclut PENDING_PAYMENT/CANCELLED/REFUNDED). */
+  async getRevenueByEvent(eventId: string): Promise<{
+    orders_count: number;
+    revenue_ht: number;
+    revenue_ttc: number;
+    total_commission: number;
+    net_organizer_amount: number;
+  }> {
+    const row = await this.orderRepo
+      .createQueryBuilder('o')
+      .select('COUNT(*)', 'orders_count')
+      .addSelect('COALESCE(SUM(o.total_amount_ht), 0)', 'revenue_ht')
+      .addSelect('COALESCE(SUM(o.total_amount_ttc), 0)', 'revenue_ttc')
+      .addSelect('COALESCE(SUM(o.total_commission), 0)', 'total_commission')
+      .addSelect('COALESCE(SUM(o.net_organizer_amount), 0)', 'net_organizer_amount')
+      .where('o.event_id = :eventId', { eventId })
+      .andWhere('o.status IN (:...statuses)', {
+        statuses: [OrderStatus.CONFIRMED, OrderStatus.TICKETS_SENT],
+      })
+      .getRawOne<Record<string, string>>();
+
+    return {
+      orders_count: parseInt(row?.orders_count ?? '0', 10),
+      revenue_ht: parseFloat(row?.revenue_ht ?? '0'),
+      revenue_ttc: parseFloat(row?.revenue_ttc ?? '0'),
+      total_commission: parseFloat(row?.total_commission ?? '0'),
+      net_organizer_amount: parseFloat(row?.net_organizer_amount ?? '0'),
+    };
+  }
+
   async confirmPayment(id: string, paymentIntentId: string, fees: number): Promise<Order> {
     const order = await this.orderRepo.findOne({ where: { id } });
     if (!order) throw new RpcException({ statusCode: 404, message: 'Commande introuvable' });

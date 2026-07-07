@@ -41,6 +41,11 @@ export class OrderController {
     return this.orderService.getByEvent(data.event_id);
   }
 
+  @MessagePattern('order.get_revenue_by_event')
+  getRevenueByEvent(@Payload() data: { event_id: string }) {
+    return this.orderService.getRevenueByEvent(data.event_id);
+  }
+
   @MessagePattern('order.confirm_payment')
   confirmPayment(@Payload() data: { id: string; payment_intent_id: string; fees: number }) {
     return this.orderService.confirmPayment(data.id, data.payment_intent_id, data.fees);

@@ -1,8 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import {
+  ConnectedSocket,
+  MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from "@nestjs/websockets";
@@ -44,6 +47,20 @@ export class TicketsGateway
     }
   }
 
+  // Le frontend organisateur appelle ceci en visualisant le dashboard d'un
+  // événement précis — l'autorisation réelle reste portée par la route REST
+  // (GET /events/:id/dashboard vérifie la propriété), ce canal ne pousse
+  // qu'un signal de rafraîchissement, jamais de données sensibles.
+  @SubscribeMessage("dashboard:subscribe")
+  handleDashboardSubscribe(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { event_id: string },
+  ) {
+    if (data?.event_id) {
+      client.join(`event:${data.event_id}`);
+    }
+  }
+
   handleDisconnect(client: Socket) {
     if (client.data.userId) {
       this.logger.log(`Client déconnecté : ${client.data.userId}`);
@@ -64,5 +81,14 @@ export class TicketsGateway
     },
   ) {
     this.server.to(`buyer:${buyerId}`).emit("ticket:scanned", ticketData);
+  }
+
+  // Appelé après une vente (paiement confirmé) ou un scan — signal léger,
+  // le frontend organisateur doit refaire GET /events/:id/dashboard pour les
+  // données à jour (pas de données métier poussées directement dans le socket).
+  notifyDashboardUpdate(eventId: string, reason: "sale" | "scan") {
+    this.server
+      .to(`event:${eventId}`)
+      .emit("dashboard:changed", { event_id: eventId, reason });
   }
 }
