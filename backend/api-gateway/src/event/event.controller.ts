@@ -250,6 +250,21 @@ export class EventController {
     );
   }
 
+  @Post(":id/duplicate")
+  @HttpCode(HttpStatus.CREATED)
+  @Roles("ORGANIZER")
+  @ApiOperation({
+    summary: "Dupliquer un événement en nouveau brouillon (ORGANIZER, événement récurrent simple)",
+  })
+  duplicate(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return firstValueFrom(
+      this.eventClient.send("event.duplicate", {
+        id,
+        organizer_id: user.sub,
+      }),
+    );
+  }
+
   @Get(":id/validation-requests")
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Consulter les demandes de complément d'information de l'admin (ORGANIZER)" })

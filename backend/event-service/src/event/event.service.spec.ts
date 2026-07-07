@@ -3,6 +3,7 @@ import { RpcException } from '@nestjs/microservices';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { of } from 'rxjs';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
+import { TicketCategoryService } from '../ticket-category/ticket-category.service';
 import { ValidationRequestService } from '../validation-request/validation-request.service';
 import { Event, EventStatus } from './event.entity';
 import { EventService } from './event.service';
@@ -19,6 +20,7 @@ describe('EventService', () => {
     getById: jest.Mock;
     respond: jest.Mock;
   };
+  let ticketCategoryService: { getByEvent: jest.Mock; create: jest.Mock };
 
   const config = {
     commission_standard_percent: 10,
@@ -43,6 +45,10 @@ describe('EventService', () => {
       getById: jest.fn(),
       respond: jest.fn(),
     };
+    ticketCategoryService = {
+      getByEvent: jest.fn().mockResolvedValue([]),
+      create: jest.fn(),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -52,6 +58,7 @@ describe('EventService', () => {
         { provide: 'AUTH_SERVICE', useValue: authClient },
         { provide: PlatformConfigCache, useValue: platformConfig },
         { provide: ValidationRequestService, useValue: validationRequestService },
+        { provide: TicketCategoryService, useValue: ticketCategoryService },
       ],
     }).compile();
 
@@ -203,6 +210,128 @@ describe('EventService', () => {
 
       expect(validationRequestService.respond).toHaveBeenCalledWith('req-1', 'Voici les infos');
       expect(repo.save).toHaveBeenCalledWith(expect.objectContaining({ deadline_alert_sent: false }));
+    });
+  });
+
+  describe('update — modification post-publication', () => {
+    it('autorise toute modification tant que le brouillon n\'est pas soumis', async () => {
+      repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', status: EventStatus.DRAFT });
+
+      const event = await service.update('evt-1', 'organizer-1', { venue_name: 'Nouvelle salle', start_date: new Date() } as any);
+
+      expect(event.venue_name).toBe('Nouvelle salle');
+    });
+
+    it('refuse toute modification sur un événement terminé/annulé/archivé', async () => {
+      repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', status: EventStatus.CANCELLED });
+
+      await expect(
+        service.update('evt-1', 'organizer-1', { description: 'Nouvelle description' } as any),
+      ).rejects.toThrow(RpcException);
+    });
+
+    it('autorise les champs cosmétiques sur un événement publié', async () => {
+      repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', status: EventStatus.PUBLISHED });
+
+      const event = await service.update('evt-1', 'organizer-1', {
+        description: 'Description mise à jour',
+        poster_url: 'http://example.com/new-poster.jpg',
+        access_conditions: 'Dès 18 ans',
+      } as any);
+
+      expect(event.description).toBe('Description mise à jour');
+    });
+
+    it('refuse un champ sensible (date, lieu, capacité...) sur un événement publié', async () => {
+      repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', status: EventStatus.PUBLISHED });
+
+      await expect(
+        service.update('evt-1', 'organizer-1', { venue_name: 'Nouvelle salle' } as any),
+      ).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuse un mélange champ cosmétique + champ sensible sur un événement publié', async () => {
+      repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', status: EventStatus.PUBLISHED });
+
+      await expect(
+        service.update('evt-1', 'organizer-1', { description: 'OK', total_capacity: 500 } as any),
+      ).rejects.toThrow(RpcException);
+    });
+
+    it('autorise les champs cosmétiques pendant l\'attente de validation', async () => {
+      repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', status: EventStatus.PENDING_VALIDATION });
+
+      const event = await service.update('evt-1', 'organizer-1', { description: 'Précision ajoutée' } as any);
+
+      expect(event.description).toBe('Précision ajoutée');
+    });
+  });
+
+  describe('duplicate — événement récurrent (duplication simple)', () => {
+    const original = {
+      id: 'evt-1',
+      organizer_id: 'organizer-1',
+      title: 'Concert Été',
+      description: 'Un super concert',
+      category: 'CONCERT',
+      is_non_profit: false,
+      non_profit_document_url: null,
+      start_date: new Date('2026-08-01'),
+      end_date: new Date('2026-08-01'),
+      timezone: 'Europe/Paris',
+      venue_name: 'Zenith',
+      venue_address_line1: '1 rue du Zenith',
+      venue_address_line2: null,
+      venue_city: 'Paris',
+      venue_postal_code: '75001',
+      venue_country: 'France',
+      venue_latitude: null,
+      venue_longitude: null,
+      poster_url: 'http://example.com/poster.jpg',
+      total_capacity: 500,
+      sales_start_date: new Date('2026-06-01'),
+      sales_end_date: new Date('2026-07-31'),
+      refund_policy: 'REFUNDABLE',
+      refund_deadline_days: 7,
+      access_conditions: null,
+    };
+
+    it("refuse si l'appelant n'est pas propriétaire de l'événement d'origine", async () => {
+      repo.findOne.mockResolvedValue(original);
+
+      await expect(service.duplicate('evt-1', 'un-autre-organisateur')).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('crée un nouveau brouillon avec le titre suffixé "(copie)"', async () => {
+      repo.findOne.mockResolvedValue(original);
+
+      const clone = await service.duplicate('evt-1', 'organizer-1');
+
+      expect(clone.title).toBe('Concert Été (copie)');
+      expect(clone.status).toBe(EventStatus.DRAFT);
+      expect(clone.venue_name).toBe('Zenith');
+    });
+
+    it('copie les catégories de billets avec un quota neuf (pas les ventes déjà faites)', async () => {
+      repo.findOne.mockResolvedValue(original);
+      ticketCategoryService.getByEvent.mockResolvedValue([
+        { name: 'Standard', description: 'Accès général', price_ht: '50.00', quota: 400, remaining_quota: 50, max_per_order: 10, visibility: 'PUBLIC' },
+        { name: 'VIP', description: null, price_ht: '150.00', quota: 100, remaining_quota: 0, max_per_order: 4, visibility: 'PUBLIC' },
+      ]);
+
+      await service.duplicate('evt-1', 'organizer-1');
+
+      expect(ticketCategoryService.create).toHaveBeenCalledTimes(2);
+      expect(ticketCategoryService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Standard', price_ht: 50, quota: 400 }),
+      );
+      // remaining_quota n'est jamais transmis — TicketCategoryService.create()
+      // le réinitialise toujours à quota (aucune vente sur le nouvel événement).
+      expect(ticketCategoryService.create).not.toHaveBeenCalledWith(
+        expect.objectContaining({ remaining_quota: expect.anything() }),
+      );
     });
   });
 });

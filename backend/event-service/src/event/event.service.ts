@@ -4,10 +4,21 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
+import { TicketCategoryService } from '../ticket-category/ticket-category.service';
 import { ValidationRequestService } from '../validation-request/validation-request.service';
 import { AdminActionDto } from './dto/admin-action.dto';
 import { CreateEventDto } from './dto/create-event.dto';
 import { Event, EventStatus } from './event.entity';
+
+// Une fois soumis (hors DRAFT), seuls ces champs restent modifiables — les
+// autres (date, lieu, capacité...) sont dupliqués dans Order/Ticket au
+// moment de l'achat et jamais resynchronisés ; les rouvrir romprait la
+// cohérence des billets/commandes déjà émis.
+const COSMETIC_FIELDS: Array<keyof CreateEventDto> = [
+  'description',
+  'poster_url',
+  'access_conditions',
+];
 
 @Injectable()
 export class EventService {
@@ -20,6 +31,7 @@ export class EventService {
     private readonly authClient: ClientProxy,
     private readonly platformConfig: PlatformConfigCache,
     private readonly validationRequestService: ValidationRequestService,
+    private readonly ticketCategoryService: TicketCategoryService,
   ) {}
 
   /** Résout email/prénom de l'organisateur — nécessaire au bon format attendu par notification-service. */
@@ -180,11 +192,88 @@ export class EventService {
     if (event.organizer_id !== organizerId) {
       throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
     }
-    if (event.status !== EventStatus.DRAFT) {
-      throw new RpcException({ statusCode: 400, message: 'Seul un brouillon peut être modifié' });
+
+    if (event.status === EventStatus.DRAFT) {
+      Object.assign(event, dto);
+      return this.repo.save(event);
     }
+
+    const editableStatuses: EventStatus[] = [EventStatus.PENDING_VALIDATION, EventStatus.PUBLISHED];
+    if (!editableStatuses.includes(event.status)) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "Cet événement ne peut plus être modifié dans son statut actuel",
+      });
+    }
+
+    const lockedFields = Object.keys(dto).filter(
+      (key) => !COSMETIC_FIELDS.includes(key as keyof CreateEventDto),
+    );
+    if (lockedFields.length > 0) {
+      throw new RpcException({
+        statusCode: 400,
+        message: `Une fois soumis, seuls la description, l'affiche et les conditions d'accès restent modifiables (verrouillé : ${lockedFields.join(', ')})`,
+      });
+    }
+
     Object.assign(event, dto);
     return this.repo.save(event);
+  }
+
+  /**
+   * Duplication simple — crée un nouveau brouillon reprenant les infos et
+   * catégories de billets de l'événement d'origine (quotas remis à zéro),
+   * à charge pour l'organisateur d'ajuster les dates avant de soumettre.
+   */
+  async duplicate(id: string, organizerId: string): Promise<Event> {
+    const original = await this.getById(id);
+    if (original.organizer_id !== organizerId) {
+      throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
+    }
+
+    const clone = this.repo.create({
+      organizer_id: original.organizer_id,
+      title: `${original.title} (copie)`,
+      description: original.description,
+      category: original.category,
+      is_non_profit: original.is_non_profit,
+      non_profit_document_url: original.non_profit_document_url,
+      start_date: original.start_date,
+      end_date: original.end_date,
+      timezone: original.timezone,
+      venue_name: original.venue_name,
+      venue_address_line1: original.venue_address_line1,
+      venue_address_line2: original.venue_address_line2,
+      venue_city: original.venue_city,
+      venue_postal_code: original.venue_postal_code,
+      venue_country: original.venue_country,
+      venue_latitude: original.venue_latitude,
+      venue_longitude: original.venue_longitude,
+      poster_url: original.poster_url,
+      total_capacity: original.total_capacity,
+      sales_start_date: original.sales_start_date,
+      sales_end_date: original.sales_end_date,
+      refund_policy: original.refund_policy,
+      refund_deadline_days: original.refund_deadline_days,
+      access_conditions: original.access_conditions,
+      status: EventStatus.DRAFT,
+    });
+    const saved = await this.repo.save(clone);
+
+    const categories = await this.ticketCategoryService.getByEvent(id);
+    for (const cat of categories) {
+      await this.ticketCategoryService.create({
+        event_id: saved.id,
+        name: cat.name,
+        description: cat.description ?? undefined,
+        price_ht: Number(cat.price_ht),
+        quota: cat.quota,
+        max_per_order: cat.max_per_order,
+        visibility: cat.visibility,
+      });
+    }
+
+    return saved;
   }
 
   async submitForValidation(id: string, organizerId: string): Promise<Event> {

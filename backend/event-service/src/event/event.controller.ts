@@ -77,4 +77,9 @@ export class EventController {
   respondToInfoRequest(@Payload() data: { request_id: string; organizer_id: string; response: string }) {
     return this.eventService.respondToInfoRequest(data.request_id, data.organizer_id, data.response);
   }
+
+  @MessagePattern('event.duplicate')
+  duplicate(@Payload() data: { id: string; organizer_id: string }) {
+    return this.eventService.duplicate(data.id, data.organizer_id);
+  }
 }
