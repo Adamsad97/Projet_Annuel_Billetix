@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
-import { createHmac, randomBytes } from 'crypto';
+import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'crypto';
 import * as QRCode from 'qrcode';
 import { Repository } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
@@ -22,7 +22,14 @@ export class TicketService {
 
     for (const orderItem of dto.items) {
       for (let ticketIndex = 0; ticketIndex < orderItem.quantity; ticketIndex++) {
+        // ID généré ici (plutôt que par la base) pour pouvoir signer le
+        // token QR avec l'ID du billet dès la création, en un seul save().
+        const id = randomUUID();
+        const qrToken = this.generateQrToken(id);
+
         const ticket = this.repo.create({
+          id,
+          qr_code_token: qrToken,
           reference: this.generateReference(),
           order_id: dto.order_id,
           order_item_id: orderItem.order_item_id,
@@ -47,12 +54,10 @@ export class TicketService {
           ticket_category_name: orderItem.ticket_category_name,
           unit_price_ttc: orderItem.unit_price_ttc,
           seat_info: orderItem.seat_info ?? null,
-          // QR
-          qr_code_token: this.generateQrToken(dto.order_id, dto.event_id),
         });
 
         const saved = await this.repo.save(ticket);
-        saved.qr_code_url = await this.generateQrImage(saved.qr_code_token);
+        saved.qr_code_url = await this.generateQrImage(qrToken);
         await this.repo.save(saved);
         tickets.push(saved);
       }
@@ -102,18 +107,82 @@ export class TicketService {
     };
   }
 
+  /**
+   * Vérifie la signature HMAC du token et en extrait l'ID billet + l'horodatage
+   * d'émission — recalcul cryptographique (comparaison en temps constant),
+   * pas un simple lookup en base. Utilisé par verifyQr() et par ScanService
+   * pour connaître l'ID du billet même quand le scan échoue ensuite (déjà
+   * utilisé/annulé), sans dépendre d'un texte d'erreur.
+   */
+  parseQrToken(token: string): { ticketId: string; issuedAt: number } {
+    const invalid = () =>
+      new RpcException({
+        statusCode: 400,
+        code: 'INVALID',
+        message: 'QR code invalide',
+      });
+
+    const [payloadB64, signature] = (token ?? '').split('.');
+    if (!payloadB64 || !signature) throw invalid();
+
+    const secret = this.config.get<string>('QR_HMAC_SECRET');
+    const expectedSignature = createHmac('sha256', secret)
+      .update(payloadB64)
+      .digest('hex');
+
+    const providedBuf = Buffer.from(signature, 'hex');
+    const expectedBuf = Buffer.from(expectedSignature, 'hex');
+    if (
+      providedBuf.length !== expectedBuf.length ||
+      !timingSafeEqual(providedBuf, expectedBuf)
+    ) {
+      throw invalid();
+    }
+
+    const decoded = Buffer.from(payloadB64, 'base64url').toString('utf8');
+    const [ticketId, issuedAtStr] = decoded.split(':');
+    const issuedAt = parseInt(issuedAtStr, 10);
+    if (!ticketId || !Number.isFinite(issuedAt)) throw invalid();
+
+    return { ticketId, issuedAt };
+  }
+
   async verifyQr(token: string): Promise<{ valid: boolean; ticket: Ticket }> {
-    const ticket = await this.repo.findOne({ where: { qr_code_token: token } });
-    if (!ticket) throw new RpcException({ statusCode: 404, message: 'QR code invalide' });
+    const { ticketId } = this.parseQrToken(token);
+
+    const ticket = await this.repo.findOne({ where: { id: ticketId } });
+    // qr_code_token !== token : le billet existe et la signature est valide,
+    // mais ce n'est plus le token actuel (ex: billet transféré depuis) — un
+    // simple recalcul de signature ne suffit pas, il faut aussi cette
+    // vérification d'état pour invalider les anciens QR après transfert.
+    if (!ticket || ticket.qr_code_token !== token) {
+      throw new RpcException({
+        statusCode: 404,
+        code: 'INVALID',
+        message: 'QR code invalide',
+      });
+    }
 
     if (ticket.status === TicketStatus.USED) {
-      throw new RpcException({ statusCode: 409, message: 'Billet déjà utilisé' });
+      throw new RpcException({
+        statusCode: 409,
+        code: 'ALREADY_USED',
+        message: 'Billet déjà utilisé',
+      });
     }
     if (ticket.status === TicketStatus.CANCELLED || ticket.status === TicketStatus.REFUNDED) {
-      throw new RpcException({ statusCode: 400, message: 'Billet annulé ou remboursé' });
+      throw new RpcException({
+        statusCode: 400,
+        code: 'CANCELLED',
+        message: 'Billet annulé ou remboursé',
+      });
     }
     if (ticket.status === TicketStatus.FOR_RESALE) {
-      throw new RpcException({ statusCode: 400, message: 'Billet en cours de revente' });
+      throw new RpcException({
+        statusCode: 400,
+        code: 'INVALID',
+        message: 'Billet en cours de revente',
+      });
     }
 
     return { valid: true, ticket };
@@ -162,8 +231,10 @@ export class TicketService {
     ticket.buyer_id = newBuyerId;
     ticket.order_id = newOrderId;
     ticket.status = TicketStatus.SENT;
-    // Nouveau QR code pour invaliditer l'ancien
-    ticket.qr_code_token = this.generateQrToken(newOrderId, ticket.event_id);
+    // Nouveau QR code pour invalider l'ancien (même ticket_id, nouvel horodatage —
+    // l'ancien token reste cryptographiquement valide mais ne correspond plus au
+    // qr_code_token actuellement stocké, donc verifyQr() le rejette).
+    ticket.qr_code_token = this.generateQrToken(ticket.id);
     ticket.qr_code_url = await this.generateQrImage(ticket.qr_code_token);
     return this.repo.save(ticket);
   }
@@ -234,12 +305,20 @@ export class TicketService {
     return `TKT-${year}-${random}`;
   }
 
-  private generateQrToken(orderId: string, eventId: string): string {
-    const secret = this.config.get<string>('QR_SECRET') ?? 'default_secret';
-    const nonce = randomBytes(8).toString('hex');
-    return createHmac('sha256', secret)
-      .update(`${orderId}:${eventId}:${nonce}`)
+  /**
+   * Token = payload (ID billet + horodatage, base64url) + signature HMAC-SHA256
+   * du payload. Contrairement à l'ancien format (simple digest opaque, non
+   * rejouable), l'ID billet est directement extractible et vérifiable par
+   * recalcul de signature — cf. parseQrToken().
+   */
+  private generateQrToken(ticketId: string): string {
+    const secret = this.config.get<string>('QR_HMAC_SECRET');
+    const payload = `${ticketId}:${Date.now()}`;
+    const payloadB64 = Buffer.from(payload).toString('base64url');
+    const signature = createHmac('sha256', secret)
+      .update(payloadB64)
       .digest('hex');
+    return `${payloadB64}.${signature}`;
   }
 
   private async generateQrImage(token: string): Promise<string> {

@@ -243,6 +243,16 @@ export class TicketController {
       this.ticketsGateway.notifyDashboardUpdate(dto.event_id, "scan");
     }
 
+    // Alerte active (pas seulement journalisée) en cas de tentative de double
+    // scan — signe possible de fraude (billet partagé/photographié).
+    if (response.result === ScanResult.ALREADY_USED) {
+      this.ticketsGateway.notifyAdminAlert({
+        type: "duplicate_scan",
+        severity: "warning",
+        message: `Tentative de double scan détectée (billet ${response.ticket_id}, événement ${dto.event_id})`,
+      });
+    }
+
     return response;
   }
 

@@ -31,13 +31,19 @@ export class ScanService {
   async scan(dto: ScanDto): Promise<ScanResponse> {
     const scannedAt = dto.scanned_at ? new Date(dto.scanned_at) : new Date();
 
-    let ticketId: string;
+    let ticketId = 'unknown';
     let result: ScanResult;
     let scannedTicket: Ticket | undefined;
 
     try {
+      // Recalcul cryptographique en premier : identifie le billet visé même
+      // si le scan échoue ensuite (déjà utilisé/annulé) — avant, un double
+      // scan reprenait par erreur le tout dernier log de l'événement, pas
+      // forcément le billet réellement présenté.
+      const { ticketId: resolvedId } = this.ticketService.parseQrToken(dto.qr_token);
+      ticketId = resolvedId;
+
       const { ticket } = await this.ticketService.verifyQr(dto.qr_token);
-      ticketId = ticket.id;
 
       if (ticket.event_id !== dto.event_id) {
         result = ScanResult.INVALID;
@@ -46,20 +52,13 @@ export class ScanService {
         result = ScanResult.SUCCESS;
       }
     } catch (err: any) {
-      const message = err?.error?.message ?? '';
-      if (message.includes('déjà utilisé')) {
+      const code = err?.error?.code;
+      if (code === 'ALREADY_USED') {
         result = ScanResult.ALREADY_USED;
-        const existing = await this.logRepo.findOne({
-          where: { event_id: dto.event_id },
-          order: { created_at: 'DESC' },
-        });
-        ticketId = existing?.ticket_id ?? 'unknown';
-      } else if (message.includes('annulé') || message.includes('remboursé')) {
+      } else if (code === 'CANCELLED') {
         result = ScanResult.CANCELLED;
-        ticketId = 'unknown';
       } else {
         result = ScanResult.INVALID;
-        ticketId = 'unknown';
       }
     }
 

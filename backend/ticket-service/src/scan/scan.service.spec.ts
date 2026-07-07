@@ -8,7 +8,11 @@ import { ScanService } from './scan.service';
 describe('ScanService', () => {
   let service: ScanService;
   let logRepo: { save: jest.Mock; create: jest.Mock; findOne: jest.Mock };
-  let ticketService: { verifyQr: jest.Mock; markUsed: jest.Mock };
+  let ticketService: {
+    verifyQr: jest.Mock;
+    markUsed: jest.Mock;
+    parseQrToken: jest.Mock;
+  };
 
   const baseDto = { qr_token: 'tok-1', agent_id: 'agent-1', event_id: 'event-1' };
 
@@ -18,7 +22,11 @@ describe('ScanService', () => {
       create: jest.fn().mockImplementation((l) => l),
       findOne: jest.fn(),
     };
-    ticketService = { verifyQr: jest.fn(), markUsed: jest.fn() };
+    ticketService = {
+      verifyQr: jest.fn(),
+      markUsed: jest.fn(),
+      parseQrToken: jest.fn().mockReturnValue({ ticketId: 'ticket-1', issuedAt: Date.now() }),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -53,17 +61,21 @@ describe('ScanService', () => {
     expect(ticketService.markUsed).not.toHaveBeenCalled();
   });
 
-  it('détecte un double scan (billet déjà utilisé)', async () => {
-    ticketService.verifyQr.mockRejectedValue({ error: { message: 'Billet déjà utilisé' } });
-    logRepo.findOne.mockResolvedValue({ ticket_id: 'ticket-1' });
+  it('détecte un double scan (billet déjà utilisé) et retrouve le bon ticket_id via la signature, pas le dernier log de l\'événement', async () => {
+    ticketService.verifyQr.mockRejectedValue({ error: { code: 'ALREADY_USED', message: 'Billet déjà utilisé' } });
+    // Un autre billet a été scanné juste avant sur le même événement — si le
+    // code retombait sur "dernier log de l'événement" (ancien bug), il
+    // renverrait ticket_id "un-autre-ticket" au lieu du bon.
+    logRepo.findOne.mockResolvedValue({ ticket_id: 'un-autre-ticket' });
 
     const result = await service.scan(baseDto);
 
     expect(result.result).toBe(ScanResult.ALREADY_USED);
+    expect(result.ticket_id).toBe('ticket-1');
   });
 
   it('signale un billet annulé ou remboursé', async () => {
-    ticketService.verifyQr.mockRejectedValue({ error: { message: 'Billet annulé ou remboursé' } });
+    ticketService.verifyQr.mockRejectedValue({ error: { code: 'CANCELLED', message: 'Billet annulé ou remboursé' } });
 
     const result = await service.scan(baseDto);
 
@@ -71,15 +83,27 @@ describe('ScanService', () => {
   });
 
   it('signale un QR code invalide (billet introuvable)', async () => {
-    ticketService.verifyQr.mockRejectedValue({ error: { message: 'QR code invalide' } });
+    ticketService.verifyQr.mockRejectedValue({ error: { code: 'INVALID', message: 'QR code invalide' } });
 
     const result = await service.scan(baseDto);
 
     expect(result.result).toBe(ScanResult.INVALID);
   });
 
+  it('signale un QR code invalide quand la signature elle-même est rejetée avant tout lookup', async () => {
+    ticketService.parseQrToken.mockImplementation(() => {
+      throw { error: { code: 'INVALID', message: 'QR code invalide' } };
+    });
+
+    const result = await service.scan(baseDto);
+
+    expect(result.result).toBe(ScanResult.INVALID);
+    expect(result.ticket_id).toBe('unknown');
+    expect(ticketService.verifyQr).not.toHaveBeenCalled();
+  });
+
   it('enregistre systématiquement un log de scan, quel que soit le résultat', async () => {
-    ticketService.verifyQr.mockRejectedValue({ error: { message: 'QR code invalide' } });
+    ticketService.verifyQr.mockRejectedValue({ error: { code: 'INVALID', message: 'QR code invalide' } });
 
     await service.scan(baseDto);
 
