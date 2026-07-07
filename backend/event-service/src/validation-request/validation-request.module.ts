@@ -8,5 +8,6 @@ import { ValidationRequestService } from './validation-request.service';
   imports: [TypeOrmModule.forFeature([ValidationRequest])],
   controllers: [ValidationRequestController],
   providers: [ValidationRequestService],
+  exports: [ValidationRequestService],
 })
 export class ValidationRequestModule {}

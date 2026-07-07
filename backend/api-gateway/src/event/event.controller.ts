@@ -250,6 +250,33 @@ export class EventController {
     );
   }
 
+  @Get(":id/validation-requests")
+  @Roles("ORGANIZER")
+  @ApiOperation({ summary: "Consulter les demandes de complément d'information de l'admin (ORGANIZER)" })
+  getValidationRequests(@Param("id") id: string) {
+    return firstValueFrom(
+      this.eventClient.send("event.get_validation_requests", { event_id: id }),
+    );
+  }
+
+  @Post("validation-requests/:requestId/respond")
+  @HttpCode(HttpStatus.OK)
+  @Roles("ORGANIZER")
+  @ApiOperation({ summary: "Répondre à une demande de complément d'information (ORGANIZER, relance le délai de traitement)" })
+  respondToValidationRequest(
+    @CurrentUser() user: JwtPayload,
+    @Param("requestId") requestId: string,
+    @Body() dto: { response: string },
+  ) {
+    return firstValueFrom(
+      this.eventClient.send("event.respond_to_info_request", {
+        request_id: requestId,
+        organizer_id: user.sub,
+        response: dto.response,
+      }),
+    );
+  }
+
   @Post(":id/categories")
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Ajouter une catégorie de billet (ORGANIZER)" })

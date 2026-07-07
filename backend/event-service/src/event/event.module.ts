@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ValidationRequestModule } from '../validation-request/validation-request.module';
 import { Event } from './event.entity';
 import { EventController } from './event.controller';
 import { EventService } from './event.service';
@@ -9,6 +10,7 @@ import { EventService } from './event.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Event]),
+    ValidationRequestModule,
     ClientsModule.registerAsync([
       {
         name: 'AUTH_SERVICE',

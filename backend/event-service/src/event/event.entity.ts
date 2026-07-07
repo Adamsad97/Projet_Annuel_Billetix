@@ -151,6 +151,18 @@ export class Event {
   @Column({ type: 'text', nullable: true })
   cancellation_reason: string | null;
 
+  @Column({ nullable: true })
+  terminated_at: Date | null;
+
+  @Column({ nullable: true })
+  archived_at: Date | null;
+
+  // Évite de renvoyer plusieurs fois l'alerte admin "délai de validation
+  // dépassé" pour le même événement — remis à false à chaque nouvelle
+  // soumission ou réponse à une demande de complément d'info.
+  @Column({ default: false })
+  deadline_alert_sent: boolean;
+
   // Seuils de remplissage déjà notifiés (ex: [25, 50])
   @Column({ type: 'simple-json', default: '[]' })
   fill_thresholds_notified: number[];

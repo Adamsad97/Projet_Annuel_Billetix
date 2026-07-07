@@ -19,6 +19,12 @@ export interface PlatformConfig {
   cancel_deadline_hours: number;
   agent_session_hours: number;
   fill_thresholds: number[];
+  email_max_retry_attempts: number;
+  email_retry_delay_minutes: number;
+  ticket_pdf_wait_max_attempts: number;
+  ticket_pdf_wait_delay_seconds: number;
+  event_validation_deadline_hours: number;
+  event_archive_delay_days: number;
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -36,6 +42,12 @@ const FALLBACK: PlatformConfig = {
   cancel_deadline_hours: 24,
   agent_session_hours: 12,
   fill_thresholds: [25, 50, 75, 100],
+  email_max_retry_attempts: 3,
+  email_retry_delay_minutes: 10,
+  ticket_pdf_wait_max_attempts: 5,
+  ticket_pdf_wait_delay_seconds: 2,
+  event_validation_deadline_hours: 48,
+  event_archive_delay_days: 30,
 };
 
 @Injectable()

@@ -20,6 +20,10 @@ export class ValidationRequestService {
     return this.repo.find({ where: { event_id: eventId }, order: { created_at: 'DESC' } });
   }
 
+  async getById(id: string): Promise<ValidationRequest | null> {
+    return this.repo.findOne({ where: { id } });
+  }
+
   async respond(id: string, response: string): Promise<ValidationRequest> {
     const req = await this.repo.findOne({ where: { id } });
     if (!req) throw new RpcException({ statusCode: 404, message: 'Demande introuvable' });

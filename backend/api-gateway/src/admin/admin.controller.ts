@@ -338,6 +338,26 @@ export class AdminController {
     return result;
   }
 
+  @Post("events/:id/request-info")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Demander un complément d'information à l'organisateur (suspend le délai de traitement)" })
+  async requestEventInfo(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() dto: { message: string },
+  ) {
+    const result = await firstValueFrom(
+      this.eventClient.send("event.request_info", {
+        id,
+        admin_id: user.sub,
+        message: dto.message,
+      }),
+    );
+    this.audit(user, req, "CUSTOM", "EVENT", id, `Complément d'information demandé : ${dto.message}`);
+    return result;
+  }
+
   @Post("events/:id/cancel")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

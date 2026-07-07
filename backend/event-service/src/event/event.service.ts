@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
+import { ValidationRequestService } from '../validation-request/validation-request.service';
 import { AdminActionDto } from './dto/admin-action.dto';
 import { CreateEventDto } from './dto/create-event.dto';
 import { Event, EventStatus } from './event.entity';
@@ -18,6 +19,7 @@ export class EventService {
     @Inject('AUTH_SERVICE')
     private readonly authClient: ClientProxy,
     private readonly platformConfig: PlatformConfigCache,
+    private readonly validationRequestService: ValidationRequestService,
   ) {}
 
   /** Résout email/prénom de l'organisateur — nécessaire au bon format attendu par notification-service. */
@@ -79,11 +81,80 @@ export class EventService {
     return { data, total };
   }
 
-  async listPending(): Promise<Event[]> {
-    return this.repo.find({
+  async listPending(): Promise<Array<Event & { validation_deadline: Date; is_overdue: boolean }>> {
+    const events = await this.repo.find({
       where: { status: EventStatus.PENDING_VALIDATION },
       order: { validation_requested_at: 'ASC' },
     });
+
+    return Promise.all(
+      events.map(async (event) => {
+        const validation_deadline = await this.computeValidationDeadline(event);
+        return {
+          ...event,
+          validation_deadline,
+          is_overdue: validation_deadline.getTime() < Date.now(),
+        };
+      }),
+    );
+  }
+
+  /**
+   * Délai de traitement (48h ouvrées par défaut, configurable admin) écoulé
+   * depuis la soumission, en ajoutant le temps passé en attente d'une réponse
+   * de l'organisateur à chaque demande de complément d'info (délai suspendu
+   * pendant ce temps, cf. CDC section 3.3).
+   */
+  private async computeValidationDeadline(event: Event): Promise<Date> {
+    const config = await this.platformConfig.get();
+    const requests = await this.validationRequestService.getByEvent(event.id);
+
+    let pausedMs = 0;
+    for (const request of requests) {
+      const pauseEnd = request.responded_at ?? new Date();
+      pausedMs += pauseEnd.getTime() - request.created_at.getTime();
+    }
+
+    const base = event.validation_requested_at ?? event.created_at;
+    return new Date(
+      base.getTime() + config.event_validation_deadline_hours * 60 * 60 * 1000 + pausedMs,
+    );
+  }
+
+  /** Demande de complément d'information par l'admin — suspend le délai de traitement. */
+  async requestInfo(eventId: string, adminId: string, message: string): Promise<{ success: true }> {
+    const event = await this.getById(eventId);
+    if (event.status !== EventStatus.PENDING_VALIDATION) {
+      throw new RpcException({ statusCode: 400, message: "L'événement n'est pas en attente de validation" });
+    }
+    await this.validationRequestService.create(eventId, adminId, message);
+
+    const { email, firstName } = await this.getOrganizerContact(event.organizer_id);
+    if (email) {
+      this.notifClient.emit('notification.event_info_requested', {
+        email,
+        firstName,
+        event_name: event.title,
+        message,
+      });
+    }
+    return { success: true };
+  }
+
+  /** Réponse de l'organisateur à une demande de complément — relance le délai de traitement. */
+  async respondToInfoRequest(requestId: string, organizerId: string, response: string): Promise<{ success: true }> {
+    const request = await this.validationRequestService.getById(requestId);
+    if (!request) throw new RpcException({ statusCode: 404, message: 'Demande introuvable' });
+
+    const event = await this.getById(request.event_id);
+    if (event.organizer_id !== organizerId) {
+      throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
+    }
+
+    await this.validationRequestService.respond(requestId, response);
+    event.deadline_alert_sent = false;
+    await this.repo.save(event);
+    return { success: true };
   }
 
   async listByOrganizer(organizerId: string): Promise<Event[]> {
@@ -126,6 +197,7 @@ export class EventService {
     }
     event.status = EventStatus.PENDING_VALIDATION;
     event.validation_requested_at = new Date();
+    event.deadline_alert_sent = false;
     return this.repo.save(event);
   }
 

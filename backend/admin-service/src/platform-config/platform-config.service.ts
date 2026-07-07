@@ -26,6 +26,8 @@ export interface PlatformConfig {
   email_retry_delay_minutes: number;
   ticket_pdf_wait_max_attempts: number;
   ticket_pdf_wait_delay_seconds: number;
+  event_validation_deadline_hours: number;
+  event_archive_delay_days: number;
 }
 
 const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
@@ -51,6 +53,8 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'email_retry_delay_minutes',      value: '10',            type: 'number',  description: 'Délai entre deux tentatives d\'envoi d\'un email (minutes)' },
   { key: 'ticket_pdf_wait_max_attempts',   value: '5',             type: 'number',  description: 'Nombre de vérifications avant d\'envoyer l\'email billet sans pièce jointe PDF' },
   { key: 'ticket_pdf_wait_delay_seconds',  value: '2',             type: 'number',  description: 'Délai entre deux vérifications de disponibilité du PDF billet (secondes)' },
+  { key: 'event_validation_deadline_hours',value: '48',            type: 'number',  description: 'Délai maximum de traitement (heures ouvrées) d\'un événement soumis à validation' },
+  { key: 'event_archive_delay_days',       value: '30',            type: 'number',  description: 'Délai après la fin d\'un événement (Terminé) avant son archivage automatique (jours)' },
 ];
 
 @Injectable()
@@ -97,6 +101,8 @@ export class PlatformConfigService implements OnModuleInit {
       email_retry_delay_minutes:      parseInt(map.email_retry_delay_minutes ?? '10'),
       ticket_pdf_wait_max_attempts:   parseInt(map.ticket_pdf_wait_max_attempts ?? '5'),
       ticket_pdf_wait_delay_seconds:  parseInt(map.ticket_pdf_wait_delay_seconds ?? '2'),
+      event_validation_deadline_hours: parseInt(map.event_validation_deadline_hours ?? '48'),
+      event_archive_delay_days:       parseInt(map.event_archive_delay_days ?? '30'),
     };
   }
 

@@ -67,4 +67,14 @@ export class EventController {
   cancel(@Payload() data: { id: string; actor_id: string; dto: AdminActionDto; is_admin?: boolean }) {
     return this.eventService.cancel(data.id, data.actor_id, data.dto, data.is_admin ?? false);
   }
+
+  @MessagePattern('event.request_info')
+  requestInfo(@Payload() data: { id: string; admin_id: string; message: string }) {
+    return this.eventService.requestInfo(data.id, data.admin_id, data.message);
+  }
+
+  @MessagePattern('event.respond_to_info_request')
+  respondToInfoRequest(@Payload() data: { request_id: string; organizer_id: string; response: string }) {
+    return this.eventService.respondToInfoRequest(data.request_id, data.organizer_id, data.response);
+  }
 }

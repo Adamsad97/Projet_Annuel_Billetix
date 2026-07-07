@@ -217,6 +217,20 @@ export class NotificationController {
     this.ack(ctx);
   }
 
+  @EventPattern('notification.event_info_requested')
+  async onEventInfoRequested(
+    @Payload() data: { email: string; firstName: string; event_name: string; message: string },
+    @Ctx() ctx: RmqContext,
+  ) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Complément d'information requis pour "${data.event_name}" — BilletiX`,
+      template: 'event-info-requested',
+      context: { firstName: data.firstName, eventName: data.event_name, message: data.message, appUrl: this.appUrl },
+    });
+    this.ack(ctx);
+  }
+
   @EventPattern('notification.event_suspended')
   async onEventSuspended(
     @Payload() data: { email: string; firstName: string; event_name: string; reason?: string },

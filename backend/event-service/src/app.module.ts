@@ -2,6 +2,7 @@ import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Event } from './event/event.entity';
 import { EventModule } from './event/event.module';
@@ -12,11 +13,13 @@ import { TicketCategoryModule } from './ticket-category/ticket-category.module';
 import { ValidationRequest } from './validation-request/validation-request.entity';
 import { ValidationRequestModule } from './validation-request/validation-request.module';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
+import { EventLifecycleModule } from './scheduler/event-lifecycle.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -64,6 +67,7 @@ import { HealthModule } from './health/health.module';
     TicketCategoryModule,
     PromoCodeModule,
     ValidationRequestModule,
+    EventLifecycleModule,
     HealthModule,
   ],
 })
