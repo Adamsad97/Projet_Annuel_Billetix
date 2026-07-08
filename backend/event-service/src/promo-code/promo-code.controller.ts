@@ -7,8 +7,8 @@ export class PromoCodeController {
   constructor(private readonly service: PromoCodeService) {}
 
   @MessagePattern('event.create_promo_code')
-  create(@Payload() dto: CreatePromoCodeDto) {
-    return this.service.create(dto);
+  create(@Payload() data: { dto: CreatePromoCodeDto; organizer_id: string }) {
+    return this.service.create(data.dto, data.organizer_id);
   }
 
   @MessagePattern('event.get_promo_codes')

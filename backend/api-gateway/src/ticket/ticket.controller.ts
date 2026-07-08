@@ -148,7 +148,7 @@ export class TicketController {
     const payment = await firstValueFrom(
       this.paymentClient.send("payment.create_intent", {
         order_id: order.id,
-        amount_ttc: order.total_amount_ttc,
+        buyer_id: user.sub,
         buyer_email: user.email,
       }),
     );

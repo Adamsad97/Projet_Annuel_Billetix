@@ -27,6 +27,8 @@ import {
 } from "../common/decorators/current-user.decorator";
 import { Public } from "../common/decorators/public.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
+import { CreateEventDto } from "./dto/create-event.dto";
+import { UpdateEventDto } from "./dto/update-event.dto";
 import { Order, OrderStatus } from "./types/order-snapshot.type";
 
 @ApiTags("events")
@@ -82,10 +84,7 @@ export class EventController {
   @Post()
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Créer un événement (ORGANIZER)" })
-  create(
-    @CurrentUser() user: JwtPayload,
-    @Body() dto: Record<string, unknown>,
-  ) {
+  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateEventDto) {
     return firstValueFrom(
       this.eventClient.send("event.create", { organizer_id: user.sub, dto }),
     );
@@ -220,11 +219,11 @@ export class EventController {
   @Patch(":id")
   @HttpCode(HttpStatus.OK)
   @Roles("ORGANIZER")
-  @ApiOperation({ summary: "Modifier un événement brouillon (ORGANIZER)" })
+  @ApiOperation({ summary: "Modifier un événement (ORGANIZER)" })
   update(
     @CurrentUser() user: JwtPayload,
     @Param("id") id: string,
-    @Body() dto: Record<string, unknown>,
+    @Body() dto: UpdateEventDto,
   ) {
     return firstValueFrom(
       this.eventClient.send("event.update", {
@@ -296,11 +295,15 @@ export class EventController {
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Ajouter une catégorie de billet (ORGANIZER)" })
   createCategory(
+    @CurrentUser() user: JwtPayload,
     @Param("id") id: string,
     @Body() dto: Record<string, unknown>,
   ) {
     return firstValueFrom(
-      this.eventClient.send("event.create_category", { event_id: id, ...dto }),
+      this.eventClient.send("event.create_category", {
+        dto: { ...dto, event_id: id },
+        organizer_id: user.sub,
+      }),
     );
   }
 
@@ -308,13 +311,14 @@ export class EventController {
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Créer un code promo (ORGANIZER)" })
   createPromoCode(
+    @CurrentUser() user: JwtPayload,
     @Param("id") id: string,
     @Body() dto: Record<string, unknown>,
   ) {
     return firstValueFrom(
       this.eventClient.send("event.create_promo_code", {
-        event_id: id,
-        ...dto,
+        dto: { ...dto, event_id: id },
+        organizer_id: user.sub,
       }),
     );
   }

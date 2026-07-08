@@ -20,6 +20,44 @@ const COSMETIC_FIELDS: Array<keyof CreateEventDto> = [
   'access_conditions',
 ];
 
+// Défense en profondeur : même si le gateway type déjà son DTO, ce handler
+// TCP reste atteignable directement — seuls ces champs de CreateEventDto
+// sont recopiables sur l'entité, jamais status/commission_rate/validated_by
+// ou autre colonne interne au workflow de modération.
+const UPDATABLE_FIELDS: Array<keyof CreateEventDto> = [
+  'title',
+  'description',
+  'category',
+  'is_non_profit',
+  'non_profit_document_url',
+  'start_date',
+  'end_date',
+  'timezone',
+  'venue_name',
+  'venue_address_line1',
+  'venue_address_line2',
+  'venue_city',
+  'venue_postal_code',
+  'venue_country',
+  'venue_latitude',
+  'venue_longitude',
+  'poster_url',
+  'total_capacity',
+  'sales_start_date',
+  'sales_end_date',
+  'refund_policy',
+  'refund_deadline_days',
+  'access_conditions',
+];
+
+function pickUpdatableFields(dto: Partial<CreateEventDto>): Partial<CreateEventDto> {
+  const picked: Partial<CreateEventDto> = {};
+  for (const key of UPDATABLE_FIELDS) {
+    if (key in dto) (picked as Record<string, unknown>)[key] = dto[key];
+  }
+  return picked;
+}
+
 @Injectable()
 export class EventService {
   constructor(
@@ -194,7 +232,7 @@ export class EventService {
     }
 
     if (event.status === EventStatus.DRAFT) {
-      Object.assign(event, dto);
+      Object.assign(event, pickUpdatableFields(dto));
       return this.repo.save(event);
     }
 
@@ -216,7 +254,7 @@ export class EventService {
       });
     }
 
-    Object.assign(event, dto);
+    Object.assign(event, pickUpdatableFields(dto));
     return this.repo.save(event);
   }
 
@@ -262,15 +300,18 @@ export class EventService {
 
     const categories = await this.ticketCategoryService.getByEvent(id);
     for (const cat of categories) {
-      await this.ticketCategoryService.create({
-        event_id: saved.id,
-        name: cat.name,
-        description: cat.description ?? undefined,
-        price_ht: Number(cat.price_ht),
-        quota: cat.quota,
-        max_per_order: cat.max_per_order,
-        visibility: cat.visibility,
-      });
+      await this.ticketCategoryService.create(
+        {
+          event_id: saved.id,
+          name: cat.name,
+          description: cat.description ?? undefined,
+          price_ht: Number(cat.price_ht),
+          quota: cat.quota,
+          max_per_order: cat.max_per_order,
+          visibility: cat.visibility,
+        },
+        original.organizer_id,
+      );
     }
 
     return saved;

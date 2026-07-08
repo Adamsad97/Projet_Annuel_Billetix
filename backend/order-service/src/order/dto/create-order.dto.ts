@@ -120,6 +120,19 @@ export class CreateOrderDto {
   payment_method: PaymentMethod;
 }
 
+// La réservation de stock (étape 1, avant paiement) ne connaît que la
+// catégorie et la quantité — le prix n'est fixé qu'à la création de la
+// commande (CreateOrderDto). Un DTO dédié évite d'exiger à tort
+// unit_price_ht ici (celui de OrderItemInputDto est requis, à raison,
+// pour la création).
+export class ReserveStockItemDto {
+  @IsString()
+  ticket_category_id: string;
+
+  @IsInt() @Min(1)
+  quantity: number;
+}
+
 export class ReserveStockDto {
   @IsString()
   buyer_id: string;
@@ -129,6 +142,6 @@ export class ReserveStockDto {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => OrderItemInputDto)
-  items: OrderItemInputDto[];
+  @Type(() => ReserveStockItemDto)
+  items: ReserveStockItemDto[];
 }

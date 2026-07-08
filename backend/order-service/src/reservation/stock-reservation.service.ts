@@ -94,6 +94,16 @@ export class StockReservationService {
     await this.redis.del(`${KEY_PREFIX}${token}`);
   }
 
+  /**
+   * Restitue le quota de places pour des items déjà consommés (commande
+   * créée, réservation Redis déjà supprimée) — utilisé lors de l'annulation
+   * d'une commande, contrairement à release() qui vise une réservation
+   * encore en attente de paiement.
+   */
+  async restoreItems(items: ReservationItem[]): Promise<void> {
+    await this.rollback(items);
+  }
+
   private async rollback(items: ReservationItem[]): Promise<void> {
     for (const item of items) {
       try {

@@ -175,10 +175,19 @@ export class OrderController {
 
   @Post(":id/cancel")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Annuler une commande" })
-  cancel(@Param("id") id: string, @Body() dto: { reason?: string }) {
+  @ApiOperation({ summary: "Annuler sa propre commande (ou toute commande pour un ADMIN)" })
+  cancel(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: { reason?: string },
+  ) {
     return firstValueFrom(
-      this.orderClient.send("order.cancel", { id, reason: dto.reason }),
+      this.orderClient.send("order.cancel", {
+        id,
+        buyer_id: user.sub,
+        is_admin: user.role === "ADMIN",
+        reason: dto.reason,
+      }),
     );
   }
 

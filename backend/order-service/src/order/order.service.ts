@@ -232,16 +232,36 @@ export class OrderService {
     return this.orderRepo.save(order);
   }
 
-  async cancel(id: string, reason?: string): Promise<Order> {
+  async cancel(id: string, buyerId: string, isAdmin: boolean, reason?: string): Promise<Order> {
     const order = await this.orderRepo.findOne({ where: { id } });
     if (!order) throw new RpcException({ statusCode: 404, message: 'Commande introuvable' });
+    if (!isAdmin && order.buyer_id !== buyerId) {
+      throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
+    }
     if (order.status === OrderStatus.CANCELLED || order.status === OrderStatus.REFUNDED) {
       throw new RpcException({ statusCode: 400, message: 'Commande déjà annulée ou remboursée' });
     }
+    // Une commande déjà payée doit passer par le remboursement (admin), pas
+    // par une simple annulation — sinon l'argent encaissé ne serait jamais
+    // rendu tout en libérant le stock comme si de rien n'était.
+    if (order.status !== OrderStatus.PENDING_PAYMENT) {
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Seule une commande en attente de paiement peut être annulée — utilisez le remboursement pour une commande déjà payée',
+      });
+    }
+
     order.status = OrderStatus.CANCELLED;
     order.cancelled_at = new Date();
     order.cancellation_reason = reason ?? null;
-    return this.orderRepo.save(order);
+    const saved = await this.orderRepo.save(order);
+
+    const items = await this.itemRepo.find({ where: { order_id: id } });
+    await this.reservationService.restoreItems(
+      items.map((item) => ({ ticket_category_id: item.ticket_category_id, quantity: item.quantity })),
+    );
+
+    return saved;
   }
 
   async markRefunded(id: string): Promise<Order> {

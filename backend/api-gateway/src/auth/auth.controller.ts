@@ -32,7 +32,6 @@ import {
 import { Public } from "../common/decorators/public.decorator";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
-import { OAuthLoginDto } from "./dto/oauth-login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
@@ -117,16 +116,6 @@ export class AuthController {
   @ApiResponse({ status: 200, description: "Email vérifié avec succès" })
   verifyEmail(@Query("token") token: string) {
     return firstValueFrom(this.authClient.send("auth.verify_email", { token }));
-  }
-
-  @Public()
-  @Post("oauth")
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: "Connexion / inscription via OAuth (Google, Facebook)",
-  })
-  oauthLogin(@Body() dto: OAuthLoginDto) {
-    return firstValueFrom(this.authClient.send("auth.oauth_login", dto));
   }
 
   @Get("me")

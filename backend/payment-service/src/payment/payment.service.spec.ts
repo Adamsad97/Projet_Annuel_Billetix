@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { RpcException } from '@nestjs/microservices';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { of } from 'rxjs';
 import { PayoutService } from '../payout/payout.service';
 import { StripeService } from '../stripe/stripe.service';
 import { Payment, PaymentStatus } from './payment.entity';
@@ -9,8 +10,9 @@ import { PaymentService } from './payment.service';
 describe('PaymentService', () => {
   let service: PaymentService;
   let repo: { findOne: jest.Mock; save: jest.Mock; create: jest.Mock };
-  let stripe: { createRefund: jest.Mock };
+  let stripe: { createRefund: jest.Mock; createPaymentIntent: jest.Mock };
   let payoutService: { recalculateForRefund: jest.Mock };
+  let orderClient: { send: jest.Mock };
 
   beforeEach(async () => {
     repo = {
@@ -18,8 +20,15 @@ describe('PaymentService', () => {
       save: jest.fn().mockImplementation((p) => Promise.resolve(p)),
       create: jest.fn().mockImplementation((p) => p),
     };
-    stripe = { createRefund: jest.fn().mockResolvedValue({}) };
+    stripe = {
+      createRefund: jest.fn().mockResolvedValue({}),
+      createPaymentIntent: jest.fn().mockResolvedValue({
+        client_secret: 'secret_123',
+        payment_intent_id: 'pi_123',
+      }),
+    };
     payoutService = { recalculateForRefund: jest.fn().mockResolvedValue(undefined) };
+    orderClient = { send: jest.fn() };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -27,10 +36,45 @@ describe('PaymentService', () => {
         { provide: getRepositoryToken(Payment), useValue: repo },
         { provide: StripeService, useValue: stripe },
         { provide: PayoutService, useValue: payoutService },
+        { provide: 'ORDER_SERVICE', useValue: orderClient },
       ],
     }).compile();
 
     service = module.get(PaymentService);
+  });
+
+  describe('createIntent — montant recalculé côté serveur', () => {
+    it("ignore tout montant client et utilise le total réel de la commande", async () => {
+      orderClient.send.mockReturnValue(
+        of({ order: { buyer_id: 'buyer-1', total_amount_ttc: 123.45 } }),
+      );
+
+      await service.createIntent({ order_id: 'order-1', buyer_id: 'buyer-1', buyer_email: 'jean@example.com' });
+
+      expect(stripe.createPaymentIntent).toHaveBeenCalledWith(
+        expect.objectContaining({ amount_cents: 12345 }),
+      );
+    });
+
+    it("refuse si l'appelant n'est pas le propriétaire de la commande", async () => {
+      orderClient.send.mockReturnValue(
+        of({ order: { buyer_id: 'un-autre-acheteur', total_amount_ttc: 100 } }),
+      );
+
+      await expect(
+        service.createIntent({ order_id: 'order-1', buyer_id: 'buyer-1', buyer_email: 'jean@example.com' }),
+      ).rejects.toThrow(RpcException);
+      expect(stripe.createPaymentIntent).not.toHaveBeenCalled();
+    });
+
+    it('refuse si la commande est déjà payée', async () => {
+      repo.findOne.mockResolvedValue({ status: PaymentStatus.PAID });
+
+      await expect(
+        service.createIntent({ order_id: 'order-1', buyer_id: 'buyer-1', buyer_email: 'jean@example.com' }),
+      ).rejects.toThrow(RpcException);
+      expect(orderClient.send).not.toHaveBeenCalled();
+    });
   });
 
   describe('refund — remboursement total et partiel', () => {

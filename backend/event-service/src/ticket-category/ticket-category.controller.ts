@@ -8,8 +8,8 @@ export class TicketCategoryController {
   constructor(private readonly service: TicketCategoryService) {}
 
   @MessagePattern('event.create_category')
-  create(@Payload() dto: CreateTicketCategoryDto) {
-    return this.service.create(dto);
+  create(@Payload() data: { dto: CreateTicketCategoryDto; organizer_id: string }) {
+    return this.service.create(data.dto, data.organizer_id);
   }
 
   @MessagePattern('event.get_categories')
@@ -18,13 +18,13 @@ export class TicketCategoryController {
   }
 
   @MessagePattern('event.update_category')
-  update(@Payload() data: { id: string; dto: Partial<CreateTicketCategoryDto> }) {
-    return this.service.update(data.id, data.dto);
+  update(@Payload() data: { id: string; dto: Partial<CreateTicketCategoryDto>; organizer_id: string }) {
+    return this.service.update(data.id, data.dto, data.organizer_id);
   }
 
   @MessagePattern('event.deactivate_category')
-  deactivate(@Payload() data: { id: string }) {
-    return this.service.deactivate(data.id);
+  deactivate(@Payload() data: { id: string; organizer_id: string }) {
+    return this.service.deactivate(data.id, data.organizer_id);
   }
 
   @MessagePattern('event.decrement_quota')

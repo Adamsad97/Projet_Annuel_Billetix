@@ -72,8 +72,8 @@ export class OrderController {
   }
 
   @MessagePattern('order.cancel')
-  cancel(@Payload() data: { id: string; reason?: string }) {
-    return this.orderService.cancel(data.id, data.reason);
+  cancel(@Payload() data: { id: string; buyer_id: string; is_admin?: boolean; reason?: string }) {
+    return this.orderService.cancel(data.id, data.buyer_id, data.is_admin ?? false, data.reason);
   }
 
   @MessagePattern('order.mark_refunded')

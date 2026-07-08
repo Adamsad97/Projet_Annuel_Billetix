@@ -50,7 +50,8 @@ export class PaymentController {
   ) {
     return firstValueFrom(
       this.paymentClient.send("payment.create_intent", {
-        ...dto,
+        order_id: dto.order_id,
+        buyer_id: user.sub,
         buyer_email: user.email,
       }),
     );

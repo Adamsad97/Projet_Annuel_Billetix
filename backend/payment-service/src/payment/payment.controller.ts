@@ -11,7 +11,7 @@ export class PaymentController {
   ) {}
 
   @MessagePattern('payment.create_intent')
-  createIntent(@Payload() data: { order_id: string; amount_ttc: number; buyer_email: string }) {
+  createIntent(@Payload() data: { order_id: string; buyer_id: string; buyer_email: string }) {
     return this.paymentService.createIntent(data);
   }
 

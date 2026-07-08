@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
+import { Inject, Injectable } from '@nestjs/common';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
+import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
 import { PayoutService } from '../payout/payout.service';
 import { StripeService } from '../stripe/stripe.service';
@@ -12,11 +13,12 @@ export class PaymentService {
     @InjectRepository(Payment) private readonly repo: Repository<Payment>,
     private readonly stripe: StripeService,
     private readonly payoutService: PayoutService,
+    @Inject('ORDER_SERVICE') private readonly orderClient: ClientProxy,
   ) {}
 
   async createIntent(data: {
     order_id: string;
-    amount_ttc: number;
+    buyer_id: string;
     buyer_email: string;
   }): Promise<{ client_secret: string; payment_id: string }> {
     const existing = await this.repo.findOne({ where: { order_id: data.order_id } });
@@ -24,7 +26,19 @@ export class PaymentService {
       throw new RpcException({ statusCode: 409, message: 'Commande déjà payée' });
     }
 
-    const amount_cents = Math.round(Number(data.amount_ttc) * 100);
+    // Le montant à payer n'est jamais fourni par le client — toujours relu
+    // depuis order-service (source de vérité) pour empêcher un acheteur de
+    // payer le montant de son choix pour n'importe quelle commande.
+    const { order } = await firstValueFrom(
+      this.orderClient.send('order.get', { id: data.order_id }),
+    ) as { order: { buyer_id: string; total_amount_ttc: number } };
+
+    if (order.buyer_id !== data.buyer_id) {
+      throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
+    }
+
+    const amount_ttc = Number(order.total_amount_ttc);
+    const amount_cents = Math.round(amount_ttc * 100);
     const { client_secret, payment_intent_id } = await this.stripe.createPaymentIntent({
       amount_cents,
       currency: 'eur',
@@ -32,7 +46,8 @@ export class PaymentService {
       buyer_email: data.buyer_email,
     });
 
-    const payment = existing ?? this.repo.create({ order_id: data.order_id, amount: data.amount_ttc });
+    const payment = existing ?? this.repo.create({ order_id: data.order_id, amount: amount_ttc });
+    payment.amount = amount_ttc;
     payment.provider_payment_id = payment_intent_id;
     payment.provider_client_secret = client_secret;
     await this.repo.save(payment);

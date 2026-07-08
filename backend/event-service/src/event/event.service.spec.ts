@@ -222,6 +222,30 @@ describe('EventService', () => {
       expect(event.venue_name).toBe('Nouvelle salle');
     });
 
+    it("ignore silencieusement status/commission_rate/validated_by même en brouillon (mass assignment)", async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'evt-1',
+        organizer_id: 'organizer-1',
+        status: EventStatus.DRAFT,
+        commission_rate: 10,
+      });
+
+      const event = await service.update('evt-1', 'organizer-1', {
+        title: 'Titre légitime',
+        status: EventStatus.PUBLISHED,
+        commission_rate: 0,
+        validated_by: 'moi-meme',
+        validated_at: new Date(),
+        organizer_id: 'un-autre-organisateur',
+      } as any);
+
+      expect(event.title).toBe('Titre légitime');
+      expect(event.status).toBe(EventStatus.DRAFT);
+      expect(event.commission_rate).toBe(10);
+      expect((event as any).validated_by).toBeUndefined();
+      expect(event.organizer_id).toBe('organizer-1');
+    });
+
     it('refuse toute modification sur un événement terminé/annulé/archivé', async () => {
       repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', status: EventStatus.CANCELLED });
 
@@ -326,11 +350,13 @@ describe('EventService', () => {
       expect(ticketCategoryService.create).toHaveBeenCalledTimes(2);
       expect(ticketCategoryService.create).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Standard', price_ht: 50, quota: 400 }),
+        'organizer-1',
       );
       // remaining_quota n'est jamais transmis — TicketCategoryService.create()
       // le réinitialise toujours à quota (aucune vente sur le nouvel événement).
       expect(ticketCategoryService.create).not.toHaveBeenCalledWith(
         expect.objectContaining({ remaining_quota: expect.anything() }),
+        expect.anything(),
       );
     });
   });

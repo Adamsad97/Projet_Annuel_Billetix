@@ -22,7 +22,15 @@ export class PromoCodeService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async create(dto: CreatePromoCodeDto): Promise<PromoCode> {
+  async create(dto: CreatePromoCodeDto, organizerId: string): Promise<PromoCode> {
+    const eventRecord = await this.dataSource.query(
+      `SELECT organizer_id FROM events.events WHERE id = $1`,
+      [dto.event_id],
+    );
+    if (!eventRecord[0] || eventRecord[0].organizer_id !== organizerId) {
+      throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
+    }
+
     const existing = await this.repo.findOne({
       where: { event_id: dto.event_id, code: dto.code },
     });

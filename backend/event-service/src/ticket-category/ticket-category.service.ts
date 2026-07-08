@@ -23,7 +23,16 @@ export class TicketCategoryService {
     private readonly platformConfig: PlatformConfigCache,
   ) {}
 
-  async create(dto: CreateTicketCategoryDto): Promise<TicketCategory> {
+  /** Lève 403 si l'événement n'existe pas ou n'appartient pas à cet organisateur. */
+  private async assertOwnsEvent(eventId: string, organizerId: string): Promise<void> {
+    const event = await this.eventRepo.findOne({ where: { id: eventId } });
+    if (!event || event.organizer_id !== organizerId) {
+      throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
+    }
+  }
+
+  async create(dto: CreateTicketCategoryDto, organizerId: string): Promise<TicketCategory> {
+    await this.assertOwnsEvent(dto.event_id, organizerId);
     const category = this.repo.create({
       ...dto,
       remaining_quota: dto.quota,
@@ -41,13 +50,16 @@ export class TicketCategoryService {
     return cat;
   }
 
-  async update(id: string, dto: Partial<CreateTicketCategoryDto>): Promise<TicketCategory> {
+  async update(id: string, dto: Partial<CreateTicketCategoryDto>, organizerId: string): Promise<TicketCategory> {
     const cat = await this.getById(id);
+    await this.assertOwnsEvent(cat.event_id, organizerId);
     Object.assign(cat, dto);
     return this.repo.save(cat);
   }
 
-  async deactivate(id: string): Promise<{ success: boolean }> {
+  async deactivate(id: string, organizerId: string): Promise<{ success: boolean }> {
+    const cat = await this.getById(id);
+    await this.assertOwnsEvent(cat.event_id, organizerId);
     await this.repo.update(id, { is_active: false });
     return { success: true };
   }
