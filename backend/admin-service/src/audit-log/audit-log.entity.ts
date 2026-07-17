@@ -11,6 +11,8 @@ export enum AuditAction {
   USER_UNSUSPENDED     = 'USER_UNSUSPENDED',
   USER_DELETED         = 'USER_DELETED',
   USER_ROLE_CHANGED    = 'USER_ROLE_CHANGED',
+  KYC_APPROVED         = 'KYC_APPROVED',
+  KYC_REJECTED         = 'KYC_REJECTED',
 
   // Événements
   EVENT_APPROVED       = 'EVENT_APPROVED',

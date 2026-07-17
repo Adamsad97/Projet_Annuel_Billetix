@@ -11,8 +11,7 @@ export class LoginDto {
   password: string;
 
   @ApiPropertyOptional({
-    description:
-      "Code 2FA (TOTP ou SMS selon la méthode activée sur le compte), requis si la 2FA est activée",
+    description: "Code 2FA TOTP, requis si la 2FA est activée",
   })
   @IsOptional()
   @IsString()

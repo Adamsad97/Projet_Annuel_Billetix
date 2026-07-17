@@ -22,17 +22,17 @@ le frontend tourne sur :http://localhost:3000
 Le backend est composé de 10 microservices NestJS communiquant en interne via TCP (requêtes synchrones) et RabbitMQ (événements asynchrones : emails, génération de PDF), tous derrière une API Gateway unique qui est le seul point d'entrée HTTP public :
 
 - **api-gateway** — point d'entrée HTTP, Swagger, authentification JWT
-- **auth-service** — comptes, JWT, 2FA (TOTP/SMS), OAuth Google/Facebook
+- **auth-service** — comptes, JWT, 2FA (TOTP), OAuth Google/Facebook
 - **user-service** — profils acheteur/organisateur, KYC
 - **event-service** — événements, catégories de billets, validation admin, catalogue
 - **order-service** — tunnel d'achat, réservation de stock
 - **ticket-service** — génération et vérification des billets (QR signé HMAC-SHA256), scan
 - **payment-service** — paiement Stripe, reversements organisateurs
-- **notification-service** — emails et SMS (consommateur RabbitMQ)
+- **notification-service** — emails (consommateur RabbitMQ)
 - **pdf-service** — génération des PDF billets et factures (consommateur RabbitMQ)
 - **admin-service** — back-office, modération, configuration plateforme
 
-Infrastructure partagée : PostgreSQL, Redis (cache/réservations), RabbitMQ (files d'attente), MinIO (stockage fichiers), MailHog (emails en développement).
+Chaque service persistant a sa **propre base PostgreSQL dédiée** (conteneur et volume distincts, aucune base partagée) : `auth-db`, `user-db`, `event-db`, `order-db`, `ticket-db`, `payment-db`, `admin-db`. Infrastructure partagée restante : Redis (cache/réservations), RabbitMQ (files d'attente), MinIO (stockage fichiers), MailHog (emails en développement).
 
 ## Installation
 
@@ -57,7 +57,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 Coller chaque résultat dans le `.env`, avec les mots de passe PostgreSQL/Redis/RabbitMQ/MinIO de ton choix.
 
-Les clés Stripe, PayPal, SendGrid, Google/Facebook OAuth et Twilio peuvent rester vides si ces intégrations ne sont pas utilisées — voir `.env.example` pour la liste complète et documentée de toutes les variables.
+Les clés Stripe, PayPal, SendGrid et Google/Facebook OAuth peuvent rester vides si ces intégrations ne sont pas utilisées — voir `.env.example` pour la liste complète et documentée de toutes les variables.
 
 ## Commandes utiles
 
@@ -73,7 +73,7 @@ npm run down:volumes                        # arrêter et effacer toutes les don
 docker compose logs -f <service>            # logs d'un service précis
 docker compose up -d --build <service>      # rebuild et redémarrer un seul service
 docker compose exec <service> sh            # shell dans un conteneur
-docker compose exec postgres psql -U billetix -d billetix   # accès direct à la base
+docker compose exec auth-db psql -U billetix -d auth        # accès direct à une base (ici auth-db ; remplacer par user-db/event-db/order-db/ticket-db/payment-db/admin-db selon le service voulu)
 ```
 
 ## Développement sur un seul service
