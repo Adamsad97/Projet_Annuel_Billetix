@@ -31,6 +31,7 @@ export interface PlatformConfig {
   order_abandon_timeout_minutes: number;
   resale_reservation_minutes: number;
   dispute_payout_block_max_days: number;
+  payout_early_request_min_days_after_event: number;
 }
 
 const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
@@ -61,6 +62,7 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'order_abandon_timeout_minutes',  value: '30',            type: 'number',  description: 'Délai après lequel une commande non payée est annulée et son stock libéré (minutes)' },
   { key: 'resale_reservation_minutes',     value: '15',            type: 'number',  description: 'Durée de réservation d\'une offre de revente pendant le paiement de l\'acheteur (minutes)' },
   { key: 'dispute_payout_block_max_days',  value: '30',            type: 'number',  description: 'Durée maximale de blocage d\'un reversement suite à un litige, avant déblocage automatique (jours)' },
+  { key: 'payout_early_request_min_days_after_event', value: '2',  type: 'number',  description: 'Délai minimum après la fin de l\'événement avant qu\'un organisateur puisse demander un reversement anticipé (jours)' },
 ];
 
 @Injectable()
@@ -112,6 +114,7 @@ export class PlatformConfigService implements OnModuleInit {
       order_abandon_timeout_minutes:  parseInt(map.order_abandon_timeout_minutes ?? '30'),
       resale_reservation_minutes:    parseInt(map.resale_reservation_minutes ?? '15'),
       dispute_payout_block_max_days: parseInt(map.dispute_payout_block_max_days ?? '30'),
+      payout_early_request_min_days_after_event: parseInt(map.payout_early_request_min_days_after_event ?? '2'),
     };
   }
 

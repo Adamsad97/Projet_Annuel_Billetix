@@ -40,6 +40,7 @@ export class PayoutService {
         payment_fees_amount: data.payment_fees_amount,
         net_amount: parseFloat(net.toFixed(2)),
         scheduled_at: scheduled,
+        event_end_at: data.event_end_at ? new Date(data.event_end_at) : null,
       }),
     );
   }
@@ -259,17 +260,53 @@ export class PayoutService {
     });
   }
 
+  /**
+   * Demande de reversement anticipé (CDC §7.2 : « possible après J+2
+   * post-événement, soumise à validation admin »). Le délai minimum est
+   * vérifié ici, pas seulement le rôle — sans ça, un organisateur pourrait
+   * demander une avance dès la création du reversement, avant même la fin
+   * de l'événement.
+   */
   async requestEarly(id: string, organizerId: string): Promise<Payout> {
     const payout = await this.getById(id);
     if (payout.organizer_id !== organizerId) {
       throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
     }
+    if (payout.status !== PayoutStatus.PENDING) {
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Ce reversement n\'est pas éligible à une demande anticipée dans son état actuel',
+      });
+    }
+    if (!payout.event_end_at) {
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Date de fin d\'événement inconnue pour ce reversement — demande anticipée impossible',
+      });
+    }
+
+    const config = await this.platformConfig.get();
+    const minRequestDate = new Date(payout.event_end_at);
+    minRequestDate.setDate(minRequestDate.getDate() + config.payout_early_request_min_days_after_event);
+    if (new Date() < minRequestDate) {
+      throw new RpcException({
+        statusCode: 400,
+        message: `Demande anticipée possible seulement à partir du ${minRequestDate.toLocaleDateString('fr-FR')} (J+${config.payout_early_request_min_days_after_event} après l'événement)`,
+      });
+    }
+
     payout.requested_early_at = new Date();
     return this.repo.save(payout);
   }
 
   async approveEarly(id: string, adminId: string): Promise<Payout> {
     const payout = await this.getById(id);
+    if (!payout.requested_early_at) {
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Aucune demande de reversement anticipé en attente pour ce reversement',
+      });
+    }
     payout.early_request_approved_by = adminId;
     payout.scheduled_at = new Date();
     return this.repo.save(payout);

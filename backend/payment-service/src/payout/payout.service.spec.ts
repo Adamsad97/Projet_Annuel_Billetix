@@ -34,7 +34,12 @@ describe('PayoutService', () => {
         { provide: StripeService, useValue: stripe },
         {
           provide: PlatformConfigCache,
-          useValue: { get: jest.fn().mockResolvedValue({ payout_delay_days: 5 }) },
+          useValue: {
+            get: jest.fn().mockResolvedValue({
+              payout_delay_days: 5,
+              payout_early_request_min_days_after_event: 2,
+            }),
+          },
         },
       ],
     }).compile();
@@ -59,6 +64,64 @@ describe('PayoutService', () => {
       const expected = new Date(eventEnd);
       expected.setDate(expected.getDate() + 5);
       expect((payout.scheduled_at as Date).toDateString()).toBe(expected.toDateString());
+      expect(payout.event_end_at).toEqual(eventEnd);
+    });
+  });
+
+  describe('requestEarly', () => {
+    it("refuse si l'appelant n'est pas l'organisateur du reversement", async () => {
+      repo.findOne.mockResolvedValue({ id: 'p1', organizer_id: 'org-1', status: PayoutStatus.PENDING });
+      await expect(service.requestEarly('p1', 'org-2')).rejects.toThrow(RpcException);
+    });
+
+    it("refuse si le reversement n'est pas PENDING (déjà bloqué/versé)", async () => {
+      repo.findOne.mockResolvedValue({ id: 'p1', organizer_id: 'org-1', status: PayoutStatus.BLOCKED });
+      await expect(service.requestEarly('p1', 'org-1')).rejects.toThrow(RpcException);
+    });
+
+    it("refuse si moins de J+2 se sont écoulés depuis la fin de l'événement (CDC §7.2)", async () => {
+      const eventEndedYesterday = new Date();
+      eventEndedYesterday.setDate(eventEndedYesterday.getDate() - 1);
+      repo.findOne.mockResolvedValue({
+        id: 'p1',
+        organizer_id: 'org-1',
+        status: PayoutStatus.PENDING,
+        event_end_at: eventEndedYesterday,
+      });
+
+      await expect(service.requestEarly('p1', 'org-1')).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('accepte la demande une fois le délai J+2 dépassé', async () => {
+      const eventEndedFourDaysAgo = new Date();
+      eventEndedFourDaysAgo.setDate(eventEndedFourDaysAgo.getDate() - 4);
+      repo.findOne.mockResolvedValue({
+        id: 'p1',
+        organizer_id: 'org-1',
+        status: PayoutStatus.PENDING,
+        event_end_at: eventEndedFourDaysAgo,
+      });
+
+      const result = await service.requestEarly('p1', 'org-1');
+
+      expect(result.requested_early_at).toBeInstanceOf(Date);
+    });
+  });
+
+  describe('approveEarly', () => {
+    it("refuse d'approuver s'il n'existe aucune demande anticipée", async () => {
+      repo.findOne.mockResolvedValue({ id: 'p1', requested_early_at: null });
+      await expect(service.approveEarly('p1', 'admin-1')).rejects.toThrow(RpcException);
+    });
+
+    it('approuve et avance la date de reversement à maintenant', async () => {
+      repo.findOne.mockResolvedValue({ id: 'p1', requested_early_at: new Date('2026-08-05') });
+
+      const result = await service.approveEarly('p1', 'admin-1');
+
+      expect(result.early_request_approved_by).toBe('admin-1');
+      expect(result.scheduled_at).toBeInstanceOf(Date);
     });
   });
 

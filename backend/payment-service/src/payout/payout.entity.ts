@@ -25,6 +25,14 @@ export class Payout {
   @Column()
   event_id: string;
 
+  // Date de fin de l'événement — nécessaire pour vérifier la règle CDC §7.2
+  // « demande anticipée possible après J+2 post-événement » (requestEarly()).
+  // Nullable : les ajustements négatifs créés par recalculateForRefund()
+  // n'ont pas de date de fin d'événement propre (pas éligibles à une
+  // demande anticipée, ce sont déjà des correctifs comptables).
+  @Column({ type: 'timestamptz', nullable: true })
+  event_end_at: Date | null;
+
   // Lien vers la commande d'origine — permet de retrouver le payout à
   // ajuster lors d'un remboursement (une commande = un payout, cf.
   // PayoutService.create() appelé une fois par commande confirmée).
