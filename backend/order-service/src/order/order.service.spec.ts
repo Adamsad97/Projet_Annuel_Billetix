@@ -19,7 +19,7 @@ describe('OrderService', () => {
   };
   let abandonedQueryBuilder: { where: jest.Mock; andWhere: jest.Mock; getMany: jest.Mock };
   let itemRepo: { find: jest.Mock };
-  let reservationService: { restoreItems: jest.Mock; validate: jest.Mock };
+  let reservationService: { restoreItems: jest.Mock; validate: jest.Mock; consume: jest.Mock };
   let platformConfig: { get: jest.Mock };
   let eventClient: { send: jest.Mock };
   let ticketClient: { send: jest.Mock };
@@ -41,6 +41,7 @@ describe('OrderService', () => {
     reservationService = {
       restoreItems: jest.fn().mockResolvedValue(undefined),
       validate: jest.fn(),
+      consume: jest.fn().mockResolvedValue(undefined),
     };
     platformConfig = {
       get: jest.fn().mockResolvedValue({
