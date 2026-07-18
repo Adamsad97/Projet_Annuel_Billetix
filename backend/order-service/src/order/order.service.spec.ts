@@ -297,6 +297,24 @@ describe('OrderService', () => {
       expect(order.net_organizer_amount).toBe(100);
     });
 
+    it("ne facture rien à l'acheteur pour un billet gratuit — le frais fixe est déduit du net organisateur, pas ajouté au TTC", async () => {
+      mockEventClient({
+        commission_rate: 10,
+        categories: [{ id: 'cat-1', name: 'Gratuit', price_ht: 0 }],
+      });
+
+      const { order } = await service.create(baseDto);
+
+      // 2 billets gratuits : aucun montant TTC pour l'acheteur (tunnel
+      // gratuit CDC §4.1 — aucune page de paiement ne doit être déclenchée).
+      expect(order.total_amount_ht).toBe(0);
+      expect(order.total_amount_ttc).toBe(0);
+      expect(order.total_commission).toBe(0);
+      // Frais fixe 0,50€ x 2 billets = 1€, à la charge de l'organisateur uniquement.
+      expect(order.free_ticket_fees).toBe(1);
+      expect(order.net_organizer_amount).toBe(-1);
+    });
+
     it('utilise le prix réel de la catégorie (event-service), pas celui envoyé par le client', async () => {
       mockEventClient({ categories: [{ id: 'cat-1', name: 'Standard', price_ht: 75 }] });
 

@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  Logger,
   Param,
   Post,
 } from "@nestjs/common";
@@ -18,13 +19,17 @@ import {
   JwtPayload,
 } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
+import { PurchaseFulfillmentService } from "../payment/purchase-fulfillment.service";
 
 @ApiTags("orders")
 @ApiBearerAuth()
 @Controller("orders")
 export class OrderController {
+  private readonly logger = new Logger(OrderController.name);
+
   constructor(
     @Inject("ORDER_SERVICE") private readonly orderClient: ClientProxy,
+    private readonly fulfillment: PurchaseFulfillmentService,
   ) {}
 
   /**
@@ -70,6 +75,13 @@ export class OrderController {
    * La validation du code promo et le calcul de la remise/commission sont
    * entièrement recalculés côté order-service (jamais de confiance dans une
    * valeur envoyée par le client) — la gateway ne fait que transmettre.
+   *
+   * Tunnel gratuit (CDC §4.1.2) : une commande dont total_amount_ttc = 0
+   * (tous les billets sont à prix 0€) ne passe jamais par Stripe — aucune
+   * page de paiement, aucun moyen de paiement sollicité. La confirmation,
+   * la génération des billets et les notifications sont déclenchées
+   * immédiatement ici, via le même service que le webhook Stripe utilise
+   * pour les commandes payantes.
    */
   @Post()
   @ApiOperation({
@@ -79,12 +91,22 @@ export class OrderController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: Record<string, unknown>,
   ) {
-    return firstValueFrom(
+    const result = (await firstValueFrom(
       this.orderClient.send("order.create", {
         ...dto,
         buyer_id: user.sub,
       }),
-    );
+    )) as { order: { id: string; total_amount_ttc: number } };
+
+    if (Number(result.order.total_amount_ttc) === 0) {
+      this.fulfillment.confirmAndFulfill(result.order.id, "").catch((err) =>
+        this.logger.error(
+          `Erreur confirmation commande gratuite ${result.order.id}: ${err?.message}`,
+        ),
+      );
+    }
+
+    return result;
   }
 
   @Get("me")

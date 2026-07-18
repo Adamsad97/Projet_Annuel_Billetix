@@ -121,10 +121,15 @@ export class OrderService {
         : 0;
 
       const total_ht = parseFloat((subtotal_ht - discount).toFixed(2));
-      const total_ttc = parseFloat((total_ht * (1 + config.tva_rate) + free_ticket_fees).toFixed(2));
+      // Le frais fixe billet gratuit (0,50€/billet) n'est jamais facturé à
+      // l'acheteur — le CDC exige qu'un événement entièrement gratuit
+      // (total_ht = 0) n'affiche aucune page de paiement. Ce frais est à la
+      // charge de l'organisateur, déduit directement de son net reversé,
+      // au même titre que la commission.
+      const total_ttc = parseFloat((total_ht * (1 + config.tva_rate)).toFixed(2));
       const commission = parseFloat((total_ht * (commission_rate / 100)).toFixed(2));
-      const net_organizer = parseFloat((total_ht - commission).toFixed(2));
       free_ticket_fees = parseFloat(free_ticket_fees.toFixed(2));
+      const net_organizer = parseFloat((total_ht - commission - free_ticket_fees).toFixed(2));
 
       const order = manager.create(Order, {
         reference: this.generateReference(),

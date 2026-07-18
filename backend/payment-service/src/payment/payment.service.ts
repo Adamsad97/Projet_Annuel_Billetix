@@ -38,6 +38,18 @@ export class PaymentService {
       throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
     }
 
+    // Défense en profondeur : une commande entièrement gratuite ne doit
+    // jamais passer par Stripe (cf. tunnel gratuit CDC §4.1 — aucun moyen de
+    // paiement sollicité). Le flux normal (api-gateway) ne crée pas d'intent
+    // pour ces commandes ; ce garde-fou empêche seulement un appel direct
+    // erroné/malveillant à ce endpoint.
+    if (Number(order.total_amount_ttc) === 0) {
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Commande gratuite : aucun paiement requis',
+      });
+    }
+
     const amount_ttc = Number(order.total_amount_ttc);
     const amount_cents = Math.round(amount_ttc * 100);
     const { client_secret, payment_intent_id } = await this.stripe.createPaymentIntent({
