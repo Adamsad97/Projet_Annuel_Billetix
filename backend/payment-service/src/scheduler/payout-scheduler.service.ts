@@ -4,11 +4,17 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { PayoutService } from '../payout/payout.service';
+import { PayoutStatus } from '../payout/payout.entity';
 
 interface OrganizerProfile {
   stripe_connect_account_id: string | null;
   stripe_connect_onboarded: boolean;
   kyc_status: string;
+}
+
+interface UserContact {
+  email: string;
+  first_name: string;
 }
 
 @Injectable()
@@ -19,6 +25,9 @@ export class PayoutSchedulerService {
     private readonly payoutService: PayoutService,
     private readonly platformConfig: PlatformConfigCache,
     @Inject('USER_SERVICE') private readonly userClient: ClientProxy,
+    @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
+    @Inject('EVENT_SERVICE') private readonly eventClient: ClientProxy,
+    @Inject('NOTIFICATION_SERVICE') private readonly notifClient: ClientProxy,
   ) {}
 
   // Tous les jours à 10h00 UTC — déclenche les reversements arrivés à échéance
@@ -52,8 +61,24 @@ export class PayoutSchedulerService {
           continue;
         }
 
-        await this.payoutService.process(payout.id, profile.stripe_connect_account_id);
+        const processed = await this.payoutService.process(payout.id, profile.stripe_connect_account_id);
+
+        if (processed.status !== PayoutStatus.COMPLETED) {
+          this.logger.warn(`Reversement ${payout.id} en échec (virement Stripe refusé)`);
+          continue;
+        }
+
         this.logger.log(`Reversement ${payout.id} traité avec succès`);
+
+        // Notification organisateur (CDC §9.2 : « Reversement effectué ») —
+        // ne bloque jamais le traitement du reversement lui-même en cas d'échec.
+        this.notifyPayoutCompleted(
+          processed.organizer_id,
+          processed.event_id,
+          Number(processed.net_amount),
+        ).catch((err) =>
+          this.logger.error(`Échec notification reversement ${processed.id} : ${err?.message}`),
+        );
       } catch (err) {
         this.logger.error(`Échec du traitement du reversement ${payout.id} : ${err?.message}`);
       }
@@ -84,5 +109,29 @@ export class PayoutSchedulerService {
         this.logger.error(`Échec du déblocage automatique du reversement ${payout.id} : ${err?.message}`);
       }
     }
+  }
+
+  private async notifyPayoutCompleted(
+    organizerId: string,
+    eventId: string,
+    netAmount: number,
+  ): Promise<void> {
+    const [contact, event] = await Promise.all([
+      firstValueFrom(this.authClient.send<UserContact>('auth.get_user', { id: organizerId })),
+      firstValueFrom(this.eventClient.send<{ title: string }>('event.get', { id: eventId })),
+    ]);
+    if (!contact?.email) return;
+
+    this.notifClient.emit('notification.payout_completed', {
+      email: contact.email,
+      firstName: contact.first_name,
+      eventName: event?.title ?? 'votre événement',
+      amount: netAmount.toFixed(2),
+      payoutDate: new Date().toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }),
+    });
   }
 }

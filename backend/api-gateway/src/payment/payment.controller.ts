@@ -37,6 +37,7 @@ export class PaymentController {
     @Inject("ORDER_SERVICE") private readonly orderClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
+    @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     private readonly ticketsGateway: TicketsGateway,
     private readonly fulfillment: PurchaseFulfillmentService,
   ) {}
@@ -78,7 +79,7 @@ export class PaymentController {
         order_id: orderId,
         amount_cents: dto.amount_cents,
       }),
-    )) as { status: string };
+    )) as { status: string; refunded_amount: number };
 
     // Ne marquer la commande comme remboursée que si le remboursement
     // couvre le solde total — un remboursement partiel laisse les billets
@@ -89,8 +90,40 @@ export class PaymentController {
         .subscribe();
     }
 
+    // Notification acheteur (CDC §9.1 : « Remboursement effectué ») — ne
+    // bloque jamais la réponse de l'endpoint en cas d'échec de notification.
+    this.notifyRefundCompleted(orderId, result.status, result.refunded_amount).catch(
+      (err) => this.logger.error(`Échec notification remboursement ${orderId}: ${err?.message}`),
+    );
+
     this.checkRefundAlert().catch(() => undefined);
     return result;
+  }
+
+  private async notifyRefundCompleted(
+    orderId: string,
+    status: string,
+    refundedAmount: number,
+  ): Promise<void> {
+    const { order } = (await firstValueFrom(
+      this.orderClient.send("order.get", { id: orderId }),
+    )) as {
+      order: {
+        buyer_email: string;
+        buyer_first_name: string;
+        reference: string;
+        event_name: string;
+      };
+    };
+
+    this.notifClient.emit("notification.refund_completed", {
+      email: order.buyer_email,
+      firstName: order.buyer_first_name,
+      orderReference: order.reference,
+      eventName: order.event_name,
+      amount: Number(refundedAmount).toFixed(2),
+      refundType: status === "REFUNDED" ? "Remboursement total" : "Remboursement partiel",
+    });
   }
 
   // ─── Reversements ───────────────────────────────────────────────────────────
@@ -182,8 +215,37 @@ export class PaymentController {
         buyer_id: user.sub,
       }),
     );
+
+    // Notification organisateur (CDC §9.2 : « Litige ouvert ») — ne bloque
+    // jamais la réponse de l'endpoint en cas d'échec de notification.
+    this.notifyDisputeOpened(dto.order_id, dto.reason).catch((err) =>
+      this.logger.error(`Échec notification litige ouvert (order ${dto.order_id}): ${err?.message}`),
+    );
+
     this.checkDisputeAlert().catch(() => undefined);
     return result;
+  }
+
+  private async notifyDisputeOpened(orderId: string, reason: string): Promise<void> {
+    const { order } = (await firstValueFrom(
+      this.orderClient.send("order.get", { id: orderId }),
+    )) as {
+      order: { organizer_id?: string; event_name: string; reference: string };
+    };
+    if (!order.organizer_id) return;
+
+    const organizer = (await firstValueFrom(
+      this.authClient.send("auth.get_user", { id: order.organizer_id }),
+    )) as { email: string; first_name: string } | null;
+    if (!organizer?.email) return;
+
+    this.notifClient.emit("notification.dispute_opened", {
+      email: organizer.email,
+      firstName: organizer.first_name,
+      eventName: order.event_name,
+      orderReference: order.reference,
+      reason,
+    });
   }
 
   @Get("disputes/me")

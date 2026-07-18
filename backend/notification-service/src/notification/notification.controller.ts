@@ -10,7 +10,10 @@ import { EventPublishedDto } from './dto/event-published.dto';
 import { EventReminderDto } from './dto/event-reminder.dto';
 import { EventRejectedDto } from './dto/event-rejected.dto';
 import { EventSuspendedDto } from './dto/event-suspended.dto';
+import { DisputeOpenedDto } from './dto/dispute-opened.dto';
 import { FillThresholdReachedDto } from './dto/fill-threshold-reached.dto';
+import { PayoutCompletedDto } from './dto/payout-completed.dto';
+import { RefundCompletedDto } from './dto/refund-completed.dto';
 import { KycApprovedDto } from './dto/kyc-approved.dto';
 import { KycRejectedDto } from './dto/kyc-rejected.dto';
 import { OrderConfirmedDto } from './dto/order-confirmed.dto';
@@ -277,6 +280,48 @@ export class NotificationController {
       subject: `Billet validé — ${data.eventName}`,
       template: 'ticket-scanned',
       context: { ...data },
+    });
+    this.ack(ctx);
+  }
+
+  @EventPattern('notification.refund_completed')
+  async onRefundCompleted(@Payload() data: RefundCompletedDto, @Ctx() ctx: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Remboursement effectué — ${data.orderReference}`,
+      template: 'refund-completed',
+      context: {
+        ...data,
+        ordersUrl: `${this.appUrl}/orders`,
+      },
+    });
+    this.ack(ctx);
+  }
+
+  @EventPattern('notification.payout_completed')
+  async onPayoutCompleted(@Payload() data: PayoutCompletedDto, @Ctx() ctx: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Reversement effectué — ${data.eventName}`,
+      template: 'payout-completed',
+      context: {
+        ...data,
+        dashboardUrl: `${this.appUrl}/organizer/events`,
+      },
+    });
+    this.ack(ctx);
+  }
+
+  @EventPattern('notification.dispute_opened')
+  async onDisputeOpened(@Payload() data: DisputeOpenedDto, @Ctx() ctx: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Litige ouvert — ${data.eventName}`,
+      template: 'dispute-opened',
+      context: {
+        ...data,
+        dashboardUrl: `${this.appUrl}/organizer/events`,
+      },
     });
     this.ack(ctx);
   }
