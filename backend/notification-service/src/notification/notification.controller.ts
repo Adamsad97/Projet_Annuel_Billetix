@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import * as http from 'http';
 import { MailAttachment, MailService } from '../mail/mail.service';
-import { SmsService } from '../sms/sms.service';
 import { EmailVerificationDto } from './dto/email-verification.dto';
 import { EventCanceledDto } from './dto/event-canceled.dto';
 import { EventInfoRequestedDto } from './dto/event-info-requested.dto';
@@ -17,7 +16,7 @@ import { KycRejectedDto } from './dto/kyc-rejected.dto';
 import { OrderConfirmedDto } from './dto/order-confirmed.dto';
 import { PasswordResetDto } from './dto/password-reset.dto';
 import { PaymentConfirmedDto } from './dto/payment-confirmed.dto';
-import { Sms2faCodeDto } from './dto/sms-2fa-code.dto';
+import { PaymentFailedDto } from './dto/payment-failed.dto';
 import { TicketReadyDto } from './dto/ticket-ready.dto';
 import { TicketScannedDto } from './dto/ticket-scanned.dto';
 import { WelcomeDto } from './dto/welcome.dto';
@@ -29,7 +28,6 @@ export class NotificationController {
 
   constructor(
     private readonly mail: MailService,
-    private readonly sms: SmsService,
     private readonly config: ConfigService,
   ) {
     this.appUrl = this.config.get<string>('APP_URL', 'http://localhost:3000');
@@ -122,6 +120,20 @@ export class NotificationController {
       to: data.email,
       subject: `Paiement confirmé — ${data.orderReference}`,
       template: 'payment-confirmed',
+      context: {
+        ...data,
+        ordersUrl: `${this.appUrl}/orders`,
+      },
+    });
+    this.ack(ctx);
+  }
+
+  @EventPattern('notification.payment_failed')
+  async onPaymentFailed(@Payload() data: PaymentFailedDto, @Ctx() ctx: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Échec du paiement — ${data.orderReference}`,
+      template: 'payment-failed',
       context: {
         ...data,
         ordersUrl: `${this.appUrl}/orders`,
@@ -266,15 +278,6 @@ export class NotificationController {
       template: 'ticket-scanned',
       context: { ...data },
     });
-    this.ack(ctx);
-  }
-
-  @EventPattern('notification.sms_2fa_code')
-  async onSms2faCode(@Payload() data: Sms2faCodeDto, @Ctx() ctx: RmqContext) {
-    await this.sms.send(
-      data.phone,
-      `BilletiX : votre code de vérification est ${data.code}. Il expire dans 5 minutes.`,
-    );
     this.ack(ctx);
   }
 
