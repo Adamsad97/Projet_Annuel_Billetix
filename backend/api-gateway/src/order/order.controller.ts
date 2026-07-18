@@ -25,7 +25,6 @@ import { Roles } from "../common/decorators/roles.decorator";
 export class OrderController {
   constructor(
     @Inject("ORDER_SERVICE") private readonly orderClient: ClientProxy,
-    @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
   ) {}
 
   /**
@@ -68,7 +67,9 @@ export class OrderController {
 
   /**
    * Étape 2 — crée la commande en DB (valide le reservation_token).
-   * Si promo_code est fourni, on valide contre event-service et on calcule la remise.
+   * La validation du code promo et le calcul de la remise/commission sont
+   * entièrement recalculés côté order-service (jamais de confiance dans une
+   * valeur envoyée par le client) — la gateway ne fait que transmettre.
    */
   @Post()
   @ApiOperation({
@@ -78,68 +79,12 @@ export class OrderController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: Record<string, unknown>,
   ) {
-    let promoCodeId: string | undefined;
-    let discountAmount = 0;
-
-    const promoCode = dto.promo_code as string | undefined;
-    const eventId = dto.event_id as string;
-
-    if (promoCode && eventId) {
-      const promoResult = (await firstValueFrom(
-        this.eventClient.send("event.validate_promo_code", {
-          event_id: eventId,
-          code: promoCode,
-        }),
-      )) as {
-        valid: boolean;
-        message?: string;
-        discount_type?: "PERCENTAGE" | "FIXED";
-        discount_value?: number;
-        promo_code_id?: string;
-      };
-
-      if (!promoResult.valid) {
-        throw new BadRequestException(
-          promoResult.message ?? "Code promo invalide.",
-        );
-      }
-
-      promoCodeId = promoResult.promo_code_id;
-
-      // Calculer la remise depuis les items fournis dans le DTO
-      const items =
-        (dto.items as { unit_price_ht: number; quantity: number }[]) ?? [];
-      const subtotalHt = items.reduce(
-        (sum, item) => sum + Number(item.unit_price_ht) * item.quantity,
-        0,
-      );
-
-      discountAmount =
-        promoResult.discount_type === "PERCENTAGE"
-          ? parseFloat(
-              (subtotalHt * (promoResult.discount_value / 100)).toFixed(2),
-            )
-          : Math.min(promoResult.discount_value, subtotalHt);
-    }
-
-    const order = await firstValueFrom(
+    return firstValueFrom(
       this.orderClient.send("order.create", {
         ...dto,
         buyer_id: user.sub,
-        promo_code_id: promoCodeId ?? dto.promo_code_id,
-        discount_amount:
-          discountAmount || ((dto.discount_amount as number) ?? 0),
       }),
     );
-
-    // Incrémenter l'usage du code promo (fire-and-forget)
-    if (promoCodeId) {
-      this.eventClient
-        .send("event.increment_promo_uses", { id: promoCodeId })
-        .subscribe();
-    }
-
-    return order;
   }
 
   @Get("me")

@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { StockReservationService } from '../reservation/stock-reservation.service';
-import { CreateOrderDto, ReserveStockDto } from './dto/create-order.dto';
+import { CreateOrderDto, CreateResaleOrderDto, ReserveStockDto } from './dto/create-order.dto';
 import { OrderService } from './order.service';
 
 @Controller()
@@ -24,6 +24,11 @@ export class OrderController {
   @MessagePattern('order.create')
   create(@Payload() dto: CreateOrderDto) {
     return this.orderService.create(dto);
+  }
+
+  @MessagePattern('order.create_resale')
+  createResale(@Payload() dto: CreateResaleOrderDto) {
+    return this.orderService.createFromResale(dto);
   }
 
   @MessagePattern('order.get')

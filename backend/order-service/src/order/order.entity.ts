@@ -120,6 +120,14 @@ export class Order {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   free_ticket_fees: number;
 
+  // Achat sur le marché secondaire (revente) — pas de réservation de stock,
+  // pas de commission/quota liés à une catégorie ; voir createFromResale().
+  @Column({ default: false })
+  is_resale: boolean;
+
+  @Column({ nullable: true })
+  resale_id: string | null;
+
   // Snapshot événement (nécessaire pour ticket-service après paiement)
   @Column({ nullable: true })
   organizer_id: string | null;
