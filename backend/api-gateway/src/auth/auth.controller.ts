@@ -76,7 +76,10 @@ export class AuthController {
   @Post("refresh")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Renouveler l'access token via le refresh token" })
-  @ApiResponse({ status: 200, description: "Nouvel access token" })
+  @ApiResponse({
+    status: 200,
+    description: "Nouvel access token ET nouveau refresh token (rotation — l'ancien est révoqué, à remplacer côté client)",
+  })
   refresh(@Body() dto: RefreshTokenDto) {
     return firstValueFrom(this.authClient.send("auth.refresh", dto));
   }
@@ -154,12 +157,16 @@ export class AuthController {
       this.authClient.send("auth.oauth_login", oauthUser),
     );
 
-    const params = new URLSearchParams({
-      access_token: result.access_token,
-      refresh_token: result.refresh_token,
-    });
+    // Jamais les tokens en clair dans l'URL (historique, logs, Referer) —
+    // un code d'échange opaque, court et à usage unique à la place.
+    const code = await firstValueFrom(
+      this.authClient.send("auth.create_oauth_exchange_code", {
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+      }),
+    );
 
-    res.redirect(`${this.frontendUrl}/auth/callback?${params.toString()}`);
+    res.redirect(`${this.frontendUrl}/auth/callback?code=${code}`);
   }
 
   // ──────────────── OAuth Facebook ────────────────
@@ -191,12 +198,26 @@ export class AuthController {
       this.authClient.send("auth.oauth_login", oauthUser),
     );
 
-    const params = new URLSearchParams({
-      access_token: result.access_token,
-      refresh_token: result.refresh_token,
-    });
+    const code = await firstValueFrom(
+      this.authClient.send("auth.create_oauth_exchange_code", {
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+      }),
+    );
 
-    res.redirect(`${this.frontendUrl}/auth/callback?${params.toString()}`);
+    res.redirect(`${this.frontendUrl}/auth/callback?code=${code}`);
+  }
+
+  @Public()
+  @Post("oauth/exchange")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Échanger le code obtenu après callback OAuth contre les tokens (usage unique, ~60s)",
+  })
+  exchangeOAuthCode(@Body() dto: { code: string }) {
+    return firstValueFrom(
+      this.authClient.send("auth.exchange_oauth_code", { code: dto.code }),
+    );
   }
 
   // ──────────────── 2FA TOTP ────────────────
@@ -232,7 +253,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: "Vérifier un code 2FA, TOTP ou SMS (lors de la connexion si 2FA activée)",
+    summary: "Vérifier un code 2FA TOTP (lors de la connexion si 2FA activée)",
   })
   verify2fa(@CurrentUser() user: JwtPayload, @Body() body: { code: string }) {
     return firstValueFrom(
@@ -246,7 +267,7 @@ export class AuthController {
   @Delete("2fa")
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: "Désactiver la 2FA (code TOTP ou SMS requis selon la méthode active)" })
+  @ApiOperation({ summary: "Désactiver la 2FA (code TOTP requis)" })
   disable2fa(@CurrentUser() user: JwtPayload, @Body() body: { code: string }) {
     return firstValueFrom(
       this.authClient.send("auth.2fa.disable", {
@@ -264,58 +285,6 @@ export class AuthController {
   get2faStatus(@CurrentUser() user: JwtPayload) {
     return firstValueFrom(
       this.authClient.send("auth.2fa.status", { user_id: user.sub }),
-    );
-  }
-
-  // ──────────────── 2FA SMS ────────────────
-
-  @Post("2fa/sms/setup")
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary:
-      "Initialiser la 2FA par SMS — envoie un code de vérification par SMS",
-  })
-  setupSms2fa(
-    @CurrentUser() user: JwtPayload,
-    @Body() body: { phone?: string } = {},
-  ) {
-    return firstValueFrom(
-      this.authClient.send("auth.2fa.sms.setup", {
-        user_id: user.sub,
-        phone: body?.phone,
-      }),
-    );
-  }
-
-  @Post("2fa/sms/confirm")
-  @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary:
-      "Confirmer la 2FA par SMS avec le code reçu — active la 2FA et retourne les codes de secours",
-  })
-  confirmSms2fa(
-    @CurrentUser() user: JwtPayload,
-    @Body() body: { code: string },
-  ) {
-    return firstValueFrom(
-      this.authClient.send("auth.2fa.sms.confirm", {
-        user_id: user.sub,
-        code: body.code,
-      }),
-    );
-  }
-
-  @Post("2fa/send-code")
-  @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary:
-      "Envoyer un nouveau code par SMS (ex. avant de désactiver la 2FA par SMS)",
-  })
-  sendCode2fa(@CurrentUser() user: JwtPayload) {
-    return firstValueFrom(
-      this.authClient.send("auth.2fa.send_code", { user_id: user.sub }),
     );
   }
 }

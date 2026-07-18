@@ -20,7 +20,6 @@ export enum OAuthProvider {
 }
 
 export enum TwoFactorMethod {
-  SMS = "SMS",
   TOTP = "TOTP",
 }
 

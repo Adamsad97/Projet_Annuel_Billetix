@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ClientsModule, Transport } from "@nestjs/microservices";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AuthModule } from "./auth/auth.module";
+import { BackupCode } from "./auth/backup-code.entity";
 import { HealthModule } from "./health/health.module";
 import { User } from "./user/user.entity";
 
@@ -37,7 +38,7 @@ import { User } from "./user/user.entity";
         type: "postgres",
         url: config.get<string>("DATABASE_URL"),
         schema: "auth",
-        entities: [User],
+        entities: [User, BackupCode],
         synchronize: config.get("NODE_ENV") !== "production",
         migrations: [join(__dirname, "migrations", "*{.ts,.js}")],
         migrationsRun: config.get("NODE_ENV") === "production",

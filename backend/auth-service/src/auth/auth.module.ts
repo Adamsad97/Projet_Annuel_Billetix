@@ -7,11 +7,12 @@ import { RedisModule } from "../redis/redis.module";
 import { User } from "../user/user.entity";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
+import { BackupCode } from "./backup-code.entity";
 import { TwoFactorService } from "./two-factor.service";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, BackupCode]),
     ClientsModule.registerAsync([
       {
         name: "NOTIFICATION_SERVICE",

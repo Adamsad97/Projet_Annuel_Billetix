@@ -70,6 +70,18 @@ export class AuthController {
     return this.authService.oauthLogin(data);
   }
 
+  @MessagePattern("auth.create_oauth_exchange_code")
+  createOAuthExchangeCode(
+    @Payload() data: { access_token: string; refresh_token: string },
+  ) {
+    return this.authService.createOAuthExchangeCode(data);
+  }
+
+  @MessagePattern("auth.exchange_oauth_code")
+  exchangeOAuthCode(@Payload() data: { code: string }) {
+    return this.authService.exchangeOAuthCode(data.code);
+  }
+
   // ──────────────── 2FA TOTP ────────────────
 
   @MessagePattern("auth.2fa.setup")
@@ -95,23 +107,6 @@ export class AuthController {
   @MessagePattern("auth.2fa.status")
   get2faStatus(@Payload() data: { user_id: string }) {
     return this.twoFactorService.isTwoFactorRequired(data.user_id);
-  }
-
-  // ──────────────── 2FA SMS ────────────────
-
-  @MessagePattern("auth.2fa.sms.setup")
-  setupSms2fa(@Payload() data: { user_id: string; phone?: string }) {
-    return this.twoFactorService.setupSms(data.user_id, data.phone);
-  }
-
-  @MessagePattern("auth.2fa.sms.confirm")
-  confirmSms2fa(@Payload() data: { user_id: string; code: string }) {
-    return this.twoFactorService.confirmSms(data.user_id, data.code);
-  }
-
-  @MessagePattern("auth.2fa.send_code")
-  sendCode2fa(@Payload() data: { user_id: string }) {
-    return this.twoFactorService.sendVerificationSms(data.user_id);
   }
 
   @MessagePattern("auth.get_user")

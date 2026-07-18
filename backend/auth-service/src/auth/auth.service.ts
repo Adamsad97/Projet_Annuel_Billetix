@@ -4,16 +4,11 @@ import { JwtService } from "@nestjs/jwt";
 import { ClientProxy, RpcException } from "@nestjs/microservices";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
-import { randomUUID } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import { Redis } from "ioredis";
 import { Repository } from "typeorm";
 import { REDIS_CLIENT } from "../redis/redis.module";
-import {
-  OAuthProvider,
-  TwoFactorMethod,
-  User,
-  UserRole,
-} from "../user/user.entity";
+import { OAuthProvider, User, UserRole } from "../user/user.entity";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
@@ -24,6 +19,9 @@ import { TwoFactorService } from "./two-factor.service";
 const BCRYPT_ROUNDS = 12;
 const RESET_TOKEN_TTL = 60 * 60; // 1 heure
 const EMAIL_VERIFY_TTL = 24 * 60 * 60; // 24 heures
+// Court délai avant expiration du code d'échange OAuth — le temps d'une
+// redirection navigateur, pas plus (usage unique de toute façon).
+const OAUTH_EXCHANGE_TTL = 60;
 
 @Injectable()
 export class AuthService {
@@ -120,9 +118,6 @@ export class AuthService {
 
     if (user.two_factor_enabled) {
       if (!dto.two_factor_code) {
-        if (user.two_factor_method === TwoFactorMethod.SMS) {
-          await this.twoFactorService.sendVerificationSms(user.id);
-        }
         return { requires_2fa: true, two_factor_method: user.two_factor_method };
       }
       const validCode = await this.twoFactorService.verify(
@@ -169,24 +164,36 @@ export class AuthService {
       });
     }
 
-    const access_token = this.signAccess(user);
-    return { access_token };
+    // Rotation : l'ancien refresh token est immédiatement blacklisté — un
+    // jeton volé ne peut donc servir qu'une seule fois avant que le
+    // titulaire légitime (qui continue son usage normal) ne le révoque de
+    // fait à son prochain refresh.
+    const ttl = payload.exp - Math.floor(Date.now() / 1000);
+    if (ttl > 0) {
+      await this.redis.set(`blacklist:${payload.jti}`, "1", "EX", ttl);
+    }
+
+    return this.generateTokens(user);
   }
 
   async logout(dto: RefreshTokenDto) {
+    let payload: { jti?: string; exp?: number };
     try {
-      const payload = this.jwtService.decode(dto.refresh_token) as {
-        jti?: string;
-        exp?: number;
-      };
-      if (payload?.jti && payload?.exp) {
-        const ttl = payload.exp - Math.floor(Date.now() / 1000);
-        if (ttl > 0) {
-          await this.redis.set(`blacklist:${payload.jti}`, "1", "EX", ttl);
-        }
-      }
+      payload = this.jwtService.verify(dto.refresh_token, {
+        secret: this.config.get<string>("JWT_REFRESH_SECRET"),
+      });
     } catch {
-      // token malformé — déconnexion côté client suffit
+      // Token invalide, forgé ou déjà expiré — rien à révoquer, la
+      // déconnexion côté client suffit ; on ne fait jamais confiance à un
+      // payload non vérifié pour décider quoi blacklister.
+      return { success: true };
+    }
+
+    if (payload.jti && payload.exp) {
+      const ttl = payload.exp - Math.floor(Date.now() / 1000);
+      if (ttl > 0) {
+        await this.redis.set(`blacklist:${payload.jti}`, "1", "EX", ttl);
+      }
     }
     return { success: true };
   }
@@ -247,6 +254,39 @@ export class AuthService {
     }
 
     return { ...this.generateTokens(user), user: this.sanitize(user) };
+  }
+
+  /**
+   * Après un callback OAuth réussi, on ne redirige jamais avec les tokens en
+   * clair dans l'URL (historique navigateur, logs proxy, header Referer) —
+   * on stocke les tokens sous un code opaque à usage unique et courte durée
+   * de vie, échangé ensuite côté serveur via exchangeOAuthCode().
+   */
+  async createOAuthExchangeCode(tokens: {
+    access_token: string;
+    refresh_token: string;
+  }): Promise<string> {
+    const code = randomBytes(32).toString("hex");
+    await this.redis.set(
+      `oauth_exchange:${code}`,
+      JSON.stringify(tokens),
+      "EX",
+      OAUTH_EXCHANGE_TTL,
+    );
+    return code;
+  }
+
+  async exchangeOAuthCode(code: string): Promise<{ access_token: string; refresh_token: string }> {
+    const key = `oauth_exchange:${code}`;
+    const raw = await this.redis.get(key);
+    if (!raw) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "Code d'échange invalide ou expiré",
+      });
+    }
+    await this.redis.del(key); // usage unique
+    return JSON.parse(raw);
   }
 
   async validateToken(token: string) {
