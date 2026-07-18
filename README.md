@@ -225,16 +225,17 @@ Le service tourne au premier plan : `Ctrl+C` dans le terminal correspondant.
 
 ## B.5 Démarrer tous les services en une seule commande
 
-Il n'existe pas aujourd'hui de commande unique pour lancer les 10 services en local hors Docker (chacun bloque son terminal en mode watch). Deux options :
+Nécessite que chaque service ait déjà son `.env` local (B.2) et ses dépendances installées (B.3) :
 
-- ouvrir un terminal par service et lancer la commande B.3 dans chacun,
-- utiliser un multiplexeur de terminal (`tmux`, onglets du terminal de votre éditeur, etc.).
+```bash
+npm run dev:all
+```
 
-Dites-moi si vous voulez qu'un script (type `concurrently`) soit ajouté pour lancer les 10 en arrière-plan avec un seul `npm run dev:all`.
+Lance les 10 microservices backend en parallèle (`npm run start:dev` dans chacun), logs préfixés par nom de service dans un seul terminal. `Ctrl+C` arrête tous les processus d'un coup.
 
 ## B.6 Arrêter tous les services en une seule commande
 
-`Ctrl+C` dans chaque terminal ouvert (cf. B.5) — ou fermer les terminaux. Pour arrêter l'infrastructure Docker restée active :
+`Ctrl+C` dans le terminal (que ce soit `npm run dev:all` ou un terminal par service, cf. B.4/B.5). Pour arrêter l'infrastructure Docker restée active :
 
 ```bash
 npm run infra:down

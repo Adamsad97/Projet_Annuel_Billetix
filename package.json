@@ -29,6 +29,7 @@
     "test:notification-service": "docker-compose exec notification-service npm test",
     "test:pdf-service": "docker-compose exec pdf-service npm test",
     "test:admin-service": "docker-compose exec admin-service npm test",
+    "dev:all": "node scripts/dev-all.js",
     "test:all": "node scripts/test-all.js",
     "test:all:local": "node scripts/test-all-local.js",
     "migrate:all": "node scripts/migrate-all.js"
