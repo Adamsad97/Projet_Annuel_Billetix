@@ -113,6 +113,14 @@ export class TicketPdfService {
       padding: 14px 20px;
       border-bottom: 1px solid #e0d9f8;
     }
+    .poster-image {
+      width: 100%;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: block;
+    }
     .event-name { font-size: 17px; font-weight: bold; color: #1a1a1a; line-height: 1.3; }
     .artist     { font-size: 13px; color: #6c3de0; font-weight: 600; margin-top: 3px; }
 
@@ -193,6 +201,7 @@ export class TicketPdfService {
   </div>
 
   <div class="poster-band">
+    ${d.event_poster_url ? `<img class="poster-image" src="${this.esc(d.event_poster_url)}" alt="Affiche"/>` : ''}
     <div class="event-name">${this.esc(d.event_name)}</div>
     <div class="artist">🎤 ${this.esc(d.artist_name)}</div>
   </div>
