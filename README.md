@@ -33,8 +33,8 @@ npm start
 
 Premier lancement : 5 à 10 minutes (téléchargement des images Docker + installation des dépendances de chaque service). Une fois démarré :
 
-- API : http://localhost:4000
-- Documentation Swagger : http://localhost:4000/api/docs
+- API (healthcheck) : http://localhost:4000/health — `http://localhost:4000` seul renvoie 404, aucune route n'est déclarée sur `/`
+- Documentation Swagger (liste de toutes les routes) : http://localhost:4000/api/docs
 - Frontend : http://localhost:3000
 - Interface RabbitMQ : http://localhost:15672
 - Console MinIO : http://localhost:9001
@@ -48,19 +48,19 @@ Premier lancement : 5 à 10 minutes (téléchargement des images Docker + instal
 docker compose up -d <nom-du-service>
 ```
 
-| Service | Commande |
-|---|---|
-| api-gateway | `docker compose up -d api-gateway` |
-| auth-service | `docker compose up -d auth-service` |
-| user-service | `docker compose up -d user-service` |
-| event-service | `docker compose up -d event-service` |
-| order-service | `docker compose up -d order-service` |
-| ticket-service | `docker compose up -d ticket-service` |
-| payment-service | `docker compose up -d payment-service` |
+| Service              | Commande                                 |
+| -------------------- | ----------------------------------------- |
+| api-gateway          | `docker compose up -d api-gateway`          |
+| auth-service         | `docker compose up -d auth-service`         |
+| user-service         | `docker compose up -d user-service`         |
+| event-service        | `docker compose up -d event-service`        |
+| order-service        | `docker compose up -d order-service`        |
+| ticket-service       | `docker compose up -d ticket-service`       |
+| payment-service      | `docker compose up -d payment-service`      |
 | notification-service | `docker compose up -d notification-service` |
-| pdf-service | `docker compose up -d pdf-service` |
-| admin-service | `docker compose up -d admin-service` |
-| frontend | `docker compose up -d frontend` |
+| pdf-service          | `docker compose up -d pdf-service`          |
+| admin-service        | `docker compose up -d admin-service`        |
+| frontend             | `docker compose up -d frontend`             |
 
 ## A.3 Arrêter un service en particulier
 
@@ -68,19 +68,19 @@ docker compose up -d <nom-du-service>
 docker compose down <nom-du-service>
 ```
 
-| Service | Commande |
-|---|---|
-| api-gateway | `docker compose down api-gateway` |
-| auth-service | `docker compose down auth-service` |
-| user-service | `docker compose down user-service` |
-| event-service | `docker compose down event-service` |
-| order-service | `docker compose down order-service` |
-| ticket-service | `docker compose down ticket-service` |
-| payment-service | `docker compose down payment-service` |
+| Service              | Commande                                   |
+| -------------------- | ------------------------------------------ |
+| api-gateway          | `docker compose down api-gateway`          |
+| auth-service         | `docker compose down auth-service`         |
+| user-service         | `docker compose down user-service`         |
+| event-service        | `docker compose down event-service`        |
+| order-service        | `docker compose down order-service`        |
+| ticket-service       | `docker compose down ticket-service`       |
+| payment-service      | `docker compose down payment-service`      |
 | notification-service | `docker compose down notification-service` |
-| pdf-service | `docker compose down pdf-service` |
-| admin-service | `docker compose down admin-service` |
-| frontend | `docker compose down frontend` |
+| pdf-service          | `docker compose down pdf-service`          |
+| admin-service        | `docker compose down admin-service`        |
+| frontend             | `docker compose down frontend`             |
 
 (`docker compose down <service>` arrête **et supprime** le conteneur, il est recréé proprement au prochain `up`. Pour juste le mettre en pause sans le supprimer : `docker compose stop <nom-du-service>`.)
 
@@ -138,18 +138,18 @@ Le service doit déjà être démarré (A.1/A.2) — les dépendances sont insta
 npm run test:<nom-du-service>
 ```
 
-| Service | Commande |
-|---|---|
-| api-gateway | `npm run test:api-gateway` |
-| auth-service | `npm run test:auth-service` |
-| user-service | `npm run test:user-service` |
-| event-service | `npm run test:event-service` |
-| order-service | `npm run test:order-service` |
-| ticket-service | `npm run test:ticket-service` |
-| payment-service | `npm run test:payment-service` |
+| Service              | Commande                            |
+| -------------------- | ----------------------------------- |
+| api-gateway          | `npm run test:api-gateway`          |
+| auth-service         | `npm run test:auth-service`         |
+| user-service         | `npm run test:user-service`         |
+| event-service        | `npm run test:event-service`        |
+| order-service        | `npm run test:order-service`        |
+| ticket-service       | `npm run test:ticket-service`       |
+| payment-service      | `npm run test:payment-service`      |
 | notification-service | `npm run test:notification-service` |
-| pdf-service | `npm run test:pdf-service` |
-| admin-service | `npm run test:admin-service` |
+| pdf-service          | `npm run test:pdf-service`          |
+| admin-service        | `npm run test:admin-service`        |
 
 ## A.7 Lancer tous les tests en une seule commande
 
@@ -210,21 +210,22 @@ npm install --legacy-peer-deps
 npm run start:dev
 ```
 
-| Service | Aller dans le dossier |
-|---|---|
-| api-gateway | `cd backend/api-gateway` |
-| auth-service | `cd backend/auth-service` |
-| user-service | `cd backend/user-service` |
-| event-service | `cd backend/event-service` |
-| order-service | `cd backend/order-service` |
-| ticket-service | `cd backend/ticket-service` |
-| payment-service | `cd backend/payment-service` |
+| Service              | Aller dans le dossier             |
+| -------------------- | --------------------------------- |
+| api-gateway          | `cd backend/api-gateway`          |
+| auth-service         | `cd backend/auth-service`         |
+| user-service         | `cd backend/user-service`         |
+| event-service        | `cd backend/event-service`        |
+| order-service        | `cd backend/order-service`        |
+| ticket-service       | `cd backend/ticket-service`       |
+| payment-service      | `cd backend/payment-service`      |
 | notification-service | `cd backend/notification-service` |
-| pdf-service | `cd backend/pdf-service` |
-| admin-service | `cd backend/admin-service` |
-| frontend | `cd frontend` |
+| pdf-service          | `cd backend/pdf-service`          |
+| admin-service        | `cd backend/admin-service`        |
+| frontend             | `cd frontend`                     |
 
 Puis, dans chaque cas (une seule fois) :
+
 - pour un microservice backend : `npm install --legacy-peer-deps`
 - pour le frontend : `npm install` (pas de conflit de dépendances côté Next.js)
 
@@ -237,6 +238,7 @@ Le service tourne au premier plan : `Ctrl+C` dans le terminal correspondant.
 ## B.5 Démarrer tous les services en une seule commande
 
 Il n'existe pas aujourd'hui de commande unique pour lancer les 10 services en local hors Docker (chacun bloque son terminal en mode watch). Deux options :
+
 - ouvrir un terminal par service et lancer la commande B.3 dans chacun,
 - utiliser un multiplexeur de terminal (`tmux`, onglets du terminal de votre éditeur, etc.).
 
