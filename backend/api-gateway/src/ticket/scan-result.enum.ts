@@ -3,4 +3,5 @@ export enum ScanResult {
   ALREADY_USED = "ALREADY_USED",
   INVALID = "INVALID",
   CANCELLED = "CANCELLED",
+  WRONG_EVENT = "WRONG_EVENT",
 }

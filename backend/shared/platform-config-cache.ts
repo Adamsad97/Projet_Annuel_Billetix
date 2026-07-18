@@ -25,6 +25,8 @@ export interface PlatformConfig {
   ticket_pdf_wait_delay_seconds: number;
   event_validation_deadline_hours: number;
   event_archive_delay_days: number;
+  order_abandon_timeout_minutes: number;
+  resale_reservation_minutes: number;
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -48,6 +50,8 @@ const FALLBACK: PlatformConfig = {
   ticket_pdf_wait_delay_seconds: 2,
   event_validation_deadline_hours: 48,
   event_archive_delay_days: 30,
+  order_abandon_timeout_minutes: 30,
+  resale_reservation_minutes: 15,
 };
 
 @Injectable()

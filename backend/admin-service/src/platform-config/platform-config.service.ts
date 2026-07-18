@@ -28,6 +28,8 @@ export interface PlatformConfig {
   ticket_pdf_wait_delay_seconds: number;
   event_validation_deadline_hours: number;
   event_archive_delay_days: number;
+  order_abandon_timeout_minutes: number;
+  resale_reservation_minutes: number;
 }
 
 const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
@@ -55,6 +57,8 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'ticket_pdf_wait_delay_seconds',  value: '2',             type: 'number',  description: 'Délai entre deux vérifications de disponibilité du PDF billet (secondes)' },
   { key: 'event_validation_deadline_hours',value: '48',            type: 'number',  description: 'Délai maximum de traitement (heures ouvrées) d\'un événement soumis à validation' },
   { key: 'event_archive_delay_days',       value: '30',            type: 'number',  description: 'Délai après la fin d\'un événement (Terminé) avant son archivage automatique (jours)' },
+  { key: 'order_abandon_timeout_minutes',  value: '30',            type: 'number',  description: 'Délai après lequel une commande non payée est annulée et son stock libéré (minutes)' },
+  { key: 'resale_reservation_minutes',     value: '15',            type: 'number',  description: 'Durée de réservation d\'une offre de revente pendant le paiement de l\'acheteur (minutes)' },
 ];
 
 @Injectable()
@@ -103,6 +107,8 @@ export class PlatformConfigService implements OnModuleInit {
       ticket_pdf_wait_delay_seconds:  parseInt(map.ticket_pdf_wait_delay_seconds ?? '2'),
       event_validation_deadline_hours: parseInt(map.event_validation_deadline_hours ?? '48'),
       event_archive_delay_days:       parseInt(map.event_archive_delay_days ?? '30'),
+      order_abandon_timeout_minutes:  parseInt(map.order_abandon_timeout_minutes ?? '30'),
+      resale_reservation_minutes:    parseInt(map.resale_reservation_minutes ?? '15'),
     };
   }
 

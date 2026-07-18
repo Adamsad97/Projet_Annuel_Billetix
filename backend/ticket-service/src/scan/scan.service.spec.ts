@@ -18,8 +18,8 @@ describe('ScanService', () => {
 
   beforeEach(async () => {
     logRepo = {
-      save: jest.fn().mockImplementation((l) => Promise.resolve(l)),
-      create: jest.fn().mockImplementation((l) => l),
+      save: jest.fn().mockImplementation((scanLog) => Promise.resolve(scanLog)),
+      create: jest.fn().mockImplementation((scanLog) => scanLog),
       findOne: jest.fn(),
     };
     ticketService = {
@@ -51,13 +51,13 @@ describe('ScanService', () => {
     expect(logRepo.save).toHaveBeenCalled();
   });
 
-  it("refuse un billet valide mais présenté au mauvais événement", async () => {
+  it("refuse (WRONG_EVENT, pas INVALID) un billet valide mais présenté au mauvais événement", async () => {
     const ticket = { id: 'ticket-1', event_id: 'event-AUTRE', status: TicketStatus.SENT } as Ticket;
     ticketService.verifyQr.mockResolvedValue({ valid: true, ticket });
 
     const result = await service.scan(baseDto);
 
-    expect(result.result).toBe(ScanResult.INVALID);
+    expect(result.result).toBe(ScanResult.WRONG_EVENT);
     expect(ticketService.markUsed).not.toHaveBeenCalled();
   });
 

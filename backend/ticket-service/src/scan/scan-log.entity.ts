@@ -5,6 +5,10 @@ export enum ScanResult {
   ALREADY_USED = 'ALREADY_USED',
   INVALID = 'INVALID',
   CANCELLED = 'CANCELLED',
+  // Billet valide et non utilisé, mais présenté au contrôle d'un autre
+  // événement — distinct d'INVALID (faux/falsifié) : retour orange dédié
+  // côté application de contrôle, cf. CDC section 6.2.
+  WRONG_EVENT = 'WRONG_EVENT',
 }
 
 @Entity({ name: 'scan_logs', schema: 'tickets' })

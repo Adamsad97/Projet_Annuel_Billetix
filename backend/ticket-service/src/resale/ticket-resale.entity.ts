@@ -8,6 +8,7 @@ import {
 
 export enum ResaleStatus {
   LISTED = 'LISTED',
+  RESERVED = 'RESERVED', // un acheteur est en cours de paiement (verrou temporaire)
   SOLD = 'SOLD',
   EXPIRED = 'EXPIRED',    // événement passé sans acheteur
   WITHDRAWN = 'WITHDRAWN', // acheteur original retire l'offre
@@ -48,6 +49,13 @@ export class TicketResale {
 
   @Column()
   holder_last_name: string;
+
+  // Verrou temporaire pendant le paiement d'un acheteur (statut RESERVED)
+  @Column({ nullable: true })
+  reserved_by_buyer_id: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  reservation_expires_at: Date | null;
 
   // Renseignés après la vente
   @Column({ nullable: true })

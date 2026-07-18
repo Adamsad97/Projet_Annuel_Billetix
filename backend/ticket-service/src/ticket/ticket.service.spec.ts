@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { RpcException } from '@nestjs/microservices';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { Ticket, TicketStatus } from './ticket.entity';
 import { TicketService } from './ticket.service';
@@ -18,6 +19,7 @@ describe('TicketService', () => {
     groupBy: jest.Mock;
     getRawMany: jest.Mock;
   };
+  let dataSource: { query: jest.Mock };
 
   beforeEach(async () => {
     queryBuilder = {
@@ -31,6 +33,7 @@ describe('TicketService', () => {
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
       findOne: jest.fn(),
     };
+    dataSource = { query: jest.fn() };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -41,6 +44,7 @@ describe('TicketService', () => {
           useValue: { get: jest.fn().mockReturnValue(QR_SECRET) },
         },
         { provide: PlatformConfigCache, useValue: { get: jest.fn() } },
+        { provide: DataSource, useValue: dataSource },
       ],
     }).compile();
 
@@ -48,16 +52,17 @@ describe('TicketService', () => {
   });
 
   describe('parseQrToken / verifyQr — sécurité du QR code (recalcul cryptographique)', () => {
-    const generateToken = (ticketId: string) =>
+    const generateToken = (ticketId: string, eventId = 'event-1') =>
       (
-        service as unknown as { generateQrToken(id: string): string }
-      ).generateQrToken(ticketId);
+        service as unknown as { generateQrToken(id: string, eventId: string): string }
+      ).generateQrToken(ticketId, eventId);
 
-    it('extrait le bon ticket_id et horodatage d\'un token valide', () => {
-      const token = generateToken('ticket-123');
+    it('extrait le bon ticket_id, event_id et horodatage d\'un token valide', () => {
+      const token = generateToken('ticket-123', 'event-1');
       const parsed = service.parseQrToken(token);
 
       expect(parsed.ticketId).toBe('ticket-123');
+      expect(parsed.eventId).toBe('event-1');
       expect(parsed.issuedAt).toBeCloseTo(Date.now(), -2);
     });
 
@@ -72,7 +77,7 @@ describe('TicketService', () => {
     it('rejette un token dont le payload a été modifié pour usurper un autre billet', () => {
       const token = generateToken('ticket-123');
       const [, signature] = token.split('.');
-      const forgedPayload = Buffer.from('ticket-999:' + Date.now()).toString('base64url');
+      const forgedPayload = Buffer.from('ticket-999:event-1:' + Date.now()).toString('base64url');
       const forged = `${forgedPayload}.${signature}`;
 
       expect(() => service.parseQrToken(forged)).toThrow(RpcException);
@@ -86,6 +91,7 @@ describe('TicketService', () => {
       const token = generateToken('ticket-123');
       repo.findOne.mockResolvedValue({
         id: 'ticket-123',
+        event_id: 'event-1',
         qr_code_token: 'un-autre-token-plus-récent',
         status: TicketStatus.SENT,
       });
@@ -93,10 +99,25 @@ describe('TicketService', () => {
       await expect(service.verifyQr(token)).rejects.toThrow(RpcException);
     });
 
-    it('verifyQr accepte un token valide et à jour', async () => {
-      const token = generateToken('ticket-123');
+    it('verifyQr rejette si l\'event_id signé ne correspond plus à celui du billet en base (donnée corrompue/trafiquée)', async () => {
+      const token = generateToken('ticket-123', 'event-1');
       repo.findOne.mockResolvedValue({
         id: 'ticket-123',
+        event_id: 'event-AUTRE',
+        qr_code_token: token,
+        status: TicketStatus.SENT,
+      });
+
+      await expect(service.verifyQr(token)).rejects.toMatchObject({
+        error: { code: 'INVALID' },
+      });
+    });
+
+    it('verifyQr accepte un token valide et à jour', async () => {
+      const token = generateToken('ticket-123', 'event-1');
+      repo.findOne.mockResolvedValue({
+        id: 'ticket-123',
+        event_id: 'event-1',
         qr_code_token: token,
         status: TicketStatus.SENT,
       });
@@ -107,9 +128,10 @@ describe('TicketService', () => {
     });
 
     it('verifyQr rejette (code ALREADY_USED) un billet déjà scanné', async () => {
-      const token = generateToken('ticket-123');
+      const token = generateToken('ticket-123', 'event-1');
       repo.findOne.mockResolvedValue({
         id: 'ticket-123',
+        event_id: 'event-1',
         qr_code_token: token,
         status: TicketStatus.USED,
       });
@@ -122,11 +144,11 @@ describe('TicketService', () => {
     it('generate() produit un token que verifyQr accepte immédiatement (round-trip réel)', async () => {
       let savedTicket: { id: string; qr_code_token: string; status: TicketStatus } | undefined;
       repo.createQueryBuilder = jest.fn(); // pas utilisé ici
-      (repo as unknown as { save: jest.Mock }).save = jest.fn().mockImplementation((t) => {
-        savedTicket = t;
-        return Promise.resolve(t);
+      (repo as unknown as { save: jest.Mock }).save = jest.fn().mockImplementation((ticket) => {
+        savedTicket = ticket;
+        return Promise.resolve(ticket);
       });
-      (repo as unknown as { create: jest.Mock }).create = jest.fn().mockImplementation((t) => t);
+      (repo as unknown as { create: jest.Mock }).create = jest.fn().mockImplementation((ticket) => ticket);
 
       const [ticket] = await service.generate({
         order_id: 'order-1',
@@ -153,10 +175,34 @@ describe('TicketService', () => {
       expect(ticket.qr_code_token).toBeDefined();
       const parsed = service.parseQrToken(ticket.qr_code_token);
       expect(parsed.ticketId).toBe(ticket.id);
+      expect(parsed.eventId).toBe('event-1');
 
       repo.findOne.mockResolvedValue(savedTicket);
       const verified = await service.verifyQr(ticket.qr_code_token);
       expect(verified.valid).toBe(true);
+    });
+  });
+
+  describe('markUsed — transition atomique (anti double-scan concurrent)', () => {
+    it('marque le billet USED quand la transition conditionnelle affecte une ligne', async () => {
+      dataSource.query.mockResolvedValue([[{ id: 'ticket-123' }]]);
+      repo.findOne.mockResolvedValue({ id: 'ticket-123', status: TicketStatus.USED });
+
+      const result = await service.markUsed('ticket-123', 'agent-1', 'tablette-1');
+
+      expect(result.status).toBe(TicketStatus.USED);
+      expect(dataSource.query).toHaveBeenCalledWith(
+        expect.stringContaining("SET status = 'USED'"),
+        [expect.any(Date), 'agent-1', 'tablette-1', 'ticket-123'],
+      );
+    });
+
+    it('rejette (ALREADY_USED) si la transition conditionnelle n\'affecte aucune ligne — un autre scan a déjà eu lieu entre-temps', async () => {
+      dataSource.query.mockResolvedValue([[]]);
+
+      await expect(service.markUsed('ticket-123', 'agent-2')).rejects.toMatchObject({
+        error: { code: 'ALREADY_USED' },
+      });
     });
   });
 

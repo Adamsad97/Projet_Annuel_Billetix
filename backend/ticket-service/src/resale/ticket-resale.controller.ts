@@ -26,6 +26,16 @@ export class TicketResaleController {
     return this.resaleService.getById(data.id);
   }
 
+  @MessagePattern('ticket.reserve_resale')
+  reserve(@Payload() data: { resale_id: string; buyer_id: string }) {
+    return this.resaleService.reserve(data.resale_id, data.buyer_id);
+  }
+
+  @MessagePattern('ticket.release_resale_reservation')
+  releaseReservation(@Payload() data: { resale_id: string }) {
+    return this.resaleService.releaseReservation(data.resale_id);
+  }
+
   @MessagePattern('ticket.complete_resale')
   completeResale(@Payload() data: {
     resale_id: string;

@@ -46,7 +46,7 @@ export class ScanService {
       const { ticket } = await this.ticketService.verifyQr(dto.qr_token);
 
       if (ticket.event_id !== dto.event_id) {
-        result = ScanResult.INVALID;
+        result = ScanResult.WRONG_EVENT;
       } else {
         scannedTicket = await this.ticketService.markUsed(ticket.id, dto.agent_id, dto.device_info);
         result = ScanResult.SUCCESS;

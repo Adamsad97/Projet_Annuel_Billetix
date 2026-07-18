@@ -50,7 +50,11 @@ export class OfflineSyncService {
           status = SyncStatus.CONFLICT;
           conflictDetail = 'Billet déjà scanné en ligne avant la synchronisation';
           conflicts++;
-        } else if (res.result === ScanResult.INVALID || res.result === ScanResult.CANCELLED) {
+        } else if (
+          res.result === ScanResult.INVALID ||
+          res.result === ScanResult.CANCELLED ||
+          res.result === ScanResult.WRONG_EVENT
+        ) {
           status = SyncStatus.ERROR;
           conflictDetail = `Scan invalide : ${res.result}`;
           errors++;

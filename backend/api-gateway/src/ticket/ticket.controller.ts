@@ -117,34 +117,20 @@ export class TicketController {
       billing_postal_code: string;
       billing_country: string;
       payment_method: string;
-      commission_rate: number;
     },
   ) {
-    // 1. Récupérer l'offre de revente
-    const resale = await firstValueFrom(
-      this.ticketClient.send("ticket.get_resale", { id: resaleId }),
-    );
-
-    // 2. Créer une commande pour le nouvel acheteur
+    // Créer la commande pour le nouvel acheteur — order-service relit
+    // lui-même l'offre de revente (prix, catégorie, événement) et le taux de
+    // commission ; le prix n'est jamais accepté depuis ce endpoint.
     const { order } = await firstValueFrom(
-      this.orderClient.send("order.create", {
+      this.orderClient.send("order.create_resale", {
         buyer_id: user.sub,
-        event_id: resale.event_id,
-        items: [
-          {
-            ticket_category_id: resale.ticket_category_id,
-            quantity: 1,
-            unit_price_ht: resale.resale_price,
-            holder_first_name: dto.billing_first_name,
-            holder_last_name: dto.billing_last_name,
-          },
-        ],
-        commission_rate: dto.commission_rate,
+        resale_id: resaleId,
         ...dto,
       }),
     );
 
-    // 3. Créer le payment intent Stripe
+    // Créer le payment intent Stripe
     const payment = await firstValueFrom(
       this.paymentClient.send("payment.create_intent", {
         order_id: order.id,
