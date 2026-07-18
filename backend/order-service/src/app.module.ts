@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrderItem } from './order/order-item.entity';
 import { Order } from './order/order.entity';
 import { OrderModule } from './order/order.module';
+import { OrderCleanupModule } from './scheduler/order-cleanup.module';
 import { ReminderModule } from './scheduler/reminder.module';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
 import { HealthModule } from './health/health.module';
@@ -60,6 +61,7 @@ import { HealthModule } from './health/health.module';
     PlatformConfigModule,
     OrderModule,
     ReminderModule,
+    OrderCleanupModule,
     HealthModule,
   ],
 })
