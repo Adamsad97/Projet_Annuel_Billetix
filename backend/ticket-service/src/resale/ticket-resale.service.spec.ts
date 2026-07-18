@@ -31,7 +31,7 @@ describe('TicketResaleService — réservation atomique (anti double-achat)', ()
     };
     repo = {
       findOne: jest.fn(),
-      save: jest.fn().mockImplementation((r) => Promise.resolve(r)),
+      save: jest.fn().mockImplementation((resaleRecord) => Promise.resolve(resaleRecord)),
       createQueryBuilder: jest.fn().mockReturnValue(updateQueryBuilder),
     };
     dataSource = { query: jest.fn() };

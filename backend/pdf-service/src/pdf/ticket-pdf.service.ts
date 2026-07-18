@@ -67,13 +67,13 @@ export class TicketPdfService {
     return url;
   }
 
-  private buildHtml(d: TicketPdfData): string {
-    const date = new Date(d.event_start_at);
+  private buildHtml(ticketData: TicketPdfData): string {
+    const date = new Date(ticketData.event_start_at);
     const formattedDate = date.toLocaleDateString('fr-FR', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     });
     const formattedTime = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    const price = Number(d.unit_price_ttc).toFixed(2);
+    const price = Number(ticketData.unit_price_ttc).toFixed(2);
 
     return `<!DOCTYPE html>
 <html lang="fr">
@@ -197,13 +197,13 @@ export class TicketPdfService {
 
   <div class="header">
     <div class="brand">BilletiX</div>
-    <div class="ref">#${d.reference}</div>
+    <div class="ref">#${ticketData.reference}</div>
   </div>
 
   <div class="poster-band">
-    ${d.event_poster_url ? `<img class="poster-image" src="${this.esc(d.event_poster_url)}" alt="Affiche"/>` : ''}
-    <div class="event-name">${this.esc(d.event_name)}</div>
-    <div class="artist">🎤 ${this.esc(d.artist_name)}</div>
+    ${ticketData.event_poster_url ? `<img class="poster-image" src="${this.esc(ticketData.event_poster_url)}" alt="Affiche"/>` : ''}
+    <div class="event-name">${this.esc(ticketData.event_name)}</div>
+    <div class="artist">🎤 ${this.esc(ticketData.artist_name)}</div>
   </div>
 
   <div class="info-grid">
@@ -217,37 +217,37 @@ export class TicketPdfService {
     </div>
     <div class="info-cell">
       <div class="info-label">Lieu</div>
-      <div class="info-value">${this.esc(d.event_venue_name)}</div>
+      <div class="info-value">${this.esc(ticketData.event_venue_name)}</div>
     </div>
     <div class="info-cell">
       <div class="info-label">Ville</div>
-      <div class="info-value">${this.esc(d.event_city)}</div>
+      <div class="info-value">${this.esc(ticketData.event_city)}</div>
     </div>
-    ${d.seat_info ? `
+    ${ticketData.seat_info ? `
     <div class="info-cell" style="grid-column:1/-1">
       <div class="info-label">Siège</div>
-      <div class="info-value">${this.esc(d.seat_info)}</div>
+      <div class="info-value">${this.esc(ticketData.seat_info)}</div>
     </div>` : ''}
   </div>
 
   <div class="holder-section">
     <div class="info-label">Porteur du billet</div>
-    <div class="holder-name">${this.esc(d.holder_first_name)} ${this.esc(d.holder_last_name)}</div>
-    <div class="holder-email">${this.esc(d.buyer_email)}</div>
+    <div class="holder-name">${this.esc(ticketData.holder_first_name)} ${this.esc(ticketData.holder_last_name)}</div>
+    <div class="holder-email">${this.esc(ticketData.buyer_email)}</div>
   </div>
 
   <div class="qr-section">
-    <img src="${d.qr_code_url}" alt="QR Code"/>
+    <img src="${ticketData.qr_code_url}" alt="QR Code"/>
     <div class="qr-label">Présentez ce code à l'entrée • Usage unique</div>
   </div>
 
   <div class="price-bar">
-    <div class="cat-name">${this.esc(d.ticket_category_name)}</div>
+    <div class="cat-name">${this.esc(ticketData.ticket_category_name)}</div>
     <div class="price">${price} €</div>
   </div>
 
   <div class="footer">
-    ${this.esc(d.event_venue_address)} — ${this.esc(d.event_city)} •
+    ${this.esc(ticketData.event_venue_address)} — ${this.esc(ticketData.event_city)} •
     Ce billet est nominatif et non remboursable sauf annulation de l'événement.
   </div>
 
@@ -256,7 +256,7 @@ export class TicketPdfService {
 </html>`;
   }
 
-  private esc(s: string): string {
-    return s?.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') ?? '';
+  private esc(value: string): string {
+    return value?.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') ?? '';
   }
 }

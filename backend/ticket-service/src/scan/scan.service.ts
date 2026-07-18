@@ -51,8 +51,8 @@ export class ScanService {
         scannedTicket = await this.ticketService.markUsed(ticket.id, dto.agent_id, dto.device_info);
         result = ScanResult.SUCCESS;
       }
-    } catch (err: any) {
-      const code = err?.error?.code;
+    } catch (scanError: any) {
+      const code = scanError?.error?.code;
       if (code === 'ALREADY_USED') {
         result = ScanResult.ALREADY_USED;
       } else if (code === 'CANCELLED') {

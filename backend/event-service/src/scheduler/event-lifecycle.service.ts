@@ -79,7 +79,7 @@ export class EventLifecycleService {
           ip_address: '',
         })
         .subscribe({
-          error: (err) => this.logger.error(`Échec de l'alerte admin : ${err?.message}`),
+          error: (error) => this.logger.error(`Échec de l'alerte admin : ${error?.message}`),
         });
 
       await this.repo.update(event.id, { deadline_alert_sent: true });

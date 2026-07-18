@@ -28,15 +28,15 @@ export class InvoicePdfController {
   @EventPattern('pdf.generate_invoice')
   async generateInvoice(
     @Payload() rawData: unknown,
-    @Ctx() ctx: RmqContext,
+    @Ctx() rmqContext: RmqContext,
   ) {
-    const channel = ctx.getChannelRef();
-    const msg = ctx.getMessage();
+    const channel = rmqContext.getChannelRef();
+    const rmqMessage = rmqContext.getMessage();
 
     const result = await validatePayload(InvoicePdfDto, rawData);
     if (result.valid === false) {
       this.logger.error(`Payload pdf.generate_invoice invalide, message écarté : ${result.message}`);
-      channel.ack(msg);
+      channel.ack(rmqMessage);
       return;
     }
     const data = result.data;
@@ -51,11 +51,11 @@ export class InvoicePdfController {
         }),
       );
 
-      channel.ack(msg);
+      channel.ack(rmqMessage);
       this.logger.log(`Facture ${data.reference} générée et enregistrée`);
-    } catch (err) {
-      this.logger.error(`Échec génération facture ${data.reference} : ${err?.message}`);
-      channel.nack(msg, false, true);
+    } catch (error) {
+      this.logger.error(`Échec génération facture ${data.reference} : ${error?.message}`);
+      channel.nack(rmqMessage, false, true);
     }
   }
 }

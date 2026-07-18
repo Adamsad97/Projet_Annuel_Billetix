@@ -12,8 +12,8 @@ export class ValidationRequestService {
   ) {}
 
   async create(eventId: string, adminId: string, message: string): Promise<ValidationRequest> {
-    const req = this.repo.create({ event_id: eventId, admin_id: adminId, message });
-    return this.repo.save(req);
+    const validationRequest = this.repo.create({ event_id: eventId, admin_id: adminId, message });
+    return this.repo.save(validationRequest);
   }
 
   async getByEvent(eventId: string): Promise<ValidationRequest[]> {
@@ -25,10 +25,10 @@ export class ValidationRequestService {
   }
 
   async respond(id: string, response: string): Promise<ValidationRequest> {
-    const req = await this.repo.findOne({ where: { id } });
-    if (!req) throw new RpcException({ statusCode: 404, message: 'Demande introuvable' });
-    req.response = response;
-    req.responded_at = new Date();
-    return this.repo.save(req);
+    const validationRequest = await this.repo.findOne({ where: { id } });
+    if (!validationRequest) throw new RpcException({ statusCode: 404, message: 'Demande introuvable' });
+    validationRequest.response = response;
+    validationRequest.responded_at = new Date();
+    return this.repo.save(validationRequest);
   }
 }

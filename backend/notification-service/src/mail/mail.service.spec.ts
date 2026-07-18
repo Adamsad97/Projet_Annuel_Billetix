@@ -10,7 +10,7 @@ describe('MailService', () => {
   let adminClient: { send: jest.Mock };
   let platformConfig: { get: jest.Mock };
 
-  const opts = { to: 'jean@example.com', subject: 'Sujet', template: 'welcome', context: {} };
+  const mailOptions = { to: 'jean@example.com', subject: 'Sujet', template: 'welcome', context: {} };
 
   beforeEach(async () => {
     mailer = { sendMail: jest.fn() };
@@ -42,7 +42,7 @@ describe('MailService', () => {
   it("envoie l'email du premier coup sans retry en cas de succès", async () => {
     mailer.sendMail.mockResolvedValue(undefined);
 
-    await service.send(opts);
+    await service.send(mailOptions);
 
     expect(mailer.sendMail).toHaveBeenCalledTimes(1);
   });
@@ -50,7 +50,7 @@ describe('MailService', () => {
   it('retente jusqu\'à réussir (2e tentative)', async () => {
     mailer.sendMail.mockRejectedValueOnce(new Error('SMTP down')).mockResolvedValueOnce(undefined);
 
-    const promise = service.send(opts);
+    const promise = service.send(mailOptions);
     await jest.runAllTimersAsync();
     await promise;
 
@@ -60,7 +60,7 @@ describe('MailService', () => {
   it('abandonne après 3 tentatives infructueuses sans lever d\'exception', async () => {
     mailer.sendMail.mockRejectedValue(new Error('SMTP down'));
 
-    const promise = service.send(opts);
+    const promise = service.send(mailOptions);
     await jest.runAllTimersAsync();
     await expect(promise).resolves.toBeUndefined();
 
@@ -75,7 +75,7 @@ describe('MailService', () => {
     mailer.sendMail.mockRejectedValueOnce(new Error('SMTP down')).mockResolvedValueOnce(undefined);
     const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
 
-    const promise = service.send(opts);
+    const promise = service.send(mailOptions);
     await jest.runAllTimersAsync();
     await promise;
 
@@ -89,7 +89,7 @@ describe('MailService', () => {
     });
     mailer.sendMail.mockRejectedValue(new Error('SMTP down'));
 
-    const promise = service.send(opts);
+    const promise = service.send(mailOptions);
     await jest.runAllTimersAsync();
     await promise;
 
@@ -99,7 +99,7 @@ describe('MailService', () => {
   it('déclenche une alerte admin réelle (journal d\'audit) après échec définitif', async () => {
     mailer.sendMail.mockRejectedValue(new Error('SMTP down'));
 
-    const promise = service.send(opts);
+    const promise = service.send(mailOptions);
     await jest.runAllTimersAsync();
     await promise;
 
@@ -115,7 +115,7 @@ describe('MailService', () => {
   it("n'envoie aucune alerte admin en cas de succès", async () => {
     mailer.sendMail.mockResolvedValue(undefined);
 
-    await service.send(opts);
+    await service.send(mailOptions);
 
     expect(adminClient.send).not.toHaveBeenCalled();
   });

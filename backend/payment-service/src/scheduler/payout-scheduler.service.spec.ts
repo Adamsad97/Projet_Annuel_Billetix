@@ -16,7 +16,7 @@ describe('PayoutSchedulerService', () => {
   let userClient: { send: jest.Mock };
   let authClient: { send: jest.Mock };
   let eventClient: { send: jest.Mock };
-  let notifClient: { emit: jest.Mock };
+  let notificationClient: { emit: jest.Mock };
   let platformConfig: { get: jest.Mock };
 
   const duePayout = { id: 'payout-1', organizer_id: 'org-1' };
@@ -40,7 +40,7 @@ describe('PayoutSchedulerService', () => {
       send: jest.fn().mockReturnValue(of({ email: 'org@test.com', first_name: 'Marie' })),
     };
     eventClient = { send: jest.fn().mockReturnValue(of({ title: 'Festival Test' })) };
-    notifClient = { emit: jest.fn() };
+    notificationClient = { emit: jest.fn() };
     platformConfig = { get: jest.fn().mockResolvedValue({ dispute_payout_block_max_days: 30 }) };
 
     const module = await Test.createTestingModule({
@@ -51,7 +51,7 @@ describe('PayoutSchedulerService', () => {
         { provide: 'USER_SERVICE', useValue: userClient },
         { provide: 'AUTH_SERVICE', useValue: authClient },
         { provide: 'EVENT_SERVICE', useValue: eventClient },
-        { provide: 'NOTIFICATION_SERVICE', useValue: notifClient },
+        { provide: 'NOTIFICATION_SERVICE', useValue: notificationClient },
       ],
     }).compile();
 
@@ -98,7 +98,7 @@ describe('PayoutSchedulerService', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(notifClient.emit).toHaveBeenCalledWith(
+    expect(notificationClient.emit).toHaveBeenCalledWith(
       'notification.payout_completed',
       expect.objectContaining({ email: 'org@test.com', eventName: 'Festival Test', amount: '870.00' }),
     );
@@ -114,7 +114,7 @@ describe('PayoutSchedulerService', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(notifClient.emit).not.toHaveBeenCalled();
+    expect(notificationClient.emit).not.toHaveBeenCalled();
   });
 
   it("n'appelle rien si aucun reversement n'est échu", async () => {

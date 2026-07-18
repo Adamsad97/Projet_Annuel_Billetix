@@ -78,14 +78,14 @@ export class InvoicePdfService {
     return url;
   }
 
-  private buildHtml(d: InvoicePdfData): string {
-    const paidDate = new Date(d.paid_at).toLocaleDateString('fr-FR', {
+  private buildHtml(invoiceData: InvoicePdfData): string {
+    const paidDate = new Date(invoiceData.paid_at).toLocaleDateString('fr-FR', {
       day: 'numeric', month: 'long', year: 'numeric',
     });
-    const tvaAmount = Number(d.total_amount_ttc) - Number(d.total_amount_ht) - Number(d.free_ticket_fees);
-    const money = (n: number) => Number(n).toFixed(2) + ' €';
+    const tvaAmount = Number(invoiceData.total_amount_ttc) - Number(invoiceData.total_amount_ht) - Number(invoiceData.free_ticket_fees);
+    const money = (amount: number) => Number(amount).toFixed(2) + ' €';
 
-    const rows = d.items.map((item) => `
+    const rows = invoiceData.items.map((item) => `
       <tr>
         <td>${this.esc(item.ticket_category_name)}</td>
         <td class="num">${item.quantity}</td>
@@ -131,27 +131,27 @@ export class InvoicePdfService {
     <div>
       <div class="brand">BilletiX</div>
       <div class="brand-info">
-        ${this.esc(d.platform_legal_name)}<br/>
-        ${d.platform_address ? this.esc(d.platform_address) + '<br/>' : ''}
-        ${d.platform_siret ? 'SIRET : ' + this.esc(d.platform_siret) + '<br/>' : ''}
-        ${d.platform_vat_number ? 'TVA intracommunautaire : ' + this.esc(d.platform_vat_number) : ''}
+        ${this.esc(invoiceData.platform_legal_name)}<br/>
+        ${invoiceData.platform_address ? this.esc(invoiceData.platform_address) + '<br/>' : ''}
+        ${invoiceData.platform_siret ? 'SIRET : ' + this.esc(invoiceData.platform_siret) + '<br/>' : ''}
+        ${invoiceData.platform_vat_number ? 'TVA intracommunautaire : ' + this.esc(invoiceData.platform_vat_number) : ''}
       </div>
     </div>
     <div class="invoice-title">
       <h1>FACTURE</h1>
-      <div class="ref">N° ${this.esc(d.reference)}<br/>Payée le ${paidDate}</div>
+      <div class="ref">N° ${this.esc(invoiceData.reference)}<br/>Payée le ${paidDate}</div>
     </div>
   </div>
 
   <div class="parties">
     <div class="party">
       <div class="party-label">Facturé à</div>
-      ${this.esc(d.billing_first_name)} ${this.esc(d.billing_last_name)}<br/>
-      ${this.esc(d.billing_address_line1)}<br/>
-      ${d.billing_address_line2 ? this.esc(d.billing_address_line2) + '<br/>' : ''}
-      ${this.esc(d.billing_postal_code)} ${this.esc(d.billing_city)}<br/>
-      ${this.esc(d.billing_country)}<br/>
-      ${this.esc(d.billing_email)}
+      ${this.esc(invoiceData.billing_first_name)} ${this.esc(invoiceData.billing_last_name)}<br/>
+      ${this.esc(invoiceData.billing_address_line1)}<br/>
+      ${invoiceData.billing_address_line2 ? this.esc(invoiceData.billing_address_line2) + '<br/>' : ''}
+      ${this.esc(invoiceData.billing_postal_code)} ${this.esc(invoiceData.billing_city)}<br/>
+      ${this.esc(invoiceData.billing_country)}<br/>
+      ${this.esc(invoiceData.billing_email)}
     </div>
   </div>
 
@@ -171,11 +171,11 @@ export class InvoicePdfService {
   </table>
 
   <div class="totals">
-    ${d.discount_amount > 0 ? `<div class="totals-row"><span>Remise</span><span>-${money(d.discount_amount)}</span></div>` : ''}
-    <div class="totals-row"><span>Total HT</span><span>${money(d.total_amount_ht)}</span></div>
-    <div class="totals-row"><span>TVA (${(d.tva_rate * 100).toFixed(0)}%)</span><span>${money(tvaAmount)}</span></div>
-    ${d.free_ticket_fees > 0 ? `<div class="totals-row"><span>Frais billets gratuits</span><span>${money(d.free_ticket_fees)}</span></div>` : ''}
-    <div class="totals-row total"><span>Total TTC</span><span>${money(d.total_amount_ttc)}</span></div>
+    ${invoiceData.discount_amount > 0 ? `<div class="totals-row"><span>Remise</span><span>-${money(invoiceData.discount_amount)}</span></div>` : ''}
+    <div class="totals-row"><span>Total HT</span><span>${money(invoiceData.total_amount_ht)}</span></div>
+    <div class="totals-row"><span>TVA (${(invoiceData.tva_rate * 100).toFixed(0)}%)</span><span>${money(tvaAmount)}</span></div>
+    ${invoiceData.free_ticket_fees > 0 ? `<div class="totals-row"><span>Frais billets gratuits</span><span>${money(invoiceData.free_ticket_fees)}</span></div>` : ''}
+    <div class="totals-row total"><span>Total TTC</span><span>${money(invoiceData.total_amount_ttc)}</span></div>
   </div>
 
   <div class="footer">
@@ -186,7 +186,7 @@ export class InvoicePdfService {
 </html>`;
   }
 
-  private esc(s: string | null | undefined): string {
-    return s?.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') ?? '';
+  private esc(value: string | null | undefined): string {
+    return value?.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') ?? '';
   }
 }

@@ -145,16 +145,16 @@ export class UserController {
     return firstValueFrom(
       this.userClient.send("user.get_organizer_profile", { user_id: user.sub }),
     ).then(
-      (p: {
+      (organizerProfile: {
         kyc_status: string;
         kyc_submitted_at: Date | null;
         kyc_verified_at: Date | null;
         kyc_rejected_reason: string | null;
       }) => ({
-        kyc_status: p.kyc_status,
-        kyc_submitted_at: p.kyc_submitted_at,
-        kyc_verified_at: p.kyc_verified_at,
-        kyc_rejected_reason: p.kyc_rejected_reason,
+        kyc_status: organizerProfile.kyc_status,
+        kyc_submitted_at: organizerProfile.kyc_submitted_at,
+        kyc_verified_at: organizerProfile.kyc_verified_at,
+        kyc_rejected_reason: organizerProfile.kyc_rejected_reason,
       }),
     );
   }

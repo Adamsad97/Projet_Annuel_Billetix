@@ -27,8 +27,8 @@ export class MailService {
     private readonly platformConfig: PlatformConfigCache,
   ) {}
 
-  async send(opts: SendMailOptions): Promise<void> {
-    const context = { ...opts.context, year: new Date().getFullYear() };
+  async send(mailOptions: SendMailOptions): Promise<void> {
+    const context = { ...mailOptions.context, year: new Date().getFullYear() };
     const config = await this.platformConfig.get();
     const maxAttempts = config.email_max_retry_attempts;
     const retryDelayMs = config.email_retry_delay_minutes * 60 * 1000;
@@ -36,17 +36,17 @@ export class MailService {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         await this.mailer.sendMail({
-          to: opts.to,
-          subject: opts.subject,
-          template: opts.template,
+          to: mailOptions.to,
+          subject: mailOptions.subject,
+          template: mailOptions.template,
           context,
-          attachments: opts.attachments,
+          attachments: mailOptions.attachments,
         });
-        this.logger.log(`Email [${opts.template}] envoyé à ${opts.to} (tentative ${attempt})`);
+        this.logger.log(`Email [${mailOptions.template}] envoyé à ${mailOptions.to} (tentative ${attempt})`);
         return;
-      } catch (err) {
+      } catch (error) {
         this.logger.warn(
-          `Échec envoi email [${opts.template}] à ${opts.to} — tentative ${attempt}/${maxAttempts} : ${err?.message}`,
+          `Échec envoi email [${mailOptions.template}] à ${mailOptions.to} — tentative ${attempt}/${maxAttempts} : ${error?.message}`,
         );
         if (attempt < maxAttempts) {
           await this.sleep(retryDelayMs);
@@ -55,7 +55,7 @@ export class MailService {
     }
 
     this.logger.error(
-      `Email [${opts.template}] à ${opts.to} définitivement échoué après ${maxAttempts} tentatives`,
+      `Email [${mailOptions.template}] à ${mailOptions.to} définitivement échoué après ${maxAttempts} tentatives`,
     );
 
     // Alerte admin réelle (journal d'audit consultable via GET /admin/audit-logs),
@@ -70,17 +70,17 @@ export class MailService {
         entity_id: null,
         performed_by: 'system',
         performed_by_email: 'system@billetix.internal',
-        reason: `Échec définitif d'envoi email [${opts.template}] à ${opts.to} après ${maxAttempts} tentatives`,
-        metadata: { template: opts.template, to: opts.to },
+        reason: `Échec définitif d'envoi email [${mailOptions.template}] à ${mailOptions.to} après ${maxAttempts} tentatives`,
+        metadata: { template: mailOptions.template, to: mailOptions.to },
         ip_address: '',
       })
       .subscribe({
-        error: (err) =>
-          this.logger.error(`Échec de l'alerte admin elle-même : ${err?.message}`),
+        error: (subscribeError) =>
+          this.logger.error(`Échec de l'alerte admin elle-même : ${subscribeError?.message}`),
       });
   }
 
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  private sleep(delayMs: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 }

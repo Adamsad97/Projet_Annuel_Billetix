@@ -49,10 +49,10 @@ export class AdminController {
     extra: Record<string, unknown>,
   ): void {
     firstValueFrom(this.authClient.send("auth.get_user", { id: organizerId }))
-      .then((u: { email: string; first_name: string }) => {
+      .then((organizerUser: { email: string; first_name: string }) => {
         this.notifClient.emit(pattern, {
-          email: u.email,
-          firstName: u.first_name,
+          email: organizerUser.email,
+          firstName: organizerUser.first_name,
           ...extra,
         });
       })
@@ -218,7 +218,7 @@ export class AdminController {
       "Recherche/liste globale des utilisateurs (email, nom, rôle, statut)",
   })
   searchUsers(
-    @Query("q") q?: string,
+    @Query("q") searchQuery?: string,
     @Query("role") role?: string,
     @Query("is_suspended") is_suspended?: string,
     @Query("limit") limit?: string,
@@ -226,7 +226,7 @@ export class AdminController {
   ) {
     return firstValueFrom(
       this.authClient.send("auth.list_users", {
-        q,
+        q: searchQuery,
         role,
         is_suspended:
           is_suspended === undefined ? undefined : is_suspended === "true",

@@ -80,8 +80,8 @@ export class PlatformConfigCache implements OnModuleInit {
       ) as PlatformConfig;
       this.cache = config;
       this.lastFetchedAt = Date.now();
-    } catch (err) {
-      this.logger.warn(`Impossible de récupérer la config plateforme, valeurs par défaut utilisées : ${err?.message}`);
+    } catch (refreshError) {
+      this.logger.warn(`Impossible de récupérer la config plateforme, valeurs par défaut utilisées : ${refreshError?.message}`);
     }
   }
 }

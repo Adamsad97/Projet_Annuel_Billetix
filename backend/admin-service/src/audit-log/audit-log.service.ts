@@ -36,32 +36,32 @@ export class AuditLogService {
   }
 
   async getLogs(filters: GetLogsDto): Promise<{ logs: AuditLog[]; total: number }> {
-    const qb = this.repo.createQueryBuilder('log');
+    const queryBuilder = this.repo.createQueryBuilder('log');
 
     if (filters.entity_type) {
-      qb.andWhere('log.entity_type = :et', { et: filters.entity_type });
+      queryBuilder.andWhere('log.entity_type = :entityType', { entityType: filters.entity_type });
     }
     if (filters.entity_id) {
-      qb.andWhere('log.entity_id = :eid', { eid: filters.entity_id });
+      queryBuilder.andWhere('log.entity_id = :entityId', { entityId: filters.entity_id });
     }
     if (filters.performed_by) {
-      qb.andWhere('log.performed_by = :pb', { pb: filters.performed_by });
+      queryBuilder.andWhere('log.performed_by = :performedBy', { performedBy: filters.performed_by });
     }
     if (filters.action) {
-      qb.andWhere('log.action = :action', { action: filters.action });
+      queryBuilder.andWhere('log.action = :action', { action: filters.action });
     }
     if (filters.from) {
-      qb.andWhere('log.created_at >= :from', { from: new Date(filters.from) });
+      queryBuilder.andWhere('log.created_at >= :from', { from: new Date(filters.from) });
     }
     if (filters.to) {
-      qb.andWhere('log.created_at <= :to', { to: new Date(filters.to) });
+      queryBuilder.andWhere('log.created_at <= :to', { to: new Date(filters.to) });
     }
 
-    qb.orderBy('log.created_at', 'DESC')
+    queryBuilder.orderBy('log.created_at', 'DESC')
       .take(filters.limit ?? 50)
       .skip(filters.offset ?? 0);
 
-    const [logs, total] = await qb.getManyAndCount();
+    const [logs, total] = await queryBuilder.getManyAndCount();
     return { logs, total };
   }
 

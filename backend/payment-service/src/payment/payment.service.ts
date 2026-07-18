@@ -123,9 +123,9 @@ export class PaymentService {
     // le solde à jour.
     return this.dataSource.transaction(async (manager) => {
       const payment = await manager
-        .createQueryBuilder(Payment, 'p')
+        .createQueryBuilder(Payment, 'payment')
         .setLock('pessimistic_write')
-        .where('p.order_id = :orderId', { orderId })
+        .where('payment.order_id = :orderId', { orderId })
         .getOne();
 
       if (!payment) {

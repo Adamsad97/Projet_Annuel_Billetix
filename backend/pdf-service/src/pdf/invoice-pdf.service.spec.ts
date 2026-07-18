@@ -11,7 +11,7 @@ describe('InvoicePdfService', () => {
       providers: [
         InvoicePdfService,
         { provide: MinioService, useValue: { uploadPdf: jest.fn() } },
-        { provide: ConfigService, useValue: { get: jest.fn((_, def) => def) } },
+        { provide: ConfigService, useValue: { get: jest.fn((_, defaultValue) => defaultValue) } },
       ],
     }).compile();
 
@@ -19,7 +19,7 @@ describe('InvoicePdfService', () => {
   });
 
   describe('esc (échappement HTML — protection XSS dans la facture générée)', () => {
-    const esc = (s: string) => (service as unknown as { esc(v: string): string }).esc(s);
+    const esc = (rawValue: string) => (service as unknown as { esc(value: string): string }).esc(rawValue);
 
     it('échappe les caractères HTML spéciaux (ex: nom/adresse de facturation)', () => {
       expect(esc('<script>alert(1)</script>')).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');

@@ -133,13 +133,13 @@ export class PayoutService {
     total_paid_out: number;
   }> {
     const row = await this.repo
-      .createQueryBuilder('p')
+      .createQueryBuilder('payout')
       .select(
-        "COALESCE(SUM(p.net_amount) FILTER (WHERE p.status IN ('PENDING', 'PROCESSING')), 0)",
+        "COALESCE(SUM(payout.net_amount) FILTER (WHERE payout.status IN ('PENDING', 'PROCESSING')), 0)",
         'pending_balance',
       )
       .addSelect(
-        "COALESCE(SUM(p.net_amount) FILTER (WHERE p.status = 'COMPLETED'), 0)",
+        "COALESCE(SUM(payout.net_amount) FILTER (WHERE payout.status = 'COMPLETED'), 0)",
         'total_paid_out',
       )
       .getRawOne<Record<string, string>>();

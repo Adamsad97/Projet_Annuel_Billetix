@@ -44,12 +44,12 @@ export class StockReservationService {
         );
         decremented.push(item);
       }
-    } catch (err) {
+    } catch (quotaError) {
       // Rollback des décrémentations déjà faites
       await this.rollback(decremented);
       throw new RpcException({
         statusCode: 409,
-        message: err?.error?.message ?? 'Places insuffisantes',
+        message: quotaError?.error?.message ?? 'Places insuffisantes',
       });
     }
 

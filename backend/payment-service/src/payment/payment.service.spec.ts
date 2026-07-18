@@ -52,7 +52,7 @@ describe('PaymentService', () => {
       save: jest.fn().mockImplementation((payment) => Promise.resolve(payment)),
     };
     dataSource = {
-      transaction: jest.fn().mockImplementation((cb) => cb(refundManager)),
+      transaction: jest.fn().mockImplementation((transactionCallback) => transactionCallback(refundManager)),
     };
 
     const module = await Test.createTestingModule({
@@ -225,8 +225,8 @@ describe('PaymentService', () => {
         return Promise.resolve(payment);
       });
 
-      const r1 = await service.refund('order-1', 6000); // 60€, solde restant : 40€
-      expect(r1.refunded_amount).toBe(60);
+      const firstRefundResult = await service.refund('order-1', 6000); // 60€, solde restant : 40€
+      expect(firstRefundResult.refunded_amount).toBe(60);
 
       // Une seconde demande de 60€ doit être rejetée (solde restant réel de
       // 40€ après le premier commit), jamais cumulée jusqu'à 120€/100€.

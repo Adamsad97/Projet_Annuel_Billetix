@@ -18,7 +18,7 @@ describe('TicketPdfService', () => {
 
   describe('buildHtml — affiche de l\'événement', () => {
     const buildHtml = (data: TicketPdfData) =>
-      (service as unknown as { buildHtml(d: TicketPdfData): string }).buildHtml(data);
+      (service as unknown as { buildHtml(ticketData: TicketPdfData): string }).buildHtml(data);
 
     const baseData: TicketPdfData = {
       ticket_id: 'ticket-1',
@@ -53,7 +53,7 @@ describe('TicketPdfService', () => {
   });
 
   describe('esc (échappement HTML — protection XSS dans le PDF généré)', () => {
-    const esc = (s: string) => (service as unknown as { esc(v: string): string }).esc(s);
+    const esc = (rawValue: string) => (service as unknown as { esc(value: string): string }).esc(rawValue);
 
     it('échappe les caractères HTML spéciaux', () => {
       expect(esc('<script>alert(1)</script>')).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');

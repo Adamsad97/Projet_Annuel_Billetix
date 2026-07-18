@@ -265,8 +265,8 @@ describe('OrderService', () => {
         expires_at: new Date().toISOString(),
       });
       platformConfig.get.mockResolvedValue({ tva_rate: 0.2, free_ticket_fee_eur: 0.5 });
-      dataSource.transaction.mockImplementation((cb) =>
-        cb({
+      dataSource.transaction.mockImplementation((transactionCallback) =>
+        transactionCallback({
           create: jest.fn().mockImplementation((_entity, data) => data),
           save: jest.fn().mockImplementation((data) => Promise.resolve(data)),
         }),
@@ -396,8 +396,8 @@ describe('OrderService', () => {
 
     beforeEach(() => {
       platformConfig.get.mockResolvedValue({ tva_rate: 0.2 });
-      dataSource.transaction.mockImplementation((cb) =>
-        cb({
+      dataSource.transaction.mockImplementation((transactionCallback) =>
+        transactionCallback({
           create: jest.fn().mockImplementation((_entity, data) => data),
           save: jest.fn().mockImplementation((data) => Promise.resolve(data)),
         }),

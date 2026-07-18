@@ -28,15 +28,15 @@ export class TicketPdfController {
   @EventPattern('pdf.generate_ticket')
   async generateTicket(
     @Payload() rawData: unknown,
-    @Ctx() ctx: RmqContext,
+    @Ctx() rmqContext: RmqContext,
   ) {
-    const channel = ctx.getChannelRef();
-    const msg = ctx.getMessage();
+    const channel = rmqContext.getChannelRef();
+    const rmqMessage = rmqContext.getMessage();
 
     const result = await validatePayload(TicketPdfDto, rawData);
     if (result.valid === false) {
       this.logger.error(`Payload pdf.generate_ticket invalide, message écarté : ${result.message}`);
-      channel.ack(msg);
+      channel.ack(rmqMessage);
       return;
     }
     const data = result.data;
@@ -52,12 +52,12 @@ export class TicketPdfController {
         }),
       );
 
-      channel.ack(msg);
+      channel.ack(rmqMessage);
       this.logger.log(`PDF billet ${data.reference} généré et envoyé`);
-    } catch (err) {
-      this.logger.error(`Échec génération PDF ${data.reference} : ${err?.message}`);
+    } catch (error) {
+      this.logger.error(`Échec génération PDF ${data.reference} : ${error?.message}`);
       // Requeue pour ré-essai
-      channel.nack(msg, false, true);
+      channel.nack(rmqMessage, false, true);
     }
   }
 }

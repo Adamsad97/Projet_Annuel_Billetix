@@ -27,7 +27,7 @@ export class PayoutSchedulerService {
     @Inject('USER_SERVICE') private readonly userClient: ClientProxy,
     @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
     @Inject('EVENT_SERVICE') private readonly eventClient: ClientProxy,
-    @Inject('NOTIFICATION_SERVICE') private readonly notifClient: ClientProxy,
+    @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
   ) {}
 
   // Tous les jours à 10h00 UTC — déclenche les reversements arrivés à échéance
@@ -76,11 +76,11 @@ export class PayoutSchedulerService {
           processed.organizer_id,
           processed.event_id,
           Number(processed.net_amount),
-        ).catch((err) =>
-          this.logger.error(`Échec notification reversement ${processed.id} : ${err?.message}`),
+        ).catch((notificationError) =>
+          this.logger.error(`Échec notification reversement ${processed.id} : ${notificationError?.message}`),
         );
-      } catch (err) {
-        this.logger.error(`Échec du traitement du reversement ${payout.id} : ${err?.message}`);
+      } catch (error) {
+        this.logger.error(`Échec du traitement du reversement ${payout.id} : ${error?.message}`);
       }
     }
   }
@@ -105,8 +105,8 @@ export class PayoutSchedulerService {
         this.logger.warn(
           `Reversement ${payout.id} débloqué automatiquement après ${config.dispute_payout_block_max_days} jours de blocage`,
         );
-      } catch (err) {
-        this.logger.error(`Échec du déblocage automatique du reversement ${payout.id} : ${err?.message}`);
+      } catch (error) {
+        this.logger.error(`Échec du déblocage automatique du reversement ${payout.id} : ${error?.message}`);
       }
     }
   }
@@ -122,7 +122,7 @@ export class PayoutSchedulerService {
     ]);
     if (!contact?.email) return;
 
-    this.notifClient.emit('notification.payout_completed', {
+    this.notificationClient.emit('notification.payout_completed', {
       email: contact.email,
       firstName: contact.first_name,
       eventName: event?.title ?? 'votre événement',

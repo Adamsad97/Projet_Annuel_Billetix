@@ -43,20 +43,20 @@ export class OfflineSyncService {
           is_offline: true,
           scanned_at: entry.scanned_at_offline,
         };
-        const res = await this.scanService.scan(scanDto);
-        ticketId = res.ticket_id;
+        const scanResult = await this.scanService.scan(scanDto);
+        ticketId = scanResult.ticket_id;
 
-        if (res.result === ScanResult.ALREADY_USED) {
+        if (scanResult.result === ScanResult.ALREADY_USED) {
           status = SyncStatus.CONFLICT;
           conflictDetail = 'Billet déjà scanné en ligne avant la synchronisation';
           conflicts++;
         } else if (
-          res.result === ScanResult.INVALID ||
-          res.result === ScanResult.CANCELLED ||
-          res.result === ScanResult.WRONG_EVENT
+          scanResult.result === ScanResult.INVALID ||
+          scanResult.result === ScanResult.CANCELLED ||
+          scanResult.result === ScanResult.WRONG_EVENT
         ) {
           status = SyncStatus.ERROR;
-          conflictDetail = `Scan invalide : ${res.result}`;
+          conflictDetail = `Scan invalide : ${scanResult.result}`;
           errors++;
         } else {
           synced++;

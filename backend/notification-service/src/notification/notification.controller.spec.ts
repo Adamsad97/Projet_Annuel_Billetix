@@ -6,13 +6,13 @@ import { NotificationController } from './notification.controller';
 describe('NotificationController', () => {
   let controller: NotificationController;
   let mail: { send: jest.Mock };
-  let ctx: RmqContext;
+  let rmqContext: RmqContext;
 
   beforeEach(() => {
     mail = { send: jest.fn().mockResolvedValue(undefined) };
     const config = { get: jest.fn().mockReturnValue('http://localhost:3000') } as unknown as ConfigService;
     controller = new NotificationController(mail as unknown as MailService, config);
-    ctx = {
+    rmqContext = {
       getChannelRef: () => ({ ack: jest.fn() }),
       getMessage: () => ({}),
     } as unknown as RmqContext;
@@ -28,7 +28,7 @@ describe('NotificationController', () => {
         amount: '50.00',
         refundType: 'Remboursement total',
       },
-      ctx,
+      rmqContext,
     );
 
     expect(mail.send).toHaveBeenCalledWith(
@@ -49,7 +49,7 @@ describe('NotificationController', () => {
         amount: '870.00',
         payoutDate: '18 juillet 2026',
       },
-      ctx,
+      rmqContext,
     );
 
     expect(mail.send).toHaveBeenCalledWith(
@@ -70,7 +70,7 @@ describe('NotificationController', () => {
         orderReference: 'ORD-2026-00002',
         reason: 'FRAUDULENT',
       },
-      ctx,
+      rmqContext,
     );
 
     expect(mail.send).toHaveBeenCalledWith(

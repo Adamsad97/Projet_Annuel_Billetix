@@ -239,7 +239,7 @@ export class OrderService {
           event_id: resale.event_id,
         }),
       );
-      categoryName = categories.find((c) => c.id === resale.ticket_category_id)?.name ?? categoryName;
+      categoryName = categories.find((category) => category.id === resale.ticket_category_id)?.name ?? categoryName;
     } catch {
       // non bloquant
     }

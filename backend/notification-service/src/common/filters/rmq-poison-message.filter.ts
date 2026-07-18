@@ -24,9 +24,9 @@ export class RmqPoisonMessageFilter implements ExceptionFilter {
       return;
     }
 
-    const ctx = host.switchToRpc().getContext<RmqContext>();
-    const channel = ctx.getChannelRef();
-    const message = ctx.getMessage();
+    const rpcContext = host.switchToRpc().getContext<RmqContext>();
+    const channel = rpcContext.getChannelRef();
+    const message = rpcContext.getMessage();
 
     this.logger.error(`Message écarté (payload invalide ou erreur de traitement) : ${reason}`);
     channel.ack(message);

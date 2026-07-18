@@ -36,8 +36,8 @@ export class NotificationController {
     this.appUrl = this.config.get<string>('APP_URL', 'http://localhost:3000');
   }
 
-  private ack(ctx: RmqContext) {
-    ctx.getChannelRef().ack(ctx.getMessage());
+  private ack(rmqContext: RmqContext) {
+    rmqContext.getChannelRef().ack(rmqContext.getMessage());
   }
 
   // Les PDF (billets/factures) sont sur MinIO en lecture publique — un
@@ -57,26 +57,26 @@ export class NotificationController {
           res.on('data', (chunk) => chunks.push(chunk));
           res.on('end', () => resolve(Buffer.concat(chunks)));
         })
-        .on('error', (err) => {
-          this.logger.warn(`Échec téléchargement PDF ${url} : ${err.message}`);
+        .on('error', (error) => {
+          this.logger.warn(`Échec téléchargement PDF ${url} : ${error.message}`);
           resolve(null);
         });
     });
   }
 
   @EventPattern('notification.welcome')
-  async onWelcome(@Payload() data: WelcomeDto, @Ctx() ctx: RmqContext) {
+  async onWelcome(@Payload() data: WelcomeDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: 'Bienvenue sur BilletiX !',
       template: 'welcome',
       context: { firstName: data.firstName, appUrl: this.appUrl },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.email_verification')
-  async onEmailVerification(@Payload() data: EmailVerificationDto, @Ctx() ctx: RmqContext) {
+  async onEmailVerification(@Payload() data: EmailVerificationDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: 'Vérifiez votre adresse email — BilletiX',
@@ -86,11 +86,11 @@ export class NotificationController {
         verificationUrl: `${this.appUrl}/auth/verify-email?token=${data.token}`,
       },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.password_reset')
-  async onPasswordReset(@Payload() data: PasswordResetDto, @Ctx() ctx: RmqContext) {
+  async onPasswordReset(@Payload() data: PasswordResetDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: 'Réinitialisation de votre mot de passe — BilletiX',
@@ -100,11 +100,11 @@ export class NotificationController {
         resetUrl: `${this.appUrl}/auth/reset-password?token=${data.token}`,
       },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.order_confirmed')
-  async onOrderConfirmed(@Payload() data: OrderConfirmedDto, @Ctx() ctx: RmqContext) {
+  async onOrderConfirmed(@Payload() data: OrderConfirmedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Confirmation de commande ${data.orderReference} — BilletiX`,
@@ -114,11 +114,11 @@ export class NotificationController {
         ordersUrl: `${this.appUrl}/orders`,
       },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.payment_confirmed')
-  async onPaymentConfirmed(@Payload() data: PaymentConfirmedDto, @Ctx() ctx: RmqContext) {
+  async onPaymentConfirmed(@Payload() data: PaymentConfirmedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Paiement confirmé — ${data.orderReference}`,
@@ -128,11 +128,11 @@ export class NotificationController {
         ordersUrl: `${this.appUrl}/orders`,
       },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.payment_failed')
-  async onPaymentFailed(@Payload() data: PaymentFailedDto, @Ctx() ctx: RmqContext) {
+  async onPaymentFailed(@Payload() data: PaymentFailedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Échec du paiement — ${data.orderReference}`,
@@ -142,11 +142,11 @@ export class NotificationController {
         ordersUrl: `${this.appUrl}/orders`,
       },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.ticket_ready')
-  async onTicketReady(@Payload() data: TicketReadyDto, @Ctx() ctx: RmqContext) {
+  async onTicketReady(@Payload() data: TicketReadyDto, @Ctx() rmqContext: RmqContext) {
     const attachments: MailAttachment[] = [];
     for (const [index, ticket] of data.tickets.entries()) {
       if (!ticket.pdfUrl) continue;
@@ -170,77 +170,77 @@ export class NotificationController {
       },
       attachments,
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.event_published')
-  async onEventPublished(@Payload() data: EventPublishedDto, @Ctx() ctx: RmqContext) {
+  async onEventPublished(@Payload() data: EventPublishedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Votre événement "${data.event_name}" est publié — BilletiX`,
       template: 'event-published',
       context: { firstName: data.firstName, eventName: data.event_name, eventsUrl: this.appUrl },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.event_rejected')
-  async onEventRejected(@Payload() data: EventRejectedDto, @Ctx() ctx: RmqContext) {
+  async onEventRejected(@Payload() data: EventRejectedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Votre événement "${data.event_name}" a été refusé — BilletiX`,
       template: 'event-rejected',
       context: { firstName: data.firstName, eventName: data.event_name, reason: data.reason, appUrl: this.appUrl },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.event_info_requested')
-  async onEventInfoRequested(@Payload() data: EventInfoRequestedDto, @Ctx() ctx: RmqContext) {
+  async onEventInfoRequested(@Payload() data: EventInfoRequestedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Complément d'information requis pour "${data.event_name}" — BilletiX`,
       template: 'event-info-requested',
       context: { firstName: data.firstName, eventName: data.event_name, message: data.message, appUrl: this.appUrl },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.event_suspended')
-  async onEventSuspended(@Payload() data: EventSuspendedDto, @Ctx() ctx: RmqContext) {
+  async onEventSuspended(@Payload() data: EventSuspendedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Votre événement "${data.event_name}" a été suspendu — BilletiX`,
       template: 'event-rejected',
       context: { firstName: data.firstName, eventName: data.event_name, reason: data.reason, appUrl: this.appUrl },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.kyc_approved')
-  async onKycApproved(@Payload() data: KycApprovedDto, @Ctx() ctx: RmqContext) {
+  async onKycApproved(@Payload() data: KycApprovedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: 'Votre identité a été vérifiée — BilletiX',
       template: 'kyc-approved',
       context: { firstName: data.firstName, appUrl: this.appUrl },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.kyc_rejected')
-  async onKycRejected(@Payload() data: KycRejectedDto, @Ctx() ctx: RmqContext) {
+  async onKycRejected(@Payload() data: KycRejectedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: 'Vérification d\'identité refusée — BilletiX',
       template: 'kyc-rejected',
       context: { firstName: data.firstName, reason: data.reason, appUrl: this.appUrl },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.event_canceled')
-  async onEventCanceled(@Payload() data: EventCanceledDto, @Ctx() ctx: RmqContext) {
+  async onEventCanceled(@Payload() data: EventCanceledDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Annulation — ${data.eventName}`,
@@ -250,11 +250,11 @@ export class NotificationController {
         eventsUrl: `${this.appUrl}/events`,
       },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.fill_threshold_reached')
-  async onFillThresholdReached(@Payload() data: FillThresholdReachedDto, @Ctx() ctx: RmqContext) {
+  async onFillThresholdReached(@Payload() data: FillThresholdReachedDto, @Ctx() rmqContext: RmqContext) {
     if (data.email) {
       await this.mail.send({
         to: data.email,
@@ -270,22 +270,22 @@ export class NotificationController {
         },
       });
     }
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.ticket_scanned')
-  async onTicketScanned(@Payload() data: TicketScannedDto, @Ctx() ctx: RmqContext) {
+  async onTicketScanned(@Payload() data: TicketScannedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Billet validé — ${data.eventName}`,
       template: 'ticket-scanned',
       context: { ...data },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.refund_completed')
-  async onRefundCompleted(@Payload() data: RefundCompletedDto, @Ctx() ctx: RmqContext) {
+  async onRefundCompleted(@Payload() data: RefundCompletedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Remboursement effectué — ${data.orderReference}`,
@@ -295,11 +295,11 @@ export class NotificationController {
         ordersUrl: `${this.appUrl}/orders`,
       },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.payout_completed')
-  async onPayoutCompleted(@Payload() data: PayoutCompletedDto, @Ctx() ctx: RmqContext) {
+  async onPayoutCompleted(@Payload() data: PayoutCompletedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Reversement effectué — ${data.eventName}`,
@@ -309,11 +309,11 @@ export class NotificationController {
         dashboardUrl: `${this.appUrl}/organizer/events`,
       },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.dispute_opened')
-  async onDisputeOpened(@Payload() data: DisputeOpenedDto, @Ctx() ctx: RmqContext) {
+  async onDisputeOpened(@Payload() data: DisputeOpenedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Litige ouvert — ${data.eventName}`,
@@ -323,11 +323,11 @@ export class NotificationController {
         dashboardUrl: `${this.appUrl}/organizer/events`,
       },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 
   @EventPattern('notification.event_reminder')
-  async onEventReminder(@Payload() data: EventReminderDto, @Ctx() ctx: RmqContext) {
+  async onEventReminder(@Payload() data: EventReminderDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
       subject: `Rappel — ${data.eventName} c'est demain !`,
@@ -337,6 +337,6 @@ export class NotificationController {
         ticketsUrl: `${this.appUrl}/tickets`,
       },
     });
-    this.ack(ctx);
+    this.ack(rmqContext);
   }
 }

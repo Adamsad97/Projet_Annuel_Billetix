@@ -118,16 +118,16 @@ export class EventService {
   async listPublished(filters: { category?: string; city?: string; page?: number }): Promise<{ data: Event[]; total: number }> {
     const page = filters.page ?? 1;
     const limit = 20;
-    const qb = this.repo.createQueryBuilder('e')
+    const queryBuilder = this.repo.createQueryBuilder('e')
       .where('e.status = :status', { status: EventStatus.PUBLISHED })
       .orderBy('e.start_date', 'ASC')
       .skip((page - 1) * limit)
       .take(limit);
 
-    if (filters.category) qb.andWhere('e.category = :category', { category: filters.category });
-    if (filters.city) qb.andWhere('LOWER(e.venue_city) LIKE :city', { city: `%${filters.city.toLowerCase()}%` });
+    if (filters.category) queryBuilder.andWhere('e.category = :category', { category: filters.category });
+    if (filters.city) queryBuilder.andWhere('LOWER(e.venue_city) LIKE :city', { city: `%${filters.city.toLowerCase()}%` });
 
-    const [data, total] = await qb.getManyAndCount();
+    const [data, total] = await queryBuilder.getManyAndCount();
     return { data, total };
   }
 
@@ -299,16 +299,16 @@ export class EventService {
     const saved = await this.repo.save(clone);
 
     const categories = await this.ticketCategoryService.getByEvent(id);
-    for (const cat of categories) {
+    for (const category of categories) {
       await this.ticketCategoryService.create(
         {
           event_id: saved.id,
-          name: cat.name,
-          description: cat.description ?? undefined,
-          price_ht: Number(cat.price_ht),
-          quota: cat.quota,
-          max_per_order: cat.max_per_order,
-          visibility: cat.visibility,
+          name: category.name,
+          description: category.description ?? undefined,
+          price_ht: Number(category.price_ht),
+          quota: category.quota,
+          max_per_order: category.max_per_order,
+          visibility: category.visibility,
         },
         original.organizer_id,
       );

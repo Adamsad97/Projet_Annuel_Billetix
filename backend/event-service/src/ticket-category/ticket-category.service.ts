@@ -45,21 +45,21 @@ export class TicketCategoryService {
   }
 
   async getById(id: string): Promise<TicketCategory> {
-    const cat = await this.repo.findOne({ where: { id } });
-    if (!cat) throw new RpcException({ statusCode: 404, message: 'Catégorie introuvable' });
-    return cat;
+    const category = await this.repo.findOne({ where: { id } });
+    if (!category) throw new RpcException({ statusCode: 404, message: 'Catégorie introuvable' });
+    return category;
   }
 
   async update(id: string, dto: Partial<CreateTicketCategoryDto>, organizerId: string): Promise<TicketCategory> {
-    const cat = await this.getById(id);
-    await this.assertOwnsEvent(cat.event_id, organizerId);
-    Object.assign(cat, dto);
-    return this.repo.save(cat);
+    const category = await this.getById(id);
+    await this.assertOwnsEvent(category.event_id, organizerId);
+    Object.assign(category, dto);
+    return this.repo.save(category);
   }
 
   async deactivate(id: string, organizerId: string): Promise<{ success: boolean }> {
-    const cat = await this.getById(id);
-    await this.assertOwnsEvent(cat.event_id, organizerId);
+    const category = await this.getById(id);
+    await this.assertOwnsEvent(category.event_id, organizerId);
     await this.repo.update(id, { is_active: false });
     return { success: true };
   }
