@@ -27,6 +27,22 @@ export class PaymentController {
       throw new RpcException({ statusCode: 400, message: 'Signature webhook invalide' });
     }
 
+    if (event.type === 'payment_intent.payment_failed') {
+      const intent = event.data.object as {
+        id: string;
+        last_payment_error?: { message?: string };
+      };
+      const reason = intent.last_payment_error?.message ?? 'Paiement refusé';
+      const payment = await this.paymentService.markFailed(intent.id, reason);
+
+      return {
+        received: true,
+        failed: true,
+        order_id: payment?.order_id,
+        failure_reason: reason,
+      };
+    }
+
     if (event.type !== 'payment_intent.succeeded') {
       return { received: true };
     }

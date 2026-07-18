@@ -44,6 +44,9 @@ export class Payment {
   @Column({ type: 'enum', enum: PaymentStatus, default: PaymentStatus.PENDING })
   status: PaymentStatus;
 
+  @Column({ type: 'text', nullable: true })
+  failure_reason: string | null;
+
   @Column({ nullable: true })
   refunded_at: Date | null;
 

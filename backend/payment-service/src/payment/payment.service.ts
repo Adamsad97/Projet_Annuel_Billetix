@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { PayoutService } from '../payout/payout.service';
 import { StripeService } from '../stripe/stripe.service';
 import { Payment, PaymentStatus } from './payment.entity';
@@ -11,6 +11,7 @@ import { Payment, PaymentStatus } from './payment.entity';
 export class PaymentService {
   constructor(
     @InjectRepository(Payment) private readonly repo: Repository<Payment>,
+    private readonly dataSource: DataSource,
     private readonly stripe: StripeService,
     private readonly payoutService: PayoutService,
     @Inject('ORDER_SERVICE') private readonly orderClient: ClientProxy,
@@ -61,13 +62,39 @@ export class PaymentService {
       throw new RpcException({ statusCode: 404, message: 'Paiement introuvable' });
     }
 
-    const wasAlreadyPaid = payment.status === PaymentStatus.PAID;
+    // Transition atomique vers PAID, uniquement depuis un statut non-payé.
+    // Stripe redélivre parfois le même événement webhook (timeout, retry) —
+    // sans cette garde au niveau SQL, deux appels quasi simultanés liraient
+    // tous deux `status !== PAID` avant que l'un des deux ne sauvegarde,
+    // provoquant une double génération de billets et un double reversement.
+    const result = await this.repo
+      .createQueryBuilder()
+      .update(Payment)
+      .set({ status: PaymentStatus.PAID })
+      .where('id = :id', { id: payment.id })
+      .andWhere('status != :paid', { paid: PaymentStatus.PAID })
+      .execute();
+
+    const wasAlreadyPaid = result.affected === 0;
     if (!wasAlreadyPaid) {
       payment.status = PaymentStatus.PAID;
-      await this.repo.save(payment);
     }
 
     return Object.assign(payment, { _wasAlreadyPaid: wasAlreadyPaid });
+  }
+
+  /**
+   * Appelé sur `payment_intent.payment_failed` — ne fait jamais régresser un
+   * paiement déjà confirmé (webhooks Stripe parfois désordonnés/rejoués).
+   */
+  async markFailed(paymentIntentId: string, reason: string): Promise<Payment | null> {
+    const payment = await this.repo.findOne({ where: { provider_payment_id: paymentIntentId } });
+    if (!payment || payment.status === PaymentStatus.PAID) {
+      return null;
+    }
+    payment.status = PaymentStatus.FAILED;
+    payment.failure_reason = reason;
+    return this.repo.save(payment);
   }
 
   async getByOrder(orderId: string): Promise<Payment> {
@@ -77,48 +104,64 @@ export class PaymentService {
   }
 
   async refund(orderId: string, amount_cents?: number): Promise<Payment> {
-    const payment = await this.getByOrder(orderId);
-    if (
-      payment.status !== PaymentStatus.PAID &&
-      payment.status !== PaymentStatus.PARTIALLY_REFUNDED
-    ) {
-      throw new RpcException({
-        statusCode: 400,
-        message: 'Le paiement n\'est pas remboursable dans son état actuel',
-      });
-    }
+    // Verrou pessimiste sur la ligne du paiement — deux remboursements admin
+    // quasi simultanés sur le même paiement ne doivent jamais tous les deux
+    // lire le même refunded_amount et cumuler un montant total supérieur au
+    // payé. Le second appel attend que le premier ait committé, puis relit
+    // le solde à jour.
+    return this.dataSource.transaction(async (manager) => {
+      const payment = await manager
+        .createQueryBuilder(Payment, 'p')
+        .setLock('pessimistic_write')
+        .where('p.order_id = :orderId', { orderId })
+        .getOne();
 
-    const alreadyRefunded = Number(payment.refunded_amount ?? 0);
-    const remaining = parseFloat((Number(payment.amount) - alreadyRefunded).toFixed(2));
-    const requestedAmount = amount_cents ? amount_cents / 100 : remaining;
+      if (!payment) {
+        throw new RpcException({ statusCode: 404, message: 'Paiement introuvable' });
+      }
 
-    if (requestedAmount <= 0 || requestedAmount > remaining + 0.01) {
-      throw new RpcException({
-        statusCode: 400,
-        message: `Montant de remboursement invalide (solde restant : ${remaining} €)`,
-      });
-    }
+      if (
+        payment.status !== PaymentStatus.PAID &&
+        payment.status !== PaymentStatus.PARTIALLY_REFUNDED
+      ) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Le paiement n\'est pas remboursable dans son état actuel',
+        });
+      }
 
-    await this.stripe.createRefund(payment.provider_payment_id, amount_cents);
+      const alreadyRefunded = Number(payment.refunded_amount ?? 0);
+      const remaining = parseFloat((Number(payment.amount) - alreadyRefunded).toFixed(2));
+      const requestedAmount = amount_cents ? amount_cents / 100 : remaining;
 
-    payment.refunded_amount = parseFloat((alreadyRefunded + requestedAmount).toFixed(2));
-    payment.refunded_at = new Date();
-    // Remboursement total dès que le solde restant est épuisé (couvre aussi
-    // un remboursement partiel qui, cumulé aux précédents, atteint le total).
-    payment.status =
-      payment.refunded_amount >= Number(payment.amount) - 0.01
-        ? PaymentStatus.REFUNDED
-        : PaymentStatus.PARTIALLY_REFUNDED;
+      if (requestedAmount <= 0 || requestedAmount > remaining + 0.01) {
+        throw new RpcException({
+          statusCode: 400,
+          message: `Montant de remboursement invalide (solde restant : ${remaining} €)`,
+        });
+      }
 
-    const saved = await this.repo.save(payment);
+      await this.stripe.createRefund(payment.provider_payment_id, amount_cents);
 
-    // Recalcule le reversement organisateur correspondant — ne doit jamais
-    // faire échouer le remboursement lui-même si le payout est introuvable
-    // ou si payment-service rencontre un souci ponctuel.
-    await this.payoutService
-      .recalculateForRefund(orderId, requestedAmount, Number(payment.amount))
-      .catch(() => undefined);
+      payment.refunded_amount = parseFloat((alreadyRefunded + requestedAmount).toFixed(2));
+      payment.refunded_at = new Date();
+      // Remboursement total dès que le solde restant est épuisé (couvre aussi
+      // un remboursement partiel qui, cumulé aux précédents, atteint le total).
+      payment.status =
+        payment.refunded_amount >= Number(payment.amount) - 0.01
+          ? PaymentStatus.REFUNDED
+          : PaymentStatus.PARTIALLY_REFUNDED;
 
-    return saved;
+      const saved = await manager.save(payment);
+
+      // Recalcule le reversement organisateur correspondant — ne doit jamais
+      // faire échouer le remboursement lui-même si le payout est introuvable
+      // ou si payment-service rencontre un souci ponctuel.
+      await this.payoutService
+        .recalculateForRefund(orderId, requestedAmount, Number(payment.amount))
+        .catch(() => undefined);
+
+      return saved;
+    });
   }
 }

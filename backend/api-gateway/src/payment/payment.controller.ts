@@ -248,9 +248,23 @@ export class PaymentController {
       order_id?: string;
       payment_intent_id?: string;
       already_processed?: boolean;
+      failed?: boolean;
+      failure_reason?: string;
     };
 
     if (!confirmed.order_id || confirmed.already_processed) {
+      return { received: true };
+    }
+
+    if (confirmed.failed) {
+      this.notifyPaymentFailed(
+        confirmed.order_id,
+        confirmed.failure_reason ?? "Paiement refusé",
+      ).catch((err) =>
+        this.logger.error(
+          `Erreur notification échec paiement order ${confirmed.order_id}: ${err?.message}`,
+        ),
+      );
       return { received: true };
     }
 
@@ -265,6 +279,32 @@ export class PaymentController {
     );
 
     return { received: true };
+  }
+
+  private async notifyPaymentFailed(
+    orderId: string,
+    reason: string,
+  ): Promise<void> {
+    const { order } = (await firstValueFrom(
+      this.orderClient.send("order.get", { id: orderId }),
+    )) as {
+      order: {
+        buyer_email: string;
+        buyer_first_name: string;
+        reference: string;
+        event_name: string;
+        total_amount_ttc: number;
+      };
+    };
+
+    this.notifClient.emit("notification.payment_failed", {
+      email: order.buyer_email,
+      firstName: order.buyer_first_name,
+      orderReference: order.reference,
+      eventName: order.event_name,
+      amount: Number(order.total_amount_ttc).toFixed(2),
+      failureReason: reason,
+    });
   }
 
   // ─── Orchestration post-paiement ────────────────────────────────────────────
