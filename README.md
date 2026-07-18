@@ -2,8 +2,6 @@
 
 Backend en microservices NestJS (10 services + API Gateway), une base PostgreSQL dédiée par service, frontend Next.js.
 
-> Les commandes ci-dessous évitent volontairement `&&` pour enchaîner deux commandes (`cd dossier && npm test`) : ça ne fonctionne pas dans Windows PowerShell par défaut (seulement dans PowerShell 7+ ou Git Bash). Chaque étape est sur sa propre ligne — copiez-collez-les une par une, ça marche dans n'importe quel terminal (PowerShell, cmd, bash).
-
 ## 1. Cloner le projet
 
 ```bash
@@ -18,8 +16,6 @@ cp .env.example .env
 ```
 
 Ouvrir `.env` et renseigner au minimum les secrets cryptographiques (voir les commentaires dans `.env.example` pour la commande de génération de chacun) : `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `QR_HMAC_SECRET`, `IBAN_ENCRYPTION_KEY`, ainsi que les mots de passe PostgreSQL/Redis/RabbitMQ/MinIO de votre choix. Les clés Stripe, PayPal, SendGrid et Google/Facebook OAuth peuvent rester vides si ces intégrations ne sont pas utilisées.
-
----
 
 # Partie A — Avec Docker (recommandé)
 
@@ -42,25 +38,23 @@ Premier lancement : 5 à 10 minutes (téléchargement des images Docker + instal
 
 ## A.2 Démarrer un service en particulier
 
-> Le fichier `.env` (créé à l'étape 2) contient `COMPOSE_FILE=docker-compose.yml;docker-compose.dev.yml` : Docker charge donc automatiquement la config dev (rechargement à chaud), sans avoir besoin de répéter `-f` à chaque commande. Testé en conditions réelles : sans ce réglage, Docker recrée le conteneur en config **production**.
+> Le fichier `.env` (créé à l'étape 2) contient `COMPOSE_FILE=docker-compose.yml;docker-compose.dev.yml` : Docker charge donc automatiquement la config dev, sans avoir besoin de répéter `-f` à chaque commande. Testé en conditions réelles : sans ce réglage, Docker recrée le conteneur en config **production**.
 
 ```bash
 docker compose up -d <nom-du-service>
 ```
 
-| Service              | Commande                                 |
-| -------------------- | ----------------------------------------- |
-| api-gateway          | `docker compose up -d api-gateway`          |
-| auth-service         | `docker compose up -d auth-service`         |
-| user-service         | `docker compose up -d user-service`         |
-| event-service        | `docker compose up -d event-service`        |
-| order-service        | `docker compose up -d order-service`        |
-| ticket-service       | `docker compose up -d ticket-service`       |
-| payment-service      | `docker compose up -d payment-service`      |
-| notification-service | `docker compose up -d notification-service` |
-| pdf-service          | `docker compose up -d pdf-service`          |
-| admin-service        | `docker compose up -d admin-service`        |
-| frontend             | `docker compose up -d frontend`             |
+api-gateway : `docker compose up -d api-gateway`  
+ auth-service : `docker compose up -d auth-service`  
+ user-service : `docker compose up -d user-service`  
+ event-service : `docker compose up -d event-service`  
+ order-service : `docker compose up -d order-service`  
+ ticket-service : `docker compose up -d ticket-service`  
+ payment-service : `docker compose up -d payment-service`  
+ notification-service : `docker compose up -d notification-service`
+pdf-service : `docker compose up -d pdf-service`  
+ admin-service : `docker compose up -d admin-service`  
+ frontend : `docker compose up -d frontend`
 
 ## A.3 Arrêter un service en particulier
 
@@ -68,19 +62,17 @@ docker compose up -d <nom-du-service>
 docker compose down <nom-du-service>
 ```
 
-| Service              | Commande                                   |
-| -------------------- | ------------------------------------------ |
-| api-gateway          | `docker compose down api-gateway`          |
-| auth-service         | `docker compose down auth-service`         |
-| user-service         | `docker compose down user-service`         |
-| event-service        | `docker compose down event-service`        |
-| order-service        | `docker compose down order-service`        |
-| ticket-service       | `docker compose down ticket-service`       |
-| payment-service      | `docker compose down payment-service`      |
-| notification-service | `docker compose down notification-service` |
-| pdf-service          | `docker compose down pdf-service`          |
-| admin-service        | `docker compose down admin-service`        |
-| frontend             | `docker compose down frontend`             |
+api-gateway : `docker compose down api-gateway`  
+ auth-service : `docker compose down auth-service`  
+ user-service : `docker compose down user-service`  
+ event-service : `docker compose down event-service`  
+ order-service : `docker compose down order-service`  
+ ticket-service : `docker compose down ticket-service`  
+ payment-service : `docker compose down payment-service`  
+ notification-service : `docker compose down notification-service`
+pdf-service : `docker compose down pdf-service`  
+ admin-service : `docker compose down admin-service`  
+ frontend : `docker compose down frontend`
 
 (`docker compose down <service>` arrête **et supprime** le conteneur, il est recréé proprement au prochain `up`. Pour juste le mettre en pause sans le supprimer : `docker compose stop <nom-du-service>`.)
 
@@ -138,18 +130,16 @@ Le service doit déjà être démarré (A.1/A.2) — les dépendances sont insta
 npm run test:<nom-du-service>
 ```
 
-| Service              | Commande                            |
-| -------------------- | ----------------------------------- |
-| api-gateway          | `npm run test:api-gateway`          |
-| auth-service         | `npm run test:auth-service`         |
-| user-service         | `npm run test:user-service`         |
-| event-service        | `npm run test:event-service`        |
-| order-service        | `npm run test:order-service`        |
-| ticket-service       | `npm run test:ticket-service`       |
-| payment-service      | `npm run test:payment-service`      |
-| notification-service | `npm run test:notification-service` |
-| pdf-service          | `npm run test:pdf-service`          |
-| admin-service        | `npm run test:admin-service`        |
+api-gateway : `npm run test:api-gateway`  
+ auth-service : `npm run test:auth-service`  
+ user-service : `npm run test:user-service`  
+ event-service : `npm run test:event-service`  
+ order-service : `npm run test:order-service`  
+ ticket-service : `npm run test:ticket-service`  
+ payment-service : `npm run test:payment-service`  
+ notification-service : `npm run test:notification-service`
+pdf-service : `npm run test:pdf-service`  
+ admin-service : `npm run test:admin-service`
 
 ## A.7 Lancer tous les tests en une seule commande
 
@@ -210,19 +200,17 @@ npm install --legacy-peer-deps
 npm run start:dev
 ```
 
-| Service              | Aller dans le dossier             |
-| -------------------- | --------------------------------- |
-| api-gateway          | `cd backend/api-gateway`          |
-| auth-service         | `cd backend/auth-service`         |
-| user-service         | `cd backend/user-service`         |
-| event-service        | `cd backend/event-service`        |
-| order-service        | `cd backend/order-service`        |
-| ticket-service       | `cd backend/ticket-service`       |
-| payment-service      | `cd backend/payment-service`      |
-| notification-service | `cd backend/notification-service` |
-| pdf-service          | `cd backend/pdf-service`          |
-| admin-service        | `cd backend/admin-service`        |
-| frontend             | `cd frontend`                     |
+api-gateway : `cd backend/api-gateway`  
+ auth-service : `cd backend/auth-service`  
+ user-service : `cd backend/user-service`  
+ event-service : `cd backend/event-service`  
+ order-service : `cd backend/order-service`  
+ ticket-service : `cd backend/ticket-service`  
+ payment-service : `cd backend/payment-service`  
+ notification-service : `cd backend/notification-service`
+pdf-service : `cd backend/pdf-service`  
+ admin-service : `cd backend/admin-service`  
+ frontend : `cd frontend`
 
 Puis, dans chaque cas (une seule fois) :
 
