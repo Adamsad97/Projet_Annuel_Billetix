@@ -102,8 +102,11 @@ export class TicketCategoryService {
       where: { event_id: eventId, is_active: true },
     });
 
-    const total_quota = categories.reduce((sum, c) => sum + c.quota, 0);
-    const remaining = categories.reduce((sum, c) => sum + c.remaining_quota, 0);
+    const total_quota = categories.reduce((sum, category) => sum + category.quota, 0);
+    const remaining = categories.reduce(
+      (sum, category) => sum + category.remaining_quota,
+      0,
+    );
     const sold = total_quota - remaining;
 
     return {
@@ -111,13 +114,13 @@ export class TicketCategoryService {
       remaining,
       sold,
       fill_rate: total_quota > 0 ? (sold / total_quota) * 100 : 0,
-      categories: categories.map((c) => ({
-        id: c.id,
-        name: c.name,
-        quota: c.quota,
-        remaining_quota: c.remaining_quota,
-        sold: c.quota - c.remaining_quota,
-        price_ht: Number(c.price_ht),
+      categories: categories.map((category) => ({
+        id: category.id,
+        name: category.name,
+        quota: category.quota,
+        remaining_quota: category.remaining_quota,
+        sold: category.quota - category.remaining_quota,
+        price_ht: Number(category.price_ht),
       })),
     };
   }

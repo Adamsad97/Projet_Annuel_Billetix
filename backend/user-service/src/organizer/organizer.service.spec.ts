@@ -13,7 +13,7 @@ describe('OrganizerService', () => {
   let authClient: { send: jest.Mock };
 
   beforeEach(async () => {
-    repo = { findOne: jest.fn(), save: jest.fn().mockImplementation((p) => Promise.resolve(p)), create: jest.fn(), find: jest.fn() };
+    repo = { findOne: jest.fn(), save: jest.fn().mockImplementation((profile) => Promise.resolve(profile)), create: jest.fn(), find: jest.fn() };
     crypto = { encrypt: jest.fn().mockReturnValue({ encrypted: 'enc', iv: 'iv', tag: 'tag' }), decrypt: jest.fn() };
     authClient = { send: jest.fn() };
 

@@ -31,8 +31,8 @@ describe('EventService', () => {
 
   beforeEach(async () => {
     repo = {
-      create: jest.fn().mockImplementation((e) => e),
-      save: jest.fn().mockImplementation((e) => Promise.resolve(e)),
+      create: jest.fn().mockImplementation((event) => event),
+      save: jest.fn().mockImplementation((event) => Promise.resolve(event)),
       findOne: jest.fn(),
       find: jest.fn(),
     };

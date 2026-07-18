@@ -19,8 +19,8 @@ describe('PayoutService', () => {
       getMany: jest.fn().mockResolvedValue([]),
     };
     repo = {
-      save: jest.fn().mockImplementation((p) => Promise.resolve(p)),
-      create: jest.fn().mockImplementation((p) => p),
+      save: jest.fn().mockImplementation((payout) => Promise.resolve(payout)),
+      create: jest.fn().mockImplementation((payout) => payout),
       findOne: jest.fn(),
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
     };

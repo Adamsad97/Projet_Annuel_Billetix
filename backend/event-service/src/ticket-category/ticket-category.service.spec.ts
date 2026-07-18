@@ -17,8 +17,8 @@ describe('TicketCategoryService', () => {
     repo = {
       find: jest.fn(),
       findOne: jest.fn(),
-      create: jest.fn().mockImplementation((c) => c),
-      save: jest.fn().mockImplementation((c) => Promise.resolve(c)),
+      create: jest.fn().mockImplementation((category) => category),
+      save: jest.fn().mockImplementation((category) => Promise.resolve(category)),
       update: jest.fn(),
     };
     eventRepo = { findOne: jest.fn() };

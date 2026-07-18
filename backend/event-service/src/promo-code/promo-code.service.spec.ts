@@ -13,8 +13,8 @@ describe('PromoCodeService', () => {
   beforeEach(async () => {
     repo = {
       findOne: jest.fn(),
-      create: jest.fn().mockImplementation((p) => p),
-      save: jest.fn().mockImplementation((p) => Promise.resolve(p)),
+      create: jest.fn().mockImplementation((promoCode) => promoCode),
+      save: jest.fn().mockImplementation((promoCode) => Promise.resolve(promoCode)),
     };
     dataSource = { query: jest.fn() };
 

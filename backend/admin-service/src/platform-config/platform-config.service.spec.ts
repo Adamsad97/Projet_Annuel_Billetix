@@ -10,8 +10,8 @@ describe('PlatformConfigService', () => {
   beforeEach(async () => {
     repo = {
       findOne: jest.fn(),
-      save: jest.fn().mockImplementation((s) => Promise.resolve(s)),
-      create: jest.fn().mockImplementation((s) => s),
+      save: jest.fn().mockImplementation((setting) => Promise.resolve(setting)),
+      create: jest.fn().mockImplementation((setting) => setting),
       find: jest.fn(),
     };
 

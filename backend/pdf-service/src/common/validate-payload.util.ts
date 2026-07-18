@@ -21,7 +21,9 @@ export async function validatePayload<T extends object>(
   }
 
   const message = errors
-    .map((e) => Object.values(e.constraints ?? {}).join(', '))
+    .map((validationError) =>
+      Object.values(validationError.constraints ?? {}).join(', '),
+    )
     .join(' | ');
   return { valid: false, message };
 }

@@ -159,9 +159,9 @@ export class EventController {
 
     const now = new Date();
     const totals = eventsSummary.reduce(
-      (acc, e) => ({
-        revenue_ttc: acc.revenue_ttc + Number(e.revenue_ttc),
-        tickets_sold: acc.tickets_sold + Number(e.sold),
+      (acc, eventSummary) => ({
+        revenue_ttc: acc.revenue_ttc + Number(eventSummary.revenue_ttc),
+        tickets_sold: acc.tickets_sold + Number(eventSummary.sold),
       }),
       { revenue_ttc: 0, tickets_sold: 0 },
     );
@@ -170,7 +170,7 @@ export class EventController {
       totals: {
         events_count: events.length,
         upcoming_events_count: events.filter(
-          (e) => new Date(e.start_date) > now,
+          (event) => new Date(event.start_date) > now,
         ).length,
         revenue_ttc: totals.revenue_ttc,
         tickets_sold: totals.tickets_sold,
