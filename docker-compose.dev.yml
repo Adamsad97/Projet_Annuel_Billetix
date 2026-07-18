@@ -4,9 +4,27 @@
 services:
 
   # Infrastructure : ports exposés pour accès direct depuis l'hôte
-  postgres:
+  auth-db:
     ports:
       - "5432:5432"
+  user-db:
+    ports:
+      - "5433:5432"
+  event-db:
+    ports:
+      - "5434:5432"
+  order-db:
+    ports:
+      - "5435:5432"
+  ticket-db:
+    ports:
+      - "5436:5432"
+  payment-db:
+    ports:
+      - "5437:5432"
+  admin-db:
+    ports:
+      - "5438:5432"
   redis:
     ports:
       - "6379:6379"
