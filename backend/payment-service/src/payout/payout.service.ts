@@ -208,6 +208,57 @@ export class PayoutService {
     return this.repo.save(payout);
   }
 
+  /**
+   * Bloque automatiquement le reversement lié à une commande lorsqu'un
+   * litige s'ouvre (CDC §7.2 : « litige en cours → fonds bloqués jusqu'à
+   * résolution »). Ne bloque que si le reversement est encore PENDING —
+   * un reversement déjà versé ne peut pas être rappelé, et un reversement
+   * déjà bloqué/en cours n'a pas à être re-bloqué. `blocked_by: null`
+   * distingue ce blocage automatique d'un blocage manuel par un admin.
+   */
+  async blockByOrder(orderId: string, reason: string): Promise<Payout | null> {
+    const payout = await this.repo.findOne({ where: { order_id: orderId } });
+    if (!payout || payout.status !== PayoutStatus.PENDING) return null;
+    payout.status = PayoutStatus.BLOCKED;
+    payout.blocked_at = new Date();
+    payout.blocked_by = null;
+    payout.blocked_reason = reason;
+    return this.repo.save(payout);
+  }
+
+  /**
+   * Débloque un reversement (litige résolu, ou expiration du délai max —
+   * cf. PayoutSchedulerService.unblockExpiredDisputePayouts). Repasse en
+   * PENDING : `scheduled_at` n'est pas modifié, il a déjà été calculé
+   * correctement à la création — s'il est déjà échu, le prochain cycle de
+   * reversement le traitera directement.
+   */
+  async unblock(id: string): Promise<Payout> {
+    const payout = await this.getById(id);
+    if (payout.status !== PayoutStatus.BLOCKED) {
+      throw new RpcException({ statusCode: 400, message: 'Ce reversement n\'est pas bloqué' });
+    }
+    payout.status = PayoutStatus.PENDING;
+    return this.repo.save(payout);
+  }
+
+  /** Débloque le reversement lié à une commande (litige résolu) — no-op silencieux si rien à débloquer. */
+  async unblockByOrder(orderId: string): Promise<void> {
+    const payout = await this.repo.findOne({ where: { order_id: orderId } });
+    if (!payout || payout.status !== PayoutStatus.BLOCKED) return;
+    payout.status = PayoutStatus.PENDING;
+    await this.repo.save(payout);
+  }
+
+  /** Reversements bloqués depuis plus de `maxDays` — déblocage automatique (CDC §7.2 : 30 jours max). */
+  async getExpiredBlockedPayouts(maxDays: number): Promise<Payout[]> {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - maxDays);
+    return this.repo.find({
+      where: { status: PayoutStatus.BLOCKED, blocked_at: LessThanOrEqual(cutoff) },
+    });
+  }
+
   async requestEarly(id: string, organizerId: string): Promise<Payout> {
     const payout = await this.getById(id);
     if (payout.organizer_id !== organizerId) {

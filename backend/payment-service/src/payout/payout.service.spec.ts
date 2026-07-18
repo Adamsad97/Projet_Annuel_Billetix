@@ -8,7 +8,7 @@ import { PayoutService } from './payout.service';
 
 describe('PayoutService', () => {
   let service: PayoutService;
-  let repo: { save: jest.Mock; create: jest.Mock; findOne: jest.Mock; createQueryBuilder: jest.Mock };
+  let repo: { save: jest.Mock; create: jest.Mock; findOne: jest.Mock; find: jest.Mock; createQueryBuilder: jest.Mock };
   let queryBuilder: { where: jest.Mock; andWhere: jest.Mock; getMany: jest.Mock };
   let stripe: { createTransfer: jest.Mock };
 
@@ -22,6 +22,7 @@ describe('PayoutService', () => {
       save: jest.fn().mockImplementation((payout) => Promise.resolve(payout)),
       create: jest.fn().mockImplementation((payout) => payout),
       findOne: jest.fn(),
+      find: jest.fn(),
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
     };
     stripe = { createTransfer: jest.fn() };
@@ -99,6 +100,72 @@ describe('PayoutService', () => {
       expect(result.status).toBe(PayoutStatus.BLOCKED);
       expect(result.blocked_by).toBe('admin-1');
       expect(result.blocked_reason).toBe('Fraude suspectée');
+    });
+  });
+
+  describe('blockByOrder', () => {
+    it("bloque automatiquement (sans admin) le reversement PENDING lié à la commande d'un litige", async () => {
+      repo.findOne.mockResolvedValue({ id: 'p1', order_id: 'order-1', status: PayoutStatus.PENDING });
+
+      const result = await service.blockByOrder('order-1', 'Litige ouvert (#d1)');
+
+      expect(result?.status).toBe(PayoutStatus.BLOCKED);
+      expect(result?.blocked_by).toBeNull();
+      expect(result?.blocked_reason).toBe('Litige ouvert (#d1)');
+    });
+
+    it("ne fait rien si aucun reversement n'est lié à la commande", async () => {
+      repo.findOne.mockResolvedValue(null);
+      const result = await service.blockByOrder('order-1', 'Litige ouvert (#d1)');
+      expect(result).toBeNull();
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("ne bloque pas un reversement déjà versé (COMPLETED) — un virement Stripe émis ne peut pas être rappelé", async () => {
+      repo.findOne.mockResolvedValue({ id: 'p1', order_id: 'order-1', status: PayoutStatus.COMPLETED });
+      const result = await service.blockByOrder('order-1', 'Litige ouvert (#d1)');
+      expect(result).toBeNull();
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('unblock', () => {
+    it('repasse un reversement BLOCKED en PENDING', async () => {
+      repo.findOne.mockResolvedValue({ id: 'p1', status: PayoutStatus.BLOCKED });
+      const result = await service.unblock('p1');
+      expect(result.status).toBe(PayoutStatus.PENDING);
+    });
+
+    it("refuse de débloquer un reversement qui n'est pas bloqué", async () => {
+      repo.findOne.mockResolvedValue({ id: 'p1', status: PayoutStatus.PENDING });
+      await expect(service.unblock('p1')).rejects.toThrow(RpcException);
+    });
+  });
+
+  describe('unblockByOrder', () => {
+    it('débloque le reversement lié à la commande (litige résolu)', async () => {
+      repo.findOne.mockResolvedValue({ id: 'p1', order_id: 'order-1', status: PayoutStatus.BLOCKED });
+      await service.unblockByOrder('order-1');
+      expect(repo.save).toHaveBeenCalledWith(expect.objectContaining({ status: PayoutStatus.PENDING }));
+    });
+
+    it("ne fait rien si le reversement n'est pas bloqué (déjà débloqué ou jamais bloqué)", async () => {
+      repo.findOne.mockResolvedValue({ id: 'p1', order_id: 'order-1', status: PayoutStatus.PENDING });
+      await service.unblockByOrder('order-1');
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getExpiredBlockedPayouts', () => {
+    it('interroge les reversements BLOCKED depuis plus de maxDays jours', async () => {
+      repo.find.mockResolvedValue([{ id: 'p1' }]);
+
+      const result = await service.getExpiredBlockedPayouts(30);
+
+      expect(repo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ status: PayoutStatus.BLOCKED }) }),
+      );
+      expect(result).toEqual([{ id: 'p1' }]);
     });
   });
 

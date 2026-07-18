@@ -27,6 +27,7 @@ export interface PlatformConfig {
   event_archive_delay_days: number;
   order_abandon_timeout_minutes: number;
   resale_reservation_minutes: number;
+  dispute_payout_block_max_days: number;
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -52,6 +53,7 @@ const FALLBACK: PlatformConfig = {
   event_archive_delay_days: 30,
   order_abandon_timeout_minutes: 30,
   resale_reservation_minutes: 15,
+  dispute_payout_block_max_days: 30,
 };
 
 @Injectable()

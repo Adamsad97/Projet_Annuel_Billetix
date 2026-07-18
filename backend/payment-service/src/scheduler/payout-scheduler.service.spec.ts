@@ -1,23 +1,37 @@
 import { Test } from '@nestjs/testing';
 import { of } from 'rxjs';
+import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { PayoutService } from '../payout/payout.service';
 import { PayoutSchedulerService } from './payout-scheduler.service';
 
 describe('PayoutSchedulerService', () => {
   let service: PayoutSchedulerService;
-  let payoutService: { getDuePayouts: jest.Mock; process: jest.Mock };
+  let payoutService: {
+    getDuePayouts: jest.Mock;
+    process: jest.Mock;
+    getExpiredBlockedPayouts: jest.Mock;
+    unblock: jest.Mock;
+  };
   let userClient: { send: jest.Mock };
+  let platformConfig: { get: jest.Mock };
 
   const duePayout = { id: 'payout-1', organizer_id: 'org-1' };
 
   beforeEach(async () => {
-    payoutService = { getDuePayouts: jest.fn().mockResolvedValue([duePayout]), process: jest.fn() };
+    payoutService = {
+      getDuePayouts: jest.fn().mockResolvedValue([duePayout]),
+      process: jest.fn(),
+      getExpiredBlockedPayouts: jest.fn().mockResolvedValue([]),
+      unblock: jest.fn(),
+    };
     userClient = { send: jest.fn() };
+    platformConfig = { get: jest.fn().mockResolvedValue({ dispute_payout_block_max_days: 30 }) };
 
     const module = await Test.createTestingModule({
       providers: [
         PayoutSchedulerService,
         { provide: PayoutService, useValue: payoutService },
+        { provide: PlatformConfigCache, useValue: platformConfig },
         { provide: 'USER_SERVICE', useValue: userClient },
       ],
     }).compile();
@@ -62,5 +76,24 @@ describe('PayoutSchedulerService', () => {
 
     expect(userClient.send).not.toHaveBeenCalled();
     expect(payoutService.process).not.toHaveBeenCalled();
+  });
+
+  describe('unblockExpiredDisputePayouts', () => {
+    it('débloque les reversements bloqués depuis plus longtemps que la limite configurée (jamais figée dans le code)', async () => {
+      payoutService.getExpiredBlockedPayouts.mockResolvedValue([{ id: 'payout-2' }]);
+
+      await service.unblockExpiredDisputePayouts();
+
+      expect(payoutService.getExpiredBlockedPayouts).toHaveBeenCalledWith(30);
+      expect(payoutService.unblock).toHaveBeenCalledWith('payout-2');
+    });
+
+    it("ne fait rien si aucun reversement bloqué n'a dépassé le délai", async () => {
+      payoutService.getExpiredBlockedPayouts.mockResolvedValue([]);
+
+      await service.unblockExpiredDisputePayouts();
+
+      expect(payoutService.unblock).not.toHaveBeenCalled();
+    });
   });
 });

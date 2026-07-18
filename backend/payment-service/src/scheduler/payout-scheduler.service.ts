@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
+import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { PayoutService } from '../payout/payout.service';
 
 interface OrganizerProfile {
@@ -16,6 +17,7 @@ export class PayoutSchedulerService {
 
   constructor(
     private readonly payoutService: PayoutService,
+    private readonly platformConfig: PlatformConfigCache,
     @Inject('USER_SERVICE') private readonly userClient: ClientProxy,
   ) {}
 
@@ -54,6 +56,32 @@ export class PayoutSchedulerService {
         this.logger.log(`Reversement ${payout.id} traité avec succès`);
       } catch (err) {
         this.logger.error(`Échec du traitement du reversement ${payout.id} : ${err?.message}`);
+      }
+    }
+  }
+
+  // Tous les jours à 10h30 UTC — un reversement bloqué pour litige ne doit
+  // jamais rester bloqué indéfiniment (CDC §7.2 : « fonds bloqués jusqu'à
+  // résolution, 30 jours maximum »). Débloque automatiquement ceux dont le
+  // délai configuré (dispute_payout_block_max_days) est dépassé, résolu ou non.
+  @Cron('30 10 * * *')
+  async unblockExpiredDisputePayouts(): Promise<void> {
+    const config = await this.platformConfig.get();
+    const expired = await this.payoutService.getExpiredBlockedPayouts(
+      config.dispute_payout_block_max_days,
+    );
+    if (expired.length === 0) return;
+
+    this.logger.log(`Reversements bloqués à débloquer automatiquement (délai dépassé) : ${expired.length}`);
+
+    for (const payout of expired) {
+      try {
+        await this.payoutService.unblock(payout.id);
+        this.logger.warn(
+          `Reversement ${payout.id} débloqué automatiquement après ${config.dispute_payout_block_max_days} jours de blocage`,
+        );
+      } catch (err) {
+        this.logger.error(`Échec du déblocage automatique du reversement ${payout.id} : ${err?.message}`);
       }
     }
   }
