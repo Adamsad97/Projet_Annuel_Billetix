@@ -1,18 +1,25 @@
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { RpcException } from '@nestjs/microservices';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { of } from 'rxjs';
 import { DataSource } from 'typeorm';
+import { OrangeMoneyProvider } from '../providers/orange-money.provider';
+import { PaypalProvider } from '../providers/paypal.provider';
+import { StripePaymentProvider } from '../providers/stripe.provider';
+import { WaveProvider } from '../providers/wave.provider';
 import { PayoutService } from '../payout/payout.service';
-import { StripeService } from '../stripe/stripe.service';
-import { Payment, PaymentStatus } from './payment.entity';
+import { Payment, PaymentProvider, PaymentStatus } from './payment.entity';
 import { PaymentService } from './payment.service';
 
 describe('PaymentService', () => {
   let service: PaymentService;
   let repo: { findOne: jest.Mock; save: jest.Mock; create: jest.Mock; createQueryBuilder: jest.Mock };
   let updateQueryBuilder: { update: jest.Mock; set: jest.Mock; where: jest.Mock; andWhere: jest.Mock; execute: jest.Mock };
-  let stripe: { createRefund: jest.Mock; createPaymentIntent: jest.Mock };
+  let stripeProvider: { createPayment: jest.Mock; refund: jest.Mock };
+  let paypalProvider: { createPayment: jest.Mock; refund: jest.Mock; captureOrder: jest.Mock };
+  let orangeMoneyProvider: { createPayment: jest.Mock; refund: jest.Mock; getTransactionStatus: jest.Mock };
+  let waveProvider: { createPayment: jest.Mock; refund: jest.Mock };
   let payoutService: { recalculateForRefund: jest.Mock };
   let orderClient: { send: jest.Mock };
   let dataSource: { transaction: jest.Mock };
@@ -33,12 +40,23 @@ describe('PaymentService', () => {
       create: jest.fn().mockImplementation((payment) => payment),
       createQueryBuilder: jest.fn().mockReturnValue(updateQueryBuilder),
     };
-    stripe = {
-      createRefund: jest.fn().mockResolvedValue({}),
-      createPaymentIntent: jest.fn().mockResolvedValue({
-        client_secret: 'secret_123',
-        payment_intent_id: 'pi_123',
-      }),
+    stripeProvider = {
+      createPayment: jest.fn().mockResolvedValue({ providerPaymentId: 'pi_123', clientSecret: 'secret_123' }),
+      refund: jest.fn().mockResolvedValue({ refundId: 're_123' }),
+    };
+    paypalProvider = {
+      createPayment: jest.fn().mockResolvedValue({ providerPaymentId: 'ORDER-1', redirectUrl: 'https://paypal.com/approve' }),
+      refund: jest.fn().mockResolvedValue({ refundId: 'paypal_refund_1' }),
+      captureOrder: jest.fn(),
+    };
+    orangeMoneyProvider = {
+      createPayment: jest.fn().mockResolvedValue({ providerPaymentId: 'pay_token_1', redirectUrl: 'https://om.com/pay', notifToken: 'notif_1' }),
+      refund: jest.fn(),
+      getTransactionStatus: jest.fn(),
+    };
+    waveProvider = {
+      createPayment: jest.fn().mockResolvedValue({ providerPaymentId: 'cos-1', redirectUrl: 'https://pay.wave.com/c/cos-1' }),
+      refund: jest.fn().mockResolvedValue({ refundId: 'cos-1' }),
     };
     payoutService = { recalculateForRefund: jest.fn().mockResolvedValue(undefined) };
     orderClient = { send: jest.fn() };
@@ -59,7 +77,11 @@ describe('PaymentService', () => {
       providers: [
         PaymentService,
         { provide: getRepositoryToken(Payment), useValue: repo },
-        { provide: StripeService, useValue: stripe },
+        { provide: ConfigService, useValue: { get: jest.fn((_key: string, fallback?: string) => fallback) } },
+        { provide: StripePaymentProvider, useValue: stripeProvider },
+        { provide: PaypalProvider, useValue: paypalProvider },
+        { provide: OrangeMoneyProvider, useValue: orangeMoneyProvider },
+        { provide: WaveProvider, useValue: waveProvider },
         { provide: PayoutService, useValue: payoutService },
         { provide: 'ORDER_SERVICE', useValue: orderClient },
         { provide: DataSource, useValue: dataSource },
@@ -69,28 +91,93 @@ describe('PaymentService', () => {
     service = module.get(PaymentService);
   });
 
-  describe('createIntent — montant recalculé côté serveur', () => {
-    it("ignore tout montant client et utilise le total réel de la commande", async () => {
+  describe('createIntent — montant recalculé côté serveur, prestataire selon le choix de l\'acheteur', () => {
+    it("ignore tout montant client et utilise le total réel de la commande (Stripe)", async () => {
       orderClient.send.mockReturnValue(
-        of({ order: { buyer_id: 'buyer-1', total_amount_ttc: 123.45 } }),
+        of({ order: { buyer_id: 'buyer-1', total_amount_ttc: 123.45, payment_method: 'STRIPE' } }),
       );
 
-      await service.createIntent({ order_id: 'order-1', buyer_id: 'buyer-1', buyer_email: 'jean@example.com' });
+      const result = await service.createIntent({ order_id: 'order-1', buyer_id: 'buyer-1', buyer_email: 'jean@example.com' });
 
-      expect(stripe.createPaymentIntent).toHaveBeenCalledWith(
-        expect.objectContaining({ amount_cents: 12345 }),
+      expect(stripeProvider.createPayment).toHaveBeenCalledWith(
+        expect.objectContaining({ amountCents: 12345 }),
       );
+      expect(result.client_secret).toBe('secret_123');
+      expect(result.provider).toBe(PaymentProvider.STRIPE);
     });
 
-    it("refuse si l'appelant n'est pas le propriétaire de la commande", async () => {
+    it.each([
+      ['APPLE_PAY', PaymentProvider.STRIPE],
+      ['GOOGLE_PAY', PaymentProvider.STRIPE],
+    ])(
+      '%s utilise le même prestataire Stripe (même PaymentIntent, méthode choisie côté frontend)',
+      async (paymentMethod, expectedProvider) => {
+        orderClient.send.mockReturnValue(
+          of({ order: { buyer_id: 'buyer-1', total_amount_ttc: 50, payment_method: paymentMethod } }),
+        );
+
+        const result = await service.createIntent({ order_id: 'order-1', buyer_id: 'buyer-1', buyer_email: 'jean@example.com' });
+
+        expect(stripeProvider.createPayment).toHaveBeenCalled();
+        expect(result.provider).toBe(expectedProvider);
+      },
+    );
+
+    it('redirige vers PayPal quand payment_method = PAYPAL', async () => {
       orderClient.send.mockReturnValue(
-        of({ order: { buyer_id: 'un-autre-acheteur', total_amount_ttc: 100 } }),
+        of({ order: { buyer_id: 'buyer-1', total_amount_ttc: 50, payment_method: 'PAYPAL' } }),
+      );
+
+      const result = await service.createIntent({ order_id: 'order-1', buyer_id: 'buyer-1', buyer_email: 'jean@example.com' });
+
+      expect(paypalProvider.createPayment).toHaveBeenCalled();
+      expect(result.redirect_url).toBe('https://paypal.com/approve');
+      expect(result.provider).toBe(PaymentProvider.PAYPAL);
+    });
+
+    it('redirige vers Orange Money quand payment_method = ORANGE_MONEY', async () => {
+      orderClient.send.mockReturnValue(
+        of({ order: { buyer_id: 'buyer-1', total_amount_ttc: 50, payment_method: 'ORANGE_MONEY' } }),
+      );
+
+      const result = await service.createIntent({ order_id: 'order-1', buyer_id: 'buyer-1', buyer_email: 'jean@example.com' });
+
+      expect(orangeMoneyProvider.createPayment).toHaveBeenCalled();
+      expect(result.redirect_url).toBe('https://om.com/pay');
+      expect(result.provider).toBe(PaymentProvider.ORANGE_MONEY);
+    });
+
+    it('redirige vers Wave quand payment_method = WAVE', async () => {
+      orderClient.send.mockReturnValue(
+        of({ order: { buyer_id: 'buyer-1', total_amount_ttc: 50, payment_method: 'WAVE' } }),
+      );
+
+      const result = await service.createIntent({ order_id: 'order-1', buyer_id: 'buyer-1', buyer_email: 'jean@example.com' });
+
+      expect(waveProvider.createPayment).toHaveBeenCalled();
+      expect(result.redirect_url).toBe('https://pay.wave.com/c/cos-1');
+      expect(result.provider).toBe(PaymentProvider.WAVE);
+    });
+
+    it('refuse un moyen de paiement non supporté', async () => {
+      orderClient.send.mockReturnValue(
+        of({ order: { buyer_id: 'buyer-1', total_amount_ttc: 50, payment_method: 'BITCOIN' } }),
       );
 
       await expect(
         service.createIntent({ order_id: 'order-1', buyer_id: 'buyer-1', buyer_email: 'jean@example.com' }),
       ).rejects.toThrow(RpcException);
-      expect(stripe.createPaymentIntent).not.toHaveBeenCalled();
+    });
+
+    it("refuse si l'appelant n'est pas le propriétaire de la commande", async () => {
+      orderClient.send.mockReturnValue(
+        of({ order: { buyer_id: 'un-autre-acheteur', total_amount_ttc: 100, payment_method: 'STRIPE' } }),
+      );
+
+      await expect(
+        service.createIntent({ order_id: 'order-1', buyer_id: 'buyer-1', buyer_email: 'jean@example.com' }),
+      ).rejects.toThrow(RpcException);
+      expect(stripeProvider.createPayment).not.toHaveBeenCalled();
     });
 
     it('refuse si la commande est déjà payée', async () => {
@@ -126,11 +213,123 @@ describe('PaymentService', () => {
     });
   });
 
-  describe('refund — remboursement total et partiel', () => {
+  describe('confirmPaypalOrderApproved — capture serveur après approbation', () => {
+    it("capture les fonds et remplace l'ID de commande par l'ID de capture réel", async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'pay-1',
+        order_id: 'order-1',
+        provider: PaymentProvider.PAYPAL,
+        provider_payment_id: 'ORDER-1',
+        status: PaymentStatus.PENDING,
+      });
+      paypalProvider.captureOrder.mockResolvedValue({ captureId: 'CAPTURE-1', status: 'COMPLETED' });
+      updateQueryBuilder.execute.mockResolvedValue({ affected: 1 });
+
+      const result = await service.confirmPaypalOrderApproved('ORDER-1');
+
+      expect(paypalProvider.captureOrder).toHaveBeenCalledWith('ORDER-1');
+      expect(result?.provider_payment_id).toBe('CAPTURE-1');
+      expect(result?.status).toBe(PaymentStatus.PAID);
+      expect(result?._wasAlreadyPaid).toBe(false);
+    });
+
+    it('marque FAILED si la capture PayPal ne renvoie pas COMPLETED', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'pay-1',
+        order_id: 'order-1',
+        provider: PaymentProvider.PAYPAL,
+        provider_payment_id: 'ORDER-1',
+        status: PaymentStatus.PENDING,
+      });
+      paypalProvider.captureOrder.mockResolvedValue({ captureId: 'CAPTURE-1', status: 'DECLINED' });
+
+      const result = await service.confirmPaypalOrderApproved('ORDER-1');
+
+      expect(result?.status).toBe(PaymentStatus.FAILED);
+    });
+
+    it('retourne null si aucun paiement PayPal ne correspond', async () => {
+      repo.findOne.mockResolvedValue(null);
+      const result = await service.confirmPaypalOrderApproved('ORDER-INCONNU');
+      expect(result).toBeNull();
+      expect(paypalProvider.captureOrder).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('confirmOrangeMoneyCallback — vérification jeton + statut réel', () => {
+    it('refuse un jeton de notification qui ne correspond pas', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'pay-1',
+        order_id: 'order-1',
+        provider: PaymentProvider.ORANGE_MONEY,
+        provider_payment_id: 'pay_token_1',
+        provider_notif_token: 'le-vrai-jeton',
+        status: PaymentStatus.PENDING,
+      });
+
+      await expect(
+        service.confirmOrangeMoneyCallback('pay_token_1', 'order-1', 'jeton-falsifie'),
+      ).rejects.toThrow(RpcException);
+      expect(orangeMoneyProvider.getTransactionStatus).not.toHaveBeenCalled();
+    });
+
+    it('valide le paiement si le jeton correspond et le statut réel est SUCCESS', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'pay-1',
+        order_id: 'order-1',
+        provider: PaymentProvider.ORANGE_MONEY,
+        provider_payment_id: 'pay_token_1',
+        provider_notif_token: 'notif-1',
+        status: PaymentStatus.PENDING,
+      });
+      orangeMoneyProvider.getTransactionStatus.mockResolvedValue('SUCCESS');
+      updateQueryBuilder.execute.mockResolvedValue({ affected: 1 });
+
+      const result = await service.confirmOrangeMoneyCallback('pay_token_1', 'order-1', 'notif-1');
+
+      expect(result?.status).toBe(PaymentStatus.PAID);
+    });
+
+    it("marque FAILED si le statut réel Orange Money n'est pas SUCCESS", async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'pay-1',
+        order_id: 'order-1',
+        provider: PaymentProvider.ORANGE_MONEY,
+        provider_payment_id: 'pay_token_1',
+        provider_notif_token: 'notif-1',
+        status: PaymentStatus.PENDING,
+      });
+      orangeMoneyProvider.getTransactionStatus.mockResolvedValue('FAILED');
+
+      const result = await service.confirmOrangeMoneyCallback('pay_token_1', 'order-1', 'notif-1');
+
+      expect(result?.status).toBe(PaymentStatus.FAILED);
+    });
+  });
+
+  describe('confirmWaveCheckoutCompleted', () => {
+    it('marque PAID via la même transition atomique idempotente', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'pay-1',
+        order_id: 'order-1',
+        provider: PaymentProvider.WAVE,
+        provider_payment_id: 'cos-1',
+        status: PaymentStatus.PENDING,
+      });
+      updateQueryBuilder.execute.mockResolvedValue({ affected: 1 });
+
+      const result = await service.confirmWaveCheckoutCompleted('cos-1');
+
+      expect(result?.status).toBe(PaymentStatus.PAID);
+    });
+  });
+
+  describe('refund — remboursement total et partiel (Stripe)', () => {
     const paidPayment = {
       id: 'pay-1',
       order_id: 'order-1',
       amount: 100,
+      provider: PaymentProvider.STRIPE,
       provider_payment_id: 'pi_123',
       status: PaymentStatus.PAID,
       refunded_amount: null,
@@ -140,14 +339,14 @@ describe('PaymentService', () => {
       refundQueryBuilder.getOne.mockResolvedValue({ ...paidPayment, status: PaymentStatus.PENDING });
 
       await expect(service.refund('order-1')).rejects.toThrow(RpcException);
-      expect(stripe.createRefund).not.toHaveBeenCalled();
+      expect(stripeProvider.refund).not.toHaveBeenCalled();
     });
 
     it('rejette un montant de remboursement supérieur au solde restant', async () => {
       refundQueryBuilder.getOne.mockResolvedValue({ ...paidPayment });
 
       await expect(service.refund('order-1', 15000)).rejects.toThrow(RpcException);
-      expect(stripe.createRefund).not.toHaveBeenCalled();
+      expect(stripeProvider.refund).not.toHaveBeenCalled();
     });
 
     it('un remboursement partiel passe le statut à PARTIALLY_REFUNDED (pas REFUNDED)', async () => {
@@ -232,6 +431,41 @@ describe('PaymentService', () => {
       // 40€ après le premier commit), jamais cumulée jusqu'à 120€/100€.
       await expect(service.refund('order-1', 6000)).rejects.toThrow(RpcException);
       expect(currentRefunded).toBe(60);
+    });
+  });
+
+  describe('refund — dispatche vers le bon prestataire selon payment.provider', () => {
+    it('utilise PaypalProvider.refund pour un paiement PayPal', async () => {
+      refundQueryBuilder.getOne.mockResolvedValue({
+        id: 'pay-1',
+        order_id: 'order-1',
+        amount: 100,
+        provider: PaymentProvider.PAYPAL,
+        provider_payment_id: 'CAPTURE-1',
+        status: PaymentStatus.PAID,
+        refunded_amount: null,
+      });
+
+      await service.refund('order-1');
+
+      expect(paypalProvider.refund).toHaveBeenCalledWith('CAPTURE-1', undefined);
+      expect(stripeProvider.refund).not.toHaveBeenCalled();
+    });
+
+    it('utilise WaveProvider.refund pour un paiement Wave', async () => {
+      refundQueryBuilder.getOne.mockResolvedValue({
+        id: 'pay-1',
+        order_id: 'order-1',
+        amount: 100,
+        provider: PaymentProvider.WAVE,
+        provider_payment_id: 'cos-1',
+        status: PaymentStatus.PAID,
+        refunded_amount: null,
+      });
+
+      await service.refund('order-1');
+
+      expect(waveProvider.refund).toHaveBeenCalledWith('cos-1', undefined);
     });
   });
 

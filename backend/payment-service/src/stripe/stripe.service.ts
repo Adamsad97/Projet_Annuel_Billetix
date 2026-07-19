@@ -25,6 +25,12 @@ export class StripeService implements OnModuleInit {
       currency: data.currency,
       metadata: { order_id: data.order_id },
       receipt_email: data.buyer_email,
+      // Active automatiquement toutes les méthodes de paiement configurées
+      // sur le compte Stripe (carte, Apple Pay, Google Pay...) — Apple Pay
+      // et Google Pay ne sont pas des prestataires distincts, ce sont des
+      // méthodes de paiement au sein du même PaymentIntent Stripe, choisies
+      // par le navigateur/l'appareil de l'acheteur côté frontend.
+      automatic_payment_methods: { enabled: true },
     });
     return { client_secret: intent.client_secret, payment_intent_id: intent.id };
   }

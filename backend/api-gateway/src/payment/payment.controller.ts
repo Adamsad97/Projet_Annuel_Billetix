@@ -369,6 +369,112 @@ export class PaymentController {
     });
   }
 
+  // ─── Webhook PayPal ─────────────────────────────────────────────────────────
+
+  @Public()
+  @Post("webhook/paypal")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Webhook PayPal (signature vérifiée côté payment-service)",
+  })
+  async paypalWebhook(@Req() req: RawBodyRequest<Request>) {
+    const confirmed = (await firstValueFrom(
+      this.paymentClient.send("payment.confirm_paypal_webhook", {
+        payload: req.rawBody?.toString("utf8") ?? "",
+        headers: req.headers as Record<string, string>,
+      }),
+    )) as {
+      received: boolean;
+      order_id?: string;
+      payment_intent_id?: string;
+      already_processed?: boolean;
+      failed?: boolean;
+    };
+
+    if (!confirmed.order_id || confirmed.already_processed || confirmed.failed) {
+      return { received: true };
+    }
+
+    this.fulfillment
+      .confirmAndFulfill(confirmed.order_id, confirmed.payment_intent_id ?? "")
+      .catch((err) =>
+        this.logger.error(`Erreur post-paiement PayPal order ${confirmed.order_id}: ${err?.message}`),
+      );
+
+    return { received: true };
+  }
+
+  // ─── Callback Orange Money ──────────────────────────────────────────────────
+
+  @Public()
+  @Post("webhook/orange-money")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Callback de notification Orange Money (jeton vérifié côté payment-service)",
+  })
+  async orangeMoneyCallback(
+    @Body() dto: { pay_token: string; order_id: string; notif_token: string },
+  ) {
+    const confirmed = (await firstValueFrom(
+      this.paymentClient.send("payment.confirm_orange_money_callback", dto),
+    )) as {
+      received: boolean;
+      order_id?: string;
+      payment_intent_id?: string;
+      already_processed?: boolean;
+      failed?: boolean;
+    };
+
+    if (!confirmed.order_id || confirmed.already_processed || confirmed.failed) {
+      return { received: true };
+    }
+
+    this.fulfillment
+      .confirmAndFulfill(confirmed.order_id, confirmed.payment_intent_id ?? "")
+      .catch((err) =>
+        this.logger.error(`Erreur post-paiement Orange Money order ${confirmed.order_id}: ${err?.message}`),
+      );
+
+    return { received: true };
+  }
+
+  // ─── Webhook Wave ───────────────────────────────────────────────────────────
+
+  @Public()
+  @Post("webhook/wave")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Webhook Wave (signature vérifiée côté payment-service)",
+  })
+  async waveWebhook(
+    @Req() req: RawBodyRequest<Request>,
+    @Headers("wave-signature") signatureHeader: string,
+  ) {
+    const confirmed = (await firstValueFrom(
+      this.paymentClient.send("payment.confirm_wave_webhook", {
+        payload: req.rawBody?.toString("utf8") ?? "",
+        signatureHeader,
+      }),
+    )) as {
+      received: boolean;
+      order_id?: string;
+      payment_intent_id?: string;
+      already_processed?: boolean;
+    };
+
+    if (!confirmed.order_id || confirmed.already_processed) {
+      return { received: true };
+    }
+
+    this.fulfillment
+      .confirmAndFulfill(confirmed.order_id, confirmed.payment_intent_id ?? "")
+      .catch((err) =>
+        this.logger.error(`Erreur post-paiement Wave order ${confirmed.order_id}: ${err?.message}`),
+      );
+
+    return { received: true };
+  }
+
   // ─── Alertes admin temps réel ───────────────────────────────────────────────
 
   private async checkRefundAlert(): Promise<void> {

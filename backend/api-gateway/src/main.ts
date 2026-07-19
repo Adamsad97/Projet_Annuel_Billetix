@@ -7,7 +7,12 @@ import { AppModule } from "./app.module";
 import { RpcExceptionFilter } from "./common/filters/rpc-exception.filter";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: true — nécessaire pour vérifier les signatures des webhooks
+  // (Stripe, PayPal, Wave) qui doivent être calculées sur le corps brut de
+  // la requête, avant tout parsing JSON. Sans cette option, `req.rawBody`
+  // est toujours `undefined` et la vérification de signature échoue
+  // silencieusement (bug préexistant corrigé ici).
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.enableShutdownHooks();
   app.useWebSocketAdapter(new IoAdapter(app));
