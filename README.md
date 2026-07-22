@@ -45,16 +45,16 @@ docker compose up -d <nom-du-service>
 ```
 
 api-gateway : `docker compose up -d api-gateway`  
- auth-service : `docker compose up -d auth-service`  
- user-service : `docker compose up -d user-service`  
- event-service : `docker compose up -d event-service`  
- order-service : `docker compose up -d order-service`  
- ticket-service : `docker compose up -d ticket-service`  
- payment-service : `docker compose up -d payment-service`  
- notification-service : `docker compose up -d notification-service`
+auth-service : `docker compose up -d auth-service`  
+user-service : `docker compose up -d user-service`  
+event-service : `docker compose up -d event-service`  
+order-service : `docker compose up -d order-service`  
+ticket-service : `docker compose up -d ticket-service`  
+payment-service : `docker compose up -d payment-service`  
+notification-service : `docker compose up -d notification-service`
 pdf-service : `docker compose up -d pdf-service`  
- admin-service : `docker compose up -d admin-service`  
- frontend : `docker compose up -d frontend`
+admin-service : `docker compose up -d admin-service`  
+frontend : `docker compose up -d frontend`
 
 ## A.3 Arrêter un service en particulier
 
@@ -63,16 +63,16 @@ docker compose down <nom-du-service>
 ```
 
 api-gateway : `docker compose down api-gateway`  
- auth-service : `docker compose down auth-service`  
- user-service : `docker compose down user-service`  
- event-service : `docker compose down event-service`  
- order-service : `docker compose down order-service`  
- ticket-service : `docker compose down ticket-service`  
- payment-service : `docker compose down payment-service`  
- notification-service : `docker compose down notification-service`
+auth-service : `docker compose down auth-service`  
+user-service : `docker compose down user-service`  
+event-service : `docker compose down event-service`  
+order-service : `docker compose down order-service`  
+ticket-service : `docker compose down ticket-service`  
+payment-service : `docker compose down payment-service`  
+notification-service : `docker compose down notification-service`
 pdf-service : `docker compose down pdf-service`  
- admin-service : `docker compose down admin-service`  
- frontend : `docker compose down frontend`
+admin-service : `docker compose down admin-service`  
+frontend : `docker compose down frontend`
 
 (`docker compose down <service>` arrête **et supprime** le conteneur, il est recréé proprement au prochain `up`. Pour juste le mettre en pause sans le supprimer : `docker compose stop <nom-du-service>`.)
 
@@ -90,7 +90,7 @@ Relance rapide sans reconstruire les images (après un premier `npm start`) :
 npm run dev
 ```
 
-> ⚠️ Testé en conditions réelles : `npm start` et `npm run dev` restent **attachés aux logs** (pas de `-d`). Fermer le terminal, ou tuer le processus, arrête **toute la stack** (confirmé : la stack est passée de 22 conteneurs à 0 quand ce processus s'est terminé). Pour démarrer en arrière-plan sans dépendre du terminal : `npm run up` (équivalent détaché).
+> Testé en conditions réelles : `npm start` et `npm run dev` restent **attachés aux logs** (pas de `-d`). Fermer le terminal, ou tuer le processus, arrête **toute la stack** (confirmé : la stack est passée de 22 conteneurs à 0 quand ce processus s'est terminé). Pour démarrer en arrière-plan sans dépendre du terminal : `npm run up` (équivalent détaché).
 
 Backend seul (les 10 microservices + infrastructure, sans le frontend), testé en conditions réelles :
 
@@ -131,15 +131,15 @@ npm run test:<nom-du-service>
 ```
 
 api-gateway : `npm run test:api-gateway`  
- auth-service : `npm run test:auth-service`  
- user-service : `npm run test:user-service`  
- event-service : `npm run test:event-service`  
- order-service : `npm run test:order-service`  
- ticket-service : `npm run test:ticket-service`  
- payment-service : `npm run test:payment-service`  
- notification-service : `npm run test:notification-service`
+auth-service : `npm run test:auth-service`  
+user-service : `npm run test:user-service`  
+event-service : `npm run test:event-service`  
+order-service : `npm run test:order-service`  
+ticket-service : `npm run test:ticket-service`  
+payment-service : `npm run test:payment-service`  
+notification-service : `npm run test:notification-service`
 pdf-service : `npm run test:pdf-service`  
- admin-service : `npm run test:admin-service`
+admin-service : `npm run test:admin-service`
 
 ## A.7 Lancer tous les tests en une seule commande
 
@@ -163,7 +163,7 @@ docker compose exec <nom-du-service> npm run migration:run
 
 Services concernés (7, ceux ayant leur propre base) : `auth-service`, `user-service`, `event-service`, `order-service`, `ticket-service`, `payment-service`, `admin-service`.
 
-> ⚠️ Testé en conditions réelles : en mode dev (`docker-compose.dev.yml`), `synchronize: true` a déjà créé toutes les tables/enums directement depuis les entités — il n'existe donc aucun historique de migrations appliquées dans la base. Lancer `migration:run` dans ce mode échoue avec une erreur Postgres du type `already exists` (`code: 42710`). C'est normal, pas un bug : les migrations manuelles ne servent que sur une base **neuve** ou en environnement **production** (`synchronize: false`).
+> Testé en conditions réelles : en mode dev (`docker-compose.dev.yml`), `synchronize: true` a déjà créé toutes les tables/enums directement depuis les entités — il n'existe donc aucun historique de migrations appliquées dans la base. Lancer `migration:run` dans ce mode échoue avec une erreur Postgres du type `already exists` (`code: 42710`). C'est normal, pas un bug : les migrations manuelles ne servent que sur une base **neuve** ou en environnement **production** (`synchronize: false`).
 
 ---
 
@@ -192,7 +192,7 @@ Puis, dans ce `.env` local, remplacer les noms d'hôte Docker par `localhost` et
 
 ## B.3 Installer les dépendances et démarrer un service en particulier
 
-> ⚠️ Testé en conditions réelles : un `npm install` seul échoue avec un conflit `ERESOLVE` (`@nestjs/config@3.3.0` vs `@nestjs/common@11`, un conflit de peer-dependencies déjà présent dans le repo). C'est pour ça que tous les Dockerfiles et la CI utilisent `--legacy-peer-deps` — il faut faire pareil en local :
+> Testé en conditions réelles : un `npm install` seul échoue avec un conflit `ERESOLVE` (`@nestjs/config@3.3.0` vs `@nestjs/common@11`, un conflit de peer-dependencies déjà présent dans le repo). C'est pour ça que tous les Dockerfiles et la CI utilisent `--legacy-peer-deps` — il faut faire pareil en local :
 
 ```bash
 cd backend/<nom-du-service>
@@ -201,16 +201,16 @@ npm run start:dev
 ```
 
 api-gateway : `cd backend/api-gateway`  
- auth-service : `cd backend/auth-service`  
- user-service : `cd backend/user-service`  
- event-service : `cd backend/event-service`  
- order-service : `cd backend/order-service`  
- ticket-service : `cd backend/ticket-service`  
- payment-service : `cd backend/payment-service`  
- notification-service : `cd backend/notification-service`
+auth-service : `cd backend/auth-service`  
+user-service : `cd backend/user-service`  
+event-service : `cd backend/event-service`  
+order-service : `cd backend/order-service`  
+ticket-service : `cd backend/ticket-service`  
+payment-service : `cd backend/payment-service`  
+notification-service : `cd backend/notification-service`
 pdf-service : `cd backend/pdf-service`  
- admin-service : `cd backend/admin-service`  
- frontend : `cd frontend`
+admin-service : `cd backend/admin-service`  
+frontend : `cd frontend`
 
 Puis, dans chaque cas (une seule fois) :
 
@@ -259,7 +259,7 @@ npm run test:all:local
 
 ## B.9 Exécuter les migrations
 
-> ⚠️ Même remarque qu'en A.8 : ça ne fonctionne que sur une base neuve (jamais synchronisée par TypeORM) ou en environnement `synchronize: false`.
+> Même remarque qu'en A.8 : ça ne fonctionne que sur une base neuve (jamais synchronisée par TypeORM) ou en environnement `synchronize: false`.
 
 Avec l'infrastructure démarrée (B.1) et le `.env` local configuré (B.2) :
 
