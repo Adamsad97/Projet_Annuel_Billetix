@@ -6,6 +6,16 @@ import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { RedisService } from '../redis/redis.service';
 
 const KEY_PREFIX = 'reservation:';
+// Index (sorted set, sans TTL) des réservations en cours, score = échéance
+// (epoch ms) — sans lui, une réservation qui expire sans jamais devenir une
+// commande (client parti sans payer) laisse le quota décrémenté à vie : la
+// clé Redis à TTL disparaît sans laisser de trace exploitable pour restaurer
+// le stock. Bug corrigé — voir restoreExpiredReservations() ci-dessous.
+const INDEX_KEY = 'reservations:pending_index';
+// Marge de grâce sur le TTL de la clé principale : le cron doit pouvoir
+// encore lire les items à restaurer un peu après l'échéance logique — sans
+// ça, la clé aurait déjà disparu (TTL Redis) au moment où le cron la cherche.
+const GRACE_SECONDS = 120;
 
 export interface ReservationItem {
   ticket_category_id: string;
@@ -56,10 +66,14 @@ export class StockReservationService {
     const config = await this.platformConfig.get();
     const ttl = config.stock_reservation_ttl_seconds;
     const token = randomBytes(32).toString('hex');
-    const expires_at = new Date(Date.now() + ttl * 1000);
+    const expiresAtMs = Date.now() + ttl * 1000;
+    const expires_at = new Date(expiresAtMs);
 
     const data: ReservationData = { buyer_id, event_id, items, expires_at: expires_at.toISOString() };
-    await this.redis.set(`${KEY_PREFIX}${token}`, JSON.stringify(data), ttl);
+    // TTL + marge de grâce sur la clé (voir GRACE_SECONDS) — l'expiration
+    // logique reste bien `ttl`, appliquée explicitement dans validate().
+    await this.redis.set(`${KEY_PREFIX}${token}`, JSON.stringify(data), ttl + GRACE_SECONDS);
+    await this.redis.zadd(INDEX_KEY, expiresAtMs, token);
 
     return { reservation_token: token, expires_at };
   }
@@ -74,6 +88,15 @@ export class StockReservationService {
     }
 
     const data: ReservationData = JSON.parse(raw);
+    // Expiration logique vérifiée explicitement : la clé peut encore exister
+    // pendant la marge de grâce (GRACE_SECONDS) réservée au cron de
+    // restauration, elle ne doit pas rester utilisable pour autant.
+    if (new Date(data.expires_at).getTime() <= Date.now()) {
+      throw new RpcException({
+        statusCode: 410,
+        message: 'Réservation expirée ou invalide — veuillez recommencer',
+      });
+    }
     if (data.buyer_id !== buyer_id) {
       throw new RpcException({ statusCode: 403, message: 'Réservation invalide pour cet acheteur' });
     }
@@ -83,6 +106,7 @@ export class StockReservationService {
 
   async consume(token: string): Promise<void> {
     await this.redis.del(`${KEY_PREFIX}${token}`);
+    await this.redis.zrem(INDEX_KEY, token);
   }
 
   async release(token: string): Promise<void> {
@@ -92,6 +116,31 @@ export class StockReservationService {
     const data: ReservationData = JSON.parse(raw);
     await this.rollback(data.items);
     await this.redis.del(`${KEY_PREFIX}${token}`);
+    await this.redis.zrem(INDEX_KEY, token);
+  }
+
+  /**
+   * Restaure le quota des réservations expirées jamais devenues une commande
+   * (client parti sans payer) — appelée périodiquement par un cron. Sans
+   * cette méthode, le quota décrémenté à la réservation ne revenait jamais :
+   * la clé Redis expirait silencieusement sans déclencher de restauration.
+   */
+  async restoreExpiredReservations(): Promise<number> {
+    const expiredTokens = await this.redis.zrangebyscore(INDEX_KEY, 0, Date.now());
+    let restored = 0;
+    for (const token of expiredTokens) {
+      const raw = await this.redis.get(`${KEY_PREFIX}${token}`);
+      if (raw) {
+        const data: ReservationData = JSON.parse(raw);
+        await this.rollback(data.items);
+        await this.redis.del(`${KEY_PREFIX}${token}`);
+        restored++;
+      }
+      // Retiré de l'index même si la clé avait déjà disparu (marge de grâce
+      // dépassée) — cas résiduel qui ne devrait pas se produire en pratique.
+      await this.redis.zrem(INDEX_KEY, token);
+    }
+    return restored;
   }
 
   /**

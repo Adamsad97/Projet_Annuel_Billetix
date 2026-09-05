@@ -37,4 +37,19 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async ttl(key: string): Promise<number> {
     return this.client.ttl(key);
   }
+
+  // Nécessaire pour l'index des réservations à restaurer (voir
+  // StockReservationService) : les clés à TTL seul ne laissent aucune trace
+  // exploitable une fois expirées, un cron ne peut donc rien y retrouver.
+  async zadd(key: string, score: number, member: string): Promise<void> {
+    await this.client.zadd(key, score, member);
+  }
+
+  async zrangebyscore(key: string, min: number | string, max: number | string): Promise<string[]> {
+    return this.client.zrangebyscore(key, min, max);
+  }
+
+  async zrem(key: string, member: string): Promise<void> {
+    await this.client.zrem(key, member);
+  }
 }
