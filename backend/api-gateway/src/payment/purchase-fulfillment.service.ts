@@ -65,6 +65,7 @@ export class PurchaseFulfillmentService {
         payment_method: string;
       };
       items: {
+        id: string;
         ticket_category_id: string;
         ticket_category_name: string;
         unit_price_ht: number;
@@ -142,7 +143,12 @@ export class PurchaseFulfillmentService {
         event_poster_url: order.event_poster_url,
         artist_name: order.artist_name,
         artist_description: order.artist_description,
-        items,
+        // ticket-service attend chaque item avec la clé `order_item_id`
+        // (nom de la colonne NOT NULL côté Ticket) — `items` ici est la liste
+        // brute des OrderItem (order-service), dont la clé primaire est `id`.
+        // Bug corrigé : sans ce mapping, order_item_id était toujours
+        // undefined et l'INSERT du ticket échouait systématiquement (23502).
+        items: items.map((item) => ({ ...item, order_item_id: item.id })),
       }),
     )) as Array<{
       id: string;
@@ -171,7 +177,12 @@ export class PurchaseFulfillmentService {
         event_poster_url: order.event_poster_url,
         artist_name: order.artist_name,
         ticket_category_name: ticket.ticket_category_name,
-        unit_price_ttc: ticket.unit_price_ttc,
+        // Colonne decimal Postgres -> TypeORM la renvoie en string ("0.00") ;
+        // le DTO pdf-service exige un number strict (@IsNumber()), qui
+        // rejette silencieusement la string sans lever d'exception visible
+        // (message RabbitMQ juste écarté) — bug corrigé : le PDF billet
+        // n'était donc jamais généré (pdf_url restait null indéfiniment).
+        unit_price_ttc: Number(ticket.unit_price_ttc),
         seat_info: ticket.seat_info,
         holder_first_name: ticket.holder_first_name,
         holder_last_name: ticket.holder_last_name,
@@ -235,18 +246,21 @@ export class PurchaseFulfillmentService {
       billing_city: order.billing_city,
       billing_postal_code: order.billing_postal_code,
       billing_country: order.billing_country,
+      // Mêmes colonnes decimal Postgres (string) que pour pdf.generate_ticket
+      // ci-dessus — sans ce cast, pdf-service rejetait le message et
+      // invoice_url restait null indéfiniment (facture jamais générée).
       items: items.map((item) => ({
         ticket_category_name: item.ticket_category_name,
         quantity: item.quantity,
-        unit_price_ht: item.unit_price_ht,
-        unit_price_ttc: item.unit_price_ttc,
-        total_price_ht: item.total_price_ht,
-        total_price_ttc: item.total_price_ttc,
+        unit_price_ht: Number(item.unit_price_ht),
+        unit_price_ttc: Number(item.unit_price_ttc),
+        total_price_ht: Number(item.total_price_ht),
+        total_price_ttc: Number(item.total_price_ttc),
       })),
-      total_amount_ht: order.total_amount_ht,
-      total_amount_ttc: order.total_amount_ttc,
-      discount_amount: order.discount_amount,
-      free_ticket_fees: order.free_ticket_fees,
+      total_amount_ht: Number(order.total_amount_ht),
+      total_amount_ttc: Number(order.total_amount_ttc),
+      discount_amount: Number(order.discount_amount),
+      free_ticket_fees: Number(order.free_ticket_fees),
       platform_legal_name: platformConfig.platform_legal_name,
       platform_siret: platformConfig.platform_siret,
       platform_vat_number: platformConfig.platform_vat_number,

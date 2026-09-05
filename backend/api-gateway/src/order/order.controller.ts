@@ -29,6 +29,8 @@ export class OrderController {
 
   constructor(
     @Inject("ORDER_SERVICE") private readonly orderClient: ClientProxy,
+    @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
+    @Inject("USER_SERVICE") private readonly userClient: ClientProxy,
     private readonly fulfillment: PurchaseFulfillmentService,
   ) {}
 
@@ -91,10 +93,44 @@ export class OrderController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: Record<string, unknown>,
   ) {
+    // Snapshot événement/organisateur — jamais fourni par le client (bug
+    // corrigé : dto.event_name/dto.event_venue_name/etc. n'étaient jamais
+    // renseignés en pratique, laissant ces colonnes NULL sur la commande,
+    // ce qui faisait ensuite échouer systématiquement ticket-service sur
+    // ses colonnes NOT NULL équivalentes). Relu ici depuis les seules
+    // sources de vérité (event-service, user-service), jamais depuis dto.
+    const event = await firstValueFrom(
+      this.eventClient.send<{
+        title: string;
+        start_date: string;
+        end_date: string;
+        venue_name: string;
+        venue_address_line1: string;
+        venue_city: string;
+        poster_url: string;
+        organizer_id: string;
+      }>("event.get", { id: dto.event_id }),
+    );
+    const organizerProfile = await firstValueFrom(
+      this.userClient.send<{ display_name?: string } | null>(
+        "user.get_organizer_profile",
+        { user_id: event.organizer_id },
+      ),
+    ).catch(() => null);
+
     const result = (await firstValueFrom(
       this.orderClient.send("order.create", {
         ...dto,
         buyer_id: user.sub,
+        organizer_id: event.organizer_id,
+        event_name: event.title,
+        event_start_at: event.start_date,
+        event_end_at: event.end_date,
+        event_venue_name: event.venue_name,
+        event_venue_address: event.venue_address_line1,
+        event_city: event.venue_city,
+        event_poster_url: event.poster_url,
+        artist_name: organizerProfile?.display_name ?? event.title,
       }),
     )) as { order: { id: string; total_amount_ttc: number } };
 
