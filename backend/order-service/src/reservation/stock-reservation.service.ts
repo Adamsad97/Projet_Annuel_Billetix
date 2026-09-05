@@ -109,14 +109,23 @@ export class StockReservationService {
     await this.redis.zrem(INDEX_KEY, token);
   }
 
-  async release(token: string): Promise<void> {
+  /**
+   * Retourne { success: true } plutôt que void — bug corrigé : c'est le
+   * seul point de ce fichier exposé directement en @MessagePattern
+   * (order.release_reservation) ; un retour void fait planter
+   * firstValueFrom() côté gateway (RxJS EmptyError: "no elements in
+   * sequence") alors que la libération elle-même s'est bien exécutée — le
+   * client recevait une 500 malgré un succès réel.
+   */
+  async release(token: string): Promise<{ success: boolean }> {
     const raw = await this.redis.get(`${KEY_PREFIX}${token}`);
-    if (!raw) return;
+    if (!raw) return { success: true };
 
     const data: ReservationData = JSON.parse(raw);
     await this.rollback(data.items);
     await this.redis.del(`${KEY_PREFIX}${token}`);
     await this.redis.zrem(INDEX_KEY, token);
+    return { success: true };
   }
 
   /**
