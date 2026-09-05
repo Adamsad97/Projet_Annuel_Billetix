@@ -38,6 +38,7 @@ export class PaymentController {
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
     @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
+    @Inject("TICKET_SERVICE") private readonly ticketClient: ClientProxy,
     private readonly ticketsGateway: TicketsGateway,
     private readonly fulfillment: PurchaseFulfillmentService,
   ) {}
@@ -87,6 +88,13 @@ export class PaymentController {
     if (result.status === "REFUNDED") {
       this.orderClient
         .send("order.mark_refunded", { id: orderId })
+        .subscribe();
+      // Bug corrigé : les billets de la commande n'étaient jamais invalidés
+      // après un remboursement complet — un acheteur remboursé pouvait
+      // encore se présenter à l'événement avec un billet valide et
+      // scannable. order.mark_refunded restaure déjà le quota de son côté.
+      this.ticketClient
+        .send("ticket.cancel_by_order", { order_id: orderId })
         .subscribe();
     }
 

@@ -534,13 +534,36 @@ export class OrderService {
     return abandoned.length;
   }
 
-  async markRefunded(id: string): Promise<Order> {
+  /**
+   * restoreStock=false : cas du remboursement déclenché par une revente
+   * complétée (ticket.complete_resale rembourse le vendeur original) — le
+   * billet n'a pas été annulé, il a été transféré à l'acheteur de la
+   * revente, qui occupe toujours légitimement la place. Restaurer le quota
+   * ici créerait une place fantôme (double comptage). Sur tout autre
+   * remboursement (admin, litige), restoreStock reste true par défaut.
+   */
+  async markRefunded(id: string, restoreStock = true): Promise<Order> {
     const order = await this.orderRepo.findOne({ where: { id } });
     if (!order) throw new RpcException({ statusCode: 404, message: 'Commande introuvable' });
     order.status = OrderStatus.REFUNDED;
     order.payment_status = PaymentStatus.REFUNDED;
     order.refunded_at = new Date();
-    return this.orderRepo.save(order);
+    const saved = await this.orderRepo.save(order);
+
+    // Bug corrigé : un remboursement complet ne restaurait jamais le stock
+    // décrémenté à la réservation — les places restaient perdues pour de bon
+    // même si l'acheteur avait bien été remboursé. Même logique que
+    // cancel() ; ne s'applique pas à une commande de revente (aucun quota
+    // de catégorie n'a été décrémenté, le billet existait déjà) ni à un
+    // remboursement suite à revente (voir ci-dessus).
+    if (!order.is_resale && restoreStock) {
+      const items = await this.itemRepo.find({ where: { order_id: id } });
+      await this.reservationService.restoreItems(
+        items.map((item) => ({ ticket_category_id: item.ticket_category_id, quantity: item.quantity })),
+      );
+    }
+
+    return saved;
   }
 
   async setInvoiceUrl(id: string, url: string): Promise<Order> {

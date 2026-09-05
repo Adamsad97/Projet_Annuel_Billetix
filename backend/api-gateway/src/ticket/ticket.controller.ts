@@ -182,6 +182,17 @@ export class TicketController {
       this.paymentClient.send("payment.refund", { order_id: originalOrderId }),
     );
 
+    // Bug corrigé : ce remboursement passait par payment.refund directement
+    // (pas par POST /payments/refund/:id), donc order.mark_refunded n'était
+    // jamais appelé — le paiement passait bien à REFUNDED côté
+    // payment-service, mais la commande originale restait CONFIRMED/PAID
+    // pour toujours côté order-service (incohérence, double comptage de
+    // revenu potentiel). restore_stock: false — le billet a été transféré,
+    // pas annulé : la place reste occupée par le nouvel acheteur.
+    this.orderClient
+      .send("order.mark_refunded", { id: originalOrderId, restore_stock: false })
+      .subscribe({ error: () => undefined });
+
     return { success: true, resale };
   }
 

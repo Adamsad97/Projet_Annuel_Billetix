@@ -279,6 +279,26 @@ export class TicketService {
     await this.repo.update(id, { status: TicketStatus.SENT });
   }
 
+  /**
+   * Bug corrigé : un remboursement complet (admin ou webhook) ne marquait
+   * jamais les billets de la commande comme invalides — ils restaient
+   * GENERATED/SENT, donc toujours scannables. Un acheteur remboursé pouvait
+   * malgré tout se présenter à l'événement avec un billet valide. Statut
+   * REFUNDED déjà défini sur l'entité mais jamais utilisé jusqu'ici.
+   */
+  async cancelByOrder(orderId: string): Promise<{ cancelled_count: number }> {
+    const result = await this.repo
+      .createQueryBuilder()
+      .update(Ticket)
+      .set({ status: TicketStatus.REFUNDED })
+      .where('order_id = :orderId', { orderId })
+      .andWhere('status NOT IN (:...excluded)', {
+        excluded: [TicketStatus.CANCELLED, TicketStatus.REFUNDED, TicketStatus.USED],
+      })
+      .execute();
+    return { cancelled_count: result.affected ?? 0 };
+  }
+
   async cancelByEvent(eventId: string): Promise<{ cancelled_count: number }> {
     const result = await this.repo
       .createQueryBuilder()

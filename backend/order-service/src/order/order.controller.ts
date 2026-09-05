@@ -82,8 +82,8 @@ export class OrderController {
   }
 
   @MessagePattern('order.mark_refunded')
-  markRefunded(@Payload() data: { id: string }) {
-    return this.orderService.markRefunded(data.id);
+  markRefunded(@Payload() data: { id: string; restore_stock?: boolean }) {
+    return this.orderService.markRefunded(data.id, data.restore_stock ?? true);
   }
 
   @MessagePattern('order.set_invoice_url')

@@ -66,4 +66,9 @@ export class TicketController {
   cancelByEvent(@Payload() data: { event_id: string }) {
     return this.ticketService.cancelByEvent(data.event_id);
   }
+
+  @MessagePattern('ticket.cancel_by_order')
+  cancelByOrder(@Payload() data: { order_id: string }) {
+    return this.ticketService.cancelByOrder(data.order_id);
+  }
 }
