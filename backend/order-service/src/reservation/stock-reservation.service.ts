@@ -57,9 +57,16 @@ export class StockReservationService {
     } catch (quotaError) {
       // Rollback des décrémentations déjà faites
       await this.rollback(decremented);
+      // Bug corrigé : l'erreur propagée par firstValueFrom() pour une
+      // RpcException distante a directement la forme { statusCode, message }
+      // — le code lisait quotaError.error.message (un niveau d'imbrication
+      // en trop, toujours undefined), donc le VRAI message d'event-service
+      // (places insuffisantes, catégorie inactive, dépassement de
+      // max_per_order...) n'était jamais montré, silencieusement remplacé
+      // par le message générique par défaut.
       throw new RpcException({
-        statusCode: 409,
-        message: quotaError?.error?.message ?? 'Places insuffisantes',
+        statusCode: quotaError?.statusCode ?? 409,
+        message: quotaError?.message ?? 'Places insuffisantes',
       });
     }
 

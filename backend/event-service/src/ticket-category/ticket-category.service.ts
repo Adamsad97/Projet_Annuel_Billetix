@@ -66,6 +66,20 @@ export class TicketCategoryService {
 
   // Décrémentation atomique — protège contre les surréservations
   async decrementQuota(id: string, quantity: number): Promise<{ success: boolean }> {
+    // CDC §3.2 : "Limite par commande" (mesure anti-scalping) — le champ
+    // max_per_order existait déjà sur la catégorie mais n'était vérifié
+    // nulle part dans le backend, ni ici ni côté order-service. Bug corrigé.
+    const category = await this.repo.findOne({ where: { id } });
+    if (!category) {
+      throw new RpcException({ statusCode: 404, message: 'Catégorie de billet introuvable' });
+    }
+    if (quantity > category.max_per_order) {
+      throw new RpcException({
+        statusCode: 400,
+        message: `Maximum ${category.max_per_order} billet(s) par commande pour la catégorie "${category.name}"`,
+      });
+    }
+
     const rows = await this.dataSource.query(
       `UPDATE events.ticket_categories
        SET remaining_quota = remaining_quota - $1
