@@ -7,6 +7,7 @@ import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
+import { ResendVerificationDto } from "./dto/resend-verification.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
 
 @Controller()
@@ -54,6 +55,11 @@ export class AuthController {
   @MessagePattern("auth.verify_email")
   verifyEmail(@Payload() data: { token: string }) {
     return this.authService.verifyEmail(data.token);
+  }
+
+  @MessagePattern("auth.resend_verification_email")
+  resendVerificationEmail(@Payload() dto: ResendVerificationDto) {
+    return this.authService.resendVerificationEmail(dto);
   }
 
   @MessagePattern("auth.oauth_login")
@@ -138,6 +144,11 @@ export class AuthController {
     @Payload() data: { id: string; role: UserRole; admin_id: string },
   ) {
     return this.authService.changeRole(data.id, data.role);
+  }
+
+  @MessagePattern("auth.self_upgrade_to_organizer")
+  selfUpgradeToOrganizer(@Payload() data: { user_id: string }) {
+    return this.authService.selfUpgradeToOrganizer(data.user_id);
   }
 
   @MessagePattern("auth.list_users")

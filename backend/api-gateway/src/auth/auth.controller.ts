@@ -34,6 +34,7 @@ import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
+import { ResendVerificationDto } from "./dto/resend-verification.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
 
 @ApiTags("auth")
@@ -105,6 +106,7 @@ export class AuthController {
   @Public()
   @Post("reset-password")
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @ApiOperation({ summary: "Réinitialisation du mot de passe via token email" })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return firstValueFrom(this.authClient.send("auth.reset_password", dto));
@@ -119,6 +121,20 @@ export class AuthController {
   @ApiResponse({ status: 200, description: "Email vérifié avec succès" })
   verifyEmail(@Query("token") token: string) {
     return firstValueFrom(this.authClient.send("auth.verify_email", { token }));
+  }
+
+  @Public()
+  @Post("resend-verification-email")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  @ApiOperation({
+    summary: "Renvoyer l'email de vérification (lien expiré ou jamais reçu)",
+  })
+  @ApiResponse({ status: 200, description: "Email renvoyé si le compte existe et n'est pas déjà vérifié" })
+  resendVerificationEmail(@Body() dto: ResendVerificationDto) {
+    return firstValueFrom(
+      this.authClient.send("auth.resend_verification_email", dto),
+    );
   }
 
   @Get("me")
@@ -252,6 +268,7 @@ export class AuthController {
   @Post("2fa/verify")
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @ApiOperation({
     summary: "Vérifier un code 2FA TOTP (lors de la connexion si 2FA activée)",
   })

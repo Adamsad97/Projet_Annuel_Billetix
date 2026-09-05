@@ -1,9 +1,10 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { RpcException } from "@nestjs/microservices";
+import { ClientProxy, RpcException } from "@nestjs/microservices";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
 import { randomInt } from "crypto";
 import { Redis } from "ioredis";
+import { firstValueFrom } from "rxjs";
 import { IsNull, Repository } from "typeorm";
 import { authenticator } from "otplib";
 import * as QRCode from "qrcode";
@@ -23,6 +24,7 @@ export class TwoFactorService {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(BackupCode) private readonly backupCodeRepo: Repository<BackupCode>,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
+    @Inject("USER_SERVICE") private readonly userClient: ClientProxy,
   ) {}
 
   async setupTotp(
@@ -160,6 +162,25 @@ export class TwoFactorService {
       throw new RpcException({
         statusCode: 400,
         message: "Code 2FA invalide",
+      });
+    }
+
+    // CDC §2.3 : 2FA obligatoire tant qu'un IBAN organisateur est enregistré.
+    // Déjà appliqué à l'écriture de l'IBAN (organizer.service.ts updateIban()
+    // refuse si la 2FA n'est pas active) mais pas ici — bug corrigé : sans ce
+    // contrôle miroir, un organisateur pouvait activer la 2FA, enregistrer
+    // son IBAN, puis désactiver la 2FA, laissant l'IBAN sans la protection
+    // exigée. user.get_iban lève une 404 (capturée ici) s'il n'y a pas d'IBAN.
+    const hasIban = await firstValueFrom(
+      this.userClient.send("user.get_iban", { user_id: userId }),
+    )
+      .then(() => true)
+      .catch(() => false);
+    if (hasIban) {
+      throw new RpcException({
+        statusCode: 409,
+        message:
+          "Impossible de désactiver la 2FA tant qu'un IBAN est enregistré sur votre compte organisateur (CDC §2.3).",
       });
     }
 

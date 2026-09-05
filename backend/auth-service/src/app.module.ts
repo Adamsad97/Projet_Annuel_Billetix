@@ -6,6 +6,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AuthModule } from "./auth/auth.module";
 import { BackupCode } from "./auth/backup-code.entity";
 import { HealthModule } from "./health/health.module";
+import { PlatformConfigModule } from "./platform-config/platform-config.module";
 import { User } from "./user/user.entity";
 
 @Module({
@@ -45,6 +46,7 @@ import { User } from "./user/user.entity";
         logging: config.get("NODE_ENV") === "development",
       }),
     }),
+    PlatformConfigModule,
     AuthModule,
     HealthModule,
   ],

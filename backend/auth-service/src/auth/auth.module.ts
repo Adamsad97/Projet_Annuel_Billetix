@@ -32,6 +32,20 @@ import { TwoFactorService } from "./two-factor.service";
           },
         }),
       },
+      {
+        // Nécessaire pour vérifier, à la désactivation de la 2FA, qu'aucun
+        // IBAN organisateur n'est déjà enregistré (CDC §2.3) — voir
+        // TwoFactorService.disable().
+        name: "USER_SERVICE",
+        inject: [ConfigService],
+        useFactory: (config: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host: config.get<string>("USER_SERVICE_HOST", "localhost"),
+            port: parseInt(config.get<string>("USER_SERVICE_PORT", "3002")),
+          },
+        }),
+      },
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],

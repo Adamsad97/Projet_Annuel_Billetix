@@ -70,6 +70,15 @@ export class User {
   @Column({ nullable: true, select: false })
   two_factor_secret: string | null;
 
+  // Verrouillage anti-bruteforce (CDC §10.3 : rate limiting par compte, pas
+  // seulement par IP) — incrémenté à chaque échec de connexion (mot de passe
+  // ou code 2FA), remis à zéro dès qu'une connexion réussit.
+  @Column({ default: 0 })
+  failed_login_attempts: number;
+
+  @Column({ nullable: true })
+  locked_until: Date | null;
+
   // État du compte
   @Column({ default: true })
   is_active: boolean;

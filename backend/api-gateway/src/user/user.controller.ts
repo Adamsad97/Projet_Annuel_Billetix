@@ -66,20 +66,38 @@ export class UserController {
   // --- Profil organisateur ---
 
   @Post("organizer/profile")
-  @Roles("ORGANIZER")
+  @Roles("BUYER", "ORGANIZER")
   @ApiOperation({
-    summary: "Créer son profil organisateur (réservé ORGANIZER)",
+    summary:
+      "Créer son profil organisateur — bascule automatiquement un compte Acheteur en Organisateur (self-service)",
   })
-  createOrganizerProfile(
+  async createOrganizerProfile(
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreateOrganizerProfileDto,
   ) {
-    return firstValueFrom(
+    const profile = await firstValueFrom(
       this.userClient.send("user.create_organizer_profile", {
         user_id: user.sub,
         dto,
       }),
     );
+
+    // Bug corrigé : un acheteur ne pouvait devenir organisateur que par
+    // intervention d'un admin (auth.change_role) — aucune bascule
+    // self-service n'existait. On la déclenche ici, juste après la
+    // création réussie du profil, et on renvoie les nouveaux tokens (rôle
+    // à jour) pour que le client n'ait pas besoin de se reconnecter.
+    if (user.role === "BUYER") {
+      const { access_token, refresh_token, user: updatedUser } =
+        await firstValueFrom(
+          this.authClient.send("auth.self_upgrade_to_organizer", {
+            user_id: user.sub,
+          }),
+        );
+      return { profile, access_token, refresh_token, user: updatedUser };
+    }
+
+    return { profile };
   }
 
   @Get("organizer/profile")

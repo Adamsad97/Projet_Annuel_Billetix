@@ -8,6 +8,7 @@ import { randomBytes, randomUUID } from "crypto";
 import { Redis } from "ioredis";
 import { Repository } from "typeorm";
 import { REDIS_CLIENT } from "../redis/redis.module";
+import { PlatformConfigCache } from "../platform-config/platform-config.cache";
 import { OAuthProvider, User, UserRole } from "../user/user.entity";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -32,6 +33,7 @@ export class AuthService {
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     private readonly twoFactorService: TwoFactorService,
+    private readonly platformConfig: PlatformConfigCache,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -101,6 +103,21 @@ export class AuthService {
     if (user.is_suspended) {
       throw new RpcException({ statusCode: 403, message: "Compte suspendu" });
     }
+
+    // CDC §10.3 : rate limiting par IP (throttler global côté gateway) ET par
+    // compte — ce second volet manquait entièrement. Vérifié avant le mot de
+    // passe : un compte verrouillé reste bloqué même avec les bons
+    // identifiants, tant que le verrou n'a pas expiré.
+    if (user.locked_until && user.locked_until > new Date()) {
+      const remainingMinutes = Math.ceil(
+        (user.locked_until.getTime() - Date.now()) / 60000,
+      );
+      throw new RpcException({
+        statusCode: 429,
+        message: `Compte temporairement verrouillé suite à trop de tentatives échouées — réessayez dans ${remainingMinutes} min`,
+      });
+    }
+
     if (!user.password_hash) {
       throw new RpcException({
         statusCode: 401,
@@ -110,9 +127,22 @@ export class AuthService {
 
     const valid = await bcrypt.compare(dto.password, user.password_hash);
     if (!valid) {
+      await this.registerFailedLoginAttempt(user);
       throw new RpcException({
         statusCode: 401,
         message: "Identifiants invalides",
+      });
+    }
+
+    // CDC §2.2 : le compte doit être activé via le lien envoyé par email
+    // avant tout accès. Vérifié seulement après le mot de passe (pas avant)
+    // pour ne pas révéler le statut de vérification à qui ne connaît pas
+    // déjà le mot de passe. Les comptes OAuth ont is_email_verified=true
+    // dès la création (email déjà vérifié par Google/Facebook).
+    if (!user.is_email_verified) {
+      throw new RpcException({
+        statusCode: 403,
+        message: "Adresse e-mail non vérifiée — consultez vos e-mails pour activer votre compte",
       });
     }
 
@@ -125,6 +155,7 @@ export class AuthService {
         dto.two_factor_code,
       );
       if (!validCode) {
+        await this.registerFailedLoginAttempt(user);
         throw new RpcException({
           statusCode: 401,
           message: "Code 2FA invalide",
@@ -132,7 +163,38 @@ export class AuthService {
       }
     }
 
+    if (user.failed_login_attempts > 0 || user.locked_until) {
+      await this.userRepo.update(user.id, {
+        failed_login_attempts: 0,
+        locked_until: null,
+      });
+      // Reflète immédiatement le reset dans la réponse — sans ça, l'objet
+      // `user` en mémoire (chargé avant l'update ci-dessus) renvoyait encore
+      // l'ancien compteur au client malgré une base déjà correcte.
+      user.failed_login_attempts = 0;
+      user.locked_until = null;
+    }
+
     return { ...this.generateTokens(user), user: this.sanitize(user) };
+  }
+
+  /**
+   * Incrémente le compteur d'échecs (mot de passe ou code 2FA invalide) et
+   * verrouille temporairement le compte au-delà du seuil configurable
+   * (platform_settings, jamais de valeur en dur).
+   */
+  private async registerFailedLoginAttempt(user: User): Promise<void> {
+    const config = await this.platformConfig.get();
+    const attempts = user.failed_login_attempts + 1;
+    const locked_until =
+      attempts >= config.account_lockout_threshold
+        ? new Date(Date.now() + config.account_lockout_duration_minutes * 60000)
+        : null;
+
+    await this.userRepo.update(user.id, {
+      failed_login_attempts: attempts,
+      locked_until,
+    });
   }
 
   async refresh(dto: RefreshTokenDto) {
@@ -305,6 +367,33 @@ export class AuthService {
     }
   }
 
+  /**
+   * Renvoi du lien de vérification d'email — nécessaire depuis que login()
+   * bloque les comptes non vérifiés (CDC §2.2) : sans cette route, un lien
+   * expiré (TTL 24h) ou jamais reçu laissait le compte bloqué sans recours.
+   */
+  async resendVerificationEmail(dto: { email: string }) {
+    const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    // Ne pas révéler si l'email existe ou non (même pattern que forgotPassword)
+    if (!user || user.is_email_verified) return { success: true };
+
+    const verifyToken = randomUUID();
+    await this.redis.set(
+      `email_verify:${verifyToken}`,
+      user.id,
+      "EX",
+      EMAIL_VERIFY_TTL,
+    );
+
+    this.notifClient.emit("notification.email_verification", {
+      email: user.email,
+      firstName: user.first_name,
+      token: verifyToken,
+    });
+
+    return { success: true };
+  }
+
   async forgotPassword(dto: ForgotPasswordDto) {
     const user = await this.userRepo.findOne({ where: { email: dto.email } });
     // Ne pas révéler si l'email existe ou non
@@ -453,6 +542,34 @@ export class AuthService {
     await this.userRepo.save(user);
 
     return this.sanitize(user);
+  }
+
+  /**
+   * Bascule self-service BUYER→ORGANIZER, déclenchée par la gateway juste
+   * après la création du profil organisateur (bug corrigé : jusqu'ici,
+   * seul un admin pouvait faire cette bascule via changeRole() — aucune
+   * route self-service n'existait). Distincte de changeRole() à dessein :
+   * changeRole() sert aussi l'admin pour modifier le rôle d'un AUTRE
+   * utilisateur, et ne doit jamais renvoyer les tokens de la cible à
+   * l'appelant (fuite de session) — ici l'utilisateur agit sur lui-même,
+   * de nouveaux tokens (rôle à jour) sont donc légitimes et nécessaires.
+   */
+  async selfUpgradeToOrganizer(userId: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new RpcException({ statusCode: 404, message: "Utilisateur introuvable" });
+    }
+    if (user.role !== UserRole.BUYER) {
+      throw new RpcException({
+        statusCode: 409,
+        message: "Seul un compte Acheteur peut devenir Organisateur via cette action",
+      });
+    }
+
+    user.role = UserRole.ORGANIZER;
+    await this.userRepo.save(user);
+
+    return { ...this.generateTokens(user), user: this.sanitize(user) };
   }
 
   /** Recherche/liste paginée des comptes — admin uniquement. */
