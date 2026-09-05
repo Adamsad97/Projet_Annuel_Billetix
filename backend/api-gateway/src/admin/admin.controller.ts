@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -268,6 +269,68 @@ export class AdminController {
       this.authClient.send("auth.unsuspend_user", { id, admin_id: user.sub }),
     );
     this.audit(user, req, "USER_UNSUSPENDED", "USER", id);
+    return result;
+  }
+
+  @Post("users/:id/unlock")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Débloquer manuellement un compte verrouillé par échecs de connexion répétés (à la demande du titulaire)",
+  })
+  async unlockAccount(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("id") id: string,
+  ) {
+    const result = await firstValueFrom(
+      this.authClient.send("auth.unlock_account", { id, admin_id: user.sub }),
+    );
+    this.audit(user, req, "USER_ACCOUNT_UNLOCKED", "USER", id);
+    return result;
+  }
+
+  @Post("users/:id/reset-2fa")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Réinitialiser la 2FA d'un compte sans code (perte de l'appareil ET des codes de secours) — motif obligatoire",
+  })
+  async resetTwoFactor(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() dto: { reason: string },
+  ) {
+    if (!dto.reason?.trim()) {
+      throw new BadRequestException("Un motif est requis pour réinitialiser la 2FA d'un compte.");
+    }
+    const result = await firstValueFrom(
+      this.authClient.send("auth.2fa.reset_by_admin", {
+        user_id: id,
+        admin_id: user.sub,
+        reason: dto.reason,
+      }),
+    );
+    this.audit(user, req, "USER_2FA_RESET", "USER", id, dto.reason);
+    return result;
+  }
+
+  @Post("users/:id/activate")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Activer manuellement un compte dont l'email n'a jamais été vérifié (à la demande du titulaire)",
+  })
+  async activateAccount(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("id") id: string,
+  ) {
+    const result = await firstValueFrom(
+      this.authClient.send("auth.activate_account", { id, admin_id: user.sub }),
+    );
+    this.audit(user, req, "USER_ACCOUNT_ACTIVATED", "USER", id);
     return result;
   }
 
