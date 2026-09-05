@@ -32,6 +32,7 @@ export class AuthService {
     private readonly config: ConfigService,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
+    @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
     private readonly twoFactorService: TwoFactorService,
     private readonly platformConfig: PlatformConfigCache,
   ) {}
@@ -436,6 +437,19 @@ export class AuthService {
     user.password_hash = await bcrypt.hash(dto.new_password, BCRYPT_ROUNDS);
     await this.userRepo.save(user);
     await this.redis.del(`reset_password:${dto.token}`);
+
+    // CDC §10.3 : audit trail de toutes les actions sensibles, pas seulement
+    // celles de l'admin. Fire-and-forget — un échec de journalisation ne
+    // doit jamais faire échouer le reset lui-même.
+    this.adminClient
+      .send("admin.log_action", {
+        action: "USER_PASSWORD_RESET",
+        entity_type: "USER",
+        entity_id: user.id,
+        performed_by: user.id,
+        reason: "Réinitialisation du mot de passe via lien email par le titulaire du compte",
+      })
+      .subscribe({ error: () => undefined });
 
     return { success: true };
   }

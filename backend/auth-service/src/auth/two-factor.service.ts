@@ -25,7 +25,25 @@ export class TwoFactorService {
     @InjectRepository(BackupCode) private readonly backupCodeRepo: Repository<BackupCode>,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @Inject("USER_SERVICE") private readonly userClient: ClientProxy,
+    @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
   ) {}
+
+  /**
+   * CDC §10.3 : audit trail de toutes les actions sensibles, pas seulement
+   * celles de l'admin. Fire-and-forget — un échec de journalisation ne doit
+   * jamais faire échouer l'action elle-même.
+   */
+  private logSelfAction(action: string, userId: string): void {
+    this.adminClient
+      .send("admin.log_action", {
+        action,
+        entity_type: "USER",
+        entity_id: userId,
+        performed_by: userId,
+        reason: "Action effectuée par le titulaire du compte lui-même",
+      })
+      .subscribe({ error: () => undefined });
+  }
 
   async setupTotp(
     userId: string,
@@ -83,6 +101,7 @@ export class TwoFactorService {
       two_factor_enabled: true,
       two_factor_method: TwoFactorMethod.TOTP,
     });
+    this.logSelfAction("USER_2FA_ENABLED", userId);
 
     return { success: true, backup_codes: await this.generateAndPersistBackupCodes(userId) };
   }
@@ -197,6 +216,7 @@ export class TwoFactorService {
 
     // Les anciens codes de secours n'ont plus lieu d'être une fois la 2FA désactivée.
     await this.backupCodeRepo.delete({ user_id: userId });
+    this.logSelfAction("USER_2FA_DISABLED", userId);
 
     return { success: true };
   }
