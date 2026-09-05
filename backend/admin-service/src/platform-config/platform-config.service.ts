@@ -12,6 +12,12 @@ export interface PlatformConfig {
   payout_delay_days: number;
   stripe_fee_percent: number;
   stripe_fee_fixed_eur: number;
+  paypal_fee_percent: number;
+  paypal_fee_fixed_eur: number;
+  orange_money_fee_percent: number;
+  orange_money_fee_fixed_eur: number;
+  wave_fee_percent: number;
+  wave_fee_fixed_eur: number;
   stock_reservation_ttl_seconds: number;
   cancel_deadline_hours: number;
   agent_session_hours: number;
@@ -45,6 +51,12 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'payout_delay_days',              value: '5',             type: 'number',  description: 'Délai de reversement en jours ouvrés après l\'événement' },
   { key: 'stripe_fee_percent',             value: '2.9',           type: 'number',  description: 'Taux de frais Stripe (%)' },
   { key: 'stripe_fee_fixed_eur',           value: '0.30',          type: 'number',  description: 'Frais fixe Stripe par transaction (€)' },
+  { key: 'paypal_fee_percent',             value: '3.4',           type: 'number',  description: 'Taux de frais PayPal (%)' },
+  { key: 'paypal_fee_fixed_eur',           value: '0.35',          type: 'number',  description: 'Frais fixe PayPal par transaction (€)' },
+  { key: 'orange_money_fee_percent',       value: '2.0',           type: 'number',  description: 'Taux de frais Orange Money (%)' },
+  { key: 'orange_money_fee_fixed_eur',     value: '0',             type: 'number',  description: 'Frais fixe Orange Money par transaction (€)' },
+  { key: 'wave_fee_percent',               value: '1.0',           type: 'number',  description: 'Taux de frais Wave (%)' },
+  { key: 'wave_fee_fixed_eur',             value: '0',             type: 'number',  description: 'Frais fixe Wave par transaction (€)' },
   { key: 'stock_reservation_ttl_seconds',  value: '600',           type: 'number',  description: 'Durée de validité de la réservation de stock (secondes)' },
   { key: 'cancel_deadline_hours',          value: '24',            type: 'number',  description: 'Délai avant l\'événement au-delà duquel l\'annulation est bloquée (heures)' },
   { key: 'agent_session_hours',            value: '12',            type: 'number',  description: 'Durée maximale d\'une session agent de contrôle (heures)' },
@@ -99,6 +111,12 @@ export class PlatformConfigService implements OnModuleInit {
       payout_delay_days:              parseInt(map.payout_delay_days ?? '5'),
       stripe_fee_percent:             parseFloat(map.stripe_fee_percent ?? '2.9'),
       stripe_fee_fixed_eur:           parseFloat(map.stripe_fee_fixed_eur ?? '0.30'),
+      paypal_fee_percent:             parseFloat(map.paypal_fee_percent ?? '3.4'),
+      paypal_fee_fixed_eur:           parseFloat(map.paypal_fee_fixed_eur ?? '0.35'),
+      orange_money_fee_percent:       parseFloat(map.orange_money_fee_percent ?? '2.0'),
+      orange_money_fee_fixed_eur:     parseFloat(map.orange_money_fee_fixed_eur ?? '0'),
+      wave_fee_percent:               parseFloat(map.wave_fee_percent ?? '1.0'),
+      wave_fee_fixed_eur:             parseFloat(map.wave_fee_fixed_eur ?? '0'),
       stock_reservation_ttl_seconds:  parseInt(map.stock_reservation_ttl_seconds ?? '600'),
       cancel_deadline_hours:          parseInt(map.cancel_deadline_hours ?? '24'),
       agent_session_hours:            parseInt(map.agent_session_hours ?? '12'),

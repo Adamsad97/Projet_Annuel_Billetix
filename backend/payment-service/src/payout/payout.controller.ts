@@ -48,6 +48,11 @@ export class PayoutController {
     return this.payoutService.block(data.id, data.admin_id, data.reason);
   }
 
+  @MessagePattern('payment.unblock_payout')
+  unblock(@Payload() data: { id: string }) {
+    return this.payoutService.unblock(data.id);
+  }
+
   @MessagePattern('payment.request_early_payout')
   requestEarly(@Payload() data: { id: string; organizer_id: string }) {
     return this.payoutService.requestEarly(data.id, data.organizer_id);

@@ -27,8 +27,12 @@ export class PayoutService {
     const net = data.gross_amount - data.commission_amount - data.payment_fees_amount;
 
     const base = data.event_end_at ? new Date(data.event_end_at) : new Date();
-    const scheduled = new Date(base);
-    scheduled.setDate(scheduled.getDate() + config.payout_delay_days);
+    // Bug corrigé : le CDC §7.2 exige explicitement des jours OUVRÉS
+    // ("Reversement automatique J+5 ouvrés"), mais le calcul ajoutait des
+    // jours calendaires bruts (samedi/dimanche comptaient comme des jours
+    // de délai) — la date annoncée aux organisateurs ne correspondait pas
+    // à la réalité.
+    const scheduled = this.addBusinessDays(base, config.payout_delay_days);
 
     return this.repo.save(
       this.repo.create({
@@ -310,5 +314,23 @@ export class PayoutService {
     payout.early_request_approved_by = adminId;
     payout.scheduled_at = new Date();
     return this.repo.save(payout);
+  }
+
+  /**
+   * Ajoute des jours OUVRÉS (lundi-vendredi) à une date — samedi/dimanche ne
+   * comptent pas dans le délai. Pas de jours fériés (hors périmètre d'un
+   * projet étudiant) : "ouvrés" ici = hors week-end uniquement.
+   */
+  private addBusinessDays(date: Date, days: number): Date {
+    const result = new Date(date);
+    let remaining = days;
+    while (remaining > 0) {
+      result.setDate(result.getDate() + 1);
+      const dayOfWeek = result.getDay(); // 0 = dimanche, 6 = samedi
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        remaining--;
+      }
+    }
+    return result;
   }
 }

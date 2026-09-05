@@ -489,6 +489,64 @@ export class AdminController {
     return result;
   }
 
+  @Post("payouts/:id/unblock")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Débloquer manuellement un reversement bloqué" })
+  async unblockPayout(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("id") id: string,
+  ) {
+    const result = await firstValueFrom(
+      this.paymentClient.send("payment.unblock_payout", { id }),
+    );
+    this.audit(user, req, "PAYOUT_UNBLOCKED", "PAYOUT", id);
+    return result;
+  }
+
+  /**
+   * Déclenchement manuel du virement d'un reversement en attente, sans
+   * attendre le prochain passage du cron quotidien (10h00) — mêmes
+   * vérifications d'éligibilité (Stripe Connect onboardé + KYC validé) que
+   * PayoutSchedulerService.processDuePayouts, dupliquées ici car ce chemin
+   * est déclenché depuis l'admin plutôt que depuis le scheduler.
+   */
+  @Post("payouts/:id/process")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Déclencher manuellement le virement d'un reversement" })
+  async processPayout(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("id") id: string,
+  ) {
+    const payout = await firstValueFrom(
+      this.paymentClient.send("payment.get_payout", { id }),
+    );
+
+    const profile = await firstValueFrom(
+      this.userClient.send("user.get_organizer_profile", {
+        user_id: payout.organizer_id,
+      }),
+    );
+    if (!profile?.stripe_connect_account_id || !profile.stripe_connect_onboarded) {
+      throw new BadRequestException(
+        "Compte Stripe Connect non configuré pour cet organisateur",
+      );
+    }
+    if (profile.kyc_status !== "VERIFIED") {
+      throw new BadRequestException("KYC non validé pour cet organisateur");
+    }
+
+    const result = await firstValueFrom(
+      this.paymentClient.send("payment.process_payout", {
+        id,
+        stripe_account_id: profile.stripe_connect_account_id,
+      }),
+    );
+    this.audit(user, req, "PAYOUT_PROCESSED_MANUALLY", "PAYOUT", id);
+    return result;
+  }
+
   @Post("payouts/:id/approve-early")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Approuver un reversement anticipé" })
