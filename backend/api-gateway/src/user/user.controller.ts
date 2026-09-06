@@ -21,6 +21,7 @@ import {
 } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
 import { CreateOrganizerProfileDto } from "./dto/create-organizer-profile.dto";
+import { SubmitKycDto } from "./dto/submit-kyc.dto";
 import { UpdateBuyerProfileDto } from "./dto/update-buyer-profile.dto";
 import { UpdateIbanDto } from "./dto/update-iban.dto";
 
@@ -146,7 +147,7 @@ export class UserController {
   })
   submitKyc(
     @CurrentUser() user: JwtPayload,
-    @Body() body: { document_url: string },
+    @Body() body: SubmitKycDto,
   ) {
     return firstValueFrom(
       this.userClient.send("user.update_kyc", {

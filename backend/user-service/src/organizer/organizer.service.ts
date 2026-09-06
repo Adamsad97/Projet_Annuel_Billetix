@@ -111,11 +111,41 @@ export class OrganizerService {
     });
   }
 
+  /**
+   * Bug corrigé (même famille que la faille commission "non lucratif") :
+   * l'admin pouvait approuver le KYC d'un organisateur (VERIFIED) sans
+   * qu'aucun justificatif n'ait jamais été soumis (kyc_document_url vide),
+   * et même transitionner VERIFIED/REJECTED depuis n'importe quel statut
+   * (y compris PENDING, jamais soumis) — le workflow "soumission → examen"
+   * n'était en réalité jamais imposé.
+   */
   async updateKyc(userId: string, dto: UpdateKycDto): Promise<OrganizerProfile> {
     const profile = await this.getByUserId(userId);
+
+    if (dto.kyc_status === KycStatus.VERIFIED || dto.kyc_status === KycStatus.REJECTED) {
+      if (profile.kyc_status !== KycStatus.SUBMITTED) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Aucun justificatif KYC en attente d\'examen pour cet organisateur',
+        });
+      }
+      if (dto.kyc_status === KycStatus.VERIFIED && !profile.kyc_document_url) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Impossible de valider le KYC : aucun justificatif fourni par l\'organisateur',
+        });
+      }
+    }
+
     profile.kyc_status = dto.kyc_status;
 
     if (dto.kyc_status === KycStatus.SUBMITTED) {
+      if (!dto.kyc_document_url) {
+        throw new RpcException({
+          statusCode: 400,
+          message: 'Un justificatif est requis pour soumettre le KYC',
+        });
+      }
       profile.kyc_submitted_at = new Date();
     }
     if (dto.kyc_status === KycStatus.VERIFIED) {
