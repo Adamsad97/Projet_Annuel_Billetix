@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PlatformSetting } from './platform-config.entity';
@@ -142,11 +143,49 @@ export class PlatformConfigService implements OnModuleInit {
     };
   }
 
+  /**
+   * Bug corrigé : aucune validation n'était faite sur la nouvelle valeur —
+   * un admin pouvait écrire n'importe quelle chaîne sur un paramètre
+   * "number" (ex: "abc" sur tva_rate), silencieusement transformée en NaN
+   * par tous les parseFloat/parseInt des services consommateurs, corrompant
+   * un calcul plateforme entier sans aucune erreur visible sur le coup.
+   */
   async update(key: string, value: string): Promise<PlatformSetting> {
     const setting = await this.repo.findOne({ where: { key } });
     if (!setting) {
-      throw new Error(`Paramètre inconnu : ${key}`);
+      throw new RpcException({ statusCode: 404, message: `Paramètre inconnu : ${key}` });
     }
+
+    switch (setting.type) {
+      case 'number':
+        if (value.trim() === '' || !Number.isFinite(Number(value))) {
+          throw new RpcException({
+            statusCode: 400,
+            message: `Valeur invalide pour "${key}" : un nombre est attendu (reçu "${value}")`,
+          });
+        }
+        break;
+      case 'boolean':
+        if (value !== 'true' && value !== 'false') {
+          throw new RpcException({
+            statusCode: 400,
+            message: `Valeur invalide pour "${key}" : "true" ou "false" attendu (reçu "${value}")`,
+          });
+        }
+        break;
+      case 'json':
+        try {
+          JSON.parse(value);
+        } catch {
+          throw new RpcException({
+            statusCode: 400,
+            message: `Valeur invalide pour "${key}" : JSON mal formé`,
+          });
+        }
+        break;
+      // 'string' : toute valeur est acceptée
+    }
+
     setting.value = value;
     return this.repo.save(setting);
   }
