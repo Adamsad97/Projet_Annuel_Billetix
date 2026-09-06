@@ -20,6 +20,8 @@ export class PurchaseFulfillmentService {
     @Inject("PDF_SERVICE") private readonly pdfClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
+    @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
+    @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     private readonly ticketsGateway: TicketsGateway,
   ) {}
 
@@ -154,6 +156,15 @@ export class PurchaseFulfillmentService {
         fees: paymentFees,
       }),
     );
+
+    // Bug corrigé (CDC §9 : notification "première vente" jamais envoyée) —
+    // bascule atomique côté event-service (jamais notifié deux fois même en
+    // cas d'appels concurrents), fire-and-forget.
+    if (order.organizer_id) {
+      this.notifyIfFirstSale(order.organizer_id, order.event_id, order.event_name).catch(
+        (err) => this.logger.error(`Erreur notification première vente event ${order.event_id}: ${err?.message}`),
+      );
+    }
 
     // 2d. Générer les billets dans ticket-service
     const tickets = (await firstValueFrom(
@@ -335,5 +346,32 @@ export class PurchaseFulfillmentService {
       }
     }
     return null;
+  }
+
+  /**
+   * Notifie l'organisateur uniquement si cette commande est la toute
+   * première vente réellement confirmée de l'événement (event.mark_first_sale
+   * ne retourne is_first_sale=true qu'une seule fois, atomiquement).
+   */
+  private async notifyIfFirstSale(
+    organizerId: string,
+    eventId: string,
+    eventName: string,
+  ): Promise<void> {
+    const { is_first_sale } = await firstValueFrom(
+      this.eventClient.send<{ is_first_sale: boolean }>("event.mark_first_sale", { id: eventId }),
+    );
+    if (!is_first_sale) return;
+
+    const organizer = await firstValueFrom(
+      this.authClient.send<{ email: string; first_name: string } | null>("auth.get_user", { id: organizerId }),
+    ).catch(() => null);
+    if (!organizer?.email) return;
+
+    this.notifClient.emit("notification.first_sale", {
+      email: organizer.email,
+      firstName: organizer.first_name,
+      eventName,
+    });
   }
 }
