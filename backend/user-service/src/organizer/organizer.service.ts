@@ -104,6 +104,33 @@ export class OrganizerService {
     return { success: true };
   }
 
+  /**
+   * Bug corrigé (CDC §7) : rien ne renseignait jamais ces deux champs —
+   * appelé par payment-service à la création du compte Stripe Connect
+   * (une seule fois par organisateur, jamais recréé).
+   */
+  async setStripeConnectAccount(userId: string, accountId: string): Promise<OrganizerProfile> {
+    const profile = await this.getByUserId(userId);
+    profile.stripe_connect_account_id = accountId;
+    // Nouvelle liaison : l'onboarding Stripe n'est pas encore confirmé, même
+    // si un compte existait déjà avant (ne devrait pas arriver en pratique
+    // puisque payment-service ne recrée jamais un compte existant).
+    profile.stripe_connect_onboarded = false;
+    return this.repo.save(profile);
+  }
+
+  /**
+   * Appelé depuis le webhook Stripe `account.updated` — l'identifiant
+   * disponible est celui du compte Connect, pas notre user_id interne.
+   * Silencieux si le compte est inconnu (jamais nos organisateurs).
+   */
+  async setStripeConnectOnboarded(accountId: string, onboarded: boolean): Promise<void> {
+    const profile = await this.repo.findOne({ where: { stripe_connect_account_id: accountId } });
+    if (!profile) return;
+    profile.stripe_connect_onboarded = onboarded;
+    await this.repo.save(profile);
+  }
+
   async listKycPending(): Promise<OrganizerProfile[]> {
     return this.repo.find({
       where: { kyc_status: KycStatus.SUBMITTED },

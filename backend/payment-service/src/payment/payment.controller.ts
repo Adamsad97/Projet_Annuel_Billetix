@@ -1,5 +1,6 @@
-import { Controller } from '@nestjs/common';
-import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
+import { Inject, Controller } from '@nestjs/common';
+import { ClientProxy, MessagePattern, Payload, RpcException } from '@nestjs/microservices';
+import { firstValueFrom } from 'rxjs';
 import { PaypalProvider } from '../providers/paypal.provider';
 import { WaveProvider } from '../providers/wave.provider';
 import { StripeService } from '../stripe/stripe.service';
@@ -12,7 +13,44 @@ export class PaymentController {
     private readonly stripe: StripeService,
     private readonly paypal: PaypalProvider,
     private readonly wave: WaveProvider,
+    @Inject('USER_SERVICE') private readonly userClient: ClientProxy,
   ) {}
+
+  /**
+   * Bug corrigé (CDC §7) : aucun flux d'onboarding Stripe Connect n'existait
+   * — crée le compte Connect au premier appel (jamais recréé ensuite,
+   * réutilise l'existant), puis génère un lien d'onboarding à chaque appel
+   * (les liens expirent après quelques minutes côté Stripe).
+   */
+  @MessagePattern('payment.create_connect_onboarding_link')
+  async createConnectOnboardingLink(
+    @Payload()
+    data: {
+      organizer_id: string;
+      email: string;
+      existing_account_id: string | null;
+      refresh_url: string;
+      return_url: string;
+    },
+  ) {
+    let accountId = data.existing_account_id;
+    if (!accountId) {
+      accountId = await this.stripe.createConnectAccount(data.email);
+      await firstValueFrom(
+        this.userClient.send('user.set_stripe_connect_account', {
+          user_id: data.organizer_id,
+          account_id: accountId,
+        }),
+      );
+    }
+
+    const url = await this.stripe.createAccountLink(
+      accountId,
+      data.refresh_url,
+      data.return_url,
+    );
+    return { account_id: accountId, url };
+  }
 
   @MessagePattern('payment.create_intent')
   createIntent(@Payload() data: { order_id: string; buyer_id: string; buyer_email: string }) {
@@ -29,6 +67,24 @@ export class PaymentController {
       );
     } catch {
       throw new RpcException({ statusCode: 400, message: 'Signature webhook invalide' });
+    }
+
+    // Suit la progression de l'onboarding Connect d'un organisateur —
+    // Stripe renvoie cet événement à chaque changement d'état du compte
+    // connecté (formulaire complété, vérification d'identité, etc.).
+    if (event.type === 'account.updated') {
+      const account = event.data.object as {
+        id: string;
+        details_submitted: boolean;
+        charges_enabled: boolean;
+      };
+      await firstValueFrom(
+        this.userClient.send('user.set_stripe_connect_onboarded', {
+          account_id: account.id,
+          onboarded: account.details_submitted && account.charges_enabled,
+        }),
+      );
+      return { received: true };
     }
 
     if (event.type === 'payment_intent.payment_failed') {

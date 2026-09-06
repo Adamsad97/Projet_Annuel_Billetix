@@ -12,6 +12,7 @@ import {
   Req,
 } from "@nestjs/common";
 import { ClientProxy } from "@nestjs/microservices";
+import { ConfigService } from "@nestjs/config";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Request } from "express";
 import { firstValueFrom } from "rxjs";
@@ -35,6 +36,7 @@ export class UserController {
     @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
     @Inject("PAYMENT_SERVICE") private readonly paymentClient: ClientProxy,
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
+    private readonly config: ConfigService,
   ) {}
 
   // --- Profil acheteur ---
@@ -155,6 +157,50 @@ export class UserController {
         dto: { kyc_status: "SUBMITTED", kyc_document_url: body.document_url },
       }),
     );
+  }
+
+  /**
+   * Bug corrigé (CDC §7) : aucun flux ne permettait jamais à un
+   * organisateur de connecter un compte Stripe — sans ça,
+   * stripe_connect_account_id/onboarded restaient éternellement vides et
+   * aucun reversement automatique n'était jamais possible pour personne.
+   * Réutilisable pour reprendre un onboarding interrompu (Stripe expire
+   * les liens après quelques minutes) : ne recrée jamais le compte Connect
+   * si un existe déjà, génère juste un nouveau lien.
+   */
+  @Post("organizer/stripe-connect/onboard")
+  @HttpCode(HttpStatus.OK)
+  @Roles("ORGANIZER")
+  @ApiOperation({ summary: "Démarrer/reprendre l'onboarding Stripe Connect" })
+  async onboardStripeConnect(@CurrentUser() user: JwtPayload) {
+    const profile = (await firstValueFrom(
+      this.userClient.send("user.get_organizer_profile", { user_id: user.sub }),
+    )) as { stripe_connect_account_id: string | null };
+
+    const frontendUrl = this.config.get<string>("FRONTEND_URL", "http://localhost:3000");
+    const result = await firstValueFrom(
+      this.paymentClient.send("payment.create_connect_onboarding_link", {
+        organizer_id: user.sub,
+        email: user.email,
+        existing_account_id: profile.stripe_connect_account_id,
+        refresh_url: `${frontendUrl}/organizer/stripe-connect/refresh`,
+        return_url: `${frontendUrl}/organizer/stripe-connect/return`,
+      }),
+    );
+    return result;
+  }
+
+  @Get("organizer/stripe-connect/status")
+  @Roles("ORGANIZER")
+  @ApiOperation({ summary: "Statut de l'onboarding Stripe Connect" })
+  async getStripeConnectStatus(@CurrentUser() user: JwtPayload) {
+    const profile = (await firstValueFrom(
+      this.userClient.send("user.get_organizer_profile", { user_id: user.sub }),
+    )) as { stripe_connect_account_id: string | null; stripe_connect_onboarded: boolean };
+    return {
+      connected: !!profile.stripe_connect_account_id,
+      onboarded: profile.stripe_connect_onboarded,
+    };
   }
 
   @Get("organizer/kyc")

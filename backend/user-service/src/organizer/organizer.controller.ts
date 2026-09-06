@@ -40,6 +40,16 @@ export class OrganizerController {
     return this.organizerService.updateKyc(data.user_id, data.dto);
   }
 
+  @MessagePattern('user.set_stripe_connect_account')
+  setStripeConnectAccount(@Payload() data: { user_id: string; account_id: string }) {
+    return this.organizerService.setStripeConnectAccount(data.user_id, data.account_id);
+  }
+
+  @MessagePattern('user.set_stripe_connect_onboarded')
+  setStripeConnectOnboarded(@Payload() data: { account_id: string; onboarded: boolean }) {
+    return this.organizerService.setStripeConnectOnboarded(data.account_id, data.onboarded);
+  }
+
   @MessagePattern('user.list_kyc_pending')
   listKycPending() {
     return this.organizerService.listKycPending();

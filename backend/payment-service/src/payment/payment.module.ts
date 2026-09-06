@@ -28,6 +28,20 @@ import { PaymentService } from './payment.service';
           },
         }),
       },
+      {
+        // Persistance de stripe_connect_account_id/onboarded (onboarding
+        // Connect) — propriété exclusive de user-service.
+        name: 'USER_SERVICE',
+        imports: [ConfigModule],
+        inject: [ConfigService],
+        useFactory: (config: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host: config.get('USER_SERVICE_HOST', 'user-service'),
+            port: parseInt(config.get('USER_SERVICE_PORT', '3002')),
+          },
+        }),
+      },
     ]),
   ],
   controllers: [PaymentController],
