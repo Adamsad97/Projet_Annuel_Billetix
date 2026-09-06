@@ -117,6 +117,13 @@ export class Order {
   @Column({ nullable: true })
   invoice_url: string | null;
 
+  // Bug corrigé : le rappel J-1 (ReminderService) n'avait aucune protection
+  // contre un double envoi (redémarrage du service juste après le cron
+  // quotidien, ré-exécution manuelle) — un acheteur aurait pu recevoir le
+  // même rappel plusieurs fois.
+  @Column({ default: false })
+  reminder_sent: boolean;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   free_ticket_fees: number;
 

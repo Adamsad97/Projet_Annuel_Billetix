@@ -28,28 +28,43 @@ export class ReminderService {
     const tomorrowEnd = new Date(tomorrow);
     tomorrowEnd.setUTCHours(23, 59, 59, 999);
 
+    // Bug corrigé : ni protection contre un double envoi (redémarrage du
+    // service juste après le cron, ré-exécution manuelle — reminder_sent
+    // filtre désormais les commandes déjà notifiées), ni dédoublonnage par
+    // acheteur (un acheteur ayant passé 2 commandes pour le même événement
+    // recevait le rappel 2 fois).
     const ordersToRemind = await this.orderRepo.find({
       where: {
         event_start_at: Between(tomorrowStart, tomorrowEnd),
         status: In([OrderStatus.CONFIRMED, OrderStatus.TICKETS_SENT]),
+        reminder_sent: false,
       },
     });
 
     this.logger.log(`Rappel J-1 : ${ordersToRemind.length} commande(s) concernée(s)`);
 
+    const remindedBuyersByEvent = new Set<string>();
     for (const order of ordersToRemind) {
-      const eventDate = new Date(order.event_start_at);
-      this.notifClient.emit('notification.event_reminder', {
-        email: order.buyer_email,
-        firstName: order.buyer_first_name,
-        eventName: order.event_name,
-        eventDate: eventDate.toLocaleDateString('fr-FR', {
-          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-        }),
-        eventTime: eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-        eventVenue: order.event_venue_name,
-        eventAddress: order.event_venue_address,
-      });
+      const dedupeKey = `${order.event_id}:${order.buyer_email}`;
+      if (!remindedBuyersByEvent.has(dedupeKey)) {
+        remindedBuyersByEvent.add(dedupeKey);
+        const eventDate = new Date(order.event_start_at);
+        this.notifClient.emit('notification.event_reminder', {
+          email: order.buyer_email,
+          firstName: order.buyer_first_name,
+          eventName: order.event_name,
+          eventDate: eventDate.toLocaleDateString('fr-FR', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+          }),
+          eventTime: eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          eventVenue: order.event_venue_name,
+          eventAddress: order.event_venue_address,
+        });
+      }
+      order.reminder_sent = true;
+    }
+    if (ordersToRemind.length > 0) {
+      await this.orderRepo.save(ordersToRemind);
     }
   }
 }
