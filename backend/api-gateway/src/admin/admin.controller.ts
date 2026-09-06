@@ -380,6 +380,39 @@ export class AdminController {
     return result;
   }
 
+  /**
+   * Bug corrigé (CDC §3.2) : la commission 0% "à but non lucratif" était
+   * accordée automatiquement dès que l'organisateur cochait is_non_profit
+   * (auto-déclaratif), sans qu'aucun admin ne vérifie le justificatif.
+   * Étape désormais distincte de l'approbation générale de l'événement — à
+   * faire avant POST /events/:id/approve pour que l'exonération s'applique.
+   */
+  @Post("events/:id/verify-non-profit")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Vérifier le justificatif \"à but non lucratif\" d'un événement" })
+  async verifyEventNonProfit(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() dto: { approved: boolean },
+  ) {
+    const result = await firstValueFrom(
+      this.eventClient.send("event.verify_non_profit", {
+        id,
+        admin_id: user.sub,
+        approved: dto.approved,
+      }),
+    );
+    this.audit(
+      user,
+      req,
+      dto.approved ? "EVENT_NON_PROFIT_VERIFIED" : "EVENT_NON_PROFIT_REJECTED",
+      "EVENT",
+      id,
+    );
+    return result;
+  }
+
   @Post("events/:id/reject")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Rejeter un événement" })
