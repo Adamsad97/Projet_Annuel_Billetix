@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -13,6 +14,7 @@ import {
 } from "@nestjs/common";
 import { ClientProxy } from "@nestjs/microservices";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { firstValueFrom } from "rxjs";
 import {
   CurrentUser,
@@ -32,6 +34,7 @@ export class OrderController {
     @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
     @Inject("USER_SERVICE") private readonly userClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
+    @Inject("TICKET_SERVICE") private readonly ticketClient: ClientProxy,
     private readonly fulfillment: PurchaseFulfillmentService,
   ) {}
 
@@ -215,6 +218,76 @@ export class OrderController {
       );
     }
     return { invoice_url: order.invoice_url };
+  }
+
+  /**
+   * Bug corrigé (CDC §9 : "renvoi de billets") : fonctionnalité totalement
+   * absente — un acheteur ayant perdu/pas reçu son email de billets n'avait
+   * aucun moyen de se les faire renvoyer. Réutilise notification.ticket_ready
+   * (même template que l'email initial) avec les billets déjà générés.
+   */
+  @Post(":id/resend-tickets")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  @ApiOperation({ summary: "Renvoyer l'email des billets d'une commande" })
+  async resendTickets(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+  ) {
+    const { order } = (await firstValueFrom(
+      this.orderClient.send("order.get", { id }),
+    )) as {
+      order: {
+        buyer_id: string;
+        buyer_email: string;
+        buyer_first_name: string;
+        event_name: string;
+        event_start_at: string;
+        event_venue_name: string;
+        status: string;
+      };
+    };
+
+    if (order.buyer_id !== user.sub) {
+      throw new ForbiddenException("Cette commande ne vous appartient pas");
+    }
+    if (!["CONFIRMED", "TICKETS_SENT"].includes(order.status)) {
+      throw new BadRequestException(
+        "Aucun billet disponible pour cette commande dans son état actuel",
+      );
+    }
+
+    const tickets = (await firstValueFrom(
+      this.ticketClient.send("ticket.get_by_order", { order_id: id }),
+    )) as Array<{
+      reference: string;
+      ticket_category_name: string;
+      qr_code_url: string | null;
+      seat_info: string | null;
+      pdf_url: string | null;
+    }>;
+
+    this.notifClient.emit("notification.ticket_ready", {
+      email: order.buyer_email,
+      firstName: order.buyer_first_name,
+      eventName: order.event_name,
+      eventDate: new Date(order.event_start_at).toLocaleDateString("fr-FR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+      eventVenue: order.event_venue_name,
+      tickets: tickets.map((ticket) => ({
+        ticketNumber: ticket.reference,
+        categoryName: ticket.ticket_category_name,
+        qrCodeUrl: ticket.qr_code_url,
+        seatInfo: ticket.seat_info,
+        pdfUrl: ticket.pdf_url,
+      })),
+    });
+
+    return { success: true };
   }
 
   @Post(":id/cancel")
