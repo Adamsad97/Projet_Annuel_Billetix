@@ -281,18 +281,55 @@ export class PaymentController {
   @HttpCode(HttpStatus.OK)
   @Roles("ADMIN")
   @ApiOperation({ summary: "Résoudre un litige (ADMIN)" })
-  resolveDispute(
+  async resolveDispute(
     @CurrentUser() user: JwtPayload,
     @Param("id") id: string,
     @Body() dto: { status: string; resolution_notes?: string },
   ) {
-    return firstValueFrom(
+    const dispute = (await firstValueFrom(
       this.paymentClient.send("payment.resolve_dispute", {
         id,
         ...dto,
         resolved_by: user.sub,
       }),
+    )) as { order_id: string };
+
+    // Bug corrigé (CDC §9.2) : le template dispute-opened promettait déjà
+    // "vous serez notifié dès sa résolution", mais aucune notification
+    // n'était jamais émise à la résolution — l'organisateur ne l'apprenait
+    // qu'en constatant lui-même le déblocage de son reversement.
+    this.notifyDisputeResolved(dispute.order_id, dto.status, dto.resolution_notes).catch((err) =>
+      this.logger.error(`Échec notification litige résolu (order ${dispute.order_id}): ${err?.message}`),
     );
+
+    return dispute;
+  }
+
+  private async notifyDisputeResolved(
+    orderId: string,
+    status: string,
+    resolutionNotes?: string,
+  ): Promise<void> {
+    const { order } = (await firstValueFrom(
+      this.orderClient.send("order.get", { id: orderId }),
+    )) as {
+      order: { organizer_id?: string; event_name: string; reference: string };
+    };
+    if (!order.organizer_id) return;
+
+    const organizer = (await firstValueFrom(
+      this.authClient.send("auth.get_user", { id: order.organizer_id }),
+    )) as { email: string; first_name: string } | null;
+    if (!organizer?.email) return;
+
+    this.notifClient.emit("notification.dispute_resolved", {
+      email: organizer.email,
+      firstName: organizer.first_name,
+      eventName: order.event_name,
+      orderReference: order.reference,
+      status,
+      resolutionNotes: resolutionNotes ?? null,
+    });
   }
 
   // ─── Webhook Stripe ─────────────────────────────────────────────────────────

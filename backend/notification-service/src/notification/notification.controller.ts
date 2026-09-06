@@ -13,6 +13,7 @@ import { EventSuspendedDto } from './dto/event-suspended.dto';
 import { EventUpdatedDto } from './dto/event-updated.dto';
 import { FirstSaleDto } from './dto/first-sale.dto';
 import { DisputeOpenedDto } from './dto/dispute-opened.dto';
+import { DisputeResolvedDto } from './dto/dispute-resolved.dto';
 import { FillThresholdReachedDto } from './dto/fill-threshold-reached.dto';
 import { PayoutCompletedDto } from './dto/payout-completed.dto';
 import { RefundCompletedDto } from './dto/refund-completed.dto';
@@ -352,6 +353,23 @@ export class NotificationController {
       template: 'dispute-opened',
       context: {
         ...data,
+        dashboardUrl: `${this.appUrl}/organizer/events`,
+      },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.dispute_resolved')
+  async onDisputeResolved(@Payload() data: DisputeResolvedDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Litige résolu — ${data.eventName}`,
+      template: 'dispute-resolved',
+      context: {
+        ...data,
+        isWon: data.status === 'WON',
+        isLost: data.status === 'LOST',
+        isClosed: data.status === 'CLOSED',
         dashboardUrl: `${this.appUrl}/organizer/events`,
       },
     });
