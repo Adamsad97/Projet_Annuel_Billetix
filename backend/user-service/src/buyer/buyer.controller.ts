@@ -7,9 +7,13 @@ import { UpdateBuyerProfileDto } from './dto/update-buyer-profile.dto';
 export class BuyerController {
   constructor(private readonly buyerService: BuyerService) {}
 
+  // Bug corrigé : ce handler ne sert qu'à l'auto-consultation (toujours
+  // appelé avec user.sub) — un tout nouvel acheteur n'ayant jamais modifié
+  // son profil (aucune ligne buyer_profiles créée pour lui) recevait une
+  // 404 sur la toute première consultation de son propre profil.
   @MessagePattern('user.get_buyer_profile')
   getProfile(@Payload() data: { user_id: string }) {
-    return this.buyerService.getByUserId(data.user_id);
+    return this.buyerService.getOrCreate(data.user_id);
   }
 
   @MessagePattern('user.update_buyer_profile')
