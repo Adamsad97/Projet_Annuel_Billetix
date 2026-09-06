@@ -167,6 +167,41 @@ describe('OrderService', () => {
     });
   });
 
+  describe('markRefunded — idempotence (défense en profondeur)', () => {
+    it('ne restaure pas le stock une seconde fois si la commande est déjà remboursée', async () => {
+      orderRepo.findOne.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.REFUNDED,
+        is_resale: false,
+      });
+
+      const result = await service.markRefunded('order-1');
+
+      expect(result.status).toBe(OrderStatus.REFUNDED);
+      expect(orderRepo.save).not.toHaveBeenCalled();
+      expect(itemRepo.find).not.toHaveBeenCalled();
+      expect(reservationService.restoreItems).not.toHaveBeenCalled();
+    });
+
+    it('rembourse normalement une commande pas encore remboursée et restaure le stock', async () => {
+      orderRepo.findOne.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.CONFIRMED,
+        is_resale: false,
+      });
+      itemRepo.find.mockResolvedValue([
+        { ticket_category_id: 'cat-1', quantity: 2 },
+      ]);
+
+      const result = await service.markRefunded('order-1');
+
+      expect(result.status).toBe(OrderStatus.REFUNDED);
+      expect(reservationService.restoreItems).toHaveBeenCalledWith([
+        { ticket_category_id: 'cat-1', quantity: 2 },
+      ]);
+    });
+  });
+
   describe('releaseAbandoned — libération automatique du stock', () => {
     it('annule les commandes PENDING_PAYMENT dépassant le délai configuré et restaure leur stock', async () => {
       abandonedQueryBuilder.getMany.mockResolvedValue([

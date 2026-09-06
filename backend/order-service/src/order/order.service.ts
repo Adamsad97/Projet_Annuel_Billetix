@@ -545,6 +545,17 @@ export class OrderService {
   async markRefunded(id: string, restoreStock = true): Promise<Order> {
     const order = await this.orderRepo.findOne({ where: { id } });
     if (!order) throw new RpcException({ statusCode: 404, message: 'Commande introuvable' });
+
+    // Bug corrigé : appelé depuis 4 points d'entrée indépendants (remboursement
+    // admin, remboursement acheteur, annulation en cascade d'événement, revente),
+    // sans garde d'idempotence contrairement à confirmPayment() — un second
+    // appel (retry réseau, double-clic admin) restaurait le stock une deuxième
+    // fois, créant des places fantômes vendables alors qu'aucune place réelle
+    // n'existait.
+    if (order.status === OrderStatus.REFUNDED) {
+      return order;
+    }
+
     order.status = OrderStatus.REFUNDED;
     order.payment_status = PaymentStatus.REFUNDED;
     order.refunded_at = new Date();
