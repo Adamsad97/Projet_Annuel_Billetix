@@ -31,6 +31,7 @@ export class OrderController {
     @Inject("ORDER_SERVICE") private readonly orderClient: ClientProxy,
     @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
     @Inject("USER_SERVICE") private readonly userClient: ClientProxy,
+    @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     private readonly fulfillment: PurchaseFulfillmentService,
   ) {}
 
@@ -132,7 +133,21 @@ export class OrderController {
         event_poster_url: event.poster_url,
         artist_name: organizerProfile?.display_name ?? event.title,
       }),
-    )) as { order: { id: string; total_amount_ttc: number } };
+    )) as {
+      order: {
+        id: string;
+        reference: string;
+        total_amount_ttc: number;
+        buyer_email: string | null;
+        buyer_first_name: string | null;
+      };
+      items: Array<{
+        ticket_category_name: string;
+        quantity: number;
+        unit_price_ttc: number;
+        total_price_ttc: number;
+      }>;
+    };
 
     if (Number(result.order.total_amount_ttc) === 0) {
       this.fulfillment.confirmAndFulfill(result.order.id, "").catch((err) =>
@@ -140,6 +155,32 @@ export class OrderController {
           `Erreur confirmation commande gratuite ${result.order.id}: ${err?.message}`,
         ),
       );
+    } else if (result.order.buyer_email) {
+      // Bug corrigé : notification.order_confirmed existait (DTO + template)
+      // mais n'était jamais émise — aucun email n'accusait réception d'une
+      // commande payante avant la confirmation du paiement (le premier email
+      // reçu par l'acheteur était payment_confirmed, bien plus tard, sans
+      // jamais de trace écrite de la commande elle-même en cas d'abandon).
+      this.notifClient.emit("notification.order_confirmed", {
+        email: result.order.buyer_email,
+        firstName: result.order.buyer_first_name,
+        orderReference: result.order.reference,
+        eventName: event.title,
+        eventDate: new Date(event.start_date).toLocaleDateString("fr-FR", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+        eventVenue: event.venue_name,
+        items: result.items.map((item) => ({
+          categoryName: item.ticket_category_name,
+          quantity: item.quantity,
+          unitPrice: Number(item.unit_price_ttc).toFixed(2),
+          totalPrice: Number(item.total_price_ttc).toFixed(2),
+        })),
+        totalTtc: Number(result.order.total_amount_ttc).toFixed(2),
+      });
     }
 
     return result;
