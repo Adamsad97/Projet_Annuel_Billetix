@@ -7,11 +7,25 @@ import { StockReservationService } from './stock-reservation.service';
 
 describe('StockReservationService', () => {
   let service: StockReservationService;
-  let redis: { get: jest.Mock; set: jest.Mock; del: jest.Mock };
+  let redis: {
+    get: jest.Mock;
+    set: jest.Mock;
+    del: jest.Mock;
+    zadd: jest.Mock;
+    zrangebyscore: jest.Mock;
+    zrem: jest.Mock;
+  };
   let eventClient: { send: jest.Mock };
 
   beforeEach(async () => {
-    redis = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
+    redis = {
+      get: jest.fn(),
+      set: jest.fn(),
+      del: jest.fn(),
+      zadd: jest.fn(),
+      zrangebyscore: jest.fn().mockResolvedValue([]),
+      zrem: jest.fn(),
+    };
     eventClient = { send: jest.fn() };
 
     const module = await Test.createTestingModule({
@@ -41,10 +55,13 @@ describe('StockReservationService', () => {
         id: 'cat-1',
         quantity: 2,
       });
+      // TTL de la clé = ttl configuré + marge de grâce (120s, cf.
+      // GRACE_SECONDS) pour laisser le temps au cron de restauration de
+      // traiter l'entrée d'index avant l'expiration effective de la clé.
       expect(redis.set).toHaveBeenCalledWith(
         expect.stringContaining('reservation:'),
         expect.any(String),
-        600,
+        720,
       );
       expect(result).toHaveProperty('reservation_token');
       expect(result.expires_at).toBeInstanceOf(Date);
