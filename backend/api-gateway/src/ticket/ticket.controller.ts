@@ -31,6 +31,7 @@ export class TicketController {
     @Inject("ORDER_SERVICE") private readonly orderClient: ClientProxy,
     @Inject("PAYMENT_SERVICE") private readonly paymentClient: ClientProxy,
     @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
+    @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     private readonly ticketsGateway: TicketsGateway,
   ) {}
 
@@ -268,6 +269,33 @@ export class TicketController {
         status: scannedTicket.status,
       });
       this.ticketsGateway.notifyDashboardUpdate(dto.event_id, "scan");
+
+      // Bug corrigé (CDC §9) : notification.ticket_scanned avait son DTO,
+      // son template et son handler prêts côté notification-service, mais
+      // n'était jamais émise — seul le push WebSocket existait (perdu si
+      // l'acheteur n'a pas l'app ouverte au moment du scan).
+      if (scannedTicket.buyer_email) {
+        this.notifClient.emit("notification.ticket_scanned", {
+          email: scannedTicket.buyer_email,
+          firstName: scannedTicket.holder_first_name,
+          eventName: scannedTicket.event_name,
+          eventDate: new Date(scannedTicket.event_start_at).toLocaleDateString("fr-FR", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+          venueName: scannedTicket.event_venue_name,
+          eventCity: scannedTicket.event_city,
+          artistName: scannedTicket.artist_name,
+          categoryName: scannedTicket.ticket_category_name,
+          holderName: `${scannedTicket.holder_first_name} ${scannedTicket.holder_last_name}`,
+          scannedAt: new Date(scannedTicket.scanned_at).toLocaleTimeString("fr-FR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        });
+      }
     }
 
     // Alerte active (pas seulement journalisée) en cas de tentative de double
