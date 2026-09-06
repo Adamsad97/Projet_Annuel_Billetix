@@ -25,6 +25,7 @@ import { CreateOrganizerProfileDto } from "./dto/create-organizer-profile.dto";
 import { SubmitKycDto } from "./dto/submit-kyc.dto";
 import { UpdateBuyerProfileDto } from "./dto/update-buyer-profile.dto";
 import { UpdateIbanDto } from "./dto/update-iban.dto";
+import { UpdateOrganizerProfileDto } from "./dto/update-organizer-profile.dto";
 
 @ApiTags("users")
 @ApiBearerAuth()
@@ -118,7 +119,7 @@ export class UserController {
   @ApiOperation({ summary: "Mettre à jour son profil organisateur" })
   updateOrganizerProfile(
     @CurrentUser() user: JwtPayload,
-    @Body() dto: CreateOrganizerProfileDto,
+    @Body() dto: UpdateOrganizerProfileDto,
   ) {
     return firstValueFrom(
       this.userClient.send("user.update_organizer_profile", {
