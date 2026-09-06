@@ -7,8 +7,8 @@ export class OfflineSyncController {
   constructor(private readonly service: OfflineSyncService) {}
 
   @MessagePattern('ticket.sync_offline')
-  sync(@Payload() data: { agent_id: string; event_id: string; entries: OfflineScanEntry[] }) {
-    return this.service.syncBatch(data.agent_id, data.event_id, data.entries);
+  sync(@Payload() data: { agent_id: string; event_id: string; entries: OfflineScanEntry[]; is_organizer?: boolean }) {
+    return this.service.syncBatch(data.agent_id, data.event_id, data.entries, data.is_organizer);
   }
 
   @MessagePattern('ticket.get_offline_logs')

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { RpcException } from '@nestjs/microservices';
 import { Repository } from 'typeorm';
+import { ControlAgentService } from '../control-agent/control-agent.service';
 import { Ticket, TicketStatus } from '../ticket/ticket.entity';
 import { TicketService } from '../ticket/ticket.service';
 import { ScanLog, ScanResult } from './scan-log.entity';
@@ -12,6 +14,9 @@ export interface ScanDto {
   device_info?: string;
   is_offline?: boolean;
   scanned_at?: string;
+  // true si agent_id est l'organisateur de l'événement (vérifié côté
+  // gateway) — dans ce cas, pas d'affectation ControlAgent à vérifier.
+  is_organizer?: boolean;
 }
 
 export interface ScanResponse {
@@ -26,9 +31,25 @@ export class ScanService {
   constructor(
     @InjectRepository(ScanLog) private readonly logRepo: Repository<ScanLog>,
     private readonly ticketService: TicketService,
+    private readonly controlAgentService: ControlAgentService,
   ) {}
 
   async scan(dto: ScanDto): Promise<ScanResponse> {
+    // Bug corrigé : n'importe quel utilisateur avec le rôle global AGENT
+    // pouvait scanner les billets de N'IMPORTE QUEL événement, y compris un
+    // événement dont il n'a jamais été l'agent assigné (ou dont il vient
+    // d'être révoqué via ticket.remove_agent) — le rôle JWT était vérifié,
+    // mais jamais l'affectation réelle à CET événement (CDC §6.2).
+    if (!dto.is_organizer) {
+      const isAssigned = await this.controlAgentService.isAssigned(dto.agent_id, dto.event_id);
+      if (!isAssigned) {
+        throw new RpcException({
+          statusCode: 403,
+          message: "Agent non assigné à cet événement (ou révoqué)",
+        });
+      }
+    }
+
     const scannedAt = dto.scanned_at ? new Date(dto.scanned_at) : new Date();
 
     let ticketId = 'unknown';

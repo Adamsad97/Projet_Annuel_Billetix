@@ -23,6 +23,7 @@ export class OfflineSyncService {
     agentId: string,
     eventId: string,
     entries: OfflineScanEntry[],
+    isOrganizer?: boolean,
   ): Promise<{ synced: number; conflicts: number; errors: number }> {
     let synced = 0;
     let conflicts = 0;
@@ -42,6 +43,7 @@ export class OfflineSyncService {
           device_info: entry.device_info,
           is_offline: true,
           scanned_at: entry.scanned_at_offline,
+          is_organizer: isOrganizer,
         };
         const scanResult = await this.scanService.scan(scanDto);
         ticketId = scanResult.ticket_id;

@@ -8,5 +8,6 @@ import { ControlAgentService } from './control-agent.service';
   imports: [TypeOrmModule.forFeature([ControlAgent])],
   controllers: [ControlAgentController],
   providers: [ControlAgentService],
+  exports: [ControlAgentService],
 })
 export class ControlAgentModule {}

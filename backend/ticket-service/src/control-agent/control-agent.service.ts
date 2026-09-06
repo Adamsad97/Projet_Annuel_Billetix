@@ -32,6 +32,12 @@ export class ControlAgentService {
     return this.repo.find({ where: { event_id: eventId } });
   }
 
+  /** Vérifie l'affectation réelle d'un agent à un événement (indépendamment du rôle JWT global). */
+  async isAssigned(userId: string, eventId: string): Promise<boolean> {
+    const agent = await this.repo.findOne({ where: { user_id: userId, event_id: eventId } });
+    return !!agent;
+  }
+
   async startSession(userId: string, eventId: string): Promise<ControlAgent> {
     const agent = await this.repo.findOne({ where: { user_id: userId, event_id: eventId } });
     if (!agent) {

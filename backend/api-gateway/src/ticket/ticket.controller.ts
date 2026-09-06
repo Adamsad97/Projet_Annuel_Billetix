@@ -1,6 +1,8 @@
 import {
   Body,
   Controller,
+  Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -28,8 +30,27 @@ export class TicketController {
     @Inject("TICKET_SERVICE") private readonly ticketClient: ClientProxy,
     @Inject("ORDER_SERVICE") private readonly orderClient: ClientProxy,
     @Inject("PAYMENT_SERVICE") private readonly paymentClient: ClientProxy,
+    @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
     private readonly ticketsGateway: TicketsGateway,
   ) {}
+
+  /**
+   * Bug corrigé (CDC §6.2) : un ORGANIZER n'était jamais vérifié comme
+   * propriétaire réel de l'événement scanné — seul son rôle JWT global
+   * était contrôlé. Un AGENT, lui, est vérifié côté ticket-service
+   * (affectation ControlAgent réelle, cf. ScanService.scan).
+   */
+  private async assertOrganizerOwnsEvent(
+    userId: string,
+    eventId: string,
+  ): Promise<void> {
+    const event = await firstValueFrom(
+      this.eventClient.send<{ organizer_id: string }>("event.get", { id: eventId }),
+    );
+    if (event.organizer_id !== userId) {
+      throw new ForbiddenException("Vous n'êtes pas l'organisateur de cet événement");
+    }
+  }
 
   // ─── Acheteur ────────────────────────────────────────────────────────────────
 
@@ -221,8 +242,17 @@ export class TicketController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: { qr_token: string; event_id: string; device_info?: string },
   ) {
+    const isOrganizer = user.role === "ORGANIZER";
+    if (isOrganizer) {
+      await this.assertOrganizerOwnsEvent(user.sub, dto.event_id);
+    }
+
     const response = await firstValueFrom(
-      this.ticketClient.send("ticket.scan", { ...dto, agent_id: user.sub }),
+      this.ticketClient.send("ticket.scan", {
+        ...dto,
+        agent_id: user.sub,
+        is_organizer: isOrganizer,
+      }),
     );
 
     // Push temps réel vers le profil de l'acheteur si scan valide
@@ -259,14 +289,20 @@ export class TicketController {
   @ApiOperation({
     summary: "Synchroniser les scans hors-ligne (AGENT/ORGANIZER)",
   })
-  syncOffline(
+  async syncOffline(
     @CurrentUser() user: JwtPayload,
     @Body() dto: { event_id: string; entries: unknown[] },
   ) {
+    const isOrganizer = user.role === "ORGANIZER";
+    if (isOrganizer) {
+      await this.assertOrganizerOwnsEvent(user.sub, dto.event_id);
+    }
+
     return firstValueFrom(
       this.ticketClient.send("ticket.sync_offline", {
         agent_id: user.sub,
         ...dto,
+        is_organizer: isOrganizer,
       }),
     );
   }
@@ -282,14 +318,21 @@ export class TicketController {
 
   // ─── Organisateur : gestion des agents ──────────────────────────────────────
 
+  /**
+   * Bug corrigé (CDC §6.2) : ces 3 endpoints ne vérifiaient que le rôle JWT
+   * global ORGANIZER, jamais que l'appelant est bien l'organisateur DE CET
+   * événement précis — un organisateur pouvait assigner/lister/révoquer les
+   * agents de contrôle de n'importe quel autre organisateur.
+   */
   @Post("event/:eventId/agents")
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Assigner un agent à l'événement (ORGANIZER)" })
-  assignAgent(
+  async assignAgent(
     @CurrentUser() user: JwtPayload,
     @Param("eventId") eventId: string,
     @Body() dto: { user_id: string; is_supervisor?: boolean },
   ) {
+    await this.assertOrganizerOwnsEvent(user.sub, eventId);
     return firstValueFrom(
       this.ticketClient.send("ticket.assign_agent", {
         ...dto,
@@ -304,9 +347,33 @@ export class TicketController {
   @ApiOperation({
     summary: "Liste des agents d'un événement (ORGANIZER/ADMIN)",
   })
-  getAgents(@Param("eventId") eventId: string) {
+  async getAgents(
+    @CurrentUser() user: JwtPayload,
+    @Param("eventId") eventId: string,
+  ) {
+    if (user.role === "ORGANIZER") {
+      await this.assertOrganizerOwnsEvent(user.sub, eventId);
+    }
     return firstValueFrom(
       this.ticketClient.send("ticket.get_agents", { event_id: eventId }),
+    );
+  }
+
+  @Delete("event/:eventId/agents/:userId")
+  @HttpCode(HttpStatus.OK)
+  @Roles("ORGANIZER")
+  @ApiOperation({ summary: "Révoquer un agent de l'événement (ORGANIZER)" })
+  async removeAgent(
+    @CurrentUser() user: JwtPayload,
+    @Param("eventId") eventId: string,
+    @Param("userId") userId: string,
+  ) {
+    await this.assertOrganizerOwnsEvent(user.sub, eventId);
+    return firstValueFrom(
+      this.ticketClient.send("ticket.remove_agent", {
+        user_id: userId,
+        event_id: eventId,
+      }),
     );
   }
 
