@@ -174,6 +174,10 @@ export class OrganizerService {
         });
       }
       profile.kyc_submitted_at = new Date();
+      // Bug corrigé : en cas de nouvelle soumission après un rejet, l'ancien
+      // motif de rejet restait affiché alors qu'un nouveau justificatif est
+      // en attente d'examen — laissait croire que le KYC était encore rejeté.
+      profile.kyc_rejected_reason = null;
     }
     if (dto.kyc_status === KycStatus.VERIFIED) {
       profile.kyc_verified_at = new Date();
