@@ -123,15 +123,26 @@ export class StockReservationService {
    * firstValueFrom() côté gateway (RxJS EmptyError: "no elements in
    * sequence") alors que la libération elle-même s'est bien exécutée — le
    * client recevait une 500 malgré un succès réel.
+   *
+   * Bug corrigé : release() (déclenché par l'acheteur) et
+   * restoreExpiredReservations() (cron, chaque minute) pouvaient tous deux
+   * traiter la même réservation venant d'expirer (fenêtre de grâce de
+   * GRACE_SECONDS) et restaurer CHACUN le quota — doublant artificiellement
+   * le stock disponible. Le DEL sert désormais de verrou atomique : seul
+   * l'appelant dont le DEL supprime effectivement la clé (renvoie > 0)
+   * restaure le quota ; l'autre trouve la clé déjà supprimée (0) et ne fait
+   * rien.
    */
   async release(token: string): Promise<{ success: boolean }> {
     const raw = await this.redis.get(`${KEY_PREFIX}${token}`);
     if (!raw) return { success: true };
 
-    const data: ReservationData = JSON.parse(raw);
-    await this.rollback(data.items);
-    await this.redis.del(`${KEY_PREFIX}${token}`);
+    const deleted = await this.redis.del(`${KEY_PREFIX}${token}`);
     await this.redis.zrem(INDEX_KEY, token);
+    if (deleted > 0) {
+      const data: ReservationData = JSON.parse(raw);
+      await this.rollback(data.items);
+    }
     return { success: true };
   }
 
@@ -147,10 +158,15 @@ export class StockReservationService {
     for (const token of expiredTokens) {
       const raw = await this.redis.get(`${KEY_PREFIX}${token}`);
       if (raw) {
-        const data: ReservationData = JSON.parse(raw);
-        await this.rollback(data.items);
-        await this.redis.del(`${KEY_PREFIX}${token}`);
-        restored++;
+        // Même verrou atomique que release() : ne restaure que si CE DEL a
+        // effectivement supprimé la clé (évite une double restauration si
+        // l'acheteur appelle release() au même instant sur le même jeton).
+        const deleted = await this.redis.del(`${KEY_PREFIX}${token}`);
+        if (deleted > 0) {
+          const data: ReservationData = JSON.parse(raw);
+          await this.rollback(data.items);
+          restored++;
+        }
       }
       // Retiré de l'index même si la clé avait déjà disparu (marge de grâce
       // dépassée) — cas résiduel qui ne devrait pas se produire en pratique.

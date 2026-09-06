@@ -21,7 +21,11 @@ describe('StockReservationService', () => {
     redis = {
       get: jest.fn(),
       set: jest.fn(),
-      del: jest.fn(),
+      // Cas nominal : le DEL supprime effectivement la clé (aucune course
+      // avec une autre restauration concurrente) — cf. describe('release —
+      // verrou atomique contre restoreExpiredReservations()') pour le cas
+      // inverse (0, clé déjà supprimée par ailleurs).
+      del: jest.fn().mockResolvedValue(1),
       zadd: jest.fn(),
       zrangebyscore: jest.fn().mockResolvedValue([]),
       zrem: jest.fn(),
@@ -136,6 +140,55 @@ describe('StockReservationService', () => {
       await service.release('token-x');
       expect(eventClient.send).not.toHaveBeenCalled();
       expect(redis.del).not.toHaveBeenCalled();
+    });
+
+    it('ne restaure pas le stock si restoreExpiredReservations() a déjà supprimé le jeton (course évitée)', async () => {
+      const data = {
+        buyer_id: 'buyer-1',
+        event_id: 'e1',
+        items: [{ ticket_category_id: 'cat-1', quantity: 2 }],
+        expires_at: '2030-01-01',
+      };
+      redis.get.mockResolvedValue(JSON.stringify(data));
+      // Le DEL renvoie 0 : une autre restauration concurrente a gagné la
+      // course et a déjà supprimé la clé — ne pas restaurer une seconde fois.
+      redis.del.mockResolvedValue(0);
+
+      await service.release('token-x');
+
+      expect(eventClient.send).not.toHaveBeenCalled();
+      expect(redis.zrem).toHaveBeenCalledWith('reservations:pending_index', 'token-x');
+    });
+  });
+
+  describe('restoreExpiredReservations — verrou atomique contre release()', () => {
+    it('restaure le stock des jetons expirés dont le DEL supprime effectivement la clé', async () => {
+      redis.zrangebyscore.mockResolvedValue(['token-a']);
+      redis.get.mockResolvedValue(
+        JSON.stringify({ buyer_id: 'buyer-1', event_id: 'e1', items: [{ ticket_category_id: 'cat-1', quantity: 3 }], expires_at: '2020-01-01' }),
+      );
+      eventClient.send.mockReturnValue(of({ success: true }));
+
+      const restored = await service.restoreExpiredReservations();
+
+      expect(eventClient.send).toHaveBeenCalledWith('event.restore_quota', { id: 'cat-1', quantity: 3 });
+      expect(restored).toBe(1);
+    });
+
+    it('ne restaure pas si release() a déjà supprimé le jeton entre-temps (DEL renvoie 0)', async () => {
+      redis.zrangebyscore.mockResolvedValue(['token-a']);
+      redis.get.mockResolvedValue(
+        JSON.stringify({ buyer_id: 'buyer-1', event_id: 'e1', items: [{ ticket_category_id: 'cat-1', quantity: 3 }], expires_at: '2020-01-01' }),
+      );
+      redis.del.mockResolvedValue(0);
+
+      const restored = await service.restoreExpiredReservations();
+
+      expect(eventClient.send).not.toHaveBeenCalled();
+      expect(restored).toBe(0);
+      // Retiré de l'index quand même — sinon le même jeton resterait à
+      // traiter indéfiniment par les cycles suivants du cron.
+      expect(redis.zrem).toHaveBeenCalledWith('reservations:pending_index', 'token-a');
     });
   });
 });

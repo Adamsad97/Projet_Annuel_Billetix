@@ -24,8 +24,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.client.get(key);
   }
 
-  async del(key: string): Promise<void> {
-    await this.client.del(key);
+  // Renvoie le nombre de clés effectivement supprimées (0 ou 1 pour une
+  // clé unique) — nécessaire pour transformer un DEL en verrou atomique
+  // "premier arrivé, premier servi" (voir StockReservationService).
+  async del(key: string): Promise<number> {
+    return this.client.del(key);
   }
 
   // SET NX — ne positionne la clé que si elle n'existe pas (atomique)
