@@ -540,6 +540,52 @@ export class AuthService {
     return this.sanitize(user);
   }
 
+  /**
+   * Bug corrigé : POST /admin/users/:id/unlock appelait déjà auth.unlock_account
+   * côté gateway (avec son propre audit trail USER_ACCOUNT_UNLOCKED déjà en
+   * place), mais aucun handler ne répondait à ce pattern ici — timeout RPC
+   * garanti, la route était en réalité entièrement cassée.
+   */
+  async unlockAccount(id: string) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user)
+      throw new RpcException({
+        statusCode: 404,
+        message: "Utilisateur introuvable",
+      });
+
+    user.failed_login_attempts = 0;
+    user.locked_until = null;
+    await this.userRepo.save(user);
+
+    return this.sanitize(user);
+  }
+
+  /**
+   * Bug corrigé : même problème que unlockAccount() — POST
+   * /admin/users/:id/activate appelait auth.activate_account, jamais géré
+   * côté auth-service.
+   */
+  async activateAccount(id: string) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user)
+      throw new RpcException({
+        statusCode: 404,
+        message: "Utilisateur introuvable",
+      });
+    if (user.is_email_verified) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "Ce compte est déjà activé",
+      });
+    }
+
+    user.is_email_verified = true;
+    await this.userRepo.save(user);
+
+    return this.sanitize(user);
+  }
+
   async changeRole(id: string, role: UserRole) {
     if (!Object.values(UserRole).includes(role)) {
       throw new RpcException({ statusCode: 400, message: "Rôle invalide" });

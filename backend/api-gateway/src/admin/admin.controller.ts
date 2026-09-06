@@ -237,6 +237,14 @@ export class AdminController {
     );
   }
 
+  /**
+   * Bug corrigé (CDC §9) : aucune de ces 5 actions admin sur un compte
+   * (suspension, levée, déverrouillage, reset 2FA, activation) ne notifiait
+   * jamais le titulaire — il ne l'apprenait qu'en échouant à se connecter,
+   * ou pas du tout pour un reset 2FA (risque de sécurité passé inaperçu si
+   * ce n'était pas lui qui l'avait demandé). Les RPC auth.* renvoient déjà
+   * l'utilisateur sanitizé (email/first_name inclus), pas de RPC supplémentaire.
+   */
   @Post("users/:id/suspend")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Suspendre un compte utilisateur" })
@@ -246,14 +254,19 @@ export class AdminController {
     @Param("id") id: string,
     @Body() dto: { reason: string },
   ) {
-    const result = await firstValueFrom(
+    const result = (await firstValueFrom(
       this.authClient.send("auth.suspend_user", {
         id,
         admin_id: user.sub,
         reason: dto.reason,
       }),
-    );
+    )) as { email: string; first_name: string };
     this.audit(user, req, "USER_SUSPENDED", "USER", id, dto.reason);
+    this.notifClient.emit("notification.account_suspended", {
+      email: result.email,
+      firstName: result.first_name,
+      reason: dto.reason,
+    });
     return result;
   }
 
@@ -265,10 +278,14 @@ export class AdminController {
     @Req() req: Request,
     @Param("id") id: string,
   ) {
-    const result = await firstValueFrom(
+    const result = (await firstValueFrom(
       this.authClient.send("auth.unsuspend_user", { id, admin_id: user.sub }),
-    );
+    )) as { email: string; first_name: string };
     this.audit(user, req, "USER_UNSUSPENDED", "USER", id);
+    this.notifClient.emit("notification.account_unsuspended", {
+      email: result.email,
+      firstName: result.first_name,
+    });
     return result;
   }
 
@@ -283,10 +300,14 @@ export class AdminController {
     @Req() req: Request,
     @Param("id") id: string,
   ) {
-    const result = await firstValueFrom(
+    const result = (await firstValueFrom(
       this.authClient.send("auth.unlock_account", { id, admin_id: user.sub }),
-    );
+    )) as { email: string; first_name: string };
     this.audit(user, req, "USER_ACCOUNT_UNLOCKED", "USER", id);
+    this.notifClient.emit("notification.account_unlocked", {
+      email: result.email,
+      firstName: result.first_name,
+    });
     return result;
   }
 
@@ -305,14 +326,19 @@ export class AdminController {
     if (!dto.reason?.trim()) {
       throw new BadRequestException("Un motif est requis pour réinitialiser la 2FA d'un compte.");
     }
-    const result = await firstValueFrom(
+    const result = (await firstValueFrom(
       this.authClient.send("auth.2fa.reset_by_admin", {
         user_id: id,
         admin_id: user.sub,
         reason: dto.reason,
       }),
-    );
+    )) as { email: string; first_name: string };
     this.audit(user, req, "USER_2FA_RESET", "USER", id, dto.reason);
+    this.notifClient.emit("notification.two_factor_reset_by_admin", {
+      email: result.email,
+      firstName: result.first_name,
+      reason: dto.reason,
+    });
     return result;
   }
 
@@ -327,10 +353,14 @@ export class AdminController {
     @Req() req: Request,
     @Param("id") id: string,
   ) {
-    const result = await firstValueFrom(
+    const result = (await firstValueFrom(
       this.authClient.send("auth.activate_account", { id, admin_id: user.sub }),
-    );
+    )) as { email: string; first_name: string };
     this.audit(user, req, "USER_ACCOUNT_ACTIVATED", "USER", id);
+    this.notifClient.emit("notification.account_activated", {
+      email: result.email,
+      firstName: result.first_name,
+    });
     return result;
   }
 

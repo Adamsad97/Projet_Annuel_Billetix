@@ -115,6 +115,13 @@ export class AuthController {
     return this.twoFactorService.isTwoFactorRequired(data.user_id);
   }
 
+  // Bug corrigé : la route gateway POST /admin/users/:id/reset-2fa appelait
+  // déjà ce pattern, mais aucun handler n'existait ici — timeout RPC garanti.
+  @MessagePattern("auth.2fa.reset_by_admin")
+  reset2faByAdmin(@Payload() data: { user_id: string }) {
+    return this.twoFactorService.resetByAdmin(data.user_id);
+  }
+
   @MessagePattern("auth.get_user")
   getUser(@Payload() data: { id: string }) {
     return this.authService.getUserById(data.id);
@@ -137,6 +144,18 @@ export class AuthController {
   @MessagePattern("auth.unsuspend_user")
   unsuspendUser(@Payload() data: { id: string; admin_id: string }) {
     return this.authService.unsuspendUser(data.id);
+  }
+
+  // Bug corrigé : les routes gateway correspondantes appelaient déjà ces
+  // patterns, mais aucun handler n'existait ici — timeout RPC garanti.
+  @MessagePattern("auth.unlock_account")
+  unlockAccount(@Payload() data: { id: string; admin_id: string }) {
+    return this.authService.unlockAccount(data.id);
+  }
+
+  @MessagePattern("auth.activate_account")
+  activateAccount(@Payload() data: { id: string; admin_id: string }) {
+    return this.authService.activateAccount(data.id);
   }
 
   @MessagePattern("auth.change_role")

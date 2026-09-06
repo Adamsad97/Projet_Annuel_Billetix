@@ -221,6 +221,44 @@ export class TwoFactorService {
     return { success: true };
   }
 
+  /**
+   * Bug corrigé : POST /admin/users/:id/reset-2fa appelait déjà
+   * auth.2fa.reset_by_admin côté gateway, mais aucun handler ne répondait à
+   * ce pattern côté auth-service — la route était en réalité entièrement
+   * cassée (timeout RPC) malgré son audit trail déjà en place (USER_2FA_RESET).
+   *
+   * Contrairement à disable() : pas de code à vérifier (c'est précisément
+   * le scénario "appareil ET codes de secours perdus" que cette route
+   * couvre) et pas de blocage IBAN — c'est le seul chemin de sortie pour un
+   * organisateur avec IBAN autrement définitivement bloqué hors de son
+   * compte. La 2FA repasse à false : l'utilisateur peut se reconnecter et
+   * devra la reconfigurer lui-même s'il le souhaite (setupTotp()).
+   */
+  async resetByAdmin(userId: string): Promise<{ success: boolean; email: string; first_name: string }> {
+    const user = await this.getUser(userId);
+    if (!user.two_factor_enabled) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "La 2FA n'est pas activée sur ce compte",
+      });
+    }
+
+    await this.userRepo
+      .createQueryBuilder()
+      .update(User)
+      .set({
+        two_factor_enabled: false,
+        two_factor_method: null,
+        two_factor_secret: null,
+      })
+      .where("id = :id", { id: userId })
+      .execute();
+
+    await this.backupCodeRepo.delete({ user_id: userId });
+
+    return { success: true, email: user.email, first_name: user.first_name };
+  }
+
   async isTwoFactorRequired(userId: string): Promise<boolean> {
     const user = await this.getUser(userId);
     return user.two_factor_enabled;

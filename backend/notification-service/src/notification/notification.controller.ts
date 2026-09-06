@@ -3,6 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import * as http from 'http';
 import { MailAttachment, MailService } from '../mail/mail.service';
+import { AccountActivatedDto } from './dto/account-activated.dto';
+import { AccountSuspendedDto } from './dto/account-suspended.dto';
+import { AccountUnlockedDto } from './dto/account-unlocked.dto';
+import { AccountUnsuspendedDto } from './dto/account-unsuspended.dto';
+import { TwoFactorResetByAdminDto } from './dto/two-factor-reset-by-admin.dto';
 import { EmailVerificationDto } from './dto/email-verification.dto';
 import { EventCanceledDto } from './dto/event-canceled.dto';
 import { EventInfoRequestedDto } from './dto/event-info-requested.dto';
@@ -372,6 +377,61 @@ export class NotificationController {
         isClosed: data.status === 'CLOSED',
         dashboardUrl: `${this.appUrl}/organizer/events`,
       },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.account_suspended')
+  async onAccountSuspended(@Payload() data: AccountSuspendedDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: 'Compte suspendu — BilletiX',
+      template: 'account-suspended',
+      context: { ...data },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.account_unsuspended')
+  async onAccountUnsuspended(@Payload() data: AccountUnsuspendedDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: 'Compte réactivé — BilletiX',
+      template: 'account-unsuspended',
+      context: { ...data },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.account_unlocked')
+  async onAccountUnlocked(@Payload() data: AccountUnlockedDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: 'Compte déverrouillé — BilletiX',
+      template: 'account-unlocked',
+      context: { ...data },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.account_activated')
+  async onAccountActivated(@Payload() data: AccountActivatedDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: 'Compte activé — BilletiX',
+      template: 'account-activated',
+      context: { ...data },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.two_factor_reset_by_admin')
+  async onTwoFactorResetByAdmin(@Payload() data: TwoFactorResetByAdminDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: 'Double authentification réinitialisée — BilletiX',
+      template: 'two-factor-reset-by-admin',
+      context: { ...data },
     });
     this.ack(rmqContext);
   }
