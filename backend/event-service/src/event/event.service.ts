@@ -455,6 +455,19 @@ export class EventService {
     if (event.status !== EventStatus.DRAFT) {
       throw new RpcException({ statusCode: 400, message: 'Seul un brouillon peut être soumis' });
     }
+
+    // Bug corrigé : rien n'empêchait de soumettre (puis faire valider) un
+    // événement sans aucune catégorie de billet — une fois publié, il
+    // apparaissait dans le catalogue public sans qu'aucun achat ne soit
+    // jamais possible (aucune catégorie à réserver).
+    const categories = await this.ticketCategoryService.getByEvent(id);
+    if (categories.length === 0) {
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Au moins une catégorie de billet est requise avant de soumettre l\'événement',
+      });
+    }
+
     event.status = EventStatus.PENDING_VALIDATION;
     event.validation_requested_at = new Date();
     event.deadline_alert_sent = false;
