@@ -5,6 +5,7 @@ import { ClientsModule, Transport } from "@nestjs/microservices";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { RedisModule } from "../redis/redis.module";
 import { User } from "../user/user.entity";
+import { AdminBootstrapService } from "./admin-bootstrap.service";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { BackupCode } from "./backup-code.entity";
@@ -60,6 +61,6 @@ import { TwoFactorService } from "./two-factor.service";
     RedisModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, TwoFactorService],
+  providers: [AuthService, TwoFactorService, AdminBootstrapService],
 })
 export class AuthModule {}
