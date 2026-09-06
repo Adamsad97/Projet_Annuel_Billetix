@@ -53,13 +53,35 @@ export class EventController {
   @ApiQuery({ name: "category", required: false })
   @ApiQuery({ name: "city", required: false })
   @ApiQuery({ name: "page", required: false })
+  @ApiQuery({ name: "q", required: false, description: "Recherche mots-clés (titre, description, lieu)" })
+  @ApiQuery({ name: "min_price", required: false, description: "Prix TTC minimum (€)" })
+  @ApiQuery({ name: "max_price", required: false, description: "Prix TTC maximum (€)" })
+  @ApiQuery({ name: "lat", required: false, description: "Latitude du point de recherche (avec lng et radius_km)" })
+  @ApiQuery({ name: "lng", required: false, description: "Longitude du point de recherche (avec lat et radius_km)" })
+  @ApiQuery({ name: "radius_km", required: false, description: "Rayon de recherche en km (avec lat et lng)" })
   listPublished(
     @Query("category") category?: string,
     @Query("city") city?: string,
     @Query("page") page?: number,
+    @Query("q") q?: string,
+    @Query("min_price") min_price?: number,
+    @Query("max_price") max_price?: number,
+    @Query("lat") lat?: number,
+    @Query("lng") lng?: number,
+    @Query("radius_km") radius_km?: number,
   ) {
     return firstValueFrom(
-      this.eventClient.send("event.list_published", { category, city, page }),
+      this.eventClient.send("event.list_published", {
+        category,
+        city,
+        page,
+        q,
+        min_price: min_price !== undefined ? Number(min_price) : undefined,
+        max_price: max_price !== undefined ? Number(max_price) : undefined,
+        lat: lat !== undefined ? Number(lat) : undefined,
+        lng: lng !== undefined ? Number(lng) : undefined,
+        radius_km: radius_km !== undefined ? Number(radius_km) : undefined,
+      }),
     );
   }
 
@@ -220,18 +242,62 @@ export class EventController {
   @HttpCode(HttpStatus.OK)
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Modifier un événement (ORGANIZER)" })
-  update(
+  async update(
     @CurrentUser() user: JwtPayload,
     @Param("id") id: string,
     @Body() dto: UpdateEventDto,
   ) {
-    return firstValueFrom(
+    const updatedEvent = (await firstValueFrom(
       this.eventClient.send("event.update", {
         id,
         organizer_id: user.sub,
         dto,
       }),
+    )) as { id: string; title: string; status: string };
+
+    // Bug corrigé (CDC §9 : notification "modification d'événement" jamais
+    // envoyée) — une fois publié, seuls description/affiche/conditions
+    // d'accès restent modifiables (cf. event-service EventService.update),
+    // mais ces changements restent pertinents pour les détenteurs de billet
+    // (ex : conditions d'accès à l'entrée). Fire-and-forget, ne bloque
+    // jamais la réponse de mise à jour elle-même.
+    if (updatedEvent.status === "PUBLISHED" && Object.keys(dto).length > 0) {
+      this.notifyBuyersOfEventUpdate(updatedEvent).catch((err) =>
+        this.logger.error(
+          `Erreur notification modification event ${id}: ${err?.message}`,
+        ),
+      );
+    }
+
+    return updatedEvent;
+  }
+
+  private async notifyBuyersOfEventUpdate(event: {
+    id: string;
+    title: string;
+  }): Promise<void> {
+    const orders = (await firstValueFrom(
+      this.orderClient.send("order.list_by_event", { event_id: event.id }),
+    )) as Order[];
+
+    const activeOrders = orders.filter(
+      (order) =>
+        order.status === OrderStatus.CONFIRMED ||
+        order.status === OrderStatus.TICKETS_SENT,
     );
+
+    // Un envoi par acheteur unique (pas par commande) — un même acheteur
+    // ayant passé plusieurs commandes ne doit recevoir l'email qu'une fois.
+    const notifiedEmails = new Set<string>();
+    for (const order of activeOrders) {
+      if (notifiedEmails.has(order.buyer_email)) continue;
+      notifiedEmails.add(order.buyer_email);
+      this.notifClient.emit("notification.event_updated", {
+        email: order.buyer_email,
+        firstName: order.buyer_first_name,
+        eventName: event.title,
+      });
+    }
   }
 
   @Post(":id/submit")

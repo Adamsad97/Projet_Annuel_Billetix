@@ -57,6 +57,20 @@ export class Event {
   @Column({ nullable: true })
   non_profit_document_url: string | null;
 
+  // Bug corrigé : la commission 0% était accordée automatiquement dès que
+  // is_non_profit=true (auto-déclaré par l'organisateur, jamais vérifié) —
+  // désormais un admin doit explicitement valider le justificatif via
+  // event.verify_non_profit avant que l'exonération ne s'applique à la
+  // validation de l'événement (cf. EventService.computeCommissionRate).
+  @Column({ default: false })
+  non_profit_verified: boolean;
+
+  @Column({ nullable: true })
+  non_profit_verified_at: Date | null;
+
+  @Column({ nullable: true })
+  non_profit_verified_by: string | null;
+
   @Column({ type: 'timestamptz' })
   start_date: Date;
 
@@ -166,6 +180,13 @@ export class Event {
   // Seuils de remplissage déjà notifiés (ex: [25, 50])
   @Column({ type: 'simple-json', default: '[]' })
   fill_thresholds_notified: number[];
+
+  // Bug corrigé (CDC §9) : notification "première vente" à l'organisateur
+  // jamais envoyée — flag posé atomiquement dès la première commande
+  // effectivement payée (pas la première réservation, qui peut expirer sans
+  // achat réel), cf. EventService.markFirstSale.
+  @Column({ default: false })
+  first_sale_notified: boolean;
 
   @CreateDateColumn()
   created_at: Date;

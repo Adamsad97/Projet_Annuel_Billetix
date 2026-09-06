@@ -10,6 +10,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from "class-validator";
 
 export enum EventCategory {
@@ -40,7 +41,12 @@ export class CreateEventDto {
   @ApiPropertyOptional() @IsBoolean() @IsOptional()
   is_non_profit?: boolean;
 
-  @ApiPropertyOptional() @IsUrl() @IsOptional()
+  // Bug corrigé : justificatif optionnel même en cas de déclaration "à but
+  // non lucratif" — sans lui, l'admin n'a rien à vérifier avant d'accorder
+  // l'exonération de commission (cf. event-service EventService.computeCommissionRate).
+  @ApiPropertyOptional()
+  @ValidateIf((dto: CreateEventDto) => dto.is_non_profit === true)
+  @IsUrl({}, { message: 'Un justificatif est requis pour une déclaration à but non lucratif' })
   non_profit_document_url?: string;
 
   @ApiProperty() @IsDateString()

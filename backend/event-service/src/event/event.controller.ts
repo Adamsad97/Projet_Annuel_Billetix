@@ -19,7 +19,17 @@ export class EventController {
   }
 
   @MessagePattern('event.list_published')
-  listPublished(@Payload() filters: { category?: string; city?: string; page?: number }) {
+  listPublished(@Payload() filters: {
+    category?: string;
+    city?: string;
+    page?: number;
+    q?: string;
+    min_price?: number;
+    max_price?: number;
+    lat?: number;
+    lng?: number;
+    radius_km?: number;
+  }) {
     return this.eventService.listPublished(filters);
   }
 
@@ -51,6 +61,16 @@ export class EventController {
   @MessagePattern('event.validate')
   validate(@Payload() data: { id: string; admin_id: string }) {
     return this.eventService.validate(data.id, data.admin_id);
+  }
+
+  @MessagePattern('event.mark_first_sale')
+  markFirstSale(@Payload() data: { id: string }) {
+    return this.eventService.markFirstSale(data.id);
+  }
+
+  @MessagePattern('event.verify_non_profit')
+  verifyNonProfit(@Payload() data: { id: string; admin_id: string; approved: boolean }) {
+    return this.eventService.verifyNonProfit(data.id, data.admin_id, data.approved);
   }
 
   @MessagePattern('event.reject')

@@ -10,6 +10,8 @@ import { EventPublishedDto } from './dto/event-published.dto';
 import { EventReminderDto } from './dto/event-reminder.dto';
 import { EventRejectedDto } from './dto/event-rejected.dto';
 import { EventSuspendedDto } from './dto/event-suspended.dto';
+import { EventUpdatedDto } from './dto/event-updated.dto';
+import { FirstSaleDto } from './dto/first-sale.dto';
 import { DisputeOpenedDto } from './dto/dispute-opened.dto';
 import { FillThresholdReachedDto } from './dto/fill-threshold-reached.dto';
 import { PayoutCompletedDto } from './dto/payout-completed.dto';
@@ -248,6 +250,36 @@ export class NotificationController {
       context: {
         ...data,
         eventsUrl: `${this.appUrl}/events`,
+      },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.event_updated')
+  async onEventUpdated(@Payload() data: EventUpdatedDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Mise à jour — ${data.eventName}`,
+      template: 'event-updated',
+      context: {
+        firstName: data.firstName,
+        eventName: data.eventName,
+        ordersUrl: `${this.appUrl}/orders`,
+      },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.first_sale')
+  async onFirstSale(@Payload() data: FirstSaleDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Première vente — ${data.eventName}`,
+      template: 'first-sale',
+      context: {
+        firstName: data.firstName,
+        eventName: data.eventName,
+        dashboardUrl: `${this.appUrl}/organizer/events`,
       },
     });
     this.ack(rmqContext);

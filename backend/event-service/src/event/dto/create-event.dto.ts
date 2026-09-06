@@ -9,6 +9,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { EventCategory, RefundPolicy } from '../event.entity';
 
@@ -25,7 +26,11 @@ export class CreateEventDto {
   @IsBoolean() @IsOptional()
   is_non_profit?: boolean;
 
-  @IsUrl() @IsOptional()
+  // Bug corrigé : justificatif optionnel même en cas de déclaration "à but
+  // non lucratif" — sans lui, l'admin n'a rien à vérifier avant d'accorder
+  // l'exonération de commission (cf. EventService.computeCommissionRate).
+  @ValidateIf((dto: CreateEventDto) => dto.is_non_profit === true)
+  @IsUrl({}, { message: 'Un justificatif est requis pour une déclaration à but non lucratif' })
   non_profit_document_url?: string;
 
   @IsDateString()

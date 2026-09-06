@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { TicketCategory } from '../ticket-category/ticket-category.entity';
 import { TicketCategoryModule } from '../ticket-category/ticket-category.module';
 import { ValidationRequestModule } from '../validation-request/validation-request.module';
 import { Event } from './event.entity';
@@ -10,7 +11,10 @@ import { EventService } from './event.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Event]),
+    // TicketCategory enregistré ici aussi (en plus de TicketCategoryModule) :
+    // le filtre prix du catalogue public (listPublished) a besoin d'un accès
+    // direct au repository pour une sous-requête, pas seulement du service.
+    TypeOrmModule.forFeature([Event, TicketCategory]),
     ValidationRequestModule,
     TicketCategoryModule,
     ClientsModule.registerAsync([

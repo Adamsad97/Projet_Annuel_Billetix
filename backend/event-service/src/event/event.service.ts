@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
+import { CategoryVisibility, TicketCategory } from '../ticket-category/ticket-category.entity';
 import { TicketCategoryService } from '../ticket-category/ticket-category.service';
 import { ValidationRequestService } from '../validation-request/validation-request.service';
 import { AdminActionDto } from './dto/admin-action.dto';
@@ -63,6 +64,8 @@ export class EventService {
   constructor(
     @InjectRepository(Event)
     private readonly repo: Repository<Event>,
+    @InjectRepository(TicketCategory)
+    private readonly ticketCategoryRepo: Repository<TicketCategory>,
     @Inject('NOTIFICATION_SERVICE')
     private readonly notifClient: ClientProxy,
     @Inject('AUTH_SERVICE')
@@ -109,23 +112,150 @@ export class EventService {
       : config.commission_standard_percent;
   }
 
+  /**
+   * Bug corrigé : la commission 0% était accordée automatiquement dès que
+   * is_non_profit=true, sans qu'aucun admin n'ait jamais vérifié le
+   * justificatif — un organisateur pouvait s'auto-déclarer "à but non
+   * lucratif" et obtenir l'exonération sans contrôle. Étape dédiée,
+   * distincte de la validation de l'événement : l'admin examine
+   * `non_profit_document_url` puis approuve ou rejette explicitement.
+   * `validate()` ne consulte ensuite que `non_profit_verified` (jamais
+   * `is_non_profit` directement) pour calculer la commission finale.
+   */
+  async verifyNonProfit(id: string, adminId: string, approved: boolean): Promise<Event> {
+    const event = await this.getById(id);
+    if (!event.is_non_profit) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "Cet événement n'est pas déclaré à but non lucratif",
+      });
+    }
+    if (!event.non_profit_document_url) {
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Aucun justificatif fourni par l\'organisateur',
+      });
+    }
+    event.non_profit_verified = approved;
+    event.non_profit_verified_at = new Date();
+    event.non_profit_verified_by = adminId;
+    return this.repo.save(event);
+  }
+
+  /**
+   * Bug corrigé (CDC §9) : notification "première vente" jamais envoyée à
+   * l'organisateur. Bascule atomique (WHERE first_sale_notified = false)
+   * pour ne jamais notifier deux fois même en cas d'appels concurrents —
+   * appelé depuis le gateway uniquement après confirmation réelle du
+   * paiement (pas à la réservation, qui peut expirer sans achat).
+   */
+  async markFirstSale(id: string): Promise<{ is_first_sale: boolean }> {
+    const result = await this.repo
+      .createQueryBuilder()
+      .update(Event)
+      .set({ first_sale_notified: true })
+      .where('id = :id', { id })
+      .andWhere('first_sale_notified = false')
+      .execute();
+    return { is_first_sale: (result.affected ?? 0) > 0 };
+  }
+
   async getById(id: string): Promise<Event> {
     const event = await this.repo.findOne({ where: { id } });
     if (!event) throw new RpcException({ statusCode: 404, message: 'Événement introuvable' });
     return event;
   }
 
-  async listPublished(filters: { category?: string; city?: string; page?: number }): Promise<{ data: Event[]; total: number }> {
+  /**
+   * Bug corrigé (CDC §3.4 : "recherche par mots-clés, filtre prix, filtre
+   * distance") : le catalogue public ne proposait que catégorie/ville — pas
+   * de recherche texte, pas de filtre prix, et les coordonnées GPS
+   * (venue_latitude/longitude) étaient stockées mais jamais exploitées.
+   */
+  async listPublished(filters: {
+    category?: string;
+    city?: string;
+    page?: number;
+    q?: string;
+    min_price?: number;
+    max_price?: number;
+    lat?: number;
+    lng?: number;
+    radius_km?: number;
+  }): Promise<{ data: Event[]; total: number }> {
     const page = filters.page ?? 1;
     const limit = 20;
     const queryBuilder = this.repo.createQueryBuilder('e')
-      .where('e.status = :status', { status: EventStatus.PUBLISHED })
-      .orderBy('e.start_date', 'ASC')
-      .skip((page - 1) * limit)
-      .take(limit);
+      .where('e.status = :status', { status: EventStatus.PUBLISHED });
 
     if (filters.category) queryBuilder.andWhere('e.category = :category', { category: filters.category });
     if (filters.city) queryBuilder.andWhere('LOWER(e.venue_city) LIKE :city', { city: `%${filters.city.toLowerCase()}%` });
+
+    // Recherche mots-clés : titre, description, lieu — toutes les colonnes
+    // qu'un acheteur associerait naturellement à "chercher un événement".
+    if (filters.q) {
+      queryBuilder.andWhere(
+        '(LOWER(e.title) LIKE :q OR LOWER(e.description) LIKE :q OR LOWER(e.venue_name) LIKE :q)',
+        { q: `%${filters.q.toLowerCase()}%` },
+      );
+    }
+
+    // Filtre prix : au moins une catégorie de billet publique et active dont
+    // le prix TTC (TVA plateforme appliquée, comme affiché à l'achat) entre
+    // dans la fourchette demandée.
+    if (filters.min_price !== undefined || filters.max_price !== undefined) {
+      const config = await this.platformConfig.get();
+      const vatMultiplier = 1 + config.tva_rate;
+      queryBuilder.andWhere((qb) => {
+        const sub = qb
+          .subQuery()
+          .select('1')
+          .from(TicketCategory, 'tc')
+          // event_id est varchar côté TicketCategory (jamais typé uuid), e.id
+          // est un uuid natif — comparaison directe rejetée par Postgres
+          // ("operator does not exist: character varying = uuid") sans cast.
+          .where('tc.event_id = CAST(e.id AS text)')
+          .andWhere('tc.visibility = :visibility')
+          .andWhere('tc.is_active = true');
+        if (filters.min_price !== undefined) {
+          sub.andWhere(`tc.price_ht * :vatMultiplier >= :minPrice`);
+        }
+        if (filters.max_price !== undefined) {
+          sub.andWhere(`tc.price_ht * :vatMultiplier <= :maxPrice`);
+        }
+        return `EXISTS ${sub.getQuery()}`;
+      });
+      queryBuilder.setParameters({
+        visibility: CategoryVisibility.PUBLIC,
+        vatMultiplier,
+        ...(filters.min_price !== undefined ? { minPrice: filters.min_price } : {}),
+        ...(filters.max_price !== undefined ? { maxPrice: filters.max_price } : {}),
+      });
+    }
+
+    // Filtre distance : formule de Haversine directement en SQL (évite de
+    // charger tous les événements en mémoire pour les filtrer côté Node).
+    // Rayon terrestre moyen 6371 km.
+    if (filters.lat !== undefined && filters.lng !== undefined && filters.radius_km !== undefined) {
+      queryBuilder
+        .andWhere('e.venue_latitude IS NOT NULL')
+        .andWhere('e.venue_longitude IS NOT NULL')
+        .andWhere(
+          `(6371 * acos(
+            LEAST(1, GREATEST(-1,
+              cos(radians(:lat)) * cos(radians(e.venue_latitude)) *
+              cos(radians(e.venue_longitude) - radians(:lng)) +
+              sin(radians(:lat)) * sin(radians(e.venue_latitude))
+            ))
+          )) <= :radiusKm`,
+          { lat: filters.lat, lng: filters.lng, radiusKm: filters.radius_km },
+        );
+    }
+
+    queryBuilder
+      .orderBy('e.start_date', 'ASC')
+      .skip((page - 1) * limit)
+      .take(limit);
 
     const [data, total] = await queryBuilder.getManyAndCount();
     return { data, total };
@@ -336,7 +466,7 @@ export class EventService {
     if (event.status !== EventStatus.PENDING_VALIDATION) {
       throw new RpcException({ statusCode: 400, message: 'L\'événement n\'est pas en attente de validation' });
     }
-    event.commission_rate = await this.computeCommissionRate(event.total_capacity, event.is_non_profit);
+    event.commission_rate = await this.computeCommissionRate(event.total_capacity, event.non_profit_verified);
     event.status = EventStatus.PUBLISHED;
     event.validated_at = new Date();
     event.validated_by = adminId;
