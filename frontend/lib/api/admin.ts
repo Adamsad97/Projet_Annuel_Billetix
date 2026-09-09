@@ -75,6 +75,12 @@ export function searchUsers(params: { q?: string; role?: string; limit?: number 
   return apiGet<{ data: ApiAdminUser[]; total: number }>(`/admin/users${qs ? `?${qs}` : ""}`);
 }
 
+/** Compte trouvé mais pas encore organisateur (ex: déjà acheteur) — même
+ * mécanisme que la page admin de gestion des comptes. */
+export function changeUserRole(userId: string, role: "BUYER" | "ORGANIZER" | "ADMIN"): Promise<ApiAdminUser> {
+  return apiPost<ApiAdminUser>(`/admin/users/${userId}/change-role`, { role });
+}
+
 export function createEventForOrganizer(organizerId: string, dto: CreateEventDto): Promise<ApiEvent> {
   return apiPost<ApiEvent>("/admin/events", { organizer_id: organizerId, dto });
 }
