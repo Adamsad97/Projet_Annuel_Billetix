@@ -466,14 +466,41 @@ describe('OrderService', () => {
         buyer_id: 'buyer-2',
       });
       expect(reservationService.validate).not.toHaveBeenCalled();
-      // total_ht = 60 (prix de revente) ; commission 10% = 6
-      expect(order.total_amount_ht).toBe(60);
-      expect(order.total_commission).toBe(6);
-      expect(order.net_organizer_amount).toBe(54);
+      // Bug corrigé : resale_price (60) est le prix TTC affiché/plafonné à
+      // la mise en vente, pas un prix HT — le HT en est dérivé (60 / 1.2 =
+      // 50), sinon la TVA était réappliquée par-dessus un prix déjà plafonné,
+      // facturant l'acheteur ~20% au-dessus du plafond annoncé.
+      expect(order.total_amount_ht).toBe(50);
+      expect(order.total_commission).toBe(5);
+      expect(order.net_organizer_amount).toBe(45);
       expect(order.is_resale).toBe(true);
       expect(order.resale_id).toBe('resale-1');
       expect(items[0].ticket_category_name).toBe('Standard');
-      expect(items[0].unit_price_ht).toBe(60);
+      expect(items[0].unit_price_ht).toBe(50);
+      expect(items[0].unit_price_ttc).toBe(60);
+    });
+
+    it('rejette (et libère aussitôt la réservation) si le vendeur tente de racheter son propre billet mis en revente', async () => {
+      ticketClient.send.mockImplementation((pattern: string) => {
+        if (pattern === 'ticket.reserve_resale') {
+          return of({
+            id: 'resale-1',
+            status: 'RESERVED',
+            resale_price: 60,
+            event_id: 'event-1',
+            ticket_category_id: 'cat-1',
+            original_buyer_id: 'buyer-2', // même acheteur que resaleDto.buyer_id
+          });
+        }
+        return of(undefined);
+      });
+
+      await expect(service.createFromResale(resaleDto)).rejects.toThrow(RpcException);
+
+      expect(ticketClient.send).toHaveBeenCalledWith('ticket.release_resale_reservation', {
+        resale_id: 'resale-1',
+      });
+      expect(dataSource.transaction).not.toHaveBeenCalled();
     });
 
     it("rejette l'achat si l'offre de revente n'est plus disponible (déjà réservée/vendue) — ticket-service refuse la réservation atomique", async () => {

@@ -56,11 +56,6 @@ export class OrderController {
     return this.orderService.getPlatformRevenue();
   }
 
-  @MessagePattern('order.get_revenue_trend')
-  getRevenueTrend(@Payload() data: { days: number }) {
-    return this.orderService.getRevenueTrend(data.days);
-  }
-
   @MessagePattern('order.get_sales_trend')
   getSalesTrend(@Payload() data: { from: string; to: string }) {
     return this.orderService.getSalesTrend(new Date(data.from), new Date(data.to));

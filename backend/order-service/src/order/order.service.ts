@@ -402,36 +402,10 @@ export class OrderService {
     };
   }
 
-  /** Tendance de revenu par jour sur les N derniers jours (paid_at — reflète l'encaissement réel). */
-  async getRevenueTrend(
-    days: number,
-  ): Promise<Array<{ day: string; orders_count: number; revenue_ttc: number }>> {
-    const rows = await this.orderRepo
-      .createQueryBuilder('o')
-      .select("to_char(date_trunc('day', o.paid_at), 'YYYY-MM-DD')", 'day')
-      .addSelect('COUNT(*)', 'orders_count')
-      .addSelect('COALESCE(SUM(o.total_amount_ttc), 0)', 'revenue_ttc')
-      .where('o.status IN (:...statuses)', {
-        statuses: [OrderStatus.CONFIRMED, OrderStatus.TICKETS_SENT],
-      })
-      .andWhere("o.paid_at >= now() - (:days || ' days')::interval", { days })
-      .groupBy("date_trunc('day', o.paid_at)")
-      .orderBy("date_trunc('day', o.paid_at)", 'ASC')
-      .getRawMany<{ day: string; orders_count: string; revenue_ttc: string }>();
-
-    return rows.map((row) => ({
-      day: row.day,
-      orders_count: parseInt(row.orders_count, 10),
-      revenue_ttc: parseFloat(row.revenue_ttc),
-    }));
-  }
-
   /**
    * Tendance ventes/billets/chiffre d'affaires par jour sur une plage de
    * dates arbitraire — dashboard admin (sélecteur de métrique + plage de
-   * dates). Distinct de getRevenueTrend (fenêtre glissante en jours,
-   * revenu seul) : celle-ci accepte des bornes explicites et ajoute le
-   * nombre de billets vendus.
+   * dates).
    *
    * Deux agrégats calculés séparément puis recombinés par jour (FULL OUTER
    * JOIN) plutôt qu'un simple LEFT JOIN order_items sur une seule requête :

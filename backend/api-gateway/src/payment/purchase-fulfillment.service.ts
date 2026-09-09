@@ -45,6 +45,7 @@ export class PurchaseFulfillmentService {
         total_payment_fees: number;
         discount_amount: number;
         free_ticket_fees: number;
+        is_resale: boolean;
         organizer_id?: string;
         event_id: string;
         event_name: string;
@@ -166,12 +167,31 @@ export class PurchaseFulfillmentService {
       );
     }
 
+    this.createOrganizerPayout(order, orderId, paymentFees);
+
+    // Bug corrigé : une commande de revente n'a pas de nouveau billet à
+    // générer — le billet existant est transféré via POST
+    // /tickets/resale/:id/complete, appelé par le frontend juste après la
+    // confirmation Stripe (transfert + remboursement du vendeur + notification
+    // déjà gérés là-bas). Ce webhook tentait quand même ticket.generate()
+    // pour ces commandes, ce qui échouait systématiquement (erreur silencieuse,
+    // seulement journalisée) et empêchait surtout la création du reversement
+    // organisateur ci-dessus de s'exécuter (jamais atteinte à cause du throw).
+    if (order.is_resale) {
+      this.logger.log(
+        `Post-paiement revente traité pour commande ${orderId} — billet déjà transféré via /resale/complete`,
+      );
+      return;
+    }
+
     // 2d. Générer les billets dans ticket-service
     const tickets = (await firstValueFrom(
       this.ticketClient.send("ticket.generate", {
         order_id: orderId,
         buyer_id: order.buyer_id,
         buyer_email: order.buyer_email,
+        buyer_first_name: order.buyer_first_name,
+        buyer_last_name: order.buyer_last_name,
         event_id: order.event_id,
         event_name: order.event_name,
         event_start_at: order.event_start_at,
@@ -306,28 +326,33 @@ export class PurchaseFulfillmentService {
       platform_address: platformConfig.platform_address,
     });
 
-    // Créer le reversement organisateur (paymentFees déjà calculés ci-dessus,
-    // selon la grille du prestataire réellement utilisé) — pour un événement
-    // gratuit, gross/commission/fees valent tous 0 : le reversement ne sert
-    // alors qu'à tracer le frais fixe billet gratuit (déjà déduit de
-    // net_organizer_amount côté order-service).
-    if (order.organizer_id) {
-      this.paymentClient
-        .send("payment.create_payout", {
-          organizer_id: order.organizer_id,
-          event_id: order.event_id,
-          order_id: orderId,
-          gross_amount: Number(order.total_amount_ht),
-          commission_amount: Number(order.total_commission),
-          payment_fees_amount: paymentFees,
-          event_end_at: order.event_end_at,
-        })
-        .subscribe();
-    }
-
     this.logger.log(
       `Post-achat traité : ${tickets.length} billet(s) générés pour commande ${orderId}`,
     );
+  }
+
+  /** Reversement organisateur — commun aux commandes normales et de revente
+   * (l'organisateur touche sa commission sur une revente comme sur une vente
+   * initiale). Pour un événement gratuit, gross/commission/fees valent tous
+   * 0 : le reversement ne sert alors qu'à tracer le frais fixe billet
+   * gratuit (déjà déduit de net_organizer_amount côté order-service). */
+  private createOrganizerPayout(
+    order: { organizer_id?: string; event_id: string; total_amount_ht: number; total_commission: number; event_end_at?: string },
+    orderId: string,
+    paymentFees: number,
+  ): void {
+    if (!order.organizer_id) return;
+    this.paymentClient
+      .send("payment.create_payout", {
+        organizer_id: order.organizer_id,
+        event_id: order.event_id,
+        order_id: orderId,
+        gross_amount: Number(order.total_amount_ht),
+        commission_amount: Number(order.total_commission),
+        payment_fees_amount: paymentFees,
+        event_end_at: order.event_end_at,
+      })
+      .subscribe();
   }
 
   private async waitForTicketPdf(

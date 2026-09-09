@@ -4,4 +4,5 @@ export enum ScanResult {
   INVALID = "INVALID",
   CANCELLED = "CANCELLED",
   WRONG_EVENT = "WRONG_EVENT",
+  SUPERSEDED = "SUPERSEDED",
 }
