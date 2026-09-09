@@ -21,6 +21,7 @@ import {
   type ApiPendingEvent,
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
+import { statusBadgeStyles } from "@/lib/mock/dashboard";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
@@ -241,8 +242,8 @@ export default function AdminValidationDetailPage({
                 </button>
               </div>
             ) : (
-              <span className="rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-gray-400 ring-1 ring-inset ring-white/10">
-                Statut : {event.status}
+              <span className={`rounded-full px-4 py-2 text-sm font-medium ${statusBadgeStyles[event.status].className}`}>
+                Statut : {statusBadgeStyles[event.status].label}
               </span>
             )}
           </div>
