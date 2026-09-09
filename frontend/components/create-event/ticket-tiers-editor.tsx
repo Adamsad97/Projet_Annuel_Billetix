@@ -32,6 +32,13 @@ export function TicketTiersEditor({
 }) {
   const genId = useId();
 
+  // Bug corrigé : rien n'empêchait de sélectionner deux fois le même nom
+  // (ex: "Standard" en double) — chaque ligne ne propose désormais que les
+  // noms encore disponibles (plus sa propre valeur actuelle, pour rester
+  // sélectionnée dans son propre menu).
+  const usedNames = new Set(rows.map((row) => row.name).filter(Boolean));
+  const availableForNewRow = tierTypes.filter((type) => !usedNames.has(type.label));
+
   function updateRow(id: string, field: keyof TicketTierRow, value: string) {
     onChange(rows.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
   }
@@ -41,7 +48,7 @@ export function TicketTiersEditor({
       ...rows,
       {
         id: `${genId}-${rows.length}-${Date.now()}`,
-        name: tierTypes[0]?.label ?? "",
+        name: availableForNewRow[0]?.label ?? "",
         price: "",
         quota: "",
         maxPerOrder: "",
@@ -63,71 +70,82 @@ export function TicketTiersEditor({
         <span />
       </div>
 
-      {rows.map((row) => (
-        <div
-          key={row.id}
-          className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_120px_100px_100px_28px] sm:items-center"
-        >
-          <select
-            value={row.name}
-            onChange={(event) => updateRow(row.id, "name", event.target.value)}
-            className="col-span-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white focus:border-violet-500 focus:outline-none sm:col-span-1"
+      {rows.map((row) => {
+        const optionsForRow = tierTypes.filter(
+          (type) => type.label === row.name || !usedNames.has(type.label),
+        );
+        return (
+          <div
+            key={row.id}
+            className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_120px_100px_100px_28px] sm:items-center"
           >
-            {tierTypes.length === 0 ? (
-              <option value="" className="bg-[#12101c]">Aucun nom disponible</option>
-            ) : (
-              tierTypes.map((type) => (
-                <option key={type.label} value={type.label} className="bg-[#12101c]">
-                  {type.emoji ? `${type.emoji} ` : ""}
-                  {type.label}
-                </option>
-              ))
-            )}
-          </select>
-          <input
-            type="number"
-            value={row.price}
-            onChange={(event) => updateRow(row.id, "price", event.target.value)}
-            placeholder="Prix"
-            min="0"
-            step="0.01"
-            className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
-          />
-          <input
-            type="number"
-            value={row.quota}
-            onChange={(event) => updateRow(row.id, "quota", event.target.value)}
-            placeholder="Quota"
-            min="1"
-            className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
-          />
-          <input
-            type="number"
-            value={row.maxPerOrder}
-            onChange={(event) => updateRow(row.id, "maxPerOrder", event.target.value)}
-            placeholder="Max"
-            min="1"
-            className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
-          />
-          <button
-            type="button"
-            onClick={() => removeRow(row.id)}
-            disabled={rows.length === 1}
-            aria-label="Retirer cette catégorie de billet"
-            className="justify-self-end text-gray-500 transition-colors hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30 sm:justify-self-center"
-          >
-            ✕
-          </button>
-        </div>
-      ))}
+            <select
+              value={row.name}
+              onChange={(event) => updateRow(row.id, "name", event.target.value)}
+              className="col-span-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white focus:border-violet-500 focus:outline-none sm:col-span-1"
+            >
+              {optionsForRow.length === 0 ? (
+                <option value="" className="bg-[#12101c]">Aucun nom disponible</option>
+              ) : (
+                optionsForRow.map((type) => (
+                  <option key={type.label} value={type.label} className="bg-[#12101c]">
+                    {type.emoji ? `${type.emoji} ` : ""}
+                    {type.label}
+                  </option>
+                ))
+              )}
+            </select>
+            <input
+              type="number"
+              value={row.price}
+              onChange={(event) => updateRow(row.id, "price", event.target.value)}
+              placeholder="Prix"
+              min="0"
+              step="0.01"
+              className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+            />
+            <input
+              type="number"
+              value={row.quota}
+              onChange={(event) => updateRow(row.id, "quota", event.target.value)}
+              placeholder="Quota"
+              min="1"
+              className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+            />
+            <input
+              type="number"
+              value={row.maxPerOrder}
+              onChange={(event) => updateRow(row.id, "maxPerOrder", event.target.value)}
+              placeholder="Max"
+              min="1"
+              className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => removeRow(row.id)}
+              disabled={rows.length === 1}
+              aria-label="Retirer cette catégorie de billet"
+              className="justify-self-end text-gray-500 transition-colors hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30 sm:justify-self-center"
+            >
+              ✕
+            </button>
+          </div>
+        );
+      })}
 
       <button
         type="button"
         onClick={addRow}
-        className="mt-1 rounded-xl border border-dashed border-white/10 py-2.5 text-sm font-medium text-violet-400 transition-colors hover:border-white/20 hover:text-violet-300"
+        disabled={availableForNewRow.length === 0}
+        className="mt-1 rounded-xl border border-dashed border-white/10 py-2.5 text-sm font-medium text-violet-400 transition-colors hover:border-white/20 hover:text-violet-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-white/10 disabled:hover:text-violet-400"
       >
         + Ajouter une catégorie
       </button>
+      {tierTypes.length > 0 && availableForNewRow.length === 0 ? (
+        <p className="text-center text-xs text-gray-500">
+          Tous les noms disponibles sont déjà utilisés — demande à un admin d&apos;en ajouter un nouveau si besoin.
+        </p>
+      ) : null}
     </div>
   );
 }

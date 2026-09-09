@@ -55,9 +55,27 @@ export class TicketCategoryService {
     }
   }
 
+  /**
+   * Bug corrigé : rien n'empêchait d'ajouter deux fois la même catégorie de
+   * billet (ex: "Standard" en double avec des prix/quotas différents) sur un
+   * même événement — repéré par un organisateur sur le formulaire de
+   * création. Un même nom ne peut désormais être actif qu'une seule fois par
+   * événement (`excludeId` permet à update() de s'auto-exclure).
+   */
+  private async assertNameNotUsed(eventId: string, name: string, excludeId?: string): Promise<void> {
+    const existing = await this.repo.findOne({ where: { event_id: eventId, name, is_active: true } });
+    if (existing && existing.id !== excludeId) {
+      throw new RpcException({
+        statusCode: 400,
+        message: `La catégorie "${name}" existe déjà pour cet événement`,
+      });
+    }
+  }
+
   async create(dto: CreateTicketCategoryDto, organizerId: string): Promise<TicketCategory> {
     await this.assertOwnsEvent(dto.event_id, organizerId);
     await this.ticketTierTypeService.assertActive(dto.name);
+    await this.assertNameNotUsed(dto.event_id, dto.name);
     const category = this.repo.create({
       ...dto,
       remaining_quota: dto.quota,
@@ -85,7 +103,10 @@ export class TicketCategoryService {
   async update(id: string, dto: Partial<CreateTicketCategoryDto>, organizerId: string): Promise<TicketCategory> {
     const category = await this.getById(id);
     await this.assertOwnsEvent(category.event_id, organizerId);
-    if (dto.name) await this.ticketTierTypeService.assertActive(dto.name);
+    if (dto.name) {
+      await this.ticketTierTypeService.assertActive(dto.name);
+      await this.assertNameNotUsed(category.event_id, dto.name, category.id);
+    }
     Object.assign(category, dto);
     return this.repo.save(category);
   }

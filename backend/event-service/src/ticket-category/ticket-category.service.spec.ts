@@ -83,11 +83,44 @@ describe('TicketCategoryService', () => {
       expect(ticketTierTypeService.assertActive).toHaveBeenCalledWith('Standard');
     });
 
+    it('rejette une catégorie de billet déjà présente sur cet événement (même nom)', async () => {
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1' });
+      repo.findOne.mockResolvedValue({ id: 'existing-cat', event_id: 'evt-1', name: 'Standard', is_active: true });
+
+      await expect(service.create(dto, 'organizer-1')).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
     it('rejette un nom qui ne fait pas partie de la liste gérée depuis l\'espace Admin', async () => {
       eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1' });
       ticketTierTypeService.assertActive.mockRejectedValue(new RpcException({ statusCode: 400, message: 'invalide' }));
 
       await expect(service.create(dto, 'organizer-1')).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('update — renommage et unicité du nom sur l\'événement', () => {
+    const catId = '11111111-1111-4111-8111-111111111111';
+
+    it('autorise à conserver son propre nom (ne se bloque pas lui-même)', async () => {
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1' });
+      repo.findOne
+        .mockResolvedValueOnce({ id: catId, event_id: 'evt-1', name: 'Standard', is_active: true })
+        .mockResolvedValueOnce({ id: catId, event_id: 'evt-1', name: 'Standard', is_active: true });
+
+      await service.update(catId, { name: 'Standard' }, 'organizer-1');
+
+      expect(repo.save).toHaveBeenCalled();
+    });
+
+    it('rejette le renommage vers un nom déjà utilisé par une autre catégorie du même événement', async () => {
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1' });
+      repo.findOne
+        .mockResolvedValueOnce({ id: catId, event_id: 'evt-1', name: 'Standard', is_active: true })
+        .mockResolvedValueOnce({ id: 'cat-2', event_id: 'evt-1', name: 'VIP', is_active: true });
+
+      await expect(service.update(catId, { name: 'VIP' }, 'organizer-1')).rejects.toThrow(RpcException);
       expect(repo.save).not.toHaveBeenCalled();
     });
   });
