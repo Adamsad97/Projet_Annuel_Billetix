@@ -26,6 +26,11 @@ import { PlatformConfigModule } from './platform-config/platform-config.module';
           },
           defaults: {
             from: `"${config.get<string>('EMAIL_FROM_NAME', 'BilletiX')}" <${config.get<string>('EMAIL_FROM', 'noreply@billetix.fr')}>`,
+            // Encodage explicite plutôt que la détection automatique de
+            // nodemailer (quoted-printable par défaut) — élimine tout risque
+            // d'accents mal rendus selon le contenu, indépendamment de la
+            // façon dont il a été saisi.
+            textEncoding: 'base64',
           },
           template: {
             dir: join(__dirname, 'templates'),
