@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { FilterPills } from "@/components/admin/filter-pills";
 import { ValidationRow } from "@/components/admin/validation-row";
 import { ValidationHistoryRow } from "@/components/admin/validation-history-row";
+import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import { listCategories, type ApiCategory } from "@/lib/api/categories";
 import { getEvent } from "@/lib/api/events";
 import {
@@ -40,6 +41,7 @@ export function ValidationTabs() {
   const [rejected, setRejected] = useState<ValidationHistoryEntry[] | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<ActionDialogState | null>(null);
 
   const categoryByCode = new Map(categories.map((category) => [category.code, category]));
 
@@ -70,35 +72,50 @@ export function ValidationTabs() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- categoryByCode recréée à chaque rendu, categories.length suffit comme dépendance stable
   }, [tab, categories.length]);
 
-  async function handleApprove(id: string) {
-    if (!confirm("Valider cet événement ? Il sera publié immédiatement sur le catalogue.")) return;
-    setBusyId(id);
-    setError(null);
-    try {
-      await approveEvent(id);
-      setPending((prev) => prev?.filter((event) => event.id !== id));
-      setApproved(undefined);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de valider cet événement.");
-    } finally {
-      setBusyId(null);
-    }
+  function handleApprove(id: string) {
+    setDialog({
+      title: "Valider cet événement ?",
+      message: "Il sera publié immédiatement sur le catalogue.",
+      confirmLabel: "✓ Valider",
+      onConfirm: async () => {
+        setBusyId(id);
+        setError(null);
+        try {
+          await approveEvent(id);
+          setPending((prev) => prev?.filter((event) => event.id !== id));
+          setApproved(undefined);
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : "Impossible de valider cet événement.");
+        } finally {
+          setBusyId(null);
+        }
+      },
+    });
   }
 
-  async function handleReject(id: string) {
-    const reason = prompt("Motif du rejet (communiqué à l'organisateur) :");
-    if (!reason) return;
-    setBusyId(id);
-    setError(null);
-    try {
-      await rejectEvent(id, reason);
-      setPending((prev) => prev?.filter((event) => event.id !== id));
-      setRejected(undefined);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de rejeter cet événement.");
-    } finally {
-      setBusyId(null);
-    }
+  function handleReject(id: string) {
+    setDialog({
+      title: "Rejeter cet événement",
+      message: "Le motif sera communiqué à l'organisateur.",
+      confirmLabel: "✕ Rejeter",
+      danger: true,
+      showReason: true,
+      reasonRequired: true,
+      reasonPlaceholder: "Motif du rejet…",
+      onConfirm: async (reason) => {
+        setBusyId(id);
+        setError(null);
+        try {
+          await rejectEvent(id, reason!);
+          setPending((prev) => prev?.filter((event) => event.id !== id));
+          setRejected(undefined);
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : "Impossible de rejeter cet événement.");
+        } finally {
+          setBusyId(null);
+        }
+      },
+    });
   }
 
   const tabs = [
@@ -156,6 +173,8 @@ export function ValidationTabs() {
           )
         ) : null}
       </div>
+
+      <ActionDialog state={dialog} onClose={() => setDialog(null)} />
     </div>
   );
 }

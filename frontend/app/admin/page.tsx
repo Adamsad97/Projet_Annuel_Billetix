@@ -11,6 +11,7 @@ import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { ValidationRow } from "@/components/admin/validation-row";
+import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import { listCategories, type ApiCategory } from "@/lib/api/categories";
 import { approveEvent, getAdminDashboard, getPendingEvents, rejectEvent, type ApiAdminDashboard, type ApiPendingEvent } from "@/lib/api/admin";
 import { apiDashboardToAdminStats } from "@/lib/mappers/admin-mappers";
@@ -22,6 +23,7 @@ export default function AdminDashboardPage() {
   const [categories, setCategories] = useState<ApiCategory[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<ActionDialogState | null>(null);
 
   function loadPending() {
     getPendingEvents()
@@ -37,31 +39,46 @@ export default function AdminDashboardPage() {
     loadPending();
   }, []);
 
-  async function handleApprove(id: string) {
-    if (!confirm("Valider cet événement ? Il sera publié immédiatement sur le catalogue.")) return;
-    setBusyId(id);
-    try {
-      await approveEvent(id);
-      setPending((prev) => prev?.filter((event) => event.id !== id));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de valider cet événement.");
-    } finally {
-      setBusyId(null);
-    }
+  function handleApprove(id: string) {
+    setDialog({
+      title: "Valider cet événement ?",
+      message: "Il sera publié immédiatement sur le catalogue.",
+      confirmLabel: "✓ Valider",
+      onConfirm: async () => {
+        setBusyId(id);
+        try {
+          await approveEvent(id);
+          setPending((prev) => prev?.filter((event) => event.id !== id));
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : "Impossible de valider cet événement.");
+        } finally {
+          setBusyId(null);
+        }
+      },
+    });
   }
 
-  async function handleReject(id: string) {
-    const reason = prompt("Motif du rejet (communiqué à l'organisateur) :");
-    if (!reason) return;
-    setBusyId(id);
-    try {
-      await rejectEvent(id, reason);
-      setPending((prev) => prev?.filter((event) => event.id !== id));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de rejeter cet événement.");
-    } finally {
-      setBusyId(null);
-    }
+  function handleReject(id: string) {
+    setDialog({
+      title: "Rejeter cet événement",
+      message: "Le motif sera communiqué à l'organisateur.",
+      confirmLabel: "✕ Rejeter",
+      danger: true,
+      showReason: true,
+      reasonRequired: true,
+      reasonPlaceholder: "Motif du rejet…",
+      onConfirm: async (reason) => {
+        setBusyId(id);
+        try {
+          await rejectEvent(id, reason!);
+          setPending((prev) => prev?.filter((event) => event.id !== id));
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : "Impossible de rejeter cet événement.");
+        } finally {
+          setBusyId(null);
+        }
+      },
+    });
   }
 
   const categoryByCode = new Map(categories.map((category) => [category.code, category]));
@@ -144,6 +161,8 @@ export default function AdminDashboardPage() {
             ))
         )}
       </div>
+
+      <ActionDialog state={dialog} onClose={() => setDialog(null)} />
     </AdminShell>
   );
 }

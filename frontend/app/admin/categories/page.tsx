@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { CategoryRow } from "@/components/admin/category-row";
 import { TicketTierTypeRow } from "@/components/admin/ticket-tier-type-row";
+import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import {
   createCategory,
   deleteCategory,
@@ -33,6 +34,8 @@ export default function AdminCategoriesPage() {
   const [newTierLabel, setNewTierLabel] = useState("");
   const [newTierEmoji, setNewTierEmoji] = useState("");
   const [creatingTierType, setCreatingTierType] = useState(false);
+
+  const [dialog, setDialog] = useState<ActionDialogState | null>(null);
 
   useEffect(() => {
     listAllCategories()
@@ -85,15 +88,22 @@ export default function AdminCategoriesPage() {
     }
   }
 
-  async function handleDeleteCategory(id: string) {
-    if (!confirm("Supprimer définitivement cette catégorie ?")) return;
-    setCategoriesError(null);
-    try {
-      await deleteCategory(id);
-      setCategories((prev) => prev?.filter((category) => category.id !== id));
-    } catch (err) {
-      setCategoriesError(err instanceof ApiError ? err.message : "Impossible de supprimer la catégorie.");
-    }
+  function handleDeleteCategory(id: string) {
+    setDialog({
+      title: "Supprimer cette catégorie ?",
+      message: "Définitif — impossible si elle est déjà utilisée par un événement (désactive-la plutôt dans ce cas).",
+      confirmLabel: "Supprimer",
+      danger: true,
+      onConfirm: async () => {
+        setCategoriesError(null);
+        try {
+          await deleteCategory(id);
+          setCategories((prev) => prev?.filter((category) => category.id !== id));
+        } catch (err) {
+          setCategoriesError(err instanceof ApiError ? err.message : "Impossible de supprimer la catégorie.");
+        }
+      },
+    });
   }
 
   async function handleCreateTierType(event: FormEvent<HTMLFormElement>) {
@@ -136,15 +146,22 @@ export default function AdminCategoriesPage() {
     }
   }
 
-  async function handleDeleteTierType(id: string) {
-    if (!confirm("Supprimer définitivement ce nom de catégorie de billet ?")) return;
-    setTierTypesError(null);
-    try {
-      await deleteTicketTierType(id);
-      setTierTypes((prev) => prev?.filter((type) => type.id !== id));
-    } catch (err) {
-      setTierTypesError(err instanceof ApiError ? err.message : "Impossible de supprimer ce nom de catégorie de billet.");
-    }
+  function handleDeleteTierType(id: string) {
+    setDialog({
+      title: "Supprimer ce nom de catégorie de billet ?",
+      message: "Définitif — impossible s'il est déjà utilisé par une catégorie de billet (désactive-le plutôt dans ce cas).",
+      confirmLabel: "Supprimer",
+      danger: true,
+      onConfirm: async () => {
+        setTierTypesError(null);
+        try {
+          await deleteTicketTierType(id);
+          setTierTypes((prev) => prev?.filter((type) => type.id !== id));
+        } catch (err) {
+          setTierTypesError(err instanceof ApiError ? err.message : "Impossible de supprimer ce nom de catégorie de billet.");
+        }
+      },
+    });
   }
 
   return (
@@ -311,6 +328,8 @@ export default function AdminCategoriesPage() {
           </div>
         )}
       </section>
+
+      <ActionDialog state={dialog} onClose={() => setDialog(null)} />
     </AdminShell>
   );
 }

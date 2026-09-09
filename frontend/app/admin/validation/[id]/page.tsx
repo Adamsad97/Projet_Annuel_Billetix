@@ -9,6 +9,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { DocumentGrid, type SubmittedDocument } from "@/components/admin/document-viewer";
+import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import { listCategories, type ApiCategory } from "@/lib/api/categories";
 import { getEvent, type ApiEvent } from "@/lib/api/events";
 import {
@@ -36,6 +37,7 @@ export default function AdminValidationDetailPage({
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
+  const [dialog, setDialog] = useState<ActionDialogState | null>(null);
 
   function load() {
     // Pas d'endpoint "un seul événement en attente" — la liste complète
@@ -67,33 +69,48 @@ export default function AdminValidationDetailPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  async function handleApprove() {
-    if (!confirm("Valider cet événement ? Il sera publié immédiatement sur le catalogue.")) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await approveEvent(id);
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de valider cet événement.");
-    } finally {
-      setBusy(false);
-    }
+  function handleApprove() {
+    setDialog({
+      title: "Valider cet événement ?",
+      message: "Il sera publié immédiatement sur le catalogue.",
+      confirmLabel: "✓ Valider",
+      onConfirm: async () => {
+        setBusy(true);
+        setError(null);
+        try {
+          await approveEvent(id);
+          load();
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : "Impossible de valider cet événement.");
+        } finally {
+          setBusy(false);
+        }
+      },
+    });
   }
 
-  async function handleReject() {
-    const reason = prompt("Motif du rejet (communiqué à l'organisateur) :");
-    if (!reason) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await rejectEvent(id, reason);
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de rejeter cet événement.");
-    } finally {
-      setBusy(false);
-    }
+  function handleReject() {
+    setDialog({
+      title: "Rejeter cet événement",
+      message: "Le motif sera communiqué à l'organisateur.",
+      confirmLabel: "✕ Rejeter",
+      danger: true,
+      showReason: true,
+      reasonRequired: true,
+      reasonPlaceholder: "Motif du rejet…",
+      onConfirm: async (reason) => {
+        setBusy(true);
+        setError(null);
+        try {
+          await rejectEvent(id, reason!);
+          load();
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : "Impossible de rejeter cet événement.");
+        } finally {
+          setBusy(false);
+        }
+      },
+    });
   }
 
   async function handleVerifyNonProfit(approved: boolean) {
@@ -300,6 +317,8 @@ export default function AdminValidationDetailPage({
           ) : null}
         </>
       )}
+
+      <ActionDialog state={dialog} onClose={() => setDialog(null)} />
     </AdminShell>
   );
 }

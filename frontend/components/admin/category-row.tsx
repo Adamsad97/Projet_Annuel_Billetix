@@ -12,7 +12,7 @@ export function CategoryRow({
   category: ApiCategory;
   onSave: (id: string, dto: { label: string; emoji: string; display_order: number }) => Promise<void>;
   onToggleActive: (id: string, isActive: boolean) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
+  onDelete: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(category.label);

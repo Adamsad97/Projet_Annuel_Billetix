@@ -12,6 +12,7 @@ import Link from "next/link";
 import { AuthHeader } from "@/components/layout/auth-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { AttendeeRow } from "@/components/dashboard/attendee-row";
+import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import { statusBadgeStyles } from "@/lib/mock/dashboard";
 import { apiTicketToAttendee } from "@/lib/mappers/event-detail-mappers";
 import {
@@ -46,6 +47,7 @@ export default function DashboardEventDetailPage({
   const [notFoundError, setNotFoundError] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [responseDrafts, setResponseDrafts] = useState<Record<string, string>>({});
+  const [dialog, setDialog] = useState<ActionDialogState | null>(null);
 
   function load() {
     Promise.all([
@@ -69,33 +71,47 @@ export default function DashboardEventDetailPage({
 
   useEffect(load, [id]);
 
-  async function handleSubmit() {
-    if (!confirm("Soumettre cet événement à la validation admin ?")) return;
-    setActionBusy(true);
-    setError(null);
-    try {
-      await submitEventForValidation(id);
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de soumettre l'événement.");
-    } finally {
-      setActionBusy(false);
-    }
+  function handleSubmit() {
+    setDialog({
+      title: "Soumettre à la validation ?",
+      message: "L'admin examinera ton événement avant publication (sous 48h ouvrées).",
+      confirmLabel: "Soumettre →",
+      onConfirm: async () => {
+        setActionBusy(true);
+        setError(null);
+        try {
+          await submitEventForValidation(id);
+          load();
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : "Impossible de soumettre l'événement.");
+        } finally {
+          setActionBusy(false);
+        }
+      },
+    });
   }
 
-  async function handleCancel() {
-    const reason = prompt("Motif d'annulation (communiqué aux acheteurs déjà remboursés) :");
-    if (reason === null) return;
-    setActionBusy(true);
-    setError(null);
-    try {
-      await cancelEvent(id, reason || undefined);
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible d'annuler l'événement.");
-    } finally {
-      setActionBusy(false);
-    }
+  function handleCancel() {
+    setDialog({
+      title: "Annuler cet événement",
+      message: "Les acheteurs déjà payés seront automatiquement remboursés. Le motif leur sera communiqué.",
+      confirmLabel: "Annuler l'événement",
+      danger: true,
+      showReason: true,
+      reasonPlaceholder: "Motif d'annulation (optionnel)…",
+      onConfirm: async (reason) => {
+        setActionBusy(true);
+        setError(null);
+        try {
+          await cancelEvent(id, reason);
+          load();
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : "Impossible d'annuler l'événement.");
+        } finally {
+          setActionBusy(false);
+        }
+      },
+    });
   }
 
   async function handleDuplicate() {
@@ -337,6 +353,8 @@ export default function DashboardEventDetailPage({
           </>
         )}
       </main>
+
+      <ActionDialog state={dialog} onClose={() => setDialog(null)} />
     </div>
   );
 }
