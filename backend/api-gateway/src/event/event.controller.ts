@@ -27,7 +27,9 @@ import {
 } from "../common/decorators/current-user.decorator";
 import { Public } from "../common/decorators/public.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
+import { CreateCategoryDto } from "./dto/create-category.dto";
 import { CreateEventDto } from "./dto/create-event.dto";
+import { UpdateCategoryDto } from "./dto/update-category.dto";
 import { UpdateEventDto } from "./dto/update-event.dto";
 import { Order, OrderStatus } from "./types/order-snapshot.type";
 
@@ -85,6 +87,47 @@ export class EventController {
     );
   }
 
+  // Déclarées avant ":id" — une route statique à un seul segment ("categories")
+  // placée après une route paramétrée du même type ("/:id") serait engloutie
+  // par elle (bug déjà rencontré sur /tickets/resale, cf. ticket.controller.ts).
+
+  @Public()
+  @Get("categories")
+  @ApiOperation({ summary: "Catégories d'événement actives (gérées depuis l'espace Admin)" })
+  listEventCategories() {
+    return firstValueFrom(this.eventClient.send("event.category.list", {}));
+  }
+
+  @Get("categories/all")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Toutes les catégories d'événement, y compris désactivées (ADMIN)" })
+  listAllEventCategories() {
+    return firstValueFrom(this.eventClient.send("event.category.list_all", {}));
+  }
+
+  @Post("categories")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Créer une catégorie d'événement (ADMIN)" })
+  createEventCategory(@Body() dto: CreateCategoryDto) {
+    return firstValueFrom(this.eventClient.send("event.category.create", dto));
+  }
+
+  @Patch("categories/:categoryId")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Modifier une catégorie d'événement (ADMIN)" })
+  updateEventCategory(@Param("categoryId") categoryId: string, @Body() dto: UpdateCategoryDto) {
+    return firstValueFrom(
+      this.eventClient.send("event.category.update", { id: categoryId, dto }),
+    );
+  }
+
+  @Delete("categories/:categoryId")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Supprimer une catégorie d'événement inutilisée (ADMIN)" })
+  deleteEventCategory(@Param("categoryId") categoryId: string) {
+    return firstValueFrom(this.eventClient.send("event.category.delete", { id: categoryId }));
+  }
+
   @Public()
   @Get(":id")
   @ApiOperation({ summary: "Détail d'un événement" })
@@ -139,6 +182,9 @@ export class EventController {
       title: string;
       status: string;
       start_date: string;
+      category: string;
+      venue_name: string;
+      venue_city: string;
     }>;
 
     const balance = await firstValueFrom(
@@ -171,6 +217,9 @@ export class EventController {
           title: event.title,
           status: event.status,
           start_date: event.start_date,
+          category: event.category,
+          venue_name: event.venue_name,
+          venue_city: event.venue_city,
           sold: (fillStats as { sold: number }).sold,
           total_quota: (fillStats as { total_quota: number }).total_quota,
           fill_rate: (fillStats as { fill_rate: number }).fill_rate,

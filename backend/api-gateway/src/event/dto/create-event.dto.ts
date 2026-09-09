@@ -4,6 +4,7 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUrl,
@@ -12,16 +13,6 @@ import {
   MinLength,
   ValidateIf,
 } from "class-validator";
-
-export enum EventCategory {
-  CONCERT = "CONCERT",
-  THEATRE = "THEATRE",
-  DANSE = "DANSE",
-  FESTIVAL = "FESTIVAL",
-  CONFERENCE = "CONFERENCE",
-  SPORT = "SPORT",
-  AUTRE = "AUTRE",
-}
 
 export enum RefundPolicy {
   NON_REFUNDABLE = "NON_REFUNDABLE",
@@ -35,8 +26,12 @@ export class CreateEventDto {
   @ApiProperty() @IsString() @MinLength(10)
   description: string;
 
-  @ApiProperty({ enum: EventCategory }) @IsEnum(EventCategory)
-  category: EventCategory;
+  // Le format est vérifié ici ; l'existence/l'activation réelle du code
+  // (liste gérée depuis l'espace Admin, GET /events/categories) est vérifiée
+  // côté event-service.
+  @ApiProperty({ description: "Code d'une catégorie active (cf. GET /events/categories)" })
+  @IsString() @IsNotEmpty()
+  category: string;
 
   @ApiPropertyOptional() @IsBoolean() @IsOptional()
   is_non_profit?: boolean;

@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { isUUID } from 'class-validator';
 import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
+import { CategoryService } from '../category/category.service';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { CategoryVisibility, TicketCategory } from '../ticket-category/ticket-category.entity';
 import { TicketCategoryService } from '../ticket-category/ticket-category.service';
@@ -74,6 +75,7 @@ export class EventService {
     private readonly platformConfig: PlatformConfigCache,
     private readonly validationRequestService: ValidationRequestService,
     private readonly ticketCategoryService: TicketCategoryService,
+    private readonly categoryService: CategoryService,
   ) {}
 
   /** Résout email/prénom de l'organisateur — nécessaire au bon format attendu par notification-service. */
@@ -89,6 +91,7 @@ export class EventService {
   }
 
   async create(organizerId: string, dto: CreateEventDto): Promise<Event> {
+    await this.categoryService.assertActive(dto.category);
     const commission_rate = await this.computeCommissionRate(dto.total_capacity, false);
 
     const event = this.repo.create({
@@ -391,6 +394,7 @@ export class EventService {
     }
 
     if (event.status === EventStatus.DRAFT) {
+      if (dto.category) await this.categoryService.assertActive(dto.category);
       Object.assign(event, pickUpdatableFields(dto));
       return this.repo.save(event);
     }

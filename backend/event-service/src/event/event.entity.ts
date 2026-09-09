@@ -6,16 +6,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export enum EventCategory {
-  CONCERT = 'CONCERT',
-  THEATRE = 'THEATRE',
-  DANSE = 'DANSE',
-  FESTIVAL = 'FESTIVAL',
-  CONFERENCE = 'CONFERENCE',
-  SPORT = 'SPORT',
-  AUTRE = 'AUTRE',
-}
-
 export enum EventStatus {
   DRAFT = 'DRAFT',
   PENDING_VALIDATION = 'PENDING_VALIDATION',
@@ -45,8 +35,11 @@ export class Event {
   @Column({ type: 'text' })
   description: string;
 
-  @Column({ type: 'enum', enum: EventCategory })
-  category: EventCategory;
+  // Code d'une catégorie gérée depuis l'espace Admin (cf. category/category.entity.ts,
+  // colonne events.categories.code) — n'est plus un enum Postgres figé pour
+  // permettre à l'admin d'ajouter/retirer des catégories sans déploiement.
+  @Column({ type: 'varchar', length: 30 })
+  category: string;
 
   @Column({ type: 'enum', enum: EventStatus, default: EventStatus.DRAFT })
   status: EventStatus;

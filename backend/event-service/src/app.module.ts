@@ -4,6 +4,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Category } from './category/category.entity';
+import { CategoryModule } from './category/category.module';
 import { Event } from './event/event.entity';
 import { EventModule } from './event/event.module';
 import { PromoCode } from './promo-code/promo-code.entity';
@@ -27,7 +29,7 @@ import { HealthModule } from './health/health.module';
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
         schema: 'events',
-        entities: [Event, TicketCategory, PromoCode, ValidationRequest],
+        entities: [Event, Category, TicketCategory, PromoCode, ValidationRequest],
         synchronize: config.get('NODE_ENV') !== 'production',
         migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
         migrationsRun: config.get('NODE_ENV') === 'production',
@@ -64,6 +66,7 @@ import { HealthModule } from './health/health.module';
 
     PlatformConfigModule,
     EventModule,
+    CategoryModule,
     TicketCategoryModule,
     PromoCodeModule,
     ValidationRequestModule,

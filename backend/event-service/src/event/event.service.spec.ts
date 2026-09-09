@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { RpcException } from '@nestjs/microservices';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { of } from 'rxjs';
+import { CategoryService } from '../category/category.service';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { TicketCategory } from '../ticket-category/ticket-category.entity';
 import { TicketCategoryService } from '../ticket-category/ticket-category.service';
@@ -39,6 +40,7 @@ describe('EventService', () => {
     respond: jest.Mock;
   };
   let ticketCategoryService: { getByEvent: jest.Mock; create: jest.Mock };
+  let categoryService: { assertActive: jest.Mock };
 
   const config = {
     commission_standard_percent: 10,
@@ -81,6 +83,7 @@ describe('EventService', () => {
       getByEvent: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
     };
+    categoryService = { assertActive: jest.fn().mockResolvedValue(undefined) };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -92,6 +95,7 @@ describe('EventService', () => {
         { provide: PlatformConfigCache, useValue: platformConfig },
         { provide: ValidationRequestService, useValue: validationRequestService },
         { provide: TicketCategoryService, useValue: ticketCategoryService },
+        { provide: CategoryService, useValue: categoryService },
       ],
     }).compile();
 
@@ -107,6 +111,48 @@ describe('EventService', () => {
     it('applique la commission dégressive au-delà du seuil de grande jauge', async () => {
       const event = await service.create('organizer-1', { total_capacity: 1500 } as any);
       expect(event.commission_rate).toBe(8);
+    });
+
+    it("vérifie que la catégorie est active (liste gérée depuis l'espace Admin) avant de créer", async () => {
+      await service.create('organizer-1', { category: 'CONCERT', total_capacity: 500 } as any);
+      expect(categoryService.assertActive).toHaveBeenCalledWith('CONCERT');
+    });
+
+    it('rejette la création si la catégorie est invalide ou désactivée', async () => {
+      categoryService.assertActive.mockRejectedValue(new RpcException({ statusCode: 400, message: 'invalide' }));
+
+      await expect(
+        service.create('organizer-1', { category: 'INEXISTANT', total_capacity: 500 } as any),
+      ).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('update — changement de catégorie sur un brouillon', () => {
+    it('vérifie la nouvelle catégorie avant de la sauvegarder', async () => {
+      repo.findOne.mockResolvedValue({
+        id: '11111111-1111-4111-8111-111111111111',
+        status: EventStatus.DRAFT,
+        organizer_id: 'organizer-1',
+      });
+
+      await service.update('11111111-1111-4111-8111-111111111111', 'organizer-1', { category: 'SPORT' });
+
+      expect(categoryService.assertActive).toHaveBeenCalledWith('SPORT');
+    });
+
+    it('rejette la mise à jour si la nouvelle catégorie est invalide ou désactivée', async () => {
+      repo.findOne.mockResolvedValue({
+        id: '11111111-1111-4111-8111-111111111111',
+        status: EventStatus.DRAFT,
+        organizer_id: 'organizer-1',
+      });
+      categoryService.assertActive.mockRejectedValue(new RpcException({ statusCode: 400, message: 'invalide' }));
+
+      await expect(
+        service.update('11111111-1111-4111-8111-111111111111', 'organizer-1', { category: 'INEXISTANT' }),
+      ).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
     });
   });
 

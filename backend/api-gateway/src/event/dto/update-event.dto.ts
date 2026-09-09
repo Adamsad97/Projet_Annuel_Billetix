@@ -12,7 +12,7 @@ import {
   MinLength,
   ValidateIf,
 } from "class-validator";
-import { EventCategory, RefundPolicy } from "./create-event.dto";
+import { RefundPolicy } from "./create-event.dto";
 
 // Tous les champs sont optionnels (mise à jour partielle) mais restent
 // strictement typés — c'est ce typage qui permet au ValidationPipe global
@@ -25,8 +25,8 @@ export class UpdateEventDto {
   @ApiPropertyOptional() @IsString() @MinLength(10) @IsOptional()
   description?: string;
 
-  @ApiPropertyOptional({ enum: EventCategory }) @IsEnum(EventCategory) @IsOptional()
-  category?: EventCategory;
+  @ApiPropertyOptional() @IsString() @IsOptional()
+  category?: string;
 
   @ApiPropertyOptional() @IsBoolean() @IsOptional()
   is_non_profit?: boolean;

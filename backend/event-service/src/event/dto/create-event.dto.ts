@@ -3,6 +3,7 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUrl,
@@ -11,7 +12,7 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
-import { EventCategory, RefundPolicy } from '../event.entity';
+import { RefundPolicy } from '../event.entity';
 
 export class CreateEventDto {
   @IsString() @MinLength(5) @MaxLength(120)
@@ -20,8 +21,11 @@ export class CreateEventDto {
   @IsString() @MinLength(10)
   description: string;
 
-  @IsEnum(EventCategory)
-  category: EventCategory;
+  // Le format est vérifié ici, l'existence/l'activation réelle du code est
+  // vérifiée dans EventService.create/update via CategoryService.assertActive
+  // (liste gérée depuis l'espace Admin, pas un enum figé).
+  @IsString() @IsNotEmpty()
+  category: string;
 
   @IsBoolean() @IsOptional()
   is_non_profit?: boolean;
