@@ -28,6 +28,8 @@ export interface ApiEvent {
   category: string;
   status: ApiEventStatus;
   is_non_profit: boolean;
+  non_profit_document_url: string | null;
+  non_profit_verified: boolean;
   start_date: string;
   end_date: string;
   timezone: string;
@@ -49,6 +51,8 @@ export interface ApiEvent {
   suspension_reason: string | null;
   cancellation_reason: string | null;
   validated_at: string | null;
+  validation_requested_at: string | null;
+  created_at: string;
 }
 
 export interface ApiTicketCategory {
