@@ -41,6 +41,10 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
     // ADMIN n'est jamais aussi organisateur, le dashboard organisateur ne
     // lui sert donc à rien.
     if (link.href === "/dashboard") return user?.role === "ORGANIZER";
+    // ADMIN reste purement administratif — jamais aussi acheteur, ni le
+    // catalogue ni la revente ne le concernent (cf. app/profil/page.tsx où
+    // "Mes billets"/"Mes commandes" sont masqués pour la même raison).
+    if (link.href === "/catalogue" || link.href === "/revente") return user?.role !== "ADMIN";
     return true;
   });
 
