@@ -69,11 +69,11 @@ export function DocumentGrid({ documents }: { documents: SubmittedDocument[] }) 
           role="dialog"
           aria-modal="true"
           onClick={() => setOpen(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
+          className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/80 p-6"
         >
           <div
             onClick={(event) => event.stopPropagation()}
-            className="flex w-full max-w-md flex-col items-center gap-4 rounded-2xl border border-white/10 bg-[#12101c] p-6"
+            className="flex w-full max-w-md cursor-auto flex-col items-center gap-4 rounded-2xl border border-white/10 bg-[#12101c] p-6"
           >
             <DocumentThumb doc={open} large />
             <p className="text-center font-medium text-white">{open.label}</p>

@@ -50,11 +50,11 @@ export function ActionDialog({
       role="dialog"
       aria-modal="true"
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+      className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/70 p-6"
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        className="w-full max-w-md rounded-2xl border border-white/10 bg-[#12101c] p-6 shadow-2xl"
+        className="w-full max-w-md cursor-auto rounded-2xl border border-white/10 bg-[#12101c] p-6 shadow-2xl"
       >
         <h2 className="text-lg font-bold text-white">{state.title}</h2>
         <p className="mt-2 text-sm text-gray-400">{state.message}</p>

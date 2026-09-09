@@ -24,3 +24,19 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Bug corrigé : les <button> n'ont pas de curseur "pointer" par défaut dans
+   la plupart des navigateurs (contrairement aux liens <a>) — repéré comme
+   incohérent au survol des nombreux boutons de l'appli. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a[href],
+select,
+label[for] {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
