@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
+import { isUUID } from 'class-validator';
 import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
@@ -161,6 +162,13 @@ export class EventService {
   }
 
   async getById(id: string): Promise<Event> {
+    // Bug corrigé : un id mal formé (pas un UUID — lien cassé, faute de
+    // frappe dans l'URL) faisait planter la requête Postgres avec
+    // "invalid input syntax for type uuid", remonté comme un 500 brut au
+    // lieu du 404 propre attendu par le frontend.
+    if (!isUUID(id)) {
+      throw new RpcException({ statusCode: 404, message: 'Événement introuvable' });
+    }
     const event = await this.repo.findOne({ where: { id } });
     if (!event) throw new RpcException({ statusCode: 404, message: 'Événement introuvable' });
     return event;
@@ -259,6 +267,27 @@ export class EventService {
 
     const [data, total] = await queryBuilder.getManyAndCount();
     return { data, total };
+  }
+
+  /** Événements candidats pour la recommandation par email (CDC — suggestions
+   * basées sur les achats précédents) : publiés, à venir, d'une catégorie
+   * donnée, en excluant ceux déjà achetés par ce destinataire. */
+  async listForRecommendation(
+    category: string,
+    excludeEventIds: string[],
+    limit: number,
+  ): Promise<Event[]> {
+    const queryBuilder = this.repo
+      .createQueryBuilder('e')
+      .where('e.status = :status', { status: EventStatus.PUBLISHED })
+      .andWhere('e.category = :category', { category })
+      .andWhere('e.start_date > NOW()');
+
+    if (excludeEventIds.length > 0) {
+      queryBuilder.andWhere('e.id NOT IN (:...excludeEventIds)', { excludeEventIds });
+    }
+
+    return queryBuilder.orderBy('e.start_date', 'ASC').take(limit).getMany();
   }
 
   async listPending(): Promise<Array<Event & { validation_deadline: Date; is_overdue: boolean }>> {

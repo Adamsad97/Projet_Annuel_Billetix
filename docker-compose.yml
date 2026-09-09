@@ -240,6 +240,10 @@ services:
       ADMIN_SERVICE_PORT: 3009
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       MINIO_ENDPOINT: minio
+      # Hôte réellement joignable depuis le navigateur pour les URLs de
+      # fichiers renvoyées au client (posters/avatars/documents/billets PDF)
+      # — distinct de MINIO_ENDPOINT, interne au réseau Docker.
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost}
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
@@ -342,6 +346,10 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@user-db:5432/users
       IBAN_ENCRYPTION_KEY: ${IBAN_ENCRYPTION_KEY}
       MINIO_ENDPOINT: minio
+      # Hôte réellement joignable depuis le navigateur pour les URLs de
+      # fichiers renvoyées au client (posters/avatars/documents/billets PDF)
+      # — distinct de MINIO_ENDPOINT, interne au réseau Docker.
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost}
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
@@ -376,6 +384,10 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@event-db:5432/events
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       MINIO_ENDPOINT: minio
+      # Hôte réellement joignable depuis le navigateur pour les URLs de
+      # fichiers renvoyées au client (posters/avatars/documents/billets PDF)
+      # — distinct de MINIO_ENDPOINT, interne au réseau Docker.
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost}
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
@@ -385,12 +397,18 @@ services:
       ADMIN_SERVICE_PORT: 3009
       AUTH_SERVICE_HOST: auth-service
       AUTH_SERVICE_PORT: 3001
+      # Pour lire les préférences de notification de l'organisateur avant
+      # d'envoyer l'alerte de remplissage (TicketCategoryService).
+      USER_SERVICE_HOST: user-service
+      USER_SERVICE_PORT: 3002
     depends_on:
       event-db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
       admin-service:
+        condition: service_healthy
+      user-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:9003/health',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
@@ -419,6 +437,15 @@ services:
       TICKET_SERVICE_PORT: 3005
       ADMIN_SERVICE_HOST: admin-service
       ADMIN_SERVICE_PORT: 3009
+      # Pour lire les préférences de notification de l'acheteur avant
+      # d'envoyer le rappel J-1 (ReminderService).
+      USER_SERVICE_HOST: user-service
+      USER_SERVICE_PORT: 3002
+      # Pour résoudre l'email réel du compte avant d'envoyer les
+      # recommandations hebdomadaires (RecommendationService) — jamais celui,
+      # potentiellement fautif ou périmé, saisi sur une ancienne commande.
+      AUTH_SERVICE_HOST: auth-service
+      AUTH_SERVICE_PORT: 3001
     depends_on:
       order-db:
         condition: service_healthy
@@ -431,6 +458,10 @@ services:
       ticket-service:
         condition: service_healthy
       admin-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      auth-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:9004/health',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
@@ -452,7 +483,6 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@ticket-db:5432/tickets
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
-      QR_HMAC_SECRET: ${QR_HMAC_SECRET}
       OFFLINE_SYNC_MAX_HOURS: ${OFFLINE_SYNC_MAX_HOURS:-4}
       ADMIN_SERVICE_HOST: admin-service
       ADMIN_SERVICE_PORT: 3009
@@ -547,7 +577,16 @@ services:
       SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@billetix.fr}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-BilletiX}
-      APP_URL: ${APP_URL:-http://localhost:4000}
+      # Liens cliqués par l'utilisateur dans ses emails -> le frontend
+      # (3000), jamais l'api-gateway (4000, réservé aux callbacks OAuth
+      # d'auth-service). Bug corrigé : APP_URL pointait vers le gateway,
+      # tous les liens (vérification email, reset mdp...) renvoyaient 404.
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      # Pour retélécharger en interne (pièce jointe email) les PDF dont
+      # l'URL stockée est désormais l'hôte PUBLIC (MINIO_PUBLIC_ENDPOINT,
+      # injoignable depuis un conteneur) — voir NotificationController.toInternalUrl.
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -570,6 +609,10 @@ services:
       PORT: 3008
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       MINIO_ENDPOINT: minio
+      # Hôte réellement joignable depuis le navigateur pour les URLs de
+      # fichiers renvoyées au client (posters/avatars/documents/billets PDF)
+      # — distinct de MINIO_ENDPOINT, interne au réseau Docker.
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost}
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
@@ -580,6 +623,11 @@ services:
       TICKET_SERVICE_PORT: 3005
       ORDER_SERVICE_HOST: order-service
       ORDER_SERVICE_PORT: 3004
+      # Plafond de tentatives de génération PDF avant abandon + alerte admin
+      # (platform_settings, cf. PlatformConfigCache) — admin-service ne
+      # dépend de rien ici, aucun cycle.
+      ADMIN_SERVICE_HOST: admin-service
+      ADMIN_SERVICE_PORT: 3009
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -588,6 +636,8 @@ services:
       ticket-service:
         condition: service_healthy
       order-service:
+        condition: service_healthy
+      admin-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:9008/health',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
@@ -630,6 +680,7 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
     ports:
       - "3000:3000"
     depends_on:

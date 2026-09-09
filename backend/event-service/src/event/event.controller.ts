@@ -33,6 +33,13 @@ export class EventController {
     return this.eventService.listPublished(filters);
   }
 
+  @MessagePattern('event.list_for_recommendation')
+  listForRecommendation(
+    @Payload() data: { category: string; exclude_event_ids: string[]; limit: number },
+  ) {
+    return this.eventService.listForRecommendation(data.category, data.exclude_event_ids, data.limit);
+  }
+
   @MessagePattern('event.list_pending')
   listPending() {
     return this.eventService.listPending();

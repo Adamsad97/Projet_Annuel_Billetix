@@ -11,6 +11,7 @@ import { TwoFactorResetByAdminDto } from './dto/two-factor-reset-by-admin.dto';
 import { EmailVerificationDto } from './dto/email-verification.dto';
 import { EventCanceledDto } from './dto/event-canceled.dto';
 import { EventInfoRequestedDto } from './dto/event-info-requested.dto';
+import { EventRecommendationsDto } from './dto/event-recommendations.dto';
 import { EventPublishedDto } from './dto/event-published.dto';
 import { EventReminderDto } from './dto/event-reminder.dto';
 import { EventRejectedDto } from './dto/event-rejected.dto';
@@ -22,8 +23,10 @@ import { DisputeResolvedDto } from './dto/dispute-resolved.dto';
 import { FillThresholdReachedDto } from './dto/fill-threshold-reached.dto';
 import { PayoutCompletedDto } from './dto/payout-completed.dto';
 import { RefundCompletedDto } from './dto/refund-completed.dto';
+import { ResaleSoldDto } from './dto/resale-sold.dto';
 import { KycApprovedDto } from './dto/kyc-approved.dto';
 import { KycRejectedDto } from './dto/kyc-rejected.dto';
+import { NewsletterDto } from './dto/newsletter.dto';
 import { OrderConfirmedDto } from './dto/order-confirmed.dto';
 import { PasswordResetDto } from './dto/password-reset.dto';
 import { PaymentConfirmedDto } from './dto/payment-confirmed.dto';
@@ -35,13 +38,41 @@ import { WelcomeDto } from './dto/welcome.dto';
 @Controller()
 export class NotificationController {
   private readonly appUrl: string;
+  private readonly minioInternalHost: string;
   private readonly logger = new Logger(NotificationController.name);
 
   constructor(
     private readonly mail: MailService,
     private readonly config: ConfigService,
   ) {
-    this.appUrl = this.config.get<string>('APP_URL', 'http://localhost:3000');
+    // FRONTEND_URL (pas APP_URL, qui vaut http://localhost:4000 côté
+    // api-gateway pour les callbacks OAuth) — ces liens sont cliqués par
+    // l'utilisateur dans son navigateur et doivent pointer vers le
+    // frontend, jamais vers l'API. Bug corrigé : les emails (vérification,
+    // reset mot de passe, etc.) pointaient vers le gateway et renvoyaient
+    // un 404 une fois cliqués.
+    this.appUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+
+    // ticket.pdf_url/invoice_url sont désormais l'hôte PUBLIC de MinIO
+    // (MINIO_PUBLIC_ENDPOINT, ex. localhost:9000 — joignable depuis le
+    // navigateur, cf. bug corrigé côté pdf-service/upload.service). Mais ce
+    // téléchargement-ci a lieu depuis CE conteneur, pour lequel "localhost"
+    // se désigne lui-même et ne joint jamais MinIO — d'où le PDF absent des
+    // pièces jointes. On réécrit vers l'hôte interne au réseau Docker avant
+    // de récupérer le fichier, sans toucher à l'URL publique stockée.
+    const minioEndpoint = this.config.get<string>('MINIO_ENDPOINT', 'minio');
+    const minioPort = this.config.get<string>('MINIO_PORT', '9000');
+    this.minioInternalHost = `${minioEndpoint}:${minioPort}`;
+  }
+
+  private toInternalUrl(url: string): string {
+    try {
+      const parsed = new URL(url);
+      parsed.host = this.minioInternalHost;
+      return parsed.toString();
+    } catch {
+      return url;
+    }
   }
 
   private ack(rmqContext: RmqContext) {
@@ -119,7 +150,7 @@ export class NotificationController {
       template: 'order-confirmed',
       context: {
         ...data,
-        ordersUrl: `${this.appUrl}/orders`,
+        ordersUrl: `${this.appUrl}/profil/commandes`,
       },
     });
     this.ack(rmqContext);
@@ -133,7 +164,7 @@ export class NotificationController {
       template: 'payment-confirmed',
       context: {
         ...data,
-        ordersUrl: `${this.appUrl}/orders`,
+        ordersUrl: `${this.appUrl}/profil/commandes`,
       },
     });
     this.ack(rmqContext);
@@ -147,7 +178,7 @@ export class NotificationController {
       template: 'payment-failed',
       context: {
         ...data,
-        ordersUrl: `${this.appUrl}/orders`,
+        ordersUrl: `${this.appUrl}/profil/commandes`,
       },
     });
     this.ack(rmqContext);
@@ -156,9 +187,30 @@ export class NotificationController {
   @EventPattern('notification.ticket_ready')
   async onTicketReady(@Payload() data: TicketReadyDto, @Ctx() rmqContext: RmqContext) {
     const attachments: MailAttachment[] = [];
+
+    // Bug corrigé : le QR code (data URI base64 généré par ticket-service)
+    // était injecté tel quel dans <img src="..."> du template — la plupart
+    // des webmails (Gmail compris) bloquent les images en data: URI dans un
+    // email HTML par sécurité, laissant une icône d'image cassée. On
+    // l'attache maintenant en pièce jointe intégrée (cid), seule méthode
+    // fiable pour une image inline dans un email.
+    const ticketsForTemplate = data.tickets.map((ticket, index) => {
+      const match = ticket.qrCodeUrl?.match(/^data:(image\/\w+);base64,(.+)$/);
+      if (!match) return ticket;
+      const [, contentType, base64Data] = match;
+      const cid = `qr-${index}-${Date.now()}@billetix`;
+      attachments.push({
+        filename: `qr-${ticket.ticketNumber || index + 1}.png`,
+        content: Buffer.from(base64Data, 'base64'),
+        contentType,
+        cid,
+      });
+      return { ...ticket, qrCodeUrl: `cid:${cid}` };
+    });
+
     for (const [index, ticket] of data.tickets.entries()) {
       if (!ticket.pdfUrl) continue;
-      const pdf = await this.fetchPdf(ticket.pdfUrl);
+      const pdf = await this.fetchPdf(this.toInternalUrl(ticket.pdfUrl));
       if (pdf) {
         attachments.push({
           filename: `billet-${ticket.ticketNumber || index + 1}.pdf`,
@@ -174,7 +226,8 @@ export class NotificationController {
       template: 'ticket-ready',
       context: {
         ...data,
-        ticketsUrl: `${this.appUrl}/tickets`,
+        tickets: ticketsForTemplate,
+        ticketsUrl: `${this.appUrl}/profil/billets`,
       },
       attachments,
     });
@@ -255,7 +308,7 @@ export class NotificationController {
       template: 'event-canceled',
       context: {
         ...data,
-        eventsUrl: `${this.appUrl}/events`,
+        eventsUrl: `${this.appUrl}/catalogue`,
       },
     });
     this.ack(rmqContext);
@@ -270,7 +323,7 @@ export class NotificationController {
       context: {
         firstName: data.firstName,
         eventName: data.eventName,
-        ordersUrl: `${this.appUrl}/orders`,
+        ordersUrl: `${this.appUrl}/profil/commandes`,
       },
     });
     this.ack(rmqContext);
@@ -285,7 +338,7 @@ export class NotificationController {
       context: {
         firstName: data.firstName,
         eventName: data.eventName,
-        dashboardUrl: `${this.appUrl}/organizer/events`,
+        dashboardUrl: `${this.appUrl}/dashboard`,
       },
     });
     this.ack(rmqContext);
@@ -304,7 +357,7 @@ export class NotificationController {
           threshold: data.threshold,
           soldCount: data.sold_count,
           totalCapacity: data.total_capacity,
-          dashboardUrl: `${this.appUrl}/organizer/events`,
+          dashboardUrl: `${this.appUrl}/dashboard`,
         },
       });
     }
@@ -322,6 +375,37 @@ export class NotificationController {
     this.ack(rmqContext);
   }
 
+  @EventPattern('notification.newsletter')
+  async onNewsletter(@Payload() data: NewsletterDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: data.subject,
+      template: 'newsletter',
+      context: { ...data },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.event_recommendations')
+  async onEventRecommendations(
+    @Payload() data: EventRecommendationsDto,
+    @Ctx() rmqContext: RmqContext,
+  ) {
+    await this.mail.send({
+      to: data.email,
+      subject: 'Des événements qui pourraient te plaire',
+      template: 'event-recommendations',
+      context: {
+        firstName: data.firstName,
+        events: data.events.map((event) => ({
+          ...event,
+          eventUrl: `${this.appUrl}/evenements/${event.eventId}`,
+        })),
+      },
+    });
+    this.ack(rmqContext);
+  }
+
   @EventPattern('notification.refund_completed')
   async onRefundCompleted(@Payload() data: RefundCompletedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
@@ -330,7 +414,21 @@ export class NotificationController {
       template: 'refund-completed',
       context: {
         ...data,
-        ordersUrl: `${this.appUrl}/orders`,
+        ordersUrl: `${this.appUrl}/profil/commandes`,
+      },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.resale_sold')
+  async onResaleSold(@Payload() data: ResaleSoldDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Ton billet est vendu ! — ${data.eventName}`,
+      template: 'resale-sold',
+      context: {
+        ...data,
+        ordersUrl: `${this.appUrl}/profil/commandes`,
       },
     });
     this.ack(rmqContext);
@@ -344,7 +442,7 @@ export class NotificationController {
       template: 'payout-completed',
       context: {
         ...data,
-        dashboardUrl: `${this.appUrl}/organizer/events`,
+        dashboardUrl: `${this.appUrl}/dashboard`,
       },
     });
     this.ack(rmqContext);
@@ -358,7 +456,7 @@ export class NotificationController {
       template: 'dispute-opened',
       context: {
         ...data,
-        dashboardUrl: `${this.appUrl}/organizer/events`,
+        dashboardUrl: `${this.appUrl}/dashboard`,
       },
     });
     this.ack(rmqContext);
@@ -375,7 +473,7 @@ export class NotificationController {
         isWon: data.status === 'WON',
         isLost: data.status === 'LOST',
         isClosed: data.status === 'CLOSED',
-        dashboardUrl: `${this.appUrl}/organizer/events`,
+        dashboardUrl: `${this.appUrl}/dashboard`,
       },
     });
     this.ack(rmqContext);
@@ -444,7 +542,7 @@ export class NotificationController {
       template: 'event-reminder',
       context: {
         ...data,
-        ticketsUrl: `${this.appUrl}/tickets`,
+        ticketsUrl: `${this.appUrl}/profil/billets`,
       },
     });
     this.ack(rmqContext);

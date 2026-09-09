@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Order } from '../order/order.entity';
-import { ReminderService } from './reminder.service';
+import { RecommendationService } from './recommendation.service';
 
 @Module({
   imports: [
@@ -35,8 +35,32 @@ import { ReminderService } from './reminder.service';
           },
         }),
       },
+      {
+        name: 'EVENT_SERVICE',
+        imports: [ConfigModule],
+        inject: [ConfigService],
+        useFactory: (config: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host: config.get('EVENT_SERVICE_HOST', 'event-service'),
+            port: parseInt(config.get('EVENT_SERVICE_PORT', '3003')),
+          },
+        }),
+      },
+      {
+        name: 'AUTH_SERVICE',
+        imports: [ConfigModule],
+        inject: [ConfigService],
+        useFactory: (config: ConfigService) => ({
+          transport: Transport.TCP,
+          options: {
+            host: config.get('AUTH_SERVICE_HOST', 'auth-service'),
+            port: parseInt(config.get('AUTH_SERVICE_PORT', '3001')),
+          },
+        }),
+      },
     ]),
   ],
-  providers: [ReminderService],
+  providers: [RecommendationService],
 })
-export class ReminderModule {}
+export class RecommendationModule {}

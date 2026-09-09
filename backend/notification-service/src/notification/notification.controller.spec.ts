@@ -81,4 +81,55 @@ describe('NotificationController', () => {
       }),
     );
   });
+
+  it('envoie la newsletter avec le sujet et le contenu rédigés par l\'admin', async () => {
+    await controller.onNewsletter(
+      {
+        email: 'jean@example.com',
+        firstName: 'Jean',
+        subject: 'Les nouveautés du mois',
+        body: 'Découvre les concerts à venir.',
+      },
+      rmqContext,
+    );
+
+    expect(mail.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'jean@example.com',
+        subject: 'Les nouveautés du mois',
+        template: 'newsletter',
+        context: expect.objectContaining({ body: 'Découvre les concerts à venir.' }),
+      }),
+    );
+  });
+
+  it("envoie les recommandations d'événements avec un lien construit vers chaque événement", async () => {
+    await controller.onEventRecommendations(
+      {
+        email: 'jean@example.com',
+        firstName: 'Jean',
+        events: [
+          {
+            eventId: 'event-1',
+            eventName: 'Concert Jazz',
+            eventDate: '12 décembre 2026',
+            venueName: 'Le Zenith',
+            city: 'Paris',
+          },
+        ],
+      },
+      rmqContext,
+    );
+
+    expect(mail.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'jean@example.com',
+        subject: expect.stringContaining('événements'),
+        template: 'event-recommendations',
+        context: expect.objectContaining({
+          events: [expect.objectContaining({ eventName: 'Concert Jazz', eventUrl: 'http://localhost:3000/evenements/event-1' })],
+        }),
+      }),
+    );
+  });
 });

@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ClientProxy } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
+import { firstValueFrom } from 'rxjs';
 import { Between, In, Repository } from 'typeorm';
 import { Order, OrderStatus } from '../order/order.entity';
 
@@ -14,7 +15,31 @@ export class ReminderService {
     private readonly orderRepo: Repository<Order>,
     @Inject('NOTIFICATION_SERVICE')
     private readonly notifClient: ClientProxy,
+    @Inject('USER_SERVICE')
+    private readonly userClient: ClientProxy,
   ) {}
+
+  /**
+   * Préférences niveau 2 (CDC — désactivation réelle des envois) : un échec
+   * de lecture des préférences ne doit jamais bloquer le rappel — on envoie
+   * par défaut (fail-open), comme le ferait l'absence de toute préférence
+   * enregistrée (voir user-service BuyerService.getNotificationPrefs).
+   */
+  private async wantsEventReminder(buyerId: string): Promise<boolean> {
+    try {
+      const prefs = await firstValueFrom(
+        this.userClient.send<Record<string, boolean>>('user.get_notification_prefs', {
+          user_id: buyerId,
+        }),
+      );
+      return prefs['event-reminder'] !== false;
+    } catch (error) {
+      this.logger.warn(
+        `Préférences de notification illisibles pour ${buyerId}, envoi du rappel par défaut : ${error?.message}`,
+      );
+      return true;
+    }
+  }
 
   // Tous les jours à 9h00 UTC
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
@@ -48,6 +73,10 @@ export class ReminderService {
       const dedupeKey = `${order.event_id}:${order.buyer_email}`;
       if (!remindedBuyersByEvent.has(dedupeKey)) {
         remindedBuyersByEvent.add(dedupeKey);
+        if (!(await this.wantsEventReminder(order.buyer_id))) {
+          order.reminder_sent = true;
+          continue;
+        }
         const eventDate = new Date(order.event_start_at);
         this.notifClient.emit('notification.event_reminder', {
           email: order.buyer_email,

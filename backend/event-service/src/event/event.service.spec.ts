@@ -3,6 +3,7 @@ import { RpcException } from '@nestjs/microservices';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { of } from 'rxjs';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
+import { TicketCategory } from '../ticket-category/ticket-category.entity';
 import { TicketCategoryService } from '../ticket-category/ticket-category.service';
 import { ValidationRequestService } from '../validation-request/validation-request.service';
 import { Event, EventStatus } from './event.entity';
@@ -10,7 +11,24 @@ import { EventService } from './event.service';
 
 describe('EventService', () => {
   let service: EventService;
-  let repo: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock; find: jest.Mock };
+  let repo: {
+    create: jest.Mock;
+    save: jest.Mock;
+    findOne: jest.Mock;
+    find: jest.Mock;
+    createQueryBuilder: jest.Mock;
+  };
+  let queryBuilder: {
+    where: jest.Mock;
+    andWhere: jest.Mock;
+    orderBy: jest.Mock;
+    take: jest.Mock;
+    getMany: jest.Mock;
+  };
+  // Injecté dans EventService (@InjectRepository(TicketCategory)) mais non
+  // encore exploité dans les méthodes actuelles — mock minimal seulement
+  // pour que l'injection de dépendances se résolve.
+  let ticketCategoryRepo: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock; find: jest.Mock };
   let platformConfig: { get: jest.Mock };
   let notifClient: { emit: jest.Mock };
   let authClient: { send: jest.Mock };
@@ -30,11 +48,25 @@ describe('EventService', () => {
   };
 
   beforeEach(async () => {
+    queryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([]),
+    };
     repo = {
       create: jest.fn().mockImplementation((event) => event),
       save: jest.fn().mockImplementation((event) => Promise.resolve(event)),
       findOne: jest.fn(),
       find: jest.fn(),
+      createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+    };
+    ticketCategoryRepo = {
+      create: jest.fn().mockImplementation((category) => category),
+      save: jest.fn().mockImplementation((category) => Promise.resolve(category)),
+      findOne: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
     };
     platformConfig = { get: jest.fn().mockResolvedValue(config) };
     notifClient = { emit: jest.fn() };
@@ -54,6 +86,7 @@ describe('EventService', () => {
       providers: [
         EventService,
         { provide: getRepositoryToken(Event), useValue: repo },
+        { provide: getRepositoryToken(TicketCategory), useValue: ticketCategoryRepo },
         { provide: 'NOTIFICATION_SERVICE', useValue: notifClient },
         { provide: 'AUTH_SERVICE', useValue: authClient },
         { provide: PlatformConfigCache, useValue: platformConfig },
@@ -77,17 +110,45 @@ describe('EventService', () => {
     });
   });
 
+  describe('listForRecommendation — suggestions par email (achats précédents)', () => {
+    it("interroge les événements publiés à venir de la catégorie donnée, en excluant ceux déjà achetés", async () => {
+      const candidates = [{ id: 'event-2' }];
+      queryBuilder.getMany.mockResolvedValue(candidates);
+
+      const result = await service.listForRecommendation('CONCERT', ['event-1'], 3);
+
+      expect(result).toBe(candidates);
+      expect(queryBuilder.where).toHaveBeenCalledWith('e.status = :status', { status: EventStatus.PUBLISHED });
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('e.category = :category', { category: 'CONCERT' });
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('e.start_date > NOW()');
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('e.id NOT IN (:...excludeEventIds)', {
+        excludeEventIds: ['event-1'],
+      });
+      expect(queryBuilder.take).toHaveBeenCalledWith(3);
+    });
+
+    it("n'ajoute pas de clause d'exclusion quand aucun événement n'a déjà été acheté", async () => {
+      await service.listForRecommendation('SPORT', [], 3);
+
+      expect(queryBuilder.andWhere).not.toHaveBeenCalledWith(
+        expect.stringContaining('NOT IN'),
+        expect.anything(),
+      );
+    });
+  });
+
   describe('validate', () => {
-    it("ramène la commission à 0% si l'événement est à but non lucratif", async () => {
+    it("ramène la commission à 0% si l'événement est à but non lucratif ET vérifié par un admin", async () => {
       repo.findOne.mockResolvedValue({
-        id: 'evt-1',
+        id: '11111111-1111-4111-8111-111111111111',
         status: EventStatus.PENDING_VALIDATION,
         total_capacity: 500,
         is_non_profit: true,
+        non_profit_verified: true, // vérifié via verifyNonProfit(), pas juste auto-déclaré
         organizer_id: 'organizer-1',
       });
 
-      const event = await service.validate('evt-1', 'admin-1');
+      const event = await service.validate('11111111-1111-4111-8111-111111111111', 'admin-1');
 
       expect(event.commission_rate).toBe(0);
       expect(event.status).toBe(EventStatus.PUBLISHED);
@@ -95,14 +156,14 @@ describe('EventService', () => {
 
     it('conserve la commission standard/dégressive pour un événement lucratif', async () => {
       repo.findOne.mockResolvedValue({
-        id: 'evt-1',
+        id: '11111111-1111-4111-8111-111111111111',
         status: EventStatus.PENDING_VALIDATION,
         total_capacity: 1500,
         is_non_profit: false,
         organizer_id: 'organizer-1',
       });
 
-      const event = await service.validate('evt-1', 'admin-1');
+      const event = await service.validate('11111111-1111-4111-8111-111111111111', 'admin-1');
 
       expect(event.commission_rate).toBe(8);
     });
@@ -112,7 +173,7 @@ describe('EventService', () => {
     it('calcule le délai à partir de la config admin, pas d\'une valeur figée dans le code', async () => {
       const submittedAt = new Date('2026-07-01T10:00:00.000Z');
       repo.find.mockResolvedValue([
-        { id: 'evt-1', validation_requested_at: submittedAt, created_at: submittedAt, deadline_alert_sent: false },
+        { id: '11111111-1111-4111-8111-111111111111', validation_requested_at: submittedAt, created_at: submittedAt, deadline_alert_sent: false },
       ]);
       platformConfig.get.mockResolvedValue({ ...config, event_validation_deadline_hours: 10 });
 
@@ -124,7 +185,7 @@ describe('EventService', () => {
     it('marque un événement en retard quand le délai est dépassé', async () => {
       const submittedAt = new Date(Date.now() - 100 * 60 * 60 * 1000); // soumis il y a 100h
       repo.find.mockResolvedValue([
-        { id: 'evt-1', validation_requested_at: submittedAt, created_at: submittedAt, deadline_alert_sent: false },
+        { id: '11111111-1111-4111-8111-111111111111', validation_requested_at: submittedAt, created_at: submittedAt, deadline_alert_sent: false },
       ]);
 
       const [result] = await service.listPending();
@@ -135,7 +196,7 @@ describe('EventService', () => {
     it('ne marque pas en retard un événement encore dans les délais', async () => {
       const submittedAt = new Date();
       repo.find.mockResolvedValue([
-        { id: 'evt-1', validation_requested_at: submittedAt, created_at: submittedAt, deadline_alert_sent: false },
+        { id: '11111111-1111-4111-8111-111111111111', validation_requested_at: submittedAt, created_at: submittedAt, deadline_alert_sent: false },
       ]);
 
       const [result] = await service.listPending();
@@ -147,7 +208,7 @@ describe('EventService', () => {
       const submittedAt = new Date(Date.now() - 47 * 60 * 60 * 1000); // soumis il y a 47h (proche de la limite 48h)
       const infoRequestedAt = new Date(Date.now() - 24 * 60 * 60 * 1000); // demande ouverte depuis 24h
       repo.find.mockResolvedValue([
-        { id: 'evt-1', validation_requested_at: submittedAt, created_at: submittedAt, deadline_alert_sent: false },
+        { id: '11111111-1111-4111-8111-111111111111', validation_requested_at: submittedAt, created_at: submittedAt, deadline_alert_sent: false },
       ]);
       validationRequestService.getByEvent.mockResolvedValue([
         { created_at: infoRequestedAt, responded_at: null },
@@ -163,23 +224,23 @@ describe('EventService', () => {
 
   describe('requestInfo — demande de complément d\'information', () => {
     it("refuse si l'événement n'est pas en attente de validation", async () => {
-      repo.findOne.mockResolvedValue({ id: 'evt-1', status: EventStatus.DRAFT });
+      repo.findOne.mockResolvedValue({ id: '11111111-1111-4111-8111-111111111111', status: EventStatus.DRAFT });
 
-      await expect(service.requestInfo('evt-1', 'admin-1', 'Précisez le lieu')).rejects.toThrow(RpcException);
+      await expect(service.requestInfo('11111111-1111-4111-8111-111111111111', 'admin-1', 'Précisez le lieu')).rejects.toThrow(RpcException);
       expect(validationRequestService.create).not.toHaveBeenCalled();
     });
 
     it('crée la demande et notifie l\'organisateur par e-mail', async () => {
       repo.findOne.mockResolvedValue({
-        id: 'evt-1',
+        id: '11111111-1111-4111-8111-111111111111',
         status: EventStatus.PENDING_VALIDATION,
         organizer_id: 'organizer-1',
         title: 'Concert Test',
       });
 
-      await service.requestInfo('evt-1', 'admin-1', 'Précisez le lieu');
+      await service.requestInfo('11111111-1111-4111-8111-111111111111', 'admin-1', 'Précisez le lieu');
 
-      expect(validationRequestService.create).toHaveBeenCalledWith('evt-1', 'admin-1', 'Précisez le lieu');
+      expect(validationRequestService.create).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111', 'admin-1', 'Précisez le lieu');
       expect(notifClient.emit).toHaveBeenCalledWith(
         'notification.event_info_requested',
         expect.objectContaining({ event_name: 'Concert Test', message: 'Précisez le lieu' }),
@@ -195,16 +256,16 @@ describe('EventService', () => {
     });
 
     it("refuse si l'organisateur n'est pas propriétaire de l'événement", async () => {
-      validationRequestService.getById.mockResolvedValue({ id: 'req-1', event_id: 'evt-1' });
-      repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-2' });
+      validationRequestService.getById.mockResolvedValue({ id: 'req-1', event_id: '11111111-1111-4111-8111-111111111111' });
+      repo.findOne.mockResolvedValue({ id: '11111111-1111-4111-8111-111111111111', organizer_id: 'organizer-2' });
 
       await expect(service.respondToInfoRequest('req-1', 'organizer-1', 'Voici les infos')).rejects.toThrow(RpcException);
       expect(validationRequestService.respond).not.toHaveBeenCalled();
     });
 
     it('enregistre la réponse et relance le délai (deadline_alert_sent remis à false)', async () => {
-      validationRequestService.getById.mockResolvedValue({ id: 'req-1', event_id: 'evt-1' });
-      repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', deadline_alert_sent: true });
+      validationRequestService.getById.mockResolvedValue({ id: 'req-1', event_id: '11111111-1111-4111-8111-111111111111' });
+      repo.findOne.mockResolvedValue({ id: '11111111-1111-4111-8111-111111111111', organizer_id: 'organizer-1', deadline_alert_sent: true });
 
       await service.respondToInfoRequest('req-1', 'organizer-1', 'Voici les infos');
 
@@ -215,22 +276,22 @@ describe('EventService', () => {
 
   describe('update — modification post-publication', () => {
     it('autorise toute modification tant que le brouillon n\'est pas soumis', async () => {
-      repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', status: EventStatus.DRAFT });
+      repo.findOne.mockResolvedValue({ id: '11111111-1111-4111-8111-111111111111', organizer_id: 'organizer-1', status: EventStatus.DRAFT });
 
-      const event = await service.update('evt-1', 'organizer-1', { venue_name: 'Nouvelle salle', start_date: new Date() } as any);
+      const event = await service.update('11111111-1111-4111-8111-111111111111', 'organizer-1', { venue_name: 'Nouvelle salle', start_date: new Date() } as any);
 
       expect(event.venue_name).toBe('Nouvelle salle');
     });
 
     it("ignore silencieusement status/commission_rate/validated_by même en brouillon (mass assignment)", async () => {
       repo.findOne.mockResolvedValue({
-        id: 'evt-1',
+        id: '11111111-1111-4111-8111-111111111111',
         organizer_id: 'organizer-1',
         status: EventStatus.DRAFT,
         commission_rate: 10,
       });
 
-      const event = await service.update('evt-1', 'organizer-1', {
+      const event = await service.update('11111111-1111-4111-8111-111111111111', 'organizer-1', {
         title: 'Titre légitime',
         status: EventStatus.PUBLISHED,
         commission_rate: 0,
@@ -247,17 +308,17 @@ describe('EventService', () => {
     });
 
     it('refuse toute modification sur un événement terminé/annulé/archivé', async () => {
-      repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', status: EventStatus.CANCELLED });
+      repo.findOne.mockResolvedValue({ id: '11111111-1111-4111-8111-111111111111', organizer_id: 'organizer-1', status: EventStatus.CANCELLED });
 
       await expect(
-        service.update('evt-1', 'organizer-1', { description: 'Nouvelle description' } as any),
+        service.update('11111111-1111-4111-8111-111111111111', 'organizer-1', { description: 'Nouvelle description' } as any),
       ).rejects.toThrow(RpcException);
     });
 
     it('autorise les champs cosmétiques sur un événement publié', async () => {
-      repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', status: EventStatus.PUBLISHED });
+      repo.findOne.mockResolvedValue({ id: '11111111-1111-4111-8111-111111111111', organizer_id: 'organizer-1', status: EventStatus.PUBLISHED });
 
-      const event = await service.update('evt-1', 'organizer-1', {
+      const event = await service.update('11111111-1111-4111-8111-111111111111', 'organizer-1', {
         description: 'Description mise à jour',
         poster_url: 'http://example.com/new-poster.jpg',
         access_conditions: 'Dès 18 ans',
@@ -267,26 +328,26 @@ describe('EventService', () => {
     });
 
     it('refuse un champ sensible (date, lieu, capacité...) sur un événement publié', async () => {
-      repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', status: EventStatus.PUBLISHED });
+      repo.findOne.mockResolvedValue({ id: '11111111-1111-4111-8111-111111111111', organizer_id: 'organizer-1', status: EventStatus.PUBLISHED });
 
       await expect(
-        service.update('evt-1', 'organizer-1', { venue_name: 'Nouvelle salle' } as any),
+        service.update('11111111-1111-4111-8111-111111111111', 'organizer-1', { venue_name: 'Nouvelle salle' } as any),
       ).rejects.toThrow(RpcException);
       expect(repo.save).not.toHaveBeenCalled();
     });
 
     it('refuse un mélange champ cosmétique + champ sensible sur un événement publié', async () => {
-      repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', status: EventStatus.PUBLISHED });
+      repo.findOne.mockResolvedValue({ id: '11111111-1111-4111-8111-111111111111', organizer_id: 'organizer-1', status: EventStatus.PUBLISHED });
 
       await expect(
-        service.update('evt-1', 'organizer-1', { description: 'OK', total_capacity: 500 } as any),
+        service.update('11111111-1111-4111-8111-111111111111', 'organizer-1', { description: 'OK', total_capacity: 500 } as any),
       ).rejects.toThrow(RpcException);
     });
 
     it('autorise les champs cosmétiques pendant l\'attente de validation', async () => {
-      repo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', status: EventStatus.PENDING_VALIDATION });
+      repo.findOne.mockResolvedValue({ id: '11111111-1111-4111-8111-111111111111', organizer_id: 'organizer-1', status: EventStatus.PENDING_VALIDATION });
 
-      const event = await service.update('evt-1', 'organizer-1', { description: 'Précision ajoutée' } as any);
+      const event = await service.update('11111111-1111-4111-8111-111111111111', 'organizer-1', { description: 'Précision ajoutée' } as any);
 
       expect(event.description).toBe('Précision ajoutée');
     });
@@ -294,7 +355,7 @@ describe('EventService', () => {
 
   describe('duplicate — événement récurrent (duplication simple)', () => {
     const original = {
-      id: 'evt-1',
+      id: '11111111-1111-4111-8111-111111111111',
       organizer_id: 'organizer-1',
       title: 'Concert Été',
       description: 'Un super concert',
@@ -324,14 +385,14 @@ describe('EventService', () => {
     it("refuse si l'appelant n'est pas propriétaire de l'événement d'origine", async () => {
       repo.findOne.mockResolvedValue(original);
 
-      await expect(service.duplicate('evt-1', 'un-autre-organisateur')).rejects.toThrow(RpcException);
+      await expect(service.duplicate('11111111-1111-4111-8111-111111111111', 'un-autre-organisateur')).rejects.toThrow(RpcException);
       expect(repo.save).not.toHaveBeenCalled();
     });
 
     it('crée un nouveau brouillon avec le titre suffixé "(copie)"', async () => {
       repo.findOne.mockResolvedValue(original);
 
-      const clone = await service.duplicate('evt-1', 'organizer-1');
+      const clone = await service.duplicate('11111111-1111-4111-8111-111111111111', 'organizer-1');
 
       expect(clone.title).toBe('Concert Été (copie)');
       expect(clone.status).toBe(EventStatus.DRAFT);
@@ -345,7 +406,7 @@ describe('EventService', () => {
         { name: 'VIP', description: null, price_ht: '150.00', quota: 100, remaining_quota: 0, max_per_order: 4, visibility: 'PUBLIC' },
       ]);
 
-      await service.duplicate('evt-1', 'organizer-1');
+      await service.duplicate('11111111-1111-4111-8111-111111111111', 'organizer-1');
 
       expect(ticketCategoryService.create).toHaveBeenCalledTimes(2);
       expect(ticketCategoryService.create).toHaveBeenCalledWith(

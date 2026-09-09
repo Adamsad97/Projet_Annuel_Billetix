@@ -9,6 +9,7 @@ import { Order } from './order/order.entity';
 import { OrderModule } from './order/order.module';
 import { OrderCleanupModule } from './scheduler/order-cleanup.module';
 import { ReminderModule } from './scheduler/reminder.module';
+import { RecommendationModule } from './scheduler/recommendation.module';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
 import { HealthModule } from './health/health.module';
 
@@ -61,6 +62,7 @@ import { HealthModule } from './health/health.module';
     PlatformConfigModule,
     OrderModule,
     ReminderModule,
+    RecommendationModule,
     OrderCleanupModule,
     HealthModule,
   ],
