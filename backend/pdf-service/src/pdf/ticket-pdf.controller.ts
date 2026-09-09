@@ -1,10 +1,14 @@
-import { Controller, Logger } from '@nestjs/common';
+import { Controller, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy, ClientProxyFactory, Ctx, EventPattern, Payload, RmqContext, Transport } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
+import { handlePdfGenerationFailure } from '../common/pdf-retry.util';
 import { validatePayload } from '../common/validate-payload.util';
+import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { TicketPdfDto } from './dto/ticket-pdf.dto';
 import { TicketPdfService } from './ticket-pdf.service';
+
+const QUEUE = 'pdf_queue';
 
 @Controller()
 export class TicketPdfController {
@@ -14,6 +18,8 @@ export class TicketPdfController {
   constructor(
     private readonly pdfService: TicketPdfService,
     private readonly config: ConfigService,
+    private readonly platformConfig: PlatformConfigCache,
+    @Inject('ADMIN_SERVICE') private readonly adminClient: ClientProxy,
   ) {
     // Client TCP vers ticket-service pour mettre à jour le pdf_url après génération
     this.ticketClient = ClientProxyFactory.create({
@@ -55,9 +61,20 @@ export class TicketPdfController {
       channel.ack(rmqMessage);
       this.logger.log(`PDF billet ${data.reference} généré et envoyé`);
     } catch (error) {
-      this.logger.error(`Échec génération PDF ${data.reference} : ${error?.message}`);
-      // Requeue pour ré-essai
-      channel.nack(rmqMessage, false, true);
+      const { pdf_generation_max_retry_attempts } = await this.platformConfig.get();
+      await handlePdfGenerationFailure({
+        channel,
+        message: rmqMessage,
+        queue: QUEUE,
+        maxAttempts: pdf_generation_max_retry_attempts,
+        adminClient: this.adminClient,
+        logger: this.logger,
+        template: 'billet',
+        reference: data.reference,
+        entityType: 'TICKET',
+        entityId: data.ticket_id,
+        error,
+      });
     }
   }
 }

@@ -77,9 +77,15 @@ export class MinioService implements OnModuleInit {
       }),
     );
 
-    const endpoint = this.config.get<string>('MINIO_ENDPOINT', 'minio');
+    // Bug corrigé : l'URL renvoyée au client (email, frontend) utilisait le
+    // nom d'hôte interne au réseau Docker (MINIO_ENDPOINT=minio), injoignable
+    // depuis le navigateur de l'utilisateur — d'où un lien de téléchargement
+    // mort. MINIO_PUBLIC_ENDPOINT est l'hôte réellement joignable de
+    // l'extérieur (localhost en dev) ; le port hôte est le même que
+    // MINIO_PORT côté docker-compose (mapping "${MINIO_PORT}:9000").
+    const publicEndpoint = this.config.get<string>('MINIO_PUBLIC_ENDPOINT', 'localhost');
     const port = this.config.get<string>('MINIO_PORT', '9000');
     const useSSL = this.config.get<string>('MINIO_USE_SSL', 'false') === 'true';
-    return `${useSSL ? 'https' : 'http'}://${endpoint}:${port}/${bucket}/${key}`;
+    return `${useSSL ? 'https' : 'http'}://${publicEndpoint}:${port}/${bucket}/${key}`;
   }
 }

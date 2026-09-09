@@ -1,10 +1,14 @@
-import { Controller, Logger } from '@nestjs/common';
+import { Controller, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy, ClientProxyFactory, Ctx, EventPattern, Payload, RmqContext, Transport } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
+import { handlePdfGenerationFailure } from '../common/pdf-retry.util';
 import { validatePayload } from '../common/validate-payload.util';
+import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { InvoicePdfDto } from './dto/invoice-pdf.dto';
 import { InvoicePdfService } from './invoice-pdf.service';
+
+const QUEUE = 'pdf_queue';
 
 @Controller()
 export class InvoicePdfController {
@@ -14,6 +18,8 @@ export class InvoicePdfController {
   constructor(
     private readonly pdfService: InvoicePdfService,
     private readonly config: ConfigService,
+    private readonly platformConfig: PlatformConfigCache,
+    @Inject('ADMIN_SERVICE') private readonly adminClient: ClientProxy,
   ) {
     // Client TCP vers order-service pour enregistrer l'invoice_url après génération
     this.orderClient = ClientProxyFactory.create({
@@ -54,8 +60,20 @@ export class InvoicePdfController {
       channel.ack(rmqMessage);
       this.logger.log(`Facture ${data.reference} générée et enregistrée`);
     } catch (error) {
-      this.logger.error(`Échec génération facture ${data.reference} : ${error?.message}`);
-      channel.nack(rmqMessage, false, true);
+      const { pdf_generation_max_retry_attempts } = await this.platformConfig.get();
+      await handlePdfGenerationFailure({
+        channel,
+        message: rmqMessage,
+        queue: QUEUE,
+        maxAttempts: pdf_generation_max_retry_attempts,
+        adminClient: this.adminClient,
+        logger: this.logger,
+        template: 'facture',
+        reference: data.reference,
+        entityType: 'ORDER',
+        entityId: data.order_id,
+        error,
+      });
     }
   }
 }

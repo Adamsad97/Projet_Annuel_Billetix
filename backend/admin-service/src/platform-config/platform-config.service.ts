@@ -41,6 +41,7 @@ export interface PlatformConfig {
   payout_early_request_min_days_after_event: number;
   account_lockout_threshold: number;
   account_lockout_duration_minutes: number;
+  pdf_generation_max_retry_attempts: number;
 }
 
 const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
@@ -80,6 +81,7 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'payout_early_request_min_days_after_event', value: '2',  type: 'number',  description: 'Délai minimum après la fin de l\'événement avant qu\'un organisateur puisse demander un reversement anticipé (jours)' },
   { key: 'account_lockout_threshold',      value: '5',             type: 'number',  description: 'Nombre d\'échecs de connexion consécutifs (mot de passe ou code 2FA) avant verrouillage temporaire du compte' },
   { key: 'account_lockout_duration_minutes', value: '15',          type: 'number',  description: 'Durée du verrouillage temporaire d\'un compte après trop d\'échecs de connexion (minutes)' },
+  { key: 'pdf_generation_max_retry_attempts', value: '5',          type: 'number',  description: 'Nombre de tentatives de génération PDF (billet/facture) avant abandon définitif et alerte admin' },
 ];
 
 @Injectable()
@@ -140,6 +142,7 @@ export class PlatformConfigService implements OnModuleInit {
       payout_early_request_min_days_after_event: parseInt(map.payout_early_request_min_days_after_event ?? '2'),
       account_lockout_threshold:      parseInt(map.account_lockout_threshold ?? '5'),
       account_lockout_duration_minutes: parseInt(map.account_lockout_duration_minutes ?? '15'),
+      pdf_generation_max_retry_attempts: parseInt(map.pdf_generation_max_retry_attempts ?? '5'),
     };
   }
 
