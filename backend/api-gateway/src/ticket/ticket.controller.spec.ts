@@ -1,5 +1,7 @@
+import { ForbiddenException } from "@nestjs/common";
 import { of, throwError } from "rxjs";
 import { TicketController } from "./ticket.controller";
+import type { JwtPayload } from "../common/decorators/current-user.decorator";
 import type { TicketsGateway } from "../events/tickets.gateway";
 
 // Instanciation directe (pas de TestingModule) : aucun test existant pour ce
@@ -116,6 +118,37 @@ describe("TicketController — notification de revente (préférences niveau 2)"
     expect(notifClient.emit).not.toHaveBeenCalled();
   });
 
+  it("confirme au vendeur que la mise en vente a bien été prise en compte", async () => {
+    await (controller as any).notifyResaleListed("seller-1", {
+      ticket_id: "ticket-1",
+      resale_price: 15,
+    });
+
+    expect(userClient.send).toHaveBeenCalledWith("user.get_notification_prefs", {
+      user_id: "seller-1",
+    });
+    expect(notifClient.emit).toHaveBeenCalledWith(
+      "notification.resale_listed",
+      expect.objectContaining({
+        email: "vendeur@test.com",
+        firstName: "Vendeur",
+        eventName: "Concert Test",
+        resalePrice: "15.00",
+      }),
+    );
+  });
+
+  it("n'envoie pas la confirmation de mise en vente si le vendeur a désactivé resale-updates", async () => {
+    userClient.send.mockReturnValue(of({ "resale-updates": false }));
+
+    await (controller as any).notifyResaleListed("seller-1", {
+      ticket_id: "ticket-1",
+      resale_price: 15,
+    });
+
+    expect(notifClient.emit).not.toHaveBeenCalled();
+  });
+
   it("envoie au nouvel acheteur le même email \"billet prêt\" qu'un achat classique, avec le PDF régénéré", async () => {
     await (controller as any).notifyBuyerResalePurchase("ticket-1");
 
@@ -204,5 +237,60 @@ describe("TicketController — marketplace de revente (listing enrichi)", () => 
     expect(result).toEqual([
       expect.objectContaining({ id: "resale-1", event_name: "Événement", category_name: "Billet" }),
     ]);
+  });
+});
+
+describe("TicketController — consultation restreinte au propriétaire (bug corrigé)", () => {
+  let controller: TicketController;
+  let ticketClient: { send: jest.Mock };
+  let orderClient: { send: jest.Mock };
+  const user = { sub: "buyer-1", email: "buyer@test.com", role: "BUYER" } as JwtPayload;
+
+  beforeEach(() => {
+    ticketClient = { send: jest.fn() };
+    orderClient = { send: jest.fn() };
+
+    controller = new TicketController(
+      ticketClient as any,
+      orderClient as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as TicketsGateway,
+    );
+  });
+
+  it("getById renvoie le billet quand il appartient bien à l'appelant", async () => {
+    ticketClient.send.mockReturnValue(of({ id: "ticket-1", buyer_id: "buyer-1" }));
+
+    const result = await controller.getById(user, "ticket-1");
+
+    expect(result).toEqual({ id: "ticket-1", buyer_id: "buyer-1" });
+  });
+
+  it("getById rejette (autre acheteur, ex: ancien vendeur après une revente) — ne renvoie plus le billet d'un autre", async () => {
+    ticketClient.send.mockReturnValue(of({ id: "ticket-1", buyer_id: "nouvel-acheteur" }));
+
+    await expect(controller.getById(user, "ticket-1")).rejects.toThrow(ForbiddenException);
+  });
+
+  it("getByOrder renvoie les billets quand la commande appartient bien à l'appelant", async () => {
+    orderClient.send.mockReturnValue(of({ order: { buyer_id: "buyer-1" } }));
+    ticketClient.send.mockReturnValue(of([{ id: "ticket-1" }]));
+
+    const result = await controller.getByOrder(user, "order-1");
+
+    expect(result).toEqual([{ id: "ticket-1" }]);
+  });
+
+  it("getByOrder rejette si la commande appartient à quelqu'un d'autre", async () => {
+    orderClient.send.mockReturnValue(of({ order: { buyer_id: "un-autre-acheteur" } }));
+
+    await expect(controller.getByOrder(user, "order-1")).rejects.toThrow(ForbiddenException);
+    expect(ticketClient.send).not.toHaveBeenCalled();
   });
 });

@@ -132,4 +132,28 @@ describe('NotificationController', () => {
       }),
     );
   });
+
+  it("envoie au vendeur la confirmation que son billet a été mis en vente", async () => {
+    await controller.onResaleListed(
+      {
+        email: 'jean@example.com',
+        firstName: 'Jean',
+        eventName: 'Concert Test',
+        resalePrice: '15.00',
+      },
+      rmqContext,
+    );
+
+    expect(mail.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'jean@example.com',
+        subject: expect.stringContaining('Concert Test'),
+        template: 'resale-listed',
+        context: expect.objectContaining({
+          resalePrice: '15.00',
+          ticketsUrl: 'http://localhost:3000/profil/billets',
+        }),
+      }),
+    );
+  });
 });

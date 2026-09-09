@@ -81,9 +81,20 @@ export class TicketController {
 
   // ─── Acheteur ────────────────────────────────────────────────────────────────
 
+  /**
+   * Bug corrigé : aucune vérification que la commande appartient bien à
+   * l'appelant — n'importe quel compte connecté pouvait lister les billets
+   * de n'importe quelle commande en devinant/récupérant son ID.
+   */
   @Get("order/:orderId")
-  @ApiOperation({ summary: "Billets d'une commande" })
-  getByOrder(@Param("orderId") orderId: string) {
+  @ApiOperation({ summary: "Billets d'une commande (le sien uniquement)" })
+  async getByOrder(@CurrentUser() user: JwtPayload, @Param("orderId") orderId: string) {
+    const { order } = await firstValueFrom(
+      this.orderClient.send<{ order: { buyer_id: string } }>("order.get", { id: orderId }),
+    );
+    if (order.buyer_id !== user.sub) {
+      throw new ForbiddenException("Cette commande ne vous appartient pas");
+    }
     return firstValueFrom(
       this.ticketClient.send("ticket.get_by_order", { order_id: orderId }),
     );
@@ -103,10 +114,24 @@ export class TicketController {
     return this.enrichResaleListings(listings);
   }
 
+  /**
+   * Bug corrigé : aucune vérification du propriétaire — n'importe quel
+   * compte connecté pouvait consulter le détail (et donc le QR/PDF en
+   * cours de validité) de n'importe quel billet en devinant/récupérant son
+   * ID. Après une revente, ça permettait notamment à l'ancien propriétaire
+   * de continuer à voir le QR — désormais celui du nouvel acheteur — via un
+   * lien déjà en sa possession (email, PDF, historique de navigateur).
+   */
   @Get(":id")
-  @ApiOperation({ summary: "Détail d'un billet" })
-  getById(@Param("id") id: string) {
-    return firstValueFrom(this.ticketClient.send("ticket.get", { id }));
+  @ApiOperation({ summary: "Détail d'un billet (le sien uniquement)" })
+  async getById(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    const ticket = await firstValueFrom(
+      this.ticketClient.send<{ buyer_id: string }>("ticket.get", { id }),
+    );
+    if (ticket.buyer_id !== user.sub) {
+      throw new ForbiddenException("Ce billet ne vous appartient pas");
+    }
+    return ticket;
   }
 
   // ─── Revente ────────────────────────────────────────────────────────────────
@@ -114,19 +139,31 @@ export class TicketController {
   @Post(":id/request-resale")
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: "Remettre un billet en vente" })
-  requestResale(
+  async requestResale(
     @CurrentUser() user: JwtPayload,
     @Param("id") id: string,
     @Body() dto: { original_order_id: string; resale_price: number },
   ) {
-    return firstValueFrom(
-      this.ticketClient.send("ticket.request_resale", {
-        ticket_id: id,
-        buyer_id: user.sub,
-        original_order_id: dto.original_order_id,
-        resale_price: dto.resale_price,
-      }),
+    const resale = await firstValueFrom(
+      this.ticketClient.send<{ id: string; ticket_id: string; resale_price: number }>(
+        "ticket.request_resale",
+        {
+          ticket_id: id,
+          buyer_id: user.sub,
+          original_order_id: dto.original_order_id,
+          resale_price: dto.resale_price,
+        },
+      ),
     );
+
+    // Confirme au vendeur que la mise en vente a bien été prise en compte —
+    // fire-and-forget, ne doit jamais faire échouer la mise en vente
+    // elle-même (déjà actée à ce stade).
+    this.notifyResaleListed(user.sub, resale).catch((err) =>
+      this.logger.error(`Erreur notification mise en vente ${resale.id}: ${err?.message}`),
+    );
+
+    return resale;
   }
 
   @Get(":id/resale")
@@ -473,6 +510,33 @@ export class TicketController {
     if (!seller?.email) return;
 
     this.notifClient.emit("notification.resale_sold", {
+      email: seller.email,
+      firstName: seller.first_name,
+      eventName: ticket.event_name,
+      resalePrice: Number(resale.resale_price).toFixed(2),
+    });
+  }
+
+  /** Confirme au vendeur que sa mise en vente a bien été prise en compte —
+   * même préférence que notifyResaleSold (« Suivi de revente » couvre tout
+   * le cycle de vie de l'annonce, pas seulement la vente). */
+  private async notifyResaleListed(
+    sellerId: string,
+    resale: { ticket_id: string; resale_price: number },
+  ): Promise<void> {
+    if (!(await this.wantsResaleUpdates(sellerId))) return;
+
+    const [seller, ticket] = await Promise.all([
+      firstValueFrom(
+        this.authClient.send("auth.get_user", { id: sellerId }),
+      ) as Promise<{ email: string; first_name: string } | null>,
+      firstValueFrom(
+        this.ticketClient.send("ticket.get", { id: resale.ticket_id }),
+      ) as Promise<{ event_name: string }>,
+    ]);
+    if (!seller?.email) return;
+
+    this.notifClient.emit("notification.resale_listed", {
       email: seller.email,
       firstName: seller.first_name,
       eventName: ticket.event_name,

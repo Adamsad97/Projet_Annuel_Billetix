@@ -23,6 +23,7 @@ import { DisputeResolvedDto } from './dto/dispute-resolved.dto';
 import { FillThresholdReachedDto } from './dto/fill-threshold-reached.dto';
 import { PayoutCompletedDto } from './dto/payout-completed.dto';
 import { RefundCompletedDto } from './dto/refund-completed.dto';
+import { ResaleListedDto } from './dto/resale-listed.dto';
 import { ResaleSoldDto } from './dto/resale-sold.dto';
 import { KycApprovedDto } from './dto/kyc-approved.dto';
 import { KycRejectedDto } from './dto/kyc-rejected.dto';
@@ -429,6 +430,20 @@ export class NotificationController {
       context: {
         ...data,
         ordersUrl: `${this.appUrl}/profil/commandes`,
+      },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.resale_listed')
+  async onResaleListed(@Payload() data: ResaleListedDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Ton billet est en vente — ${data.eventName}`,
+      template: 'resale-listed',
+      context: {
+        ...data,
+        ticketsUrl: `${this.appUrl}/profil/billets`,
       },
     });
     this.ack(rmqContext);
