@@ -39,6 +39,7 @@ export class PaymentController {
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
     @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     @Inject("TICKET_SERVICE") private readonly ticketClient: ClientProxy,
+    @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
     private readonly ticketsGateway: TicketsGateway,
     private readonly fulfillment: PurchaseFulfillmentService,
   ) {}
@@ -150,12 +151,36 @@ export class PaymentController {
   @Get("payouts/me")
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Mes reversements (ORGANIZER)" })
-  myPayouts(@CurrentUser() user: JwtPayload) {
-    return firstValueFrom(
+  async myPayouts(@CurrentUser() user: JwtPayload) {
+    const payouts = (await firstValueFrom(
       this.paymentClient.send("payment.get_payouts_by_organizer", {
         organizer_id: user.sub,
       }),
+    )) as Array<{ event_id: string; [key: string]: unknown }>;
+
+    // Le reversement ne connaît que l'event_id — enrichi ici (titre, lieu)
+    // plutôt que de faire un aller-retour par l'organisateur côté frontend,
+    // même pattern que enrichResaleListings (ticket.controller.ts).
+    const eventIds = [...new Set(payouts.map((payout) => payout.event_id))];
+    const events = await Promise.all(
+      eventIds.map((eventId) =>
+        firstValueFrom(this.eventClient.send("event.get", { id: eventId })).catch(() => null),
+      ),
     );
+    const eventById = new Map(
+      events
+        .filter((event): event is { id: string; title: string; venue_name: string } => event !== null)
+        .map((event) => [event.id, event]),
+    );
+
+    return payouts.map((payout) => {
+      const event = eventById.get(payout.event_id);
+      return {
+        ...payout,
+        event_title: event?.title ?? null,
+        event_venue_name: event?.venue_name ?? null,
+      };
+    });
   }
 
   @Post("payouts/:id/request-early")
