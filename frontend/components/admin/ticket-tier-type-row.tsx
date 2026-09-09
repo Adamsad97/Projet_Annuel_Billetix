@@ -88,7 +88,7 @@ export function TicketTierTypeRow({
               : "rounded-full border border-white/10 bg-white/[0.02] px-3 py-1 text-xs font-medium text-gray-400 transition-colors hover:border-white/20"
           }
         >
-          {type.is_active ? "Actif" : "Désactivé"}
+          {type.is_active ? "Désactiver" : "Activer"}
         </button>
         <button
           type="button"
