@@ -3,6 +3,7 @@ import { MessagePattern, Payload } from "@nestjs/microservices";
 import { OAuthProvider, UserRole } from "../user/user.entity";
 import { AuthService } from "./auth.service";
 import { TwoFactorService } from "./two-factor.service";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
@@ -50,6 +51,11 @@ export class AuthController {
   @MessagePattern("auth.reset_password")
   resetPassword(@Payload() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @MessagePattern("auth.change_password")
+  changePassword(@Payload() data: { user_id: string; dto: ChangePasswordDto }) {
+    return this.authService.changePassword(data.user_id, data.dto);
   }
 
   @MessagePattern("auth.verify_email")
@@ -125,6 +131,11 @@ export class AuthController {
   @MessagePattern("auth.get_user")
   getUser(@Payload() data: { id: string }) {
     return this.authService.getUserById(data.id);
+  }
+
+  @MessagePattern("auth.get_users_by_ids")
+  getUsersByIds(@Payload() data: { ids: string[] }) {
+    return this.authService.getUsersByIds(data.ids);
   }
 
   @MessagePattern("auth.get_user_stats")

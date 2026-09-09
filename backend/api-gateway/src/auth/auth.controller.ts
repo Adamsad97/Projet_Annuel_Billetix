@@ -30,6 +30,7 @@ import {
   JwtPayload,
 } from "../common/decorators/current-user.decorator";
 import { Public } from "../common/decorators/public.decorator";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
@@ -110,6 +111,19 @@ export class AuthController {
   @ApiOperation({ summary: "Réinitialisation du mot de passe via token email" })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return firstValueFrom(this.authClient.send("auth.reset_password", dto));
+  }
+
+  @Post("change-password")
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @ApiOperation({
+    summary: "Modifier son mot de passe depuis le profil (ancien mot de passe requis)",
+  })
+  changePassword(@CurrentUser() user: JwtPayload, @Body() dto: ChangePasswordDto) {
+    return firstValueFrom(
+      this.authClient.send("auth.change_password", { user_id: user.sub, dto }),
+    );
   }
 
   @Public()

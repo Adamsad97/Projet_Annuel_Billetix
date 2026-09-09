@@ -13,6 +13,7 @@ import {
 } from "../user/user.entity";
 import { AuthService } from "./auth.service";
 import { TwoFactorService } from "./two-factor.service";
+import { PlatformConfigCache } from "../platform-config/platform-config.cache";
 
 describe("AuthService", () => {
   let service: AuthService;
@@ -29,6 +30,7 @@ describe("AuthService", () => {
   let repo: {
     createQueryBuilder: jest.Mock;
     findOne: jest.Mock;
+    findBy: jest.Mock;
     update: jest.Mock;
     create: jest.Mock;
     save: jest.Mock;
@@ -47,6 +49,7 @@ describe("AuthService", () => {
     password_hash: null,
     is_active: true,
     is_suspended: false,
+    is_email_verified: true,
     two_factor_enabled: false,
     role: UserRole.BUYER,
   };
@@ -69,6 +72,7 @@ describe("AuthService", () => {
     repo = {
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
       findOne: jest.fn(),
+      findBy: jest.fn(),
       update: jest.fn(),
       create: jest.fn(),
       save: jest.fn(),
@@ -101,6 +105,14 @@ describe("AuthService", () => {
           useValue: redis,
         },
         { provide: "NOTIFICATION_SERVICE", useValue: { emit: jest.fn() } },
+        {
+          provide: "ADMIN_SERVICE",
+          useValue: { send: jest.fn().mockReturnValue({ subscribe: jest.fn() }) },
+        },
+        {
+          provide: PlatformConfigCache,
+          useValue: { get: jest.fn().mockResolvedValue({}) },
+        },
         { provide: TwoFactorService, useValue: twoFactorService },
       ],
     }).compile();
@@ -409,6 +421,69 @@ describe("AuthService", () => {
       redis.get.mockResolvedValue(null);
 
       await expect(service.exchangeOAuthCode("code-invalide")).rejects.toThrow(RpcException);
+    });
+  });
+
+  describe("changePassword — modification depuis le profil", () => {
+    it("modifie le mot de passe quand l'ancien mot de passe est correct", async () => {
+      const oldHash = await bcrypt.hash("ancien-mdp", 4);
+      queryBuilder.getOne.mockResolvedValue({ ...baseUser, password_hash: oldHash });
+
+      const result = await service.changePassword("user-1", {
+        current_password: "ancien-mdp",
+        new_password: "nouveau-mdp-123",
+      });
+
+      expect(result).toEqual({ success: true });
+      expect(repo.save).toHaveBeenCalled();
+      const saved = repo.save.mock.calls[0][0];
+      expect(await bcrypt.compare("nouveau-mdp-123", saved.password_hash)).toBe(true);
+    });
+
+    it("rejette si l'ancien mot de passe est incorrect", async () => {
+      const oldHash = await bcrypt.hash("ancien-mdp", 4);
+      queryBuilder.getOne.mockResolvedValue({ ...baseUser, password_hash: oldHash });
+
+      await expect(
+        service.changePassword("user-1", {
+          current_password: "mauvais-mdp",
+          new_password: "nouveau-mdp-123",
+        }),
+      ).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("rejette pour un compte OAuth sans mot de passe existant", async () => {
+      queryBuilder.getOne.mockResolvedValue({ ...baseUser, password_hash: null });
+
+      await expect(
+        service.changePassword("user-1", {
+          current_password: "peu-importe",
+          new_password: "nouveau-mdp-123",
+        }),
+      ).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getUsersByIds", () => {
+    it("résout plusieurs comptes en un seul aller-retour, sans le mot de passe (ex. newsletter)", async () => {
+      repo.findBy.mockResolvedValue([
+        { ...baseUser, id: "user-1", password_hash: "secret-hash" },
+        { ...baseUser, id: "user-2", email: "autre@example.com", password_hash: "secret-hash" },
+      ]);
+
+      const result = await service.getUsersByIds(["user-1", "user-2"]);
+
+      expect(result).toHaveLength(2);
+      expect(result.every((u) => !("password_hash" in u))).toBe(true);
+    });
+
+    it("ne fait aucun appel base pour une liste vide", async () => {
+      const result = await service.getUsersByIds([]);
+
+      expect(result).toEqual([]);
+      expect(repo.findBy).not.toHaveBeenCalled();
     });
   });
 });

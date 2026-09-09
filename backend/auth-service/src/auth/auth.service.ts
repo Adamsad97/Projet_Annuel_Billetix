@@ -6,10 +6,11 @@ import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
 import { randomBytes, randomUUID } from "crypto";
 import { Redis } from "ioredis";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { REDIS_CLIENT } from "../redis/redis.module";
 import { PlatformConfigCache } from "../platform-config/platform-config.cache";
 import { OAuthProvider, User, UserRole } from "../user/user.entity";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
@@ -454,6 +455,52 @@ export class AuthService {
     return { success: true };
   }
 
+  /**
+   * Modification du mot de passe depuis le profil, par le titulaire du
+   * compte déjà connecté — distinct de resetPassword() (lien email, compte
+   * non accessible). L'ancien mot de passe est requis pour confirmer.
+   */
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.userRepo
+      .createQueryBuilder("u")
+      .addSelect("u.password_hash")
+      .where("u.id = :id", { id: userId })
+      .getOne();
+
+    if (!user) {
+      throw new RpcException({ statusCode: 404, message: "Utilisateur introuvable" });
+    }
+    if (!user.password_hash) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "Ce compte utilise une connexion Google/Facebook — aucun mot de passe à modifier",
+      });
+    }
+
+    const valid = await bcrypt.compare(dto.current_password, user.password_hash);
+    if (!valid) {
+      throw new RpcException({ statusCode: 400, message: "Mot de passe actuel incorrect" });
+    }
+
+    user.password_hash = await bcrypt.hash(dto.new_password, BCRYPT_ROUNDS);
+    await this.userRepo.save(user);
+
+    // CDC §10.3 : audit trail de toutes les actions sensibles, pas seulement
+    // celles de l'admin. Fire-and-forget — un échec de journalisation ne
+    // doit jamais faire échouer le changement lui-même.
+    this.adminClient
+      .send("admin.log_action", {
+        action: "USER_PASSWORD_RESET",
+        entity_type: "USER",
+        entity_id: user.id,
+        performed_by: user.id,
+        reason: "Mot de passe modifié depuis le profil par le titulaire du compte",
+      })
+      .subscribe({ error: () => undefined });
+
+    return { success: true };
+  }
+
   async getUserById(id: string) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user)
@@ -462,6 +509,13 @@ export class AuthService {
         message: "Utilisateur introuvable",
       });
     return this.sanitize(user);
+  }
+
+  /** Résolution par lot (ex. newsletter) — évite un aller-retour par utilisateur. */
+  async getUsersByIds(ids: string[]) {
+    if (ids.length === 0) return [];
+    const users = await this.userRepo.findBy({ id: In(ids) });
+    return users.map((u) => this.sanitize(u));
   }
 
   /** Répartition des comptes par rôle + nombre de suspensions — utilisé par le dashboard KPIs admin. */
