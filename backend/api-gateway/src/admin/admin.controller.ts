@@ -390,8 +390,27 @@ export class AdminController {
 
   @Get("events/pending")
   @ApiOperation({ summary: "Événements en attente de modération" })
-  getPendingEvents() {
-    return firstValueFrom(this.eventClient.send("event.list_pending", {}));
+  async getPendingEvents() {
+    const events = (await firstValueFrom(
+      this.eventClient.send("event.list_pending", {}),
+    )) as Array<{ organizer_id: string; [key: string]: unknown }>;
+
+    // Enrichi ici (nom/email organisateur) plutôt qu'un aller-retour par
+    // ligne côté frontend — même pattern que myPayouts (payment.controller.ts).
+    const organizerIds = [...new Set(events.map((event) => event.organizer_id))];
+    const organizers = (await firstValueFrom(
+      this.authClient.send("auth.get_users_by_ids", { ids: organizerIds }),
+    ).catch(() => [])) as Array<{ id: string; first_name: string; last_name: string; email: string }>;
+    const organizerById = new Map(organizers.map((organizer) => [organizer.id, organizer]));
+
+    return events.map((event) => {
+      const organizer = organizerById.get(event.organizer_id);
+      return {
+        ...event,
+        organizer_name: organizer ? `${organizer.first_name} ${organizer.last_name}` : null,
+        organizer_email: organizer?.email ?? null,
+      };
+    });
   }
 
   @Post("events/:id/approve")
@@ -753,6 +772,57 @@ export class AdminController {
       { key, value: dto.value },
     );
     return result;
+  }
+
+  // ─── Newsletter ───────────────────────────────────────────────────────────────
+
+  @Get("newsletter/recipients-count")
+  @ApiOperation({ summary: "Nombre d'acheteurs abonnés à la newsletter" })
+  async getNewsletterRecipientsCount() {
+    const userIds = (await firstValueFrom(
+      this.userClient.send("user.list_newsletter_subscribers", {}),
+    )) as string[];
+    return { count: userIds.length };
+  }
+
+  @Post("newsletter/send")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Envoyer une newsletter à tous les abonnés" })
+  async sendNewsletter(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Body() dto: { subject: string; body: string },
+  ) {
+    if (!dto.subject?.trim() || !dto.body?.trim()) {
+      throw new BadRequestException("Le sujet et le contenu sont obligatoires.");
+    }
+
+    const userIds = (await firstValueFrom(
+      this.userClient.send("user.list_newsletter_subscribers", {}),
+    )) as string[];
+
+    if (userIds.length === 0) {
+      return { sent: 0 };
+    }
+
+    const recipients = (await firstValueFrom(
+      this.authClient.send("auth.get_users_by_ids", { ids: userIds }),
+    )) as Array<{ email: string; first_name: string }>;
+
+    for (const recipient of recipients) {
+      this.notifClient.emit("notification.newsletter", {
+        email: recipient.email,
+        firstName: recipient.first_name,
+        subject: dto.subject,
+        body: dto.body,
+      });
+    }
+
+    this.audit(user, req, "CUSTOM", "USER", undefined, `Newsletter envoyée : ${dto.subject}`, {
+      recipients_count: recipients.length,
+    });
+
+    return { sent: recipients.length };
   }
 
   // ─── Remboursement forcé ──────────────────────────────────────────────────────
