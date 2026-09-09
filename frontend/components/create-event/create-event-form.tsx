@@ -12,6 +12,7 @@ import {
   type TicketTierRow,
 } from "@/components/create-event/ticket-tiers-editor";
 import type { ApiCategory } from "@/lib/api/categories";
+import type { ApiTicketTierType } from "@/lib/api/ticket-tier-types";
 import { createEvent, createTicketCategory, submitEventForValidation } from "@/lib/api/events";
 import { uploadPoster } from "@/lib/api/upload";
 import { ApiError } from "@/lib/api/http-error";
@@ -38,10 +39,12 @@ function toIsoOrNull(datetimeLocal: string): string | null {
 
 export function CreateEventForm({
   categories,
+  tierTypes,
   initial,
   mode = "create",
 }: {
   categories: ApiCategory[];
+  tierTypes: ApiTicketTierType[];
   initial?: CreateEventFormInitial;
   mode?: "create" | "edit";
 }) {
@@ -63,7 +66,9 @@ export function CreateEventForm({
   const [salesEndAt, setSalesEndAt] = useState("");
   const [refundPolicy, setRefundPolicy] = useState<"NON_REFUNDABLE" | "REFUNDABLE">("NON_REFUNDABLE");
   const [posterFile, setPosterFile] = useState<File | null>(null);
-  const [tierRows, setTierRows] = useState<TicketTierRow[]>(() => makeInitialTierRows(genId, initial?.ticketTiers));
+  const [tierRows, setTierRows] = useState<TicketTierRow[]>(() =>
+    makeInitialTierRows(genId, tierTypes, initial?.ticketTiers),
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -328,7 +333,7 @@ export function CreateEventForm({
       </InfoCard>
 
       <InfoCard icon="✏️" title="Catégories de billets">
-        <TicketTiersEditor rows={tierRows} onChange={setTierRows} />
+        <TicketTiersEditor rows={tierRows} onChange={setTierRows} tierTypes={tierTypes} />
       </InfoCard>
 
       {error ? (

@@ -2,9 +2,13 @@ import Link from "next/link";
 import { AuthHeader } from "@/components/layout/auth-header";
 import { CreateEventForm } from "@/components/create-event/create-event-form";
 import { listCategories } from "@/lib/api/categories";
+import { listTicketTierTypes } from "@/lib/api/ticket-tier-types";
 
 export default async function CreerEvenementPage() {
-  const categories = await listCategories().catch(() => []);
+  const [categories, tierTypes] = await Promise.all([
+    listCategories().catch(() => []),
+    listTicketTierTypes().catch(() => []),
+  ]);
 
   return (
     <div className="flex flex-1 flex-col bg-[#07060c]">
@@ -25,7 +29,7 @@ export default async function CreerEvenementPage() {
           </p>
         </div>
 
-        <CreateEventForm categories={categories} />
+        <CreateEventForm categories={categories} tierTypes={tierTypes} />
       </main>
     </div>
   );

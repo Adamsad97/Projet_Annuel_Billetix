@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import type { ApiTicketTierType } from "@/lib/api/ticket-tier-types";
 
 export interface TicketTierRow {
   id: string;
@@ -23,9 +24,11 @@ export interface TicketTierInitial {
 export function TicketTiersEditor({
   rows,
   onChange,
+  tierTypes,
 }: {
   rows: TicketTierRow[];
   onChange: (rows: TicketTierRow[]) => void;
+  tierTypes: ApiTicketTierType[];
 }) {
   const genId = useId();
 
@@ -34,7 +37,16 @@ export function TicketTiersEditor({
   }
 
   function addRow() {
-    onChange([...rows, { id: `${genId}-${rows.length}-${Date.now()}`, name: "", price: "", quota: "", maxPerOrder: "" }]);
+    onChange([
+      ...rows,
+      {
+        id: `${genId}-${rows.length}-${Date.now()}`,
+        name: tierTypes[0]?.label ?? "",
+        price: "",
+        quota: "",
+        maxPerOrder: "",
+      },
+    ]);
   }
 
   function removeRow(id: string) {
@@ -56,13 +68,22 @@ export function TicketTiersEditor({
           key={row.id}
           className="grid grid-cols-2 gap-3 sm:grid-cols-[1fr_120px_100px_100px_28px] sm:items-center"
         >
-          <input
-            type="text"
+          <select
             value={row.name}
             onChange={(event) => updateRow(row.id, "name", event.target.value)}
-            placeholder="Nom"
-            className="col-span-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none sm:col-span-1"
-          />
+            className="col-span-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white focus:border-violet-500 focus:outline-none sm:col-span-1"
+          >
+            {tierTypes.length === 0 ? (
+              <option value="" className="bg-[#12101c]">Aucun nom disponible</option>
+            ) : (
+              tierTypes.map((type) => (
+                <option key={type.label} value={type.label} className="bg-[#12101c]">
+                  {type.emoji ? `${type.emoji} ` : ""}
+                  {type.label}
+                </option>
+              ))
+            )}
+          </select>
           <input
             type="number"
             value={row.price}
@@ -111,7 +132,13 @@ export function TicketTiersEditor({
   );
 }
 
-export function makeInitialTierRows(genId: string, initialRows?: TicketTierInitial[]): TicketTierRow[] {
-  const seed = initialRows?.length ? initialRows : [{ name: "Standard", price: "35", quota: "500", maxPerOrder: "4" }];
+export function makeInitialTierRows(
+  genId: string,
+  tierTypes: ApiTicketTierType[],
+  initialRows?: TicketTierInitial[],
+): TicketTierRow[] {
+  const seed = initialRows?.length
+    ? initialRows
+    : [{ name: tierTypes[0]?.label ?? "", price: "35", quota: "500", maxPerOrder: "4" }];
   return seed.map((row, index) => ({ id: `${genId}-seed-${index}`, ...row }));
 }

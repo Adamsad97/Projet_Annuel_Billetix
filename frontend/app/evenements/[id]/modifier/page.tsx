@@ -7,6 +7,7 @@ import {
 } from "@/components/create-event/create-event-form";
 import { eventDetails } from "@/lib/mock/event-details";
 import { listCategories } from "@/lib/api/categories";
+import { listTicketTierTypes } from "@/lib/api/ticket-tier-types";
 
 export function generateStaticParams() {
   return Object.keys(eventDetails).map((id) => ({ id }));
@@ -19,7 +20,10 @@ export default async function EditEventPage({
 }) {
   const { id } = await params;
   const event = eventDetails[id];
-  const categories = await listCategories().catch(() => []);
+  const [categories, tierTypes] = await Promise.all([
+    listCategories().catch(() => []),
+    listTicketTierTypes().catch(() => []),
+  ]);
 
   if (!event) {
     notFound();
@@ -62,7 +66,7 @@ export default async function EditEventPage({
           </p>
         </div>
 
-        <CreateEventForm categories={categories} initial={initial} mode="edit" />
+        <CreateEventForm categories={categories} tierTypes={tierTypes} initial={initial} mode="edit" />
       </main>
     </div>
   );
