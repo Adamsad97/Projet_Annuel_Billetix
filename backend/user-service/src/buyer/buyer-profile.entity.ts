@@ -29,6 +29,13 @@ export class BuyerProfile {
   @Column({ nullable: true })
   billing_country: string | null;
 
+  // Clé = id de préférence (ex. "event-reminder"), valeur = activée ou non.
+  // Absence de clé -> valeur par défaut appliquée côté frontend. Les
+  // préférences verrouillées (locked, ex. "order-confirmation") ne sont pas
+  // désactivables et ne sont donc jamais lues ici en pratique.
+  @Column({ type: 'jsonb', nullable: true })
+  notification_preferences: Record<string, boolean> | null;
+
   @CreateDateColumn()
   created_at: Date;
 

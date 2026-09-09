@@ -25,6 +25,7 @@ import { CreateOrganizerProfileDto } from "./dto/create-organizer-profile.dto";
 import { SubmitKycDto } from "./dto/submit-kyc.dto";
 import { UpdateBuyerProfileDto } from "./dto/update-buyer-profile.dto";
 import { UpdateIbanDto } from "./dto/update-iban.dto";
+import { UpdateNotificationPrefsDto } from "./dto/update-notification-prefs.dto";
 import { UpdateOrganizerProfileDto } from "./dto/update-organizer-profile.dto";
 
 @ApiTags("users")
@@ -61,6 +62,29 @@ export class UserController {
   ) {
     return firstValueFrom(
       this.userClient.send("user.update_buyer_profile", {
+        user_id: user.sub,
+        dto,
+      }),
+    );
+  }
+
+  @Get("buyer/notification-prefs")
+  @ApiOperation({ summary: "Récupérer ses préférences de notification" })
+  getNotificationPrefs(@CurrentUser() user: JwtPayload) {
+    return firstValueFrom(
+      this.userClient.send("user.get_notification_prefs", { user_id: user.sub }),
+    );
+  }
+
+  @Patch("buyer/notification-prefs")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Mettre à jour ses préférences de notification" })
+  updateNotificationPrefs(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: UpdateNotificationPrefsDto,
+  ) {
+    return firstValueFrom(
+      this.userClient.send("user.update_notification_prefs", {
         user_id: user.sub,
         dto,
       }),

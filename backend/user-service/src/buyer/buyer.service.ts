@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BuyerProfile } from './buyer-profile.entity';
 import { UpdateBuyerProfileDto } from './dto/update-buyer-profile.dto';
+import { UpdateNotificationPrefsDto } from './dto/update-notification-prefs.dto';
 
 @Injectable()
 export class BuyerService {
@@ -33,6 +34,37 @@ export class BuyerService {
     const profile = await this.getOrCreate(userId);
     Object.assign(profile, dto);
     return this.repo.save(profile);
+  }
+
+  async getNotificationPrefs(userId: string): Promise<Record<string, boolean>> {
+    const profile = await this.getOrCreate(userId);
+    return profile.notification_preferences ?? {};
+  }
+
+  async updateNotificationPrefs(
+    userId: string,
+    dto: UpdateNotificationPrefsDto,
+  ): Promise<Record<string, boolean>> {
+    const profile = await this.getOrCreate(userId);
+    // Fusion plutôt que remplacement : le frontend n'envoie que les
+    // préférences visibles/modifiées, pas nécessairement tout l'objet.
+    profile.notification_preferences = {
+      ...(profile.notification_preferences ?? {}),
+      ...dto.preferences,
+    };
+    await this.repo.save(profile);
+    return profile.notification_preferences;
+  }
+
+  /** Liste des acheteurs ayant explicitement activé la newsletter (opt-in —
+   * absence de clé = non abonné, cf. defaultEnabled: false côté frontend). */
+  async listNewsletterSubscribers(): Promise<string[]> {
+    const rows = await this.repo
+      .createQueryBuilder('p')
+      .select('p.user_id', 'user_id')
+      .where(`p.notification_preferences ->> 'newsletter' = 'true'`)
+      .getRawMany<{ user_id: string }>();
+    return rows.map((row) => row.user_id);
   }
 
   /** Droit à l'effacement RGPD — efface l'adresse de facturation. */
