@@ -29,8 +29,10 @@ import { Public } from "../common/decorators/public.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
 import { CreateCategoryDto } from "./dto/create-category.dto";
 import { CreateEventDto } from "./dto/create-event.dto";
+import { CreateTicketTierTypeDto } from "./dto/create-ticket-tier-type.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
 import { UpdateEventDto } from "./dto/update-event.dto";
+import { UpdateTicketTierTypeDto } from "./dto/update-ticket-tier-type.dto";
 import { Order, OrderStatus } from "./types/order-snapshot.type";
 
 @ApiTags("events")
@@ -126,6 +128,43 @@ export class EventController {
   @ApiOperation({ summary: "Supprimer une catégorie d'événement inutilisée (ADMIN)" })
   deleteEventCategory(@Param("categoryId") categoryId: string) {
     return firstValueFrom(this.eventClient.send("event.category.delete", { id: categoryId }));
+  }
+
+  @Public()
+  @Get("ticket-tier-types")
+  @ApiOperation({ summary: "Noms de catégorie de billet actifs (gérés depuis l'espace Admin)" })
+  listTicketTierTypes() {
+    return firstValueFrom(this.eventClient.send("event.ticket_tier_type.list", {}));
+  }
+
+  @Get("ticket-tier-types/all")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Tous les noms de catégorie de billet, y compris désactivés (ADMIN)" })
+  listAllTicketTierTypes() {
+    return firstValueFrom(this.eventClient.send("event.ticket_tier_type.list_all", {}));
+  }
+
+  @Post("ticket-tier-types")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Créer un nom de catégorie de billet (ADMIN)" })
+  createTicketTierType(@Body() dto: CreateTicketTierTypeDto) {
+    return firstValueFrom(this.eventClient.send("event.ticket_tier_type.create", dto));
+  }
+
+  @Patch("ticket-tier-types/:typeId")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Modifier un nom de catégorie de billet (ADMIN)" })
+  updateTicketTierType(@Param("typeId") typeId: string, @Body() dto: UpdateTicketTierTypeDto) {
+    return firstValueFrom(
+      this.eventClient.send("event.ticket_tier_type.update", { id: typeId, dto }),
+    );
+  }
+
+  @Delete("ticket-tier-types/:typeId")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Supprimer un nom de catégorie de billet inutilisé (ADMIN)" })
+  deleteTicketTierType(@Param("typeId") typeId: string) {
+    return firstValueFrom(this.eventClient.send("event.ticket_tier_type.delete", { id: typeId }));
   }
 
   @Public()

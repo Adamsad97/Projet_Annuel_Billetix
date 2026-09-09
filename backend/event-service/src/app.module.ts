@@ -12,6 +12,8 @@ import { PromoCode } from './promo-code/promo-code.entity';
 import { PromoCodeModule } from './promo-code/promo-code.module';
 import { TicketCategory } from './ticket-category/ticket-category.entity';
 import { TicketCategoryModule } from './ticket-category/ticket-category.module';
+import { TicketTierType } from './ticket-tier-type/ticket-tier-type.entity';
+import { TicketTierTypeModule } from './ticket-tier-type/ticket-tier-type.module';
 import { ValidationRequest } from './validation-request/validation-request.entity';
 import { ValidationRequestModule } from './validation-request/validation-request.module';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
@@ -29,7 +31,7 @@ import { HealthModule } from './health/health.module';
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
         schema: 'events',
-        entities: [Event, Category, TicketCategory, PromoCode, ValidationRequest],
+        entities: [Event, Category, TicketCategory, TicketTierType, PromoCode, ValidationRequest],
         synchronize: config.get('NODE_ENV') !== 'production',
         migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
         migrationsRun: config.get('NODE_ENV') === 'production',
@@ -67,6 +69,7 @@ import { HealthModule } from './health/health.module';
     PlatformConfigModule,
     EventModule,
     CategoryModule,
+    TicketTierTypeModule,
     TicketCategoryModule,
     PromoCodeModule,
     ValidationRequestModule,

@@ -1,10 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
+import { isUUID } from 'class-validator';
 import { firstValueFrom } from 'rxjs';
 import { DataSource, Repository } from 'typeorm';
 import { Event } from '../event/event.entity';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
+import { TicketTierTypeService } from '../ticket-tier-type/ticket-tier-type.service';
 import { CreateTicketCategoryDto } from './dto/create-ticket-category.dto';
 import { TicketCategory } from './ticket-category.entity';
 
@@ -19,9 +21,31 @@ export class TicketCategoryService {
     private readonly notifClient: ClientProxy,
     @Inject('AUTH_SERVICE')
     private readonly authClient: ClientProxy,
+    @Inject('USER_SERVICE')
+    private readonly userClient: ClientProxy,
     private readonly dataSource: DataSource,
     private readonly platformConfig: PlatformConfigCache,
+    private readonly ticketTierTypeService: TicketTierTypeService,
   ) {}
+
+  /**
+   * Préférences niveau 2 (CDC — désactivation réelle des envois) : un échec
+   * de lecture des préférences ne doit jamais bloquer l'alerte — on envoie
+   * par défaut (fail-open), comme le ferait l'absence de préférence
+   * enregistrée (voir user-service BuyerService.getNotificationPrefs).
+   */
+  private async wantsFillThresholdAlert(organizerId: string): Promise<boolean> {
+    try {
+      const prefs = await firstValueFrom(
+        this.userClient.send<Record<string, boolean>>('user.get_notification_prefs', {
+          user_id: organizerId,
+        }),
+      );
+      return prefs['low-stock'] !== false;
+    } catch {
+      return true;
+    }
+  }
 
   /** Lève 403 si l'événement n'existe pas ou n'appartient pas à cet organisateur. */
   private async assertOwnsEvent(eventId: string, organizerId: string): Promise<void> {
@@ -33,6 +57,7 @@ export class TicketCategoryService {
 
   async create(dto: CreateTicketCategoryDto, organizerId: string): Promise<TicketCategory> {
     await this.assertOwnsEvent(dto.event_id, organizerId);
+    await this.ticketTierTypeService.assertActive(dto.name);
     const category = this.repo.create({
       ...dto,
       remaining_quota: dto.quota,
@@ -41,10 +66,17 @@ export class TicketCategoryService {
   }
 
   async getByEvent(eventId: string): Promise<TicketCategory[]> {
+    // Bug corrigé (même cause que EventService.getById) : un event_id mal
+    // formé faisait planter Postgres ("invalid input syntax for type
+    // uuid") en 500 brut au lieu de simplement ne trouver aucune catégorie.
+    if (!isUUID(eventId)) return [];
     return this.repo.find({ where: { event_id: eventId, is_active: true } });
   }
 
   async getById(id: string): Promise<TicketCategory> {
+    if (!isUUID(id)) {
+      throw new RpcException({ statusCode: 404, message: 'Catégorie introuvable' });
+    }
     const category = await this.repo.findOne({ where: { id } });
     if (!category) throw new RpcException({ statusCode: 404, message: 'Catégorie introuvable' });
     return category;
@@ -53,6 +85,7 @@ export class TicketCategoryService {
   async update(id: string, dto: Partial<CreateTicketCategoryDto>, organizerId: string): Promise<TicketCategory> {
     const category = await this.getById(id);
     await this.assertOwnsEvent(category.event_id, organizerId);
+    if (dto.name) await this.ticketTierTypeService.assertActive(dto.name);
     Object.assign(category, dto);
     return this.repo.save(category);
   }
@@ -174,6 +207,8 @@ export class TicketCategoryService {
     } catch {
       // non bloquant
     }
+
+    if (!(await this.wantsFillThresholdAlert(event.organizer_id))) return;
 
     for (const threshold of newThresholds) {
       this.notifClient.emit('notification.fill_threshold_reached', {
