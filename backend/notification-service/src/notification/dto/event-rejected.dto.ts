@@ -8,6 +8,9 @@ export class EventRejectedDto {
   firstName: string;
 
   @IsString()
+  event_id: string;
+
+  @IsString()
   event_name: string;
 
   @IsString()

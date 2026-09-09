@@ -346,6 +346,7 @@ export class EventService {
       this.notifClient.emit('notification.event_info_requested', {
         email,
         firstName,
+        event_id: event.id,
         event_name: event.title,
         message,
       });
@@ -523,6 +524,7 @@ export class EventService {
       this.notifClient.emit('notification.event_published', {
         email,
         firstName,
+        event_id: event.id,
         event_name: event.title,
       });
     }
@@ -546,6 +548,7 @@ export class EventService {
       this.notifClient.emit('notification.event_rejected', {
         email,
         firstName,
+        event_id: event.id,
         event_name: event.title,
         reason: dto.reason,
       });
@@ -567,6 +570,7 @@ export class EventService {
       this.notifClient.emit('notification.event_suspended', {
         email,
         firstName,
+        event_id: event.id,
         event_name: event.title,
         reason: dto.reason,
       });

@@ -198,6 +198,13 @@ describe('EventService', () => {
 
       expect(event.commission_rate).toBe(0);
       expect(event.status).toBe(EventStatus.PUBLISHED);
+      // Bug corrigé : event_id absent du payload — le bouton "Voir mon
+      // événement" de l'email de publication pointait vers la page d'accueil
+      // au lieu de l'événement concerné.
+      expect(notifClient.emit).toHaveBeenCalledWith(
+        'notification.event_published',
+        expect.objectContaining({ event_id: '11111111-1111-4111-8111-111111111111' }),
+      );
     });
 
     it('conserve la commission standard/dégressive pour un événement lucratif', async () => {
@@ -287,9 +294,48 @@ describe('EventService', () => {
       await service.requestInfo('11111111-1111-4111-8111-111111111111', 'admin-1', 'Précisez le lieu');
 
       expect(validationRequestService.create).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111', 'admin-1', 'Précisez le lieu');
+      // Bug corrigé : event_id absent du payload — le lien "Répondre à la
+      // demande" de l'email pointait vers une page inexistante
+      // ({{appUrl}}/organizer/events) faute de savoir quel événement lier.
       expect(notifClient.emit).toHaveBeenCalledWith(
         'notification.event_info_requested',
-        expect.objectContaining({ event_name: 'Concert Test', message: 'Précisez le lieu' }),
+        expect.objectContaining({
+          event_id: '11111111-1111-4111-8111-111111111111',
+          event_name: 'Concert Test',
+          message: 'Précisez le lieu',
+        }),
+      );
+    });
+  });
+
+  describe('reject/suspend — event_id transmis pour le lien de l\'email', () => {
+    it('inclut event_id dans la notification de rejet', async () => {
+      repo.findOne.mockResolvedValue({
+        id: '11111111-1111-4111-8111-111111111111',
+        status: EventStatus.PENDING_VALIDATION,
+        organizer_id: 'organizer-1',
+      });
+
+      await service.reject('11111111-1111-4111-8111-111111111111', 'admin-1', { reason: 'Adresse incomplète' });
+
+      expect(notifClient.emit).toHaveBeenCalledWith(
+        'notification.event_rejected',
+        expect.objectContaining({ event_id: '11111111-1111-4111-8111-111111111111', reason: 'Adresse incomplète' }),
+      );
+    });
+
+    it('inclut event_id dans la notification de suspension', async () => {
+      repo.findOne.mockResolvedValue({
+        id: '11111111-1111-4111-8111-111111111111',
+        status: EventStatus.PUBLISHED,
+        organizer_id: 'organizer-1',
+      });
+
+      await service.suspend('11111111-1111-4111-8111-111111111111', 'admin-1', { reason: 'Signalement' });
+
+      expect(notifClient.emit).toHaveBeenCalledWith(
+        'notification.event_suspended',
+        expect.objectContaining({ event_id: '11111111-1111-4111-8111-111111111111', reason: 'Signalement' }),
       );
     });
   });

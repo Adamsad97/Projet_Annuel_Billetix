@@ -8,5 +8,8 @@ export class EventPublishedDto {
   firstName: string;
 
   @IsString()
+  event_id: string;
+
+  @IsString()
   event_name: string;
 }

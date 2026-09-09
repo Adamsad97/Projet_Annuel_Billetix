@@ -7,6 +7,9 @@ export interface MailAttachment {
   filename: string;
   content: Buffer;
   contentType?: string;
+  // Présent pour une image destinée à être affichée inline dans le corps
+  // HTML (<img src="cid:...">) plutôt que téléchargée comme fichier joint.
+  cid?: string;
 }
 
 export interface SendMailOptions {

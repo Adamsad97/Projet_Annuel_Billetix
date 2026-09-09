@@ -241,7 +241,11 @@ export class NotificationController {
       to: data.email,
       subject: `Votre événement "${data.event_name}" est publié — BilletiX`,
       template: 'event-published',
-      context: { firstName: data.firstName, eventName: data.event_name, eventsUrl: this.appUrl },
+      context: {
+        firstName: data.firstName,
+        eventName: data.event_name,
+        eventsUrl: `${this.appUrl}/evenements/${data.event_id}`,
+      },
     });
     this.ack(rmqContext);
   }
@@ -252,7 +256,13 @@ export class NotificationController {
       to: data.email,
       subject: `Votre événement "${data.event_name}" a été refusé — BilletiX`,
       template: 'event-rejected',
-      context: { firstName: data.firstName, eventName: data.event_name, reason: data.reason, appUrl: this.appUrl },
+      context: {
+        firstName: data.firstName,
+        eventName: data.event_name,
+        reason: data.reason,
+        eventId: data.event_id,
+        appUrl: this.appUrl,
+      },
     });
     this.ack(rmqContext);
   }
@@ -263,7 +273,13 @@ export class NotificationController {
       to: data.email,
       subject: `Complément d'information requis pour "${data.event_name}" — BilletiX`,
       template: 'event-info-requested',
-      context: { firstName: data.firstName, eventName: data.event_name, message: data.message, appUrl: this.appUrl },
+      context: {
+        firstName: data.firstName,
+        eventName: data.event_name,
+        message: data.message,
+        eventId: data.event_id,
+        appUrl: this.appUrl,
+      },
     });
     this.ack(rmqContext);
   }
@@ -274,7 +290,13 @@ export class NotificationController {
       to: data.email,
       subject: `Votre événement "${data.event_name}" a été suspendu — BilletiX`,
       template: 'event-rejected',
-      context: { firstName: data.firstName, eventName: data.event_name, reason: data.reason, appUrl: this.appUrl },
+      context: {
+        firstName: data.firstName,
+        eventName: data.event_name,
+        reason: data.reason,
+        eventId: data.event_id,
+        appUrl: this.appUrl,
+      },
     });
     this.ack(rmqContext);
   }
