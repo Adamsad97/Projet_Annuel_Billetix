@@ -37,7 +37,10 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
 
   const visibleLinks = navLinks.filter((link) => {
     if (link.href === "/admin") return user?.role === "ADMIN";
-    if (link.href === "/dashboard") return user?.role === "ORGANIZER" || user?.role === "ADMIN";
+    // Un compte n'a qu'un seul rôle à la fois (cf. modèle de rôles) — un
+    // ADMIN n'est jamais aussi organisateur, le dashboard organisateur ne
+    // lui sert donc à rien.
+    if (link.href === "/dashboard") return user?.role === "ORGANIZER";
     return true;
   });
 
