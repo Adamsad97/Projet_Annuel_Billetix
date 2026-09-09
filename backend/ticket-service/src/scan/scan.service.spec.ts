@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { ControlAgentService } from '../control-agent/control-agent.service';
 import { Ticket, TicketStatus } from '../ticket/ticket.entity';
 import { TicketService } from '../ticket/ticket.service';
 import { ScanLog, ScanResult } from './scan-log.entity';
@@ -11,8 +12,9 @@ describe('ScanService', () => {
   let ticketService: {
     verifyQr: jest.Mock;
     markUsed: jest.Mock;
-    parseQrToken: jest.Mock;
+    resolveTicketId: jest.Mock;
   };
+  let controlAgentService: { isAssigned: jest.Mock };
 
   const baseDto = { qr_token: 'tok-1', agent_id: 'agent-1', event_id: 'event-1' };
 
@@ -25,14 +27,18 @@ describe('ScanService', () => {
     ticketService = {
       verifyQr: jest.fn(),
       markUsed: jest.fn(),
-      parseQrToken: jest.fn().mockReturnValue({ ticketId: 'ticket-1', issuedAt: Date.now() }),
+      resolveTicketId: jest.fn().mockResolvedValue('ticket-1'),
     };
+    // Par défaut : agent bien affecté à l'événement — les tests d'affectation
+    // (CDC §6.2) surchargent explicitement quand ils testent le rejet.
+    controlAgentService = { isAssigned: jest.fn().mockResolvedValue(true) };
 
     const module = await Test.createTestingModule({
       providers: [
         ScanService,
         { provide: getRepositoryToken(ScanLog), useValue: logRepo },
         { provide: TicketService, useValue: ticketService },
+        { provide: ControlAgentService, useValue: controlAgentService },
       ],
     }).compile();
 
@@ -61,7 +67,7 @@ describe('ScanService', () => {
     expect(ticketService.markUsed).not.toHaveBeenCalled();
   });
 
-  it('détecte un double scan (billet déjà utilisé) et retrouve le bon ticket_id via la signature, pas le dernier log de l\'événement', async () => {
+  it('détecte un double scan (billet déjà utilisé) et retrouve le bon ticket_id via qr_token_history, pas le dernier log de l\'événement', async () => {
     ticketService.verifyQr.mockRejectedValue({ error: { code: 'ALREADY_USED', message: 'Billet déjà utilisé' } });
     // Un autre billet a été scanné juste avant sur le même événement — si le
     // code retombait sur "dernier log de l'événement" (ancien bug), il
@@ -72,6 +78,17 @@ describe('ScanService', () => {
 
     expect(result.result).toBe(ScanResult.ALREADY_USED);
     expect(result.ticket_id).toBe('ticket-1');
+  });
+
+  it("signale un billet revendu (SUPERSEDED, pas INVALID) — ancien QR après transfert", async () => {
+    ticketService.verifyQr.mockRejectedValue({
+      error: { code: 'SUPERSEDED', message: "Ce billet a été revendu — ce QR code n'est plus valide" },
+    });
+
+    const result = await service.scan(baseDto);
+
+    expect(result.result).toBe(ScanResult.SUPERSEDED);
+    expect(ticketService.markUsed).not.toHaveBeenCalled();
   });
 
   it('signale un billet annulé ou remboursé', async () => {
@@ -90,10 +107,8 @@ describe('ScanService', () => {
     expect(result.result).toBe(ScanResult.INVALID);
   });
 
-  it('signale un QR code invalide quand la signature elle-même est rejetée avant tout lookup', async () => {
-    ticketService.parseQrToken.mockImplementation(() => {
-      throw { error: { code: 'INVALID', message: 'QR code invalide' } };
-    });
+  it('signale un QR code invalide quand la résolution du jeton échoue avant tout lookup du billet (jeton absent de qr_token_history)', async () => {
+    ticketService.resolveTicketId.mockRejectedValue({ error: { code: 'INVALID', message: 'QR code invalide' } });
 
     const result = await service.scan(baseDto);
 

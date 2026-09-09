@@ -57,12 +57,11 @@ export class ScanService {
     let scannedTicket: Ticket | undefined;
 
     try {
-      // Recalcul cryptographique en premier : identifie le billet visé même
-      // si le scan échoue ensuite (déjà utilisé/annulé) — avant, un double
-      // scan reprenait par erreur le tout dernier log de l'événement, pas
+      // Résolution en premier : identifie le billet visé même si le scan
+      // échoue ensuite (déjà utilisé/annulé) — avant, un double scan
+      // reprenait par erreur le tout dernier log de l'événement, pas
       // forcément le billet réellement présenté.
-      const { ticketId: resolvedId } = this.ticketService.parseQrToken(dto.qr_token);
-      ticketId = resolvedId;
+      ticketId = await this.ticketService.resolveTicketId(dto.qr_token);
 
       const { ticket } = await this.ticketService.verifyQr(dto.qr_token);
 
@@ -78,6 +77,8 @@ export class ScanService {
         result = ScanResult.ALREADY_USED;
       } else if (code === 'CANCELLED') {
         result = ScanResult.CANCELLED;
+      } else if (code === 'SUPERSEDED') {
+        result = ScanResult.SUPERSEDED;
       } else {
         result = ScanResult.INVALID;
       }

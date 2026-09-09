@@ -9,6 +9,13 @@ export enum ScanResult {
   // événement — distinct d'INVALID (faux/falsifié) : retour orange dédié
   // côté application de contrôle, cf. CDC section 6.2.
   WRONG_EVENT = 'WRONG_EVENT',
+  // Signature cryptographique authentique (donc pas un faux code — un
+  // ticketId/eventId totalement inventé échoue plus tôt, en INVALID), mais
+  // ce n'est plus le QR actuellement valide pour ce billet — cas concret :
+  // le vendeur présente son ancien email après avoir revendu son billet
+  // (transferToNewBuyer régénère le token). Distinct d'INVALID pour que
+  // l'agent voie "billet revendu" plutôt qu'un rejet générique opaque.
+  SUPERSEDED = 'SUPERSEDED',
 }
 
 @Entity({ name: 'scan_logs', schema: 'tickets' })

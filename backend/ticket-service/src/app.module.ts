@@ -11,6 +11,7 @@ import { TicketResale } from './resale/ticket-resale.entity';
 import { TicketResaleModule } from './resale/ticket-resale.module';
 import { ScanLog } from './scan/scan-log.entity';
 import { ScanModule } from './scan/scan.module';
+import { QrTokenHistory } from './ticket/qr-token-history.entity';
 import { Ticket } from './ticket/ticket.entity';
 import { TicketModule } from './ticket/ticket.module';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
@@ -27,7 +28,7 @@ import { HealthModule } from './health/health.module';
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
         schema: 'tickets',
-        entities: [Ticket, ScanLog, OfflineSyncLog, ControlAgent, TicketResale],
+        entities: [Ticket, QrTokenHistory, ScanLog, OfflineSyncLog, ControlAgent, TicketResale],
         synchronize: config.get('NODE_ENV') !== 'production',
         migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
         migrationsRun: config.get('NODE_ENV') === 'production',
