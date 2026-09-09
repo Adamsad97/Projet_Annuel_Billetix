@@ -2,7 +2,7 @@
 // (backend/api-gateway/src/admin/admin.controller.ts). Câblage réel.
 
 import { apiGet, apiPost } from "./client";
-import type { ApiEvent } from "./events";
+import type { ApiEvent, CreateEventDto, CreateTicketCategoryDto } from "./events";
 
 export interface ApiAdminDashboard {
   kpis: {
@@ -53,6 +53,42 @@ export function requestEventInfo(id: string, message: string): Promise<{ success
 
 export function verifyNonProfit(id: string, approved: boolean): Promise<ApiEvent> {
   return apiPost<ApiEvent>(`/admin/events/${id}/verify-non-profit`, { approved });
+}
+
+// ─── Création d'événement pour un organisateur (accueil physique) ──────────
+
+export interface ApiAdminUser {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: "BUYER" | "ORGANIZER" | "ADMIN" | "AGENT";
+  is_suspended: boolean;
+}
+
+export function searchUsers(params: { q?: string; role?: string; limit?: number }): Promise<{ data: ApiAdminUser[]; total: number }> {
+  const search = new URLSearchParams();
+  if (params.q) search.set("q", params.q);
+  if (params.role) search.set("role", params.role);
+  if (params.limit) search.set("limit", String(params.limit));
+  const qs = search.toString();
+  return apiGet<{ data: ApiAdminUser[]; total: number }>(`/admin/users${qs ? `?${qs}` : ""}`);
+}
+
+export function createEventForOrganizer(organizerId: string, dto: CreateEventDto): Promise<ApiEvent> {
+  return apiPost<ApiEvent>("/admin/events", { organizer_id: organizerId, dto });
+}
+
+export function createCategoryForOrganizer(
+  eventId: string,
+  organizerId: string,
+  dto: CreateTicketCategoryDto,
+): Promise<unknown> {
+  return apiPost(`/admin/events/${eventId}/categories`, { organizer_id: organizerId, dto });
+}
+
+export function submitEventForOrganizer(eventId: string, organizerId: string): Promise<ApiEvent> {
+  return apiPost<ApiEvent>(`/admin/events/${eventId}/submit`, { organizer_id: organizerId });
 }
 
 export interface ApiAuditLogEntry {

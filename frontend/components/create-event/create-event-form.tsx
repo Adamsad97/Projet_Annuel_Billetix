@@ -14,6 +14,7 @@ import {
 import type { ApiCategory } from "@/lib/api/categories";
 import type { ApiTicketTierType } from "@/lib/api/ticket-tier-types";
 import { createEvent, createTicketCategory, submitEventForValidation } from "@/lib/api/events";
+import { createEventForOrganizer, createCategoryForOrganizer, submitEventForOrganizer } from "@/lib/api/admin";
 import { uploadPoster } from "@/lib/api/upload";
 import { ApiError } from "@/lib/api/http-error";
 
@@ -42,11 +43,16 @@ export function CreateEventForm({
   tierTypes,
   initial,
   mode = "create",
+  adminOrganizerId,
 }: {
   categories: ApiCategory[];
   tierTypes: ApiTicketTierType[];
   initial?: CreateEventFormInitial;
   mode?: "create" | "edit";
+  // CDC — accueil physique : un admin remplit ce même formulaire au nom
+  // d'un organisateur venu au bureau. L'événement est créé sous le compte
+  // de cet organisateur, pas celui de l'admin (cf. POST /admin/events).
+  adminOrganizerId?: string;
 }) {
   const router = useRouter();
   const genId = useId();
@@ -106,7 +112,7 @@ export function CreateEventForm({
     try {
       const { url: posterUrl } = await uploadPoster(posterFile);
 
-      const createdEvent = await createEvent({
+      const eventDto = {
         title,
         description,
         category,
@@ -122,19 +128,33 @@ export function CreateEventForm({
         sales_start_date: salesStartIso,
         sales_end_date: salesEndIso,
         refund_policy: refundPolicy,
-      });
+      };
+
+      const createdEvent = adminOrganizerId
+        ? await createEventForOrganizer(adminOrganizerId, eventDto)
+        : await createEvent(eventDto);
 
       for (const row of validTiers) {
-        await createTicketCategory(createdEvent.id, {
+        const tierDto = {
           name: row.name,
           price_ht: Number(row.price),
           quota: Number(row.quota),
           max_per_order: row.maxPerOrder ? Number(row.maxPerOrder) : undefined,
-        });
+        };
+        if (adminOrganizerId) {
+          await createCategoryForOrganizer(createdEvent.id, adminOrganizerId, tierDto);
+        } else {
+          await createTicketCategory(createdEvent.id, tierDto);
+        }
       }
 
-      await submitEventForValidation(createdEvent.id);
-      router.push("/dashboard");
+      if (adminOrganizerId) {
+        await submitEventForOrganizer(createdEvent.id, adminOrganizerId);
+        router.push(`/admin/validation/${createdEvent.id}`);
+      } else {
+        await submitEventForValidation(createdEvent.id);
+        router.push("/dashboard");
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessaie.");
       setSubmitting(false);
@@ -351,10 +371,16 @@ export function CreateEventForm({
           ? "Envoi en cours…"
           : mode === "edit"
             ? "Enregistrer les modifications →"
-            : "Soumettre à la validation →"}
+            : adminOrganizerId
+              ? "Créer pour cet organisateur →"
+              : "Soumettre à la validation →"}
       </button>
 
-      {mode === "create" ? (
+      {adminOrganizerId ? (
+        <p className="text-center text-xs text-gray-500">
+          L&apos;événement sera créé sous le compte de l&apos;organisateur puis soumis à validation — tu seras redirigé vers sa fiche pour la traiter.
+        </p>
+      ) : mode === "create" ? (
         <p className="text-center text-xs text-gray-500">
           ⏱️ Délai de traitement : 48h ouvrées maximum
         </p>
