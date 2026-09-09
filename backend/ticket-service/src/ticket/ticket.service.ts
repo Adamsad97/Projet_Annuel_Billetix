@@ -83,6 +83,12 @@ export class TicketService {
     return this.repo.find({ where: { order_id: orderId } });
   }
 
+  /** Liste des billets d'un événement — alimente la page "Gestion d'un
+   * événement" côté organisateur (participants + statut de chacun). */
+  async getByEvent(eventId: string): Promise<Ticket[]> {
+    return this.repo.find({ where: { event_id: eventId }, order: { created_at: 'ASC' } });
+  }
+
   /** Répartition des billets par statut pour un événement — utile pour le suivi temps réel (scans en cours). */
   async getStatsByEvent(eventId: string): Promise<{
     total: number;

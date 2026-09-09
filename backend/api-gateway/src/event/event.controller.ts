@@ -326,6 +326,23 @@ export class EventController {
     return { event, fill_stats: fillStats, revenue, tickets: ticketStats };
   }
 
+  @Get(":id/attendees")
+  @Roles("ORGANIZER")
+  @ApiOperation({ summary: "Liste des billets/participants d'un événement (ORGANIZER)" })
+  async eventAttendees(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    const event = (await firstValueFrom(
+      this.eventClient.send("event.get", { id }),
+    )) as { organizer_id: string; [key: string]: unknown };
+
+    if (event.organizer_id !== user.sub) {
+      throw new ForbiddenException(
+        "Cet événement n'appartient pas à votre compte.",
+      );
+    }
+
+    return firstValueFrom(this.ticketClient.send("ticket.get_by_event", { event_id: id }));
+  }
+
   @Patch(":id")
   @HttpCode(HttpStatus.OK)
   @Roles("ORGANIZER")
