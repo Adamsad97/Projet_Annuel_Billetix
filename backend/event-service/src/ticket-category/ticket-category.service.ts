@@ -48,10 +48,37 @@ export class TicketCategoryService {
   }
 
   /** Lève 403 si l'événement n'existe pas ou n'appartient pas à cet organisateur. */
-  private async assertOwnsEvent(eventId: string, organizerId: string): Promise<void> {
+  private async assertOwnsEvent(eventId: string, organizerId: string): Promise<Event> {
     const event = await this.eventRepo.findOne({ where: { id: eventId } });
     if (!event || event.organizer_id !== organizerId) {
       throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
+    }
+    return event;
+  }
+
+  /**
+   * Bug corrigé : rien n'empêchait la somme des quotas des catégories de
+   * billets de dépasser la capacité totale de l'événement (ex: 500 places
+   * mais 500 + 40 places réparties en catégories) — repéré par un
+   * organisateur sur le formulaire de création. `excludeId` permet à
+   * update() de s'auto-exclure du total déjà comptabilisé.
+   */
+  private async assertQuotaWithinCapacity(
+    eventId: string,
+    totalCapacity: number,
+    newQuota: number,
+    excludeId?: string,
+  ): Promise<void> {
+    const existing = await this.repo.find({ where: { event_id: eventId, is_active: true } });
+    const otherQuotas = existing
+      .filter((category) => category.id !== excludeId)
+      .reduce((sum, category) => sum + category.quota, 0);
+    const total = otherQuotas + newQuota;
+    if (total > totalCapacity) {
+      throw new RpcException({
+        statusCode: 400,
+        message: `La somme des quotas (${total}) dépasse la capacité totale de l'événement (${totalCapacity})`,
+      });
     }
   }
 
@@ -73,9 +100,10 @@ export class TicketCategoryService {
   }
 
   async create(dto: CreateTicketCategoryDto, organizerId: string): Promise<TicketCategory> {
-    await this.assertOwnsEvent(dto.event_id, organizerId);
+    const event = await this.assertOwnsEvent(dto.event_id, organizerId);
     await this.ticketTierTypeService.assertActive(dto.name);
     await this.assertNameNotUsed(dto.event_id, dto.name);
+    await this.assertQuotaWithinCapacity(dto.event_id, event.total_capacity, dto.quota);
     const category = this.repo.create({
       ...dto,
       remaining_quota: dto.quota,
@@ -102,10 +130,13 @@ export class TicketCategoryService {
 
   async update(id: string, dto: Partial<CreateTicketCategoryDto>, organizerId: string): Promise<TicketCategory> {
     const category = await this.getById(id);
-    await this.assertOwnsEvent(category.event_id, organizerId);
+    const event = await this.assertOwnsEvent(category.event_id, organizerId);
     if (dto.name) {
       await this.ticketTierTypeService.assertActive(dto.name);
       await this.assertNameNotUsed(category.event_id, dto.name, category.id);
+    }
+    if (dto.quota !== undefined) {
+      await this.assertQuotaWithinCapacity(category.event_id, event.total_capacity, dto.quota, category.id);
     }
     Object.assign(category, dto);
     return this.repo.save(category);

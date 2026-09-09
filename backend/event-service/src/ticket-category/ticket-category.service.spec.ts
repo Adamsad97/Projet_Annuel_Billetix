@@ -20,7 +20,7 @@ describe('TicketCategoryService', () => {
 
   beforeEach(async () => {
     repo = {
-      find: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn(),
       create: jest.fn().mockImplementation((category) => category),
       save: jest.fn().mockImplementation((category) => Promise.resolve(category)),
@@ -54,7 +54,7 @@ describe('TicketCategoryService', () => {
     const dto = { event_id: 'evt-1', name: 'Standard', price_ht: 50, quota: 100 } as any;
 
     it("refuse si l'événement n'appartient pas à l'appelant", async () => {
-      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-2' });
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-2', total_capacity: 1000 });
 
       await expect(service.create(dto, 'organizer-1')).rejects.toThrow(RpcException);
       expect(repo.save).not.toHaveBeenCalled();
@@ -67,7 +67,7 @@ describe('TicketCategoryService', () => {
     });
 
     it("autorise le propriétaire de l'événement", async () => {
-      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1' });
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 1000 });
 
       const category = await service.create(dto, 'organizer-1');
 
@@ -76,7 +76,7 @@ describe('TicketCategoryService', () => {
     });
 
     it("vérifie que le nom fait partie de la liste gérée depuis l'espace Admin", async () => {
-      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1' });
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 1000 });
 
       await service.create(dto, 'organizer-1');
 
@@ -84,7 +84,7 @@ describe('TicketCategoryService', () => {
     });
 
     it('rejette une catégorie de billet déjà présente sur cet événement (même nom)', async () => {
-      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1' });
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 1000 });
       repo.findOne.mockResolvedValue({ id: 'existing-cat', event_id: 'evt-1', name: 'Standard', is_active: true });
 
       await expect(service.create(dto, 'organizer-1')).rejects.toThrow(RpcException);
@@ -92,7 +92,7 @@ describe('TicketCategoryService', () => {
     });
 
     it('rejette un nom qui ne fait pas partie de la liste gérée depuis l\'espace Admin', async () => {
-      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1' });
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 1000 });
       ticketTierTypeService.assertActive.mockRejectedValue(new RpcException({ statusCode: 400, message: 'invalide' }));
 
       await expect(service.create(dto, 'organizer-1')).rejects.toThrow(RpcException);
@@ -100,11 +100,40 @@ describe('TicketCategoryService', () => {
     });
   });
 
+  describe('create — somme des quotas contre la capacité totale de l\'événement', () => {
+    it('rejette si le quota seul dépasse la capacité totale', async () => {
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 500 });
+      const dto = { event_id: 'evt-1', name: 'Standard', price_ht: 50, quota: 600 } as any;
+
+      await expect(service.create(dto, 'organizer-1')).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('rejette si le quota ajouté aux catégories existantes dépasse la capacité totale (ex: 500 + 40 pour 500 places)', async () => {
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 500 });
+      repo.find.mockResolvedValue([{ id: 'cat-standard', quota: 500, is_active: true }]);
+      const dto = { event_id: 'evt-1', name: 'VIP', price_ht: 50, quota: 40 } as any;
+
+      await expect(service.create(dto, 'organizer-1')).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('autorise si la somme reste exactement égale à la capacité totale', async () => {
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 500 });
+      repo.find.mockResolvedValue([{ id: 'cat-standard', quota: 460, is_active: true }]);
+      const dto = { event_id: 'evt-1', name: 'VIP', price_ht: 50, quota: 40 } as any;
+
+      await service.create(dto, 'organizer-1');
+
+      expect(repo.save).toHaveBeenCalled();
+    });
+  });
+
   describe('update — renommage et unicité du nom sur l\'événement', () => {
     const catId = '11111111-1111-4111-8111-111111111111';
 
     it('autorise à conserver son propre nom (ne se bloque pas lui-même)', async () => {
-      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1' });
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 1000 });
       repo.findOne
         .mockResolvedValueOnce({ id: catId, event_id: 'evt-1', name: 'Standard', is_active: true })
         .mockResolvedValueOnce({ id: catId, event_id: 'evt-1', name: 'Standard', is_active: true });
@@ -115,13 +144,39 @@ describe('TicketCategoryService', () => {
     });
 
     it('rejette le renommage vers un nom déjà utilisé par une autre catégorie du même événement', async () => {
-      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1' });
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 1000 });
       repo.findOne
         .mockResolvedValueOnce({ id: catId, event_id: 'evt-1', name: 'Standard', is_active: true })
         .mockResolvedValueOnce({ id: 'cat-2', event_id: 'evt-1', name: 'VIP', is_active: true });
 
       await expect(service.update(catId, { name: 'VIP' }, 'organizer-1')).rejects.toThrow(RpcException);
       expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('rejette une augmentation de quota qui dépasserait la capacité totale', async () => {
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 500 });
+      repo.findOne.mockResolvedValue({ id: catId, event_id: 'evt-1', name: 'Standard', quota: 460, is_active: true });
+      // La catégorie elle-même (460) + une autre déjà existante (40) = déjà 500.
+      repo.find.mockResolvedValue([
+        { id: catId, quota: 460, is_active: true },
+        { id: 'cat-vip', quota: 40, is_active: true },
+      ]);
+
+      await expect(service.update(catId, { quota: 500 }, 'organizer-1')).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("s'auto-exclut correctement : augmenter son propre quota jusqu'à la capacité totale reste autorisé", async () => {
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 500 });
+      repo.findOne.mockResolvedValue({ id: catId, event_id: 'evt-1', name: 'Standard', quota: 460, is_active: true });
+      repo.find.mockResolvedValue([
+        { id: catId, quota: 460, is_active: true },
+        { id: 'cat-vip', quota: 40, is_active: true },
+      ]);
+
+      await service.update(catId, { quota: 460 }, 'organizer-1');
+
+      expect(repo.save).toHaveBeenCalled();
     });
   });
 
