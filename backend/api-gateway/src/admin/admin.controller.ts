@@ -21,6 +21,7 @@ import {
   JwtPayload,
 } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
+import { CreateEventDto } from "../event/dto/create-event.dto";
 
 @ApiTags("admin")
 @ApiBearerAuth()
@@ -387,6 +388,54 @@ export class AdminController {
   }
 
   // ─── Modération des événements ────────────────────────────────────────────────
+
+  /**
+   * CDC — accueil physique : un organisateur venu directement au bureau peut
+   * demander à un admin de créer son événement pour lui plutôt que de
+   * passer par le formulaire en ligne. Le compte organisateur doit déjà
+   * exister (recherché via GET /admin/users) ; l'événement est créé DRAFT
+   * sous son compte, exactement comme s'il l'avait fait lui-même — l'admin
+   * enchaîne ensuite avec les catégories de billets, la soumission puis sa
+   * propre validation (POST .../submit puis .../approve, déjà existants).
+   */
+  @Post("events")
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: "Créer un événement au nom d'un organisateur (accueil physique)" })
+  async createEventForOrganizer(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Body() body: { organizer_id: string; dto: CreateEventDto },
+  ) {
+    const result = await firstValueFrom(
+      this.eventClient.send("event.create", { organizer_id: body.organizer_id, dto: body.dto }),
+    );
+    this.audit(user, req, "CUSTOM", "EVENT", (result as { id: string }).id, `Événement créé par l'admin pour l'organisateur ${body.organizer_id} (accueil physique)`);
+    return result;
+  }
+
+  @Post("events/:id/categories")
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: "Ajouter une catégorie de billet à un événement créé pour un organisateur (accueil physique)" })
+  createCategoryForOrganizer(
+    @Param("id") id: string,
+    @Body() body: { organizer_id: string; dto: Record<string, unknown> },
+  ) {
+    return firstValueFrom(
+      this.eventClient.send("event.create_category", {
+        dto: { ...body.dto, event_id: id },
+        organizer_id: body.organizer_id,
+      }),
+    );
+  }
+
+  @Post("events/:id/submit")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Soumettre à la validation un événement créé pour un organisateur (accueil physique)" })
+  submitEventForOrganizer(@Param("id") id: string, @Body() body: { organizer_id: string }) {
+    return firstValueFrom(
+      this.eventClient.send("event.submit_for_validation", { id, organizer_id: body.organizer_id }),
+    );
+  }
 
   @Get("events/pending")
   @ApiOperation({ summary: "Événements en attente de modération" })
