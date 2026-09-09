@@ -25,12 +25,20 @@ export function TicketTiersEditor({
   rows,
   onChange,
   tierTypes,
+  totalCapacity,
 }: {
   rows: TicketTierRow[];
   onChange: (rows: TicketTierRow[]) => void;
   tierTypes: ApiTicketTierType[];
+  // Bug corrigé : rien n'empêchait la somme des quotas de dépasser la
+  // capacité totale de l'événement (ex: 500 places mais 500 + 40 réparties
+  // en catégories) — désormais visible en temps réel et plafonné par ligne.
+  totalCapacity: number;
 }) {
   const genId = useId();
+
+  const totalQuota = rows.reduce((sum, row) => sum + (parseInt(row.quota, 10) || 0), 0);
+  const overCapacity = totalCapacity > 0 && totalQuota > totalCapacity;
 
   // Bug corrigé : rien n'empêchait de sélectionner deux fois le même nom
   // (ex: "Standard" en double) — chaque ligne ne propose désormais que les
@@ -74,6 +82,10 @@ export function TicketTiersEditor({
         const optionsForRow = tierTypes.filter(
           (type) => type.label === row.name || !usedNames.has(type.label),
         );
+        const otherRowsQuota = rows
+          .filter((other) => other.id !== row.id)
+          .reduce((sum, other) => sum + (parseInt(other.quota, 10) || 0), 0);
+        const maxForRow = totalCapacity > 0 ? Math.max(totalCapacity - otherRowsQuota, 0) : undefined;
         return (
           <div
             key={row.id}
@@ -110,6 +122,7 @@ export function TicketTiersEditor({
               onChange={(event) => updateRow(row.id, "quota", event.target.value)}
               placeholder="Quota"
               min="1"
+              max={maxForRow}
               className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
             />
             <input
@@ -132,6 +145,13 @@ export function TicketTiersEditor({
           </div>
         );
       })}
+
+      {totalCapacity > 0 ? (
+        <p className={overCapacity ? "text-center text-xs font-medium text-red-400" : "text-center text-xs text-gray-500"}>
+          {totalQuota} / {totalCapacity} places réparties
+          {overCapacity ? ` — dépasse la capacité totale de ${totalQuota - totalCapacity}` : ""}
+        </p>
+      ) : null}
 
       <button
         type="button"

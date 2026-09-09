@@ -99,6 +99,13 @@ export function CreateEventForm({
       setError("Ajoute au moins une catégorie de billet complète (nom, prix, quota).");
       return;
     }
+    const totalQuota = validTiers.reduce((sum, row) => sum + Number(row.quota), 0);
+    if (totalQuota > Number(totalCapacity)) {
+      setError(
+        `La somme des quotas (${totalQuota}) dépasse la capacité totale (${totalCapacity}) — ajuste les catégories de billets ou la capacité.`,
+      );
+      return;
+    }
     const startIso = toIsoOrNull(startAt);
     const endIso = toIsoOrNull(endAt);
     const salesStartIso = toIsoOrNull(salesStartAt) ?? new Date().toISOString();
@@ -353,7 +360,12 @@ export function CreateEventForm({
       </InfoCard>
 
       <InfoCard icon="✏️" title="Catégories de billets">
-        <TicketTiersEditor rows={tierRows} onChange={setTierRows} tierTypes={tierTypes} />
+        <TicketTiersEditor
+          rows={tierRows}
+          onChange={setTierRows}
+          tierTypes={tierTypes}
+          totalCapacity={Number(totalCapacity) || 0}
+        />
       </InfoCard>
 
       {error ? (
