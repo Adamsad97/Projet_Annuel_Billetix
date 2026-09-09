@@ -107,7 +107,6 @@ export class AdminController {
       platformBalance,
       eventsByStatus,
       userStats,
-      trend,
       recentRefundCount,
       platformConfig,
     ] = await Promise.all([
@@ -126,9 +125,6 @@ export class AdminController {
       firstValueFrom(this.authClient.send("auth.get_user_stats", {})).catch(
         () => ({ by_role: {}, suspended_count: 0, total: 0 }),
       ),
-      firstValueFrom(
-        this.orderClient.send("order.get_revenue_trend", { days: 30 }),
-      ).catch(() => []),
       firstValueFrom(
         this.orderClient.send("order.get_recent_refund_count", { hours: 24 }),
       ).catch(() => 0),
@@ -179,9 +175,28 @@ export class AdminController {
         events_by_status: eventsByStatus,
         users: userStats,
       },
-      trend,
       alerts,
     };
+  }
+
+  /**
+   * CDC — dashboard admin : tri par ventes totales/billets vendus/chiffre
+   * d'affaires sur une plage de dates au choix. Séparé de GET /admin/dashboard
+   * (qui reste un instantané KPI figé) pour permettre au frontend de
+   * recharger uniquement le graphique quand la plage change, sans
+   * redemander tous les KPIs.
+   */
+  @Get("sales-trend")
+  @ApiOperation({ summary: "Tendance ventes/billets/CA par jour sur une plage de dates" })
+  getSalesTrend(@Query("from") from?: string, @Query("to") to?: string) {
+    const toDate = to ? new Date(to) : new Date();
+    const fromDate = from ? new Date(from) : new Date(toDate.getTime() - 29 * 24 * 60 * 60 * 1000);
+    return firstValueFrom(
+      this.orderClient.send("order.get_sales_trend", {
+        from: fromDate.toISOString(),
+        to: toDate.toISOString(),
+      }),
+    );
   }
 
   // ─── Audit logs ───────────────────────────────────────────────────────────────

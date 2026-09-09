@@ -61,6 +61,11 @@ export class OrderController {
     return this.orderService.getRevenueTrend(data.days);
   }
 
+  @MessagePattern('order.get_sales_trend')
+  getSalesTrend(@Payload() data: { from: string; to: string }) {
+    return this.orderService.getSalesTrend(new Date(data.from), new Date(data.to));
+  }
+
   @MessagePattern('order.get_recent_refund_count')
   getRecentRefundCount(@Payload() data: { hours: number }) {
     return this.orderService.getRecentRefundCount(data.hours);

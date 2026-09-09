@@ -11,6 +11,7 @@ import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { ValidationRow } from "@/components/admin/validation-row";
+import { RevenueTrendChart } from "@/components/admin/revenue-trend-chart";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import { listCategories, type ApiCategory } from "@/lib/api/categories";
 import { approveEvent, getAdminDashboard, getPendingEvents, rejectEvent, type ApiAdminDashboard, type ApiPendingEvent } from "@/lib/api/admin";
@@ -128,6 +129,9 @@ export default function AdminDashboardPage() {
               <AdminStatCard key={stat.id} stat={stat} />
             ))}
           </div>
+
+          <h2 className="mb-3 mt-10 text-lg font-bold text-white">Ventes</h2>
+          <RevenueTrendChart />
         </>
       )}
 

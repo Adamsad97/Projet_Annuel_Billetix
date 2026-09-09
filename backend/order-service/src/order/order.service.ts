@@ -209,8 +209,24 @@ export class OrderService {
         resale_price: number;
         event_id: string;
         ticket_category_id: string;
+        original_buyer_id: string;
       }>('ticket.reserve_resale', { resale_id: dto.resale_id, buyer_id: dto.buyer_id }),
     );
+
+    // Bug corrigé : rien n'empêchait le vendeur de racheter son propre
+    // billet mis en revente — la réservation atomique ne vérifie que la
+    // disponibilité de l'offre, pas l'identité de l'acheteur. On libère
+    // aussitôt la réservation pour ne pas bloquer inutilement l'offre 15
+    // minutes suite à cette tentative.
+    if (resale.original_buyer_id === dto.buyer_id) {
+      this.ticketClient
+        .send('ticket.release_resale_reservation', { resale_id: dto.resale_id })
+        .subscribe({ error: () => undefined });
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Tu ne peux pas racheter ton propre billet mis en revente — retire-le de la vente si tu as changé d\'avis.',
+      });
+    }
 
     const config = await this.platformConfig.get();
 
@@ -244,8 +260,15 @@ export class OrderService {
       // non bloquant
     }
 
-    const unit_ht = Number(resale.resale_price);
-    const unit_ttc = parseFloat((unit_ht * (1 + config.tva_rate)).toFixed(2));
+    // Bug corrigé : resale_price était traité comme un prix HT (comme le
+    // price_ht d'une catégorie de billet normale), puis la TVA était
+    // réappliquée par-dessus pour obtenir le TTC facturé à l'acheteur — un
+    // billet plafonné à sa valeur faciale (déjà TTC, cf.
+    // TicketResaleService.requestResale) finissait donc facturé ~20% plus
+    // cher que ce plafond. resale_price est déjà le prix TTC affiché/plafonné
+    // au moment de la mise en vente ; le HT en est dérivé par calcul inverse.
+    const unit_ttc = Number(resale.resale_price);
+    const unit_ht = parseFloat((unit_ttc / (1 + config.tva_rate)).toFixed(2));
     const commission = parseFloat((unit_ht * (commission_rate / 100)).toFixed(2));
     const net_organizer = parseFloat((unit_ht - commission).toFixed(2));
 
@@ -399,6 +422,59 @@ export class OrderService {
     return rows.map((row) => ({
       day: row.day,
       orders_count: parseInt(row.orders_count, 10),
+      revenue_ttc: parseFloat(row.revenue_ttc),
+    }));
+  }
+
+  /**
+   * Tendance ventes/billets/chiffre d'affaires par jour sur une plage de
+   * dates arbitraire — dashboard admin (sélecteur de métrique + plage de
+   * dates). Distinct de getRevenueTrend (fenêtre glissante en jours,
+   * revenu seul) : celle-ci accepte des bornes explicites et ajoute le
+   * nombre de billets vendus.
+   *
+   * Deux agrégats calculés séparément puis recombinés par jour (FULL OUTER
+   * JOIN) plutôt qu'un simple LEFT JOIN order_items sur une seule requête :
+   * joindre les items multiplierait les lignes "orders" par item, faussant
+   * SUM(total_amount_ttc) (bug qu'un LEFT JOIN naïf aurait introduit ici).
+   */
+  async getSalesTrend(
+    from: Date,
+    to: Date,
+  ): Promise<Array<{ day: string; orders_count: number; tickets_count: number; revenue_ttc: number }>> {
+    const rows = await this.dataSource.query(
+      `
+      WITH orders_agg AS (
+        SELECT date_trunc('day', paid_at) AS day,
+               COUNT(*) AS orders_count,
+               COALESCE(SUM(total_amount_ttc), 0) AS revenue_ttc
+        FROM orders.orders
+        WHERE status IN ('CONFIRMED', 'TICKETS_SENT') AND paid_at >= $1 AND paid_at <= $2
+        GROUP BY date_trunc('day', paid_at)
+      ),
+      items_agg AS (
+        SELECT date_trunc('day', o.paid_at) AS day,
+               COALESCE(SUM(oi.quantity), 0) AS tickets_count
+        FROM orders.orders o
+        JOIN orders.order_items oi ON oi.order_id = o.id::text
+        WHERE o.status IN ('CONFIRMED', 'TICKETS_SENT') AND o.paid_at >= $1 AND o.paid_at <= $2
+        GROUP BY date_trunc('day', o.paid_at)
+      )
+      SELECT to_char(COALESCE(orders_agg.day, items_agg.day), 'YYYY-MM-DD') AS day,
+             COALESCE(orders_agg.orders_count, 0) AS orders_count,
+             COALESCE(items_agg.tickets_count, 0) AS tickets_count,
+             COALESCE(orders_agg.revenue_ttc, 0) AS revenue_ttc
+      FROM orders_agg
+      FULL OUTER JOIN items_agg ON orders_agg.day = items_agg.day
+      ORDER BY day ASC
+      `,
+      [from, to],
+    ) as Array<{ day: string; orders_count: string; tickets_count: string; revenue_ttc: string }>;
+
+    return rows.map((row) => ({
+      day: row.day,
+      orders_count: parseInt(row.orders_count, 10),
+      tickets_count: parseInt(row.tickets_count, 10),
       revenue_ttc: parseFloat(row.revenue_ttc),
     }));
   }

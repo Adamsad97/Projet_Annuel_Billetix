@@ -20,12 +20,28 @@ export interface ApiAdminDashboard {
       total: number;
     };
   };
-  trend: Array<{ date: string; revenue_ttc: number }>;
   alerts: Array<{ type: string; severity: "warning" | "critical"; message: string }>;
 }
 
 export function getAdminDashboard(): Promise<ApiAdminDashboard> {
   return apiGet<ApiAdminDashboard>("/admin/dashboard");
+}
+
+// ─── Tendance des ventes (métrique + plage de dates au choix) ──────────────
+
+export interface ApiSalesTrendPoint {
+  day: string;
+  orders_count: number;
+  tickets_count: number;
+  revenue_ttc: number;
+}
+
+export function getSalesTrend(from?: string, to?: string): Promise<ApiSalesTrendPoint[]> {
+  const search = new URLSearchParams();
+  if (from) search.set("from", from);
+  if (to) search.set("to", to);
+  const qs = search.toString();
+  return apiGet<ApiSalesTrendPoint[]>(`/admin/sales-trend${qs ? `?${qs}` : ""}`);
 }
 
 export interface ApiPendingEvent extends ApiEvent {
