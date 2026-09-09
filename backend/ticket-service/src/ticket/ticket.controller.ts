@@ -48,8 +48,25 @@ export class TicketController {
   }
 
   @MessagePattern('ticket.transfer_to_new_buyer')
-  transferToNewBuyer(@Payload() data: { id: string; new_buyer_id: string; new_order_id: string }) {
-    return this.ticketService.transferToNewBuyer(data.id, data.new_buyer_id, data.new_order_id);
+  transferToNewBuyer(
+    @Payload()
+    data: {
+      id: string;
+      new_buyer_id: string;
+      new_order_id: string;
+      new_buyer_email: string;
+      new_holder_first_name: string;
+      new_holder_last_name: string;
+    },
+  ) {
+    return this.ticketService.transferToNewBuyer(
+      data.id,
+      data.new_buyer_id,
+      data.new_order_id,
+      data.new_buyer_email,
+      data.new_holder_first_name,
+      data.new_holder_last_name,
+    );
   }
 
   @MessagePattern('ticket.invalidate')

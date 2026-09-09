@@ -31,6 +31,18 @@ export class TicketResaleService {
       throw new RpcException({ statusCode: 400, message: 'L\'événement est déjà passé' });
     }
 
+    // Bug corrigé : le prix de revente n'était jamais vérifié côté serveur —
+    // seul le formulaire (mock, jamais branché) affichait la règle "plafonné
+    // à la valeur faciale" (cf. FAQ) sans jamais l'appliquer. N'importe quel
+    // appel direct à cet endpoint pouvait donc revendre à profit.
+    const faceValue = Number(ticket.unit_price_ttc);
+    if (!(data.resale_price > 0) || data.resale_price > faceValue) {
+      throw new RpcException({
+        statusCode: 400,
+        message: `Le prix de revente doit être compris entre 0,01 € et la valeur faciale du billet (${faceValue.toFixed(2)} €)`,
+      });
+    }
+
     // Vérifier qu'il n'y a pas déjà un listing actif pour ce billet
     const existing = await this.repo.findOne({
       where: { ticket_id: data.ticket_id, status: ResaleStatus.LISTED },
@@ -64,6 +76,28 @@ export class TicketResaleService {
       .andWhere('r.event_start_at > NOW()')
       .orderBy('r.listed_at', 'ASC')
       .getMany();
+  }
+
+  /** Toutes les annonces actives, tous événements confondus — marketplace
+   * globale (/revente), par opposition à listByEvent() qui ne sert que
+   * l'onglet revente d'un événement précis. */
+  async listAllActive(): Promise<TicketResale[]> {
+    return this.repo
+      .createQueryBuilder('r')
+      .where('r.status = :status', { status: ResaleStatus.LISTED })
+      .andWhere('r.event_start_at > NOW()')
+      .orderBy('r.listed_at', 'DESC')
+      .take(100)
+      .getMany();
+  }
+
+  /** L'annonce active (LISTED) d'un billet donné, pour que son propriétaire
+   * puisse la gérer (voir le prix, la retirer) depuis la page du billet —
+   * null si ce billet n'est pas actuellement en vente. */
+  async getActiveByTicketId(ticketId: string): Promise<TicketResale | null> {
+    return this.repo.findOne({
+      where: { ticket_id: ticketId, status: ResaleStatus.LISTED },
+    });
   }
 
   async getById(id: string): Promise<TicketResale> {
@@ -129,6 +163,9 @@ export class TicketResaleService {
     resale_id: string;
     new_buyer_id: string;
     new_order_id: string;
+    new_buyer_email: string;
+    new_holder_first_name: string;
+    new_holder_last_name: string;
   }): Promise<{ resale: TicketResale; originalOrderId: string }> {
     const resale = await this.getById(data.resale_id);
 
@@ -143,11 +180,15 @@ export class TicketResaleService {
       throw new RpcException({ statusCode: 409, message: 'Cette offre n\'est plus disponible' });
     }
 
-    // Transférer le billet au nouvel acheteur (nouveau QR code généré)
+    // Transférer le billet au nouvel acheteur (nouveau QR code généré, et
+    // email/nom du titulaire mis à jour — bug corrigé, cf. transferToNewBuyer)
     await this.ticketService.transferToNewBuyer(
       resale.ticket_id,
       data.new_buyer_id,
       data.new_order_id,
+      data.new_buyer_email,
+      data.new_holder_first_name,
+      data.new_holder_last_name,
     );
 
     resale.status = ResaleStatus.SOLD;

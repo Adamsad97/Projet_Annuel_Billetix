@@ -9,17 +9,20 @@ import { TicketResaleService } from './ticket-resale.service';
 
 describe('TicketResaleService — réservation atomique (anti double-achat)', () => {
   let service: TicketResaleService;
-  let repo: { findOne: jest.Mock; save: jest.Mock; createQueryBuilder: jest.Mock };
+  let repo: { findOne: jest.Mock; save: jest.Mock; create: jest.Mock; createQueryBuilder: jest.Mock };
   let updateQueryBuilder: {
     update: jest.Mock;
     set: jest.Mock;
     where: jest.Mock;
     andWhere: jest.Mock;
     execute: jest.Mock;
+    orderBy: jest.Mock;
+    take: jest.Mock;
+    getMany: jest.Mock;
   };
   let dataSource: { query: jest.Mock };
   let platformConfig: { get: jest.Mock };
-  let ticketService: { transferToNewBuyer: jest.Mock };
+  let ticketService: { transferToNewBuyer: jest.Mock; getById: jest.Mock; markForResale: jest.Mock };
 
   beforeEach(async () => {
     updateQueryBuilder = {
@@ -28,15 +31,19 @@ describe('TicketResaleService — réservation atomique (anti double-achat)', ()
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       execute: jest.fn().mockResolvedValue(undefined),
+      orderBy: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([]),
     };
     repo = {
       findOne: jest.fn(),
       save: jest.fn().mockImplementation((resaleRecord) => Promise.resolve(resaleRecord)),
+      create: jest.fn().mockImplementation((data) => data),
       createQueryBuilder: jest.fn().mockReturnValue(updateQueryBuilder),
     };
     dataSource = { query: jest.fn() };
     platformConfig = { get: jest.fn().mockResolvedValue({ resale_reservation_minutes: 15 }) };
-    ticketService = { transferToNewBuyer: jest.fn() };
+    ticketService = { transferToNewBuyer: jest.fn(), getById: jest.fn(), markForResale: jest.fn() };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -49,6 +56,115 @@ describe('TicketResaleService — réservation atomique (anti double-achat)', ()
     }).compile();
 
     service = module.get(TicketResaleService);
+  });
+
+  describe('requestResale — plafonnement du prix (pas de revente à profit, cf. FAQ)', () => {
+    const validTicket = {
+      id: 'ticket-1',
+      buyer_id: 'buyer-1',
+      event_id: 'event-1',
+      event_start_at: new Date(Date.now() + 86_400_000),
+      ticket_category_id: 'cat-1',
+      holder_first_name: 'Jean',
+      holder_last_name: 'Dupont',
+      unit_price_ttc: '50.00',
+    };
+
+    it('rejette un prix de revente supérieur à la valeur faciale du billet', async () => {
+      ticketService.getById.mockResolvedValue(validTicket);
+      repo.findOne.mockResolvedValue(undefined);
+
+      await expect(
+        service.requestResale({
+          ticket_id: 'ticket-1',
+          buyer_id: 'buyer-1',
+          original_order_id: 'order-1',
+          resale_price: 60,
+        }),
+      ).rejects.toThrow(RpcException);
+      expect(ticketService.markForResale).not.toHaveBeenCalled();
+    });
+
+    it('rejette un prix de revente nul ou négatif', async () => {
+      ticketService.getById.mockResolvedValue(validTicket);
+      repo.findOne.mockResolvedValue(undefined);
+
+      await expect(
+        service.requestResale({
+          ticket_id: 'ticket-1',
+          buyer_id: 'buyer-1',
+          original_order_id: 'order-1',
+          resale_price: 0,
+        }),
+      ).rejects.toThrow(RpcException);
+    });
+
+    it('accepte un prix de revente égal ou inférieur à la valeur faciale', async () => {
+      ticketService.getById.mockResolvedValue(validTicket);
+      repo.findOne.mockResolvedValue(undefined);
+
+      await service.requestResale({
+        ticket_id: 'ticket-1',
+        buyer_id: 'buyer-1',
+        original_order_id: 'order-1',
+        resale_price: 50,
+      });
+
+      expect(ticketService.markForResale).toHaveBeenCalledWith('ticket-1');
+      expect(repo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ resale_price: 50 }),
+      );
+    });
+
+    it("rejette si le billet n'appartient pas à l'acheteur", async () => {
+      ticketService.getById.mockResolvedValue(validTicket);
+
+      await expect(
+        service.requestResale({
+          ticket_id: 'ticket-1',
+          buyer_id: 'un-autre-acheteur',
+          original_order_id: 'order-1',
+          resale_price: 20,
+        }),
+      ).rejects.toThrow(RpcException);
+    });
+  });
+
+  describe('listAllActive — marketplace globale (/revente)', () => {
+    it('interroge uniquement les annonces LISTED à venir, triées par date de publication', async () => {
+      const listings = [{ id: 'resale-1' }, { id: 'resale-2' }];
+      updateQueryBuilder.getMany.mockResolvedValue(listings);
+
+      const result = await service.listAllActive();
+
+      expect(result).toBe(listings);
+      expect(updateQueryBuilder.where).toHaveBeenCalledWith('r.status = :status', {
+        status: ResaleStatus.LISTED,
+      });
+      expect(updateQueryBuilder.andWhere).toHaveBeenCalledWith('r.event_start_at > NOW()');
+    });
+  });
+
+  describe("getActiveByTicketId — pour gérer l'annonce depuis la page du billet", () => {
+    it('renvoie l\'annonce LISTED de ce billet', async () => {
+      const resale = { id: 'resale-1', ticket_id: 'ticket-1', status: ResaleStatus.LISTED };
+      repo.findOne.mockResolvedValue(resale);
+
+      const result = await service.getActiveByTicketId('ticket-1');
+
+      expect(result).toBe(resale);
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { ticket_id: 'ticket-1', status: ResaleStatus.LISTED },
+      });
+    });
+
+    it("renvoie null si ce billet n'est pas actuellement en vente", async () => {
+      repo.findOne.mockResolvedValue(undefined);
+
+      const result = await service.getActiveByTicketId('ticket-1');
+
+      expect(result).toBeUndefined();
+    });
   });
 
   describe('reserve', () => {
@@ -109,7 +225,14 @@ describe('TicketResaleService — réservation atomique (anti double-achat)', ()
       repo.findOne.mockResolvedValue({ id: 'resale-1', status: ResaleStatus.LISTED });
 
       await expect(
-        service.completeResale({ resale_id: 'resale-1', new_buyer_id: 'buyer-1', new_order_id: 'order-1' }),
+        service.completeResale({
+          resale_id: 'resale-1',
+          new_buyer_id: 'buyer-1',
+          new_order_id: 'order-1',
+          new_buyer_email: 'buyer1@test.com',
+          new_holder_first_name: 'Jean',
+          new_holder_last_name: 'Dupont',
+        }),
       ).rejects.toThrow(RpcException);
       expect(ticketService.transferToNewBuyer).not.toHaveBeenCalled();
     });
@@ -122,7 +245,14 @@ describe('TicketResaleService — réservation atomique (anti double-achat)', ()
       });
 
       await expect(
-        service.completeResale({ resale_id: 'resale-1', new_buyer_id: 'buyer-2', new_order_id: 'order-1' }),
+        service.completeResale({
+          resale_id: 'resale-1',
+          new_buyer_id: 'buyer-2',
+          new_order_id: 'order-1',
+          new_buyer_email: 'buyer2@test.com',
+          new_holder_first_name: 'Paul',
+          new_holder_last_name: 'Durand',
+        }),
       ).rejects.toThrow(RpcException);
       expect(ticketService.transferToNewBuyer).not.toHaveBeenCalled();
     });
@@ -141,9 +271,19 @@ describe('TicketResaleService — réservation atomique (anti double-achat)', ()
         resale_id: 'resale-1',
         new_buyer_id: 'buyer-1',
         new_order_id: 'order-1',
+        new_buyer_email: 'marie@test.com',
+        new_holder_first_name: 'Marie',
+        new_holder_last_name: 'Martin',
       });
 
-      expect(ticketService.transferToNewBuyer).toHaveBeenCalledWith('ticket-1', 'buyer-1', 'order-1');
+      expect(ticketService.transferToNewBuyer).toHaveBeenCalledWith(
+        'ticket-1',
+        'buyer-1',
+        'order-1',
+        'marie@test.com',
+        'Marie',
+        'Martin',
+      );
       expect(result.originalOrderId).toBe('order-orig');
       expect(repo.save).toHaveBeenCalledWith(expect.objectContaining({ status: ResaleStatus.SOLD }));
     });

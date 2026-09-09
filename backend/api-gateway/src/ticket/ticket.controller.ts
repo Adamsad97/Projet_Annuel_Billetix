@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  Logger,
   Param,
   Post,
 } from "@nestjs/common";
@@ -26,14 +27,39 @@ import { ScanResult } from "./scan-result.enum";
 @ApiBearerAuth()
 @Controller("tickets")
 export class TicketController {
+  private readonly logger = new Logger(TicketController.name);
+
   constructor(
     @Inject("TICKET_SERVICE") private readonly ticketClient: ClientProxy,
     @Inject("ORDER_SERVICE") private readonly orderClient: ClientProxy,
     @Inject("PAYMENT_SERVICE") private readonly paymentClient: ClientProxy,
     @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
+    @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
+    @Inject("USER_SERVICE") private readonly userClient: ClientProxy,
+    @Inject("PDF_SERVICE") private readonly pdfClient: ClientProxy,
+    @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
     private readonly ticketsGateway: TicketsGateway,
   ) {}
+
+  /**
+   * Préférences niveau 2 (CDC — désactivation réelle des envois) : un échec
+   * de lecture des préférences ne doit jamais empêcher la notification de
+   * vente, ni surtout le remboursement lui-même — on envoie par défaut
+   * (fail-open) en cas d'erreur.
+   */
+  private async wantsResaleUpdates(buyerId: string): Promise<boolean> {
+    try {
+      const prefs = await firstValueFrom(
+        this.userClient.send<Record<string, boolean>>("user.get_notification_prefs", {
+          user_id: buyerId,
+        }),
+      );
+      return prefs["resale-updates"] !== false;
+    } catch {
+      return true;
+    }
+  }
 
   /**
    * Bug corrigé (CDC §6.2) : un ORGANIZER n'était jamais vérifié comme
@@ -63,6 +89,20 @@ export class TicketController {
     );
   }
 
+  // Bug corrigé : déclarée après @Get(":id") (ordre d'enregistrement des
+  // routes Nest/Express), "/tickets/resale" était donc intercepté par la
+  // route générique @Get(":id") — avec id="resale" — avant même d'atteindre
+  // ce handler, renvoyant 401 "Token manquant" (getById n'est pas @Public).
+  @Public()
+  @Get("resale")
+  @ApiOperation({ summary: "Toutes les annonces de revente actives, tous événements confondus (public)" })
+  async listAllResale() {
+    const listings = (await firstValueFrom(
+      this.ticketClient.send("ticket.list_all_resale", {}),
+    )) as Array<{ event_id: string; ticket_category_id: string }>;
+    return this.enrichResaleListings(listings);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Détail d'un billet" })
   getById(@Param("id") id: string) {
@@ -89,6 +129,16 @@ export class TicketController {
     );
   }
 
+  @Get(":id/resale")
+  @ApiOperation({
+    summary: "Annonce de revente active de ce billet, si en vente (pour la gérer/retirer)",
+  })
+  getActiveResale(@Param("id") id: string) {
+    return firstValueFrom(
+      this.ticketClient.send("ticket.get_active_resale_by_ticket", { ticket_id: id }),
+    );
+  }
+
   @Post(":id/cancel")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -110,12 +160,75 @@ export class TicketController {
     );
   }
 
+  @Public()
   @Get("resale/:resaleId")
-  @ApiOperation({ summary: "Détail d'une offre de revente" })
-  getResale(@Param("resaleId") resaleId: string) {
-    return firstValueFrom(
+  @ApiOperation({ summary: "Détail d'une offre de revente (public)" })
+  async getResale(@Param("resaleId") resaleId: string) {
+    const listing = await firstValueFrom(
       this.ticketClient.send("ticket.get_resale", { id: resaleId }),
     );
+    const [enriched] = await this.enrichResaleListings([listing]);
+    return enriched;
+  }
+
+  /**
+   * Les annonces de revente ne stockent que des ID (event_id,
+   * ticket_category_id) — dénormalisées côté ticket-service uniquement pour
+   * ce qui lui sert en interne (transfert du billet). L'affichage marketplace
+   * a besoin du nom/lieu/affiche de l'événement et du nom de catégorie, d'où
+   * cet enrichissement ici plutôt que de dupliquer ces données partout.
+   */
+  private async enrichResaleListings<
+    T extends { event_id: string; ticket_category_id: string },
+  >(listings: T[]): Promise<
+    (T & {
+      event_name: string;
+      event_venue_name: string;
+      event_city: string;
+      event_poster_url: string | null;
+      category_name: string;
+    })[]
+  > {
+    const eventIds = [...new Set(listings.map((listing) => listing.event_id))];
+    const [events, categoriesByEvent] = await Promise.all([
+      Promise.all(
+        eventIds.map((id) =>
+          firstValueFrom(
+            this.eventClient.send<{
+              title: string;
+              venue_name: string;
+              venue_city: string;
+              poster_url: string | null;
+            }>("event.get", { id }),
+          ).catch(() => null),
+        ),
+      ),
+      Promise.all(
+        eventIds.map((id) =>
+          firstValueFrom(
+            this.eventClient.send<Array<{ id: string; name: string }>>("event.get_categories", {
+              event_id: id,
+            }),
+          ).catch(() => [] as Array<{ id: string; name: string }>),
+        ),
+      ),
+    ]);
+    const eventById = new Map(eventIds.map((id, index) => [id, events[index]]));
+    const categoriesById = new Map(eventIds.map((id, index) => [id, categoriesByEvent[index]]));
+
+    return listings.map((listing) => {
+      const event = eventById.get(listing.event_id);
+      const categories = categoriesById.get(listing.event_id) ?? [];
+      const category = categories.find((c) => c.id === listing.ticket_category_id);
+      return {
+        ...listing,
+        event_name: event?.title ?? "Événement",
+        event_venue_name: event?.venue_name ?? "",
+        event_city: event?.venue_city ?? "",
+        event_poster_url: event?.poster_url ?? null,
+        category_name: category?.name ?? "Billet",
+      };
+    });
   }
 
   /**
@@ -190,12 +303,24 @@ export class TicketController {
       return { success: false, message: "Paiement non encore confirmé" };
     }
 
+    // Bug corrigé : le billet transféré gardait l'email/nom de l'ancien
+    // titulaire (jamais mis à jour) — l'agent de contrôle aurait vu le
+    // mauvais nom, et l'acheteur n'avait de toute façon aucune notification.
+    // Les coordonnées saisies à l'achat (order-service) sont la source de
+    // vérité pour le nouveau titulaire.
+    const { order: newOrder } = await firstValueFrom(
+      this.orderClient.send("order.get", { id: dto.order_id }),
+    );
+
     // 2. Transférer le billet + marquer la revente SOLD
     const { resale, originalOrderId } = await firstValueFrom(
       this.ticketClient.send("ticket.complete_resale", {
         resale_id: resaleId,
         new_buyer_id: user.sub,
         new_order_id: dto.order_id,
+        new_buyer_email: newOrder.buyer_email,
+        new_holder_first_name: newOrder.buyer_first_name,
+        new_holder_last_name: newOrder.buyer_last_name,
       }),
     );
 
@@ -215,7 +340,144 @@ export class TicketController {
       .send("order.mark_refunded", { id: originalOrderId, restore_stock: false })
       .subscribe({ error: () => undefined });
 
+    // Notifie le vendeur original — fire-and-forget, ne doit jamais faire
+    // échouer la finalisation de la revente elle-même (déjà actée à ce stade).
+    this.notifyResaleSold(resale).catch((err) =>
+      this.logger.error(`Erreur notification revente vendue ${resale.id}: ${err?.message}`),
+    );
+
+    // Bug corrigé : l'acheteur ne recevait jamais rien — ni email, ni PDF à
+    // jour (le fichier existant embarque encore l'ancien QR, désormais
+    // périmé). Régénère le PDF puis envoie le même email "billet prêt" que
+    // pour un achat classique — fire-and-forget, la revente est déjà actée.
+    this.notifyBuyerResalePurchase(resale.ticket_id).catch((err) =>
+      this.logger.error(`Erreur notification acheteur revente ${resale.id}: ${err?.message}`),
+    );
+
     return { success: true, resale };
+  }
+
+  private async notifyBuyerResalePurchase(ticketId: string): Promise<void> {
+    const ticket = await firstValueFrom(
+      this.ticketClient.send<{
+        id: string;
+        reference: string;
+        order_id: string;
+        event_name: string;
+        event_start_at: string;
+        event_venue_name: string;
+        event_venue_address: string;
+        event_city: string;
+        event_poster_url?: string;
+        artist_name: string;
+        ticket_category_name: string;
+        unit_price_ttc: number;
+        seat_info?: string;
+        holder_first_name: string;
+        holder_last_name: string;
+        buyer_email: string;
+        qr_code_url: string;
+      }>("ticket.get", { id: ticketId }),
+    );
+
+    this.pdfClient.emit("pdf.generate_ticket", {
+      ticket_id: ticket.id,
+      reference: ticket.reference,
+      order_id: ticket.order_id,
+      event_name: ticket.event_name,
+      event_start_at: ticket.event_start_at,
+      event_venue_name: ticket.event_venue_name,
+      event_venue_address: ticket.event_venue_address,
+      event_city: ticket.event_city,
+      event_poster_url: ticket.event_poster_url,
+      artist_name: ticket.artist_name,
+      ticket_category_name: ticket.ticket_category_name,
+      unit_price_ttc: Number(ticket.unit_price_ttc),
+      seat_info: ticket.seat_info,
+      holder_first_name: ticket.holder_first_name,
+      holder_last_name: ticket.holder_last_name,
+      buyer_email: ticket.buyer_email,
+      qr_code_url: ticket.qr_code_url,
+    });
+
+    const platformConfig = await firstValueFrom(
+      this.adminClient.send<{
+        ticket_pdf_wait_max_attempts: number;
+        ticket_pdf_wait_delay_seconds: number;
+      }>("admin.get_platform_config", {}),
+    ).catch(() => ({ ticket_pdf_wait_max_attempts: 5, ticket_pdf_wait_delay_seconds: 2 }));
+
+    const pdfUrl = await this.waitForTicketPdf(
+      ticket.id,
+      platformConfig.ticket_pdf_wait_max_attempts,
+      platformConfig.ticket_pdf_wait_delay_seconds * 1000,
+    );
+
+    this.notifClient.emit("notification.ticket_ready", {
+      email: ticket.buyer_email,
+      firstName: ticket.holder_first_name,
+      eventName: ticket.event_name,
+      eventDate: new Date(ticket.event_start_at).toLocaleDateString("fr-FR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+      eventVenue: ticket.event_venue_name,
+      tickets: [
+        {
+          ticketNumber: ticket.reference,
+          categoryName: ticket.ticket_category_name,
+          qrCodeUrl: ticket.qr_code_url,
+          seatInfo: ticket.seat_info,
+          pdfUrl,
+        },
+      ],
+    });
+  }
+
+  private async waitForTicketPdf(
+    ticketId: string,
+    maxAttempts: number,
+    delayMs: number,
+  ): Promise<string | null> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const ticket = await firstValueFrom(
+        this.ticketClient.send("ticket.get", { id: ticketId }),
+      ).catch(() => null);
+
+      if (ticket?.pdf_url) return ticket.pdf_url;
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    return null;
+  }
+
+  private async notifyResaleSold(resale: {
+    id: string;
+    original_buyer_id: string;
+    ticket_id: string;
+    resale_price: number;
+  }): Promise<void> {
+    if (!(await this.wantsResaleUpdates(resale.original_buyer_id))) return;
+
+    const [seller, ticket] = await Promise.all([
+      firstValueFrom(
+        this.authClient.send("auth.get_user", { id: resale.original_buyer_id }),
+      ) as Promise<{ email: string; first_name: string } | null>,
+      firstValueFrom(
+        this.ticketClient.send("ticket.get", { id: resale.ticket_id }),
+      ) as Promise<{ event_name: string }>,
+    ]);
+    if (!seller?.email) return;
+
+    this.notifClient.emit("notification.resale_sold", {
+      email: seller.email,
+      firstName: seller.first_name,
+      eventName: ticket.event_name,
+      resalePrice: Number(resale.resale_price).toFixed(2),
+    });
   }
 
   @Post("resale/:resaleId/withdraw")

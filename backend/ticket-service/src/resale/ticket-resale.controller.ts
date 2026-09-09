@@ -21,9 +21,19 @@ export class TicketResaleController {
     return this.resaleService.listByEvent(data.event_id);
   }
 
+  @MessagePattern('ticket.list_all_resale')
+  listAllActive() {
+    return this.resaleService.listAllActive();
+  }
+
   @MessagePattern('ticket.get_resale')
   getById(@Payload() data: { id: string }) {
     return this.resaleService.getById(data.id);
+  }
+
+  @MessagePattern('ticket.get_active_resale_by_ticket')
+  getActiveByTicketId(@Payload() data: { ticket_id: string }) {
+    return this.resaleService.getActiveByTicketId(data.ticket_id);
   }
 
   @MessagePattern('ticket.reserve_resale')
@@ -41,6 +51,9 @@ export class TicketResaleController {
     resale_id: string;
     new_buyer_id: string;
     new_order_id: string;
+    new_buyer_email: string;
+    new_holder_first_name: string;
+    new_holder_last_name: string;
   }) {
     return this.resaleService.completeResale(data);
   }
