@@ -261,6 +261,26 @@ export class AdminController {
    * ce n'était pas lui qui l'avait demandé). Les RPC auth.* renvoient déjà
    * l'utilisateur sanitizé (email/first_name inclus), pas de RPC supplémentaire.
    */
+  /** Détail d'un compte pour la page admin/utilisateurs/:id — inclut le
+   * profil organisateur (IBAN, KYC) quand le rôle le justifie, sans RPC
+   * supplémentaire côté frontend à orchestrer. */
+  @Get("users/:id")
+  @ApiOperation({ summary: "Détail d'un utilisateur (+ profil organisateur si applicable)" })
+  async getUserDetail(@Param("id") id: string) {
+    const user = (await firstValueFrom(
+      this.authClient.send("auth.get_user", { id }),
+    )) as { role: string };
+
+    const organizerProfile =
+      user.role === "ORGANIZER"
+        ? await firstValueFrom(
+            this.userClient.send("user.get_organizer_profile", { user_id: id }),
+          ).catch(() => null)
+        : null;
+
+    return { user, organizer_profile: organizerProfile };
+  }
+
   @Post("users/:id/suspend")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Suspendre un compte utilisateur" })

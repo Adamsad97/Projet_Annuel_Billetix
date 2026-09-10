@@ -122,8 +122,20 @@ export default function AdminCreateEventForOrganizerPage() {
         email: session.user.email,
         first_name: session.user.first_name,
         last_name: session.user.last_name,
+        phone: session.user.phone,
         role: "ORGANIZER",
+        is_email_verified: session.user.is_email_verified,
+        two_factor_enabled: session.user.two_factor_enabled,
+        // Compte tout juste créé : valeurs neutres pour les champs que
+        // AuthUser ne type pas (existent côté API mais inutiles au flux
+        // d'inscription pré-connexion).
+        failed_login_attempts: 0,
+        locked_until: null,
+        is_active: true,
         is_suspended: false,
+        suspension_reason: null,
+        suspended_at: null,
+        created_at: new Date().toISOString(),
       });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Impossible de créer ce compte.");

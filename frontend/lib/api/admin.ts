@@ -73,28 +73,85 @@ export function verifyNonProfit(id: string, approved: boolean): Promise<ApiEvent
 
 // ─── Création d'événement pour un organisateur (accueil physique) ──────────
 
+export type ApiUserRole = "BUYER" | "ORGANIZER" | "ADMIN" | "AGENT";
+
 export interface ApiAdminUser {
   id: string;
   email: string;
   first_name: string;
   last_name: string;
-  role: "BUYER" | "ORGANIZER" | "ADMIN" | "AGENT";
+  phone: string | null;
+  role: ApiUserRole;
+  is_email_verified: boolean;
+  two_factor_enabled: boolean;
+  failed_login_attempts: number;
+  locked_until: string | null;
+  is_active: boolean;
   is_suspended: boolean;
+  suspension_reason: string | null;
+  suspended_at: string | null;
+  created_at: string;
 }
 
-export function searchUsers(params: { q?: string; role?: string; limit?: number }): Promise<{ data: ApiAdminUser[]; total: number }> {
+export function searchUsers(params: { q?: string; role?: string; is_suspended?: boolean; limit?: number; offset?: number }): Promise<{ data: ApiAdminUser[]; total: number }> {
   const search = new URLSearchParams();
   if (params.q) search.set("q", params.q);
   if (params.role) search.set("role", params.role);
+  if (params.is_suspended !== undefined) search.set("is_suspended", String(params.is_suspended));
   if (params.limit) search.set("limit", String(params.limit));
+  if (params.offset) search.set("offset", String(params.offset));
   const qs = search.toString();
   return apiGet<{ data: ApiAdminUser[]; total: number }>(`/admin/users${qs ? `?${qs}` : ""}`);
+}
+
+export interface ApiOrganizerProfile {
+  user_id: string;
+  display_name: string;
+  bank_owner_name: string | null;
+  stripe_connect_onboarded: boolean;
+  kyc_status: "PENDING" | "SUBMITTED" | "VERIFIED" | "REJECTED";
+  kyc_submitted_at: string | null;
+  kyc_verified_at: string | null;
+  kyc_rejected_reason: string | null;
+  kyc_document_url: string | null;
+}
+
+export function getAdminUser(id: string): Promise<{ user: ApiAdminUser; organizer_profile: ApiOrganizerProfile | null }> {
+  return apiGet(`/admin/users/${id}`);
 }
 
 /** Compte trouvé mais pas encore organisateur (ex: déjà acheteur) — même
  * mécanisme que la page admin de gestion des comptes. */
 export function changeUserRole(userId: string, role: "BUYER" | "ORGANIZER" | "ADMIN"): Promise<ApiAdminUser> {
   return apiPost<ApiAdminUser>(`/admin/users/${userId}/change-role`, { role });
+}
+
+export function suspendUser(id: string, reason: string): Promise<ApiAdminUser> {
+  return apiPost<ApiAdminUser>(`/admin/users/${id}/suspend`, { reason });
+}
+
+export function unsuspendUser(id: string): Promise<ApiAdminUser> {
+  return apiPost<ApiAdminUser>(`/admin/users/${id}/unsuspend`);
+}
+
+export function unlockUserAccount(id: string): Promise<ApiAdminUser> {
+  return apiPost<ApiAdminUser>(`/admin/users/${id}/unlock`);
+}
+
+export function resetUserTwoFactor(id: string, reason: string): Promise<ApiAdminUser> {
+  return apiPost<ApiAdminUser>(`/admin/users/${id}/reset-2fa`, { reason });
+}
+
+export function activateUserAccount(id: string): Promise<ApiAdminUser> {
+  return apiPost<ApiAdminUser>(`/admin/users/${id}/activate`);
+}
+
+export function approveOrganizerKyc(userId: string): Promise<ApiOrganizerProfile> {
+  return apiPost<ApiOrganizerProfile>(`/admin/kyc/${userId}/approve`);
+}
+
+export function rejectOrganizerKyc(userId: string, reason: string): Promise<ApiOrganizerProfile> {
+  return apiPost<ApiOrganizerProfile>(`/admin/kyc/${userId}/reject`, { reason });
 }
 
 export function createEventForOrganizer(organizerId: string, dto: CreateEventDto): Promise<ApiEvent> {
