@@ -10,14 +10,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { clearSession, getStoredUser } from "@/lib/auth/session";
-import type { AuthUser } from "@/lib/api/auth";
+import type { AuthUser, UserRole } from "@/lib/api/auth";
 
-const navLinks = [
-  { href: "/catalogue", label: "Catalogue" },
-  { href: "/revente", label: "Revente" },
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/profil", label: "Profil" },
-  { href: "/admin", label: "Back-office" },
+// Matrice de rôles de la navbar — un compte n'a qu'un seul rôle à la fois,
+// chaque onglet ne sert donc qu'à celui à qui il est réellement utile
+// (ex: ADMIN n'achète ni ne scanne jamais, ORGANIZER ne parcourt pas le
+// catalogue comme un acheteur). `allowGuest` : visible sans être connecté
+// (vitrine publique) ; `roles` s'applique seulement une fois connecté.
+const navLinks: Array<{ href: string; label: string; allowGuest?: boolean; roles: UserRole[] }> = [
+  { href: "/catalogue", label: "Catalogue", allowGuest: true, roles: ["BUYER"] },
+  { href: "/revente", label: "Revente", allowGuest: true, roles: ["BUYER"] },
+  { href: "/profil/billets", label: "Mes billets", roles: ["BUYER"] },
+  { href: "/dashboard", label: "Dashboard", roles: ["ORGANIZER"] },
+  // ORGANIZER scanne ses propres événements (vérifié côté gateway via
+  // event.get), AGENT c'est son seul métier sur la plateforme.
+  { href: "/scan", label: "Scan", roles: ["ORGANIZER", "AGENT"] },
+  { href: "/profil", label: "Profil", roles: ["BUYER", "ORGANIZER", "AGENT", "ADMIN"] },
+  { href: "/admin", label: "Back-office", roles: ["ADMIN"] },
 ];
 
 export function Navbar({ active = "/catalogue" }: { active?: string }) {
@@ -35,18 +44,9 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
     router.push("/");
   }
 
-  const visibleLinks = navLinks.filter((link) => {
-    if (link.href === "/admin") return user?.role === "ADMIN";
-    // Un compte n'a qu'un seul rôle à la fois (cf. modèle de rôles) — un
-    // ADMIN n'est jamais aussi organisateur, le dashboard organisateur ne
-    // lui sert donc à rien.
-    if (link.href === "/dashboard") return user?.role === "ORGANIZER";
-    // ADMIN reste purement administratif — jamais aussi acheteur, ni le
-    // catalogue ni la revente ne le concernent (cf. app/profil/page.tsx où
-    // "Mes billets"/"Mes commandes" sont masqués pour la même raison).
-    if (link.href === "/catalogue" || link.href === "/revente") return user?.role !== "ADMIN";
-    return true;
-  });
+  const visibleLinks = navLinks.filter((link) =>
+    user ? link.roles.includes(user.role) : (link.allowGuest ?? false),
+  );
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0812]/90 backdrop-blur">
