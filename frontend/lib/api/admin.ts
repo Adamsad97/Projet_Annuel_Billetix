@@ -3,6 +3,7 @@
 
 import { apiGet, apiPost } from "./client";
 import type { ApiEvent, CreateEventDto, CreateTicketCategoryDto } from "./events";
+import type { ApiOrder } from "./orders";
 
 export interface ApiAdminDashboard {
   kpis: {
@@ -118,6 +119,16 @@ export interface ApiOrganizerProfile {
 
 export function getAdminUser(id: string): Promise<{ user: ApiAdminUser; organizer_profile: ApiOrganizerProfile | null }> {
   return apiGet(`/admin/users/${id}`);
+}
+
+export function getUserOrders(id: string): Promise<ApiOrder[]> {
+  return apiGet<ApiOrder[]>(`/admin/users/${id}/orders`);
+}
+
+/** Pour un acheteur n'ayant rien reçu — équivalent support de
+ * POST /orders/:id/resend-tickets (réservé au titulaire de la commande). */
+export function resendOrderTicketsAsSupport(orderId: string): Promise<{ success: true }> {
+  return apiPost<{ success: true }>(`/admin/orders/${orderId}/resend-tickets`);
 }
 
 /** Compte trouvé mais pas encore organisateur (ex: déjà acheteur) — même

@@ -17,7 +17,9 @@ import {
   approveOrganizerKyc,
   changeUserRole,
   getAdminUser,
+  getUserOrders,
   rejectOrganizerKyc,
+  resendOrderTicketsAsSupport,
   resetUserTwoFactor,
   suspendUser,
   unlockUserAccount,
@@ -27,7 +29,16 @@ import {
   type ApiUserRole,
 } from "@/lib/api/admin";
 import { requestPasswordReset } from "@/lib/api/auth";
+import type { ApiOrder } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/http-error";
+
+const orderStatusLabel: Record<ApiOrder["status"], string> = {
+  PENDING_PAYMENT: "En attente de paiement",
+  CONFIRMED: "Payée",
+  TICKETS_SENT: "Payée",
+  CANCELLED: "Annulée",
+  REFUNDED: "Remboursée",
+};
 
 const roleStyles: Record<ApiUserRole, string> = {
   BUYER: "bg-violet-500/15 text-violet-300 ring-1 ring-inset ring-violet-500/30",
@@ -56,10 +67,12 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   const { id } = use(params);
   const [user, setUser] = useState<ApiAdminUser | null | undefined>(undefined);
   const [organizerProfile, setOrganizerProfile] = useState<ApiOrganizerProfile | null>(null);
+  const [orders, setOrders] = useState<ApiOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [dialog, setDialog] = useState<ActionDialogState | null>(null);
   const [resetSent, setResetSent] = useState(false);
+  const [resentOrderId, setResentOrderId] = useState<string | null>(null);
 
   function load() {
     getAdminUser(id)
@@ -74,9 +87,31 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
           setError(err instanceof ApiError ? err.message : "Impossible de charger cet utilisateur.");
         }
       });
+    getUserOrders(id)
+      .then(setOrders)
+      .catch(() => setOrders([]));
   }
 
   useEffect(load, [id]);
+
+  function handleResendTickets(order: ApiOrder) {
+    setDialog({
+      title: `Renvoyer les billets de ${order.reference} ?`,
+      message: `Un nouvel email avec le(s) billet(s) sera envoyé à ${order.buyer_email}.`,
+      confirmLabel: "Renvoyer",
+      onConfirm: async () => {
+        setBusy(true);
+        try {
+          await resendOrderTicketsAsSupport(order.id);
+          setResentOrderId(order.id);
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : "Impossible de renvoyer les billets.");
+        } finally {
+          setBusy(false);
+        }
+      },
+    });
+  }
 
   async function handleResetPassword() {
     if (!user) return;
@@ -455,6 +490,46 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               )}
             </div>
           ) : null}
+
+          <div className="rounded-2xl border border-white/5 bg-[#12101c] p-5">
+            <h2 className="mb-4 text-sm font-semibold text-gray-200">Commandes</h2>
+            {orders === null ? (
+              <p className="text-sm text-gray-500">Chargement…</p>
+            ) : orders.length === 0 ? (
+              <p className="text-sm text-gray-500">Aucune commande passée par ce compte.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {orders.map((order) => {
+                  const canResend = order.status === "CONFIRMED" || order.status === "TICKETS_SENT";
+                  return (
+                    <div
+                      key={order.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/[0.02] px-4 py-3"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-white">
+                          {order.reference} · {order.event_name ?? "—"}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {orderStatusLabel[order.status]} · {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(order.total_amount_ttc))}
+                        </p>
+                      </div>
+                      {canResend ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => handleResendTickets(order)}
+                          className="shrink-0 rounded-lg bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10 disabled:opacity-50"
+                        >
+                          {resentOrderId === order.id ? "✓ Renvoyés" : "📧 Renvoyer les billets"}
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </>
       )}
 

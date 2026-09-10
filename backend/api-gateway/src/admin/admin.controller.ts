@@ -281,6 +281,16 @@ export class AdminController {
     return { user, organizer_profile: organizerProfile };
   }
 
+  /** Commandes d'un acheteur — alimente le renvoi de billets support depuis
+   * la fiche compte (POST /admin/orders/:id/resend-tickets ci-dessous). */
+  @Get("users/:id/orders")
+  @ApiOperation({ summary: "Commandes passées par cet acheteur" })
+  getUserOrders(@Param("id") id: string) {
+    return firstValueFrom(
+      this.orderClient.send("order.list_by_buyer", { buyer_id: id }),
+    );
+  }
+
   @Post("users/:id/suspend")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Suspendre un compte utilisateur" })
@@ -907,6 +917,79 @@ export class AdminController {
     });
 
     return { sent: recipients.length };
+  }
+
+  // ─── Support commandes ──────────────────────────────────────────────────────
+
+  /**
+   * Équivalent admin de POST /orders/:id/resend-tickets (order.controller.ts,
+   * réservé à l'acheteur lui-même) — pour le cas où c'est le support qui
+   * doit renvoyer l'email au nom d'un acheteur n'ayant rien reçu (spam,
+   * mauvaise adresse corrigée depuis, etc.), sans que celui-ci ait besoin
+   * d'agir. Même logique (notification.ticket_ready, billets déjà générés),
+   * dupliquée plutôt que partagée : les deux contrôleurs n'ont pas de
+   * service commun injectable sans réorganisation plus large.
+   */
+  @Post("orders/:id/resend-tickets")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Renvoyer l'email des billets d'une commande, au nom du support" })
+  async resendOrderTickets(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("id") id: string,
+  ) {
+    const { order } = (await firstValueFrom(
+      this.orderClient.send("order.get", { id }),
+    )) as {
+      order: {
+        buyer_email: string;
+        buyer_first_name: string;
+        event_name: string;
+        event_start_at: string;
+        event_venue_name: string;
+        status: string;
+      };
+    };
+
+    if (!["CONFIRMED", "TICKETS_SENT"].includes(order.status)) {
+      throw new BadRequestException(
+        "Aucun billet disponible pour cette commande dans son état actuel",
+      );
+    }
+
+    const tickets = (await firstValueFrom(
+      this.ticketClient.send("ticket.get_by_order", { order_id: id }),
+    )) as Array<{
+      reference: string;
+      ticket_category_name: string;
+      qr_code_url: string | null;
+      seat_info: string | null;
+      pdf_url: string | null;
+    }>;
+
+    this.notifClient.emit("notification.ticket_ready", {
+      email: order.buyer_email,
+      firstName: order.buyer_first_name,
+      eventName: order.event_name,
+      eventDate: new Date(order.event_start_at).toLocaleDateString("fr-FR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+      eventVenue: order.event_venue_name,
+      tickets: tickets.map((ticket) => ({
+        ticketNumber: ticket.reference,
+        categoryName: ticket.ticket_category_name,
+        qrCodeUrl: ticket.qr_code_url,
+        seatInfo: ticket.seat_info,
+        pdfUrl: ticket.pdf_url,
+      })),
+    });
+
+    this.audit(user, req, "CUSTOM", "ORDER", id, "Billets renvoyés par le support");
+
+    return { success: true };
   }
 
   // ─── Remboursement forcé ──────────────────────────────────────────────────────
