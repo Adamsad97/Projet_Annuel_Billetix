@@ -17,7 +17,7 @@ const navLinks = [
   { href: "/revente", label: "Revente" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/profil", label: "Profil" },
-  { href: "/admin", label: "Admin" },
+  { href: "/admin", label: "Back-office" },
 ];
 
 export function Navbar({ active = "/catalogue" }: { active?: string }) {
@@ -80,12 +80,17 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
         <div className="flex items-center gap-3">
           {user === undefined ? null : user ? (
             <>
-              <Link
-                href="/profil"
-                className="hidden text-sm font-medium text-gray-300 hover:text-white sm:block"
-              >
-                {user.first_name}
-              </Link>
+              {/* Masqué pour ADMIN : le lien "Admin" du menu suffit déjà, et
+                  le prénom du compte de bootstrap ("Admin BilletiX") créait
+                  un doublon visuel confus avec ce lien de navigation. */}
+              {user.role !== "ADMIN" ? (
+                <Link
+                  href="/profil"
+                  className="hidden text-sm font-medium text-gray-300 hover:text-white sm:block"
+                >
+                  {user.first_name}
+                </Link>
+              ) : null}
               <button
                 type="button"
                 onClick={handleLogout}

@@ -114,8 +114,6 @@ services:
       - /app/node_modules
     environment:
       NODE_ENV: development
-      SMTP_HOST: mailhog
-      SMTP_PORT: 1025
     command: npm run start:dev
   pdf-service:
     build:
@@ -144,6 +142,10 @@ services:
       - /app/.next
     environment:
       NODE_ENV: development
+      # Bind mount Windows->Docker : les évènements fs natifs ne remontent
+      # pas de façon fiable jusqu'au watcher de Next.js (chokidar), les
+      # modifications de fichiers restent invisibles sans polling actif.
+      WATCHPACK_POLLING: "true"
     command: npm run dev
     ports:
       - "3000:3000"
