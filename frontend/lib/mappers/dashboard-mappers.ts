@@ -3,27 +3,43 @@
 // tableau de bord organisateur (StatCard/OrganizerEventRow), construits à
 // l'origine pour des données de démonstration.
 
+import type { ApiCategory } from "@/lib/api/categories";
 import type { ApiOrganizerDashboard, ApiOrganizerEventSummary, ApiEventStatus } from "@/lib/api/organizer";
 import type { DashboardStat, OrganizerEvent } from "@/lib/mock/dashboard";
 
 const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
-// Une seule icône/couleur par catégorie — les événements réels n'ont pas de
-// déco par-événement comme la maquette d'origine, une couleur par catégorie
-// reste plus parlante qu'un style générique unique.
-const CATEGORY_STYLE: Record<string, { emoji: string; iconBg: string; progressColor: string }> = {
-  CONCERT: { emoji: "🎧", iconBg: "bg-violet-500/15", progressColor: "bg-violet-500" },
-  THEATRE: { emoji: "🎭", iconBg: "bg-amber-500/15", progressColor: "bg-amber-500" },
-  DANSE: { emoji: "💃", iconBg: "bg-pink-500/15", progressColor: "bg-pink-500" },
-  FESTIVAL: { emoji: "🎪", iconBg: "bg-fuchsia-500/15", progressColor: "bg-fuchsia-500" },
-  CONFERENCE: { emoji: "💡", iconBg: "bg-blue-500/15", progressColor: "bg-blue-500" },
-  SPORT: { emoji: "⚽", iconBg: "bg-emerald-500/15", progressColor: "bg-emerald-500" },
-  AUTRE: { emoji: "🎫", iconBg: "bg-white/10", progressColor: "bg-gray-400" },
-};
+// Bug corrigé (valeur en dur) : une liste de 7 catégories figée ici décidait
+// de l'emoji/couleur affichés, sans rapport avec les vraies catégories
+// gérables depuis l'espace Admin (lib/api/categories.ts) — toute catégorie
+// créée par un admin en dehors de cette liste retombait sur l'icône
+// générique, même si un emoji réel était configuré pour elle. La couleur
+// (déco absente du modèle Category, qui n'a que code/label/emoji) reste
+// dérivée localement, par un hash stable du code plutôt qu'une table figée
+// par nom de catégorie — n'importe quelle catégorie, même future, obtient
+// une couleur cohérente sans modification de ce fichier.
+const COLOR_PALETTE: Array<{ iconBg: string; progressColor: string }> = [
+  { iconBg: "bg-violet-500/15", progressColor: "bg-violet-500" },
+  { iconBg: "bg-amber-500/15", progressColor: "bg-amber-500" },
+  { iconBg: "bg-pink-500/15", progressColor: "bg-pink-500" },
+  { iconBg: "bg-fuchsia-500/15", progressColor: "bg-fuchsia-500" },
+  { iconBg: "bg-blue-500/15", progressColor: "bg-blue-500" },
+  { iconBg: "bg-emerald-500/15", progressColor: "bg-emerald-500" },
+];
 
-export function apiEventSummaryToOrganizerEvent(event: ApiOrganizerEventSummary): OrganizerEvent {
-  const style = CATEGORY_STYLE[event.category] ?? CATEGORY_STYLE.AUTRE;
+function colorForCategoryCode(code: string): { iconBg: string; progressColor: string } {
+  let hash = 0;
+  for (let i = 0; i < code.length; i++) hash = (hash * 31 + code.charCodeAt(i)) >>> 0;
+  return COLOR_PALETTE[hash % COLOR_PALETTE.length];
+}
+
+export function apiEventSummaryToOrganizerEvent(
+  event: ApiOrganizerEventSummary,
+  categoriesByCode: Map<string, ApiCategory>,
+): OrganizerEvent {
+  const category = categoriesByCode.get(event.category);
+  const color = colorForCategoryCode(event.category);
   const hasQuota = event.total_quota > 0;
   const fillRate = Math.round(event.fill_rate);
 
@@ -33,9 +49,9 @@ export function apiEventSummaryToOrganizerEvent(event: ApiOrganizerEventSummary)
     dateLabel: dateFormatter.format(new Date(event.start_date)),
     venue: [event.venue_name, event.venue_city].filter(Boolean).join(", "),
     status: event.status as OrganizerEvent["status"],
-    emoji: style.emoji,
-    iconBg: style.iconBg,
-    progressColor: style.progressColor,
+    emoji: category?.emoji ?? "🎫",
+    iconBg: color.iconBg,
+    progressColor: color.progressColor,
     progressPercent: hasQuota ? fillRate : 0,
     progressLabel: hasQuota
       ? `${event.sold} / ${event.total_quota} billets (${fillRate}%)`

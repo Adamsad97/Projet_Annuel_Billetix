@@ -10,12 +10,14 @@ import { AuthHeader } from "@/components/layout/auth-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { OrganizerEventRow } from "@/components/dashboard/organizer-event-row";
 import { getOrganizerDashboard, getMyPayouts, type ApiOrganizerDashboard } from "@/lib/api/organizer";
+import { listCategories, type ApiCategory } from "@/lib/api/categories";
 import { apiEventSummaryToOrganizerEvent, buildOrganizerDashboardStats } from "@/lib/mappers/dashboard-mappers";
 import { getStoredUser } from "@/lib/auth/session";
 import { ApiError } from "@/lib/api/http-error";
 
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<ApiOrganizerDashboard | undefined>(undefined);
+  const [categoriesByCode, setCategoriesByCode] = useState<Map<string, ApiCategory>>(new Map());
   const [nextPayoutDate, setNextPayoutDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [firstName, setFirstName] = useState("");
@@ -25,10 +27,17 @@ export default function DashboardPage() {
     setFirstName(getStoredUser()?.first_name ?? "");
 
     let cancelled = false;
-    Promise.all([getOrganizerDashboard(), getMyPayouts().catch(() => [])])
-      .then(([dashboardResult, payouts]) => {
+    Promise.all([
+      getOrganizerDashboard(),
+      getMyPayouts().catch(() => []),
+      // listActive() suffit : un événement déjà créé garde toujours un code
+      // valide, jamais désactivé rétroactivement (cf. CategoryService.remove).
+      listCategories().catch(() => []),
+    ])
+      .then(([dashboardResult, payouts, categories]) => {
         if (cancelled) return;
         setDashboard(dashboardResult);
+        setCategoriesByCode(new Map(categories.map((category) => [category.code, category])));
         const nextPending = payouts
           .filter((payout) => payout.status === "PENDING")
           .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())[0];
@@ -110,7 +119,10 @@ export default function DashboardPage() {
             ) : (
               <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
                 {dashboard.events.map((event) => (
-                  <OrganizerEventRow key={event.id} event={apiEventSummaryToOrganizerEvent(event)} />
+                  <OrganizerEventRow
+                    key={event.id}
+                    event={apiEventSummaryToOrganizerEvent(event, categoriesByCode)}
+                  />
                 ))}
               </div>
             )}
