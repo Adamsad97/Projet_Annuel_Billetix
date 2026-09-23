@@ -46,6 +46,9 @@ export function apiDashboardToAdminStats(dashboard: ApiAdminDashboard): AdminSta
 
 export interface ValidationHistoryEntry {
   id: string;
+  // Distinct de `id` (celui de l'entrée d'audit log) — sert à lier vers la
+  // fiche de l'événement. null si l'événement a depuis été supprimé.
+  eventId: string | null;
   title: string;
   emoji: string;
   iconBg: string;
@@ -70,6 +73,7 @@ export function auditLogToValidationHistoryEntry(
 ): ValidationHistoryEntry {
   return {
     id: log.id,
+    eventId: log.entity_id,
     title: event?.title ?? "Événement supprimé",
     emoji: categoryEmoji,
     iconBg: "bg-white/5",
