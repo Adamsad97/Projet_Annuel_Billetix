@@ -6,6 +6,21 @@ import { StripeService } from '../stripe/stripe.service';
 import { Payout, PayoutStatus } from './payout.entity';
 import { PayoutService } from './payout.service';
 
+// Reflète PayoutService.addBusinessDays() (privée, jours ouvrés lundi-
+// vendredi) — un +5 calendaire naïf ne correspond pas au calcul réel dès
+// qu'un week-end tombe dans la fenêtre (ex: samedi + 5j ouvrés = vendredi
+// suivant, pas jeudi).
+function addBusinessDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  let remaining = days;
+  while (remaining > 0) {
+    result.setDate(result.getDate() + 1);
+    const dayOfWeek = result.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) remaining--;
+  }
+  return result;
+}
+
 describe('PayoutService', () => {
   let service: PayoutService;
   let repo: { save: jest.Mock; create: jest.Mock; findOne: jest.Mock; find: jest.Mock; createQueryBuilder: jest.Mock };
@@ -61,8 +76,7 @@ describe('PayoutService', () => {
       });
 
       expect(payout.net_amount).toBeCloseTo(870);
-      const expected = new Date(eventEnd);
-      expected.setDate(expected.getDate() + 5);
+      const expected = addBusinessDays(eventEnd, 5);
       expect((payout.scheduled_at as Date).toDateString()).toBe(expected.toDateString());
       expect(payout.event_end_at).toEqual(eventEnd);
     });
