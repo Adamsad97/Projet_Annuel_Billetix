@@ -3,6 +3,7 @@ import { RpcException } from "@nestjs/microservices";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
 import { authenticator } from "otplib";
+import { of, throwError } from "rxjs";
 import { REDIS_CLIENT } from "../redis/redis.module";
 import { TwoFactorMethod, User } from "../user/user.entity";
 import { BackupCode } from "./backup-code.entity";
@@ -74,6 +75,23 @@ describe("TwoFactorService — TOTP", () => {
         { provide: getRepositoryToken(User), useValue: userRepo },
         { provide: getRepositoryToken(BackupCode), useValue: backupCodeRepo },
         { provide: REDIS_CLIENT, useValue: redis },
+        // Jamais mocké jusqu'ici — TwoFactorService injecte USER_SERVICE/
+        // ADMIN_SERVICE (ClientProxy) depuis longtemps déjà (logSelfAction,
+        // synchro user-service). send() doit renvoyer un Observable réel
+        // (of(...)) : logSelfAction() enchaîne .subscribe() dessus. Cas à
+        // part : "user.get_iban" doit échouer (pas de 404 côté user-service
+        // simulé) — disable() y lit "pas d'IBAN, désactivation autorisée"
+        // (CDC §2.3), sinon aucun test de désactivation ne passerait.
+        {
+          provide: "USER_SERVICE",
+          useValue: {
+            send: jest.fn((pattern: string) =>
+              pattern === "user.get_iban" ? throwError(() => new Error("404")) : of(null),
+            ),
+            emit: jest.fn(),
+          },
+        },
+        { provide: "ADMIN_SERVICE", useValue: { send: jest.fn(() => of(null)), emit: jest.fn() } },
       ],
     }).compile();
 

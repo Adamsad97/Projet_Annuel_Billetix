@@ -13,6 +13,12 @@ describe("AdminBootstrapService", () => {
   let config: { get: jest.Mock };
 
   beforeEach(async () => {
+    // Bug corrigé : bcrypt.hash est un mock au niveau du module (jest.mock
+    // ci-dessus), donc son historique d'appels survit d'un test à l'autre
+    // sans ce clear — "promeut en SUPER_ADMIN..." échouait dès que le test
+    // "crée le premier super-admin..." (qui appelle bcrypt.hash) tournait
+    // avant lui, l'assertion .not.toHaveBeenCalled() héritant son appel.
+    (bcrypt.hash as jest.Mock).mockClear();
     userRepo = { findOne: jest.fn(), create: jest.fn((data) => data), save: jest.fn() };
     config = { get: jest.fn() };
 
