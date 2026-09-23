@@ -2,10 +2,11 @@
 // CRUD /events/categories (backend/api-gateway/src/event/event.controller.ts,
 // liste gérée depuis l'espace Admin, cf. backend/event-service/src/category).
 
+import { getApiBaseUrl } from "./base-url";
 import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
 import { ApiError, extractErrorMessage } from "./http-error";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+const API_URL = getApiBaseUrl();
 
 export interface ApiCategory {
   id: string;

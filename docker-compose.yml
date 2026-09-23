@@ -680,6 +680,18 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
+      # Bug corrigé : les Server Components (accueil, catalogue, détail
+      # événement, revente, création d'événement...) tournent dans le
+      # conteneur frontend et appelaient NEXT_PUBLIC_API_URL
+      # (localhost:4000) — injoignable depuis l'intérieur du conteneur,
+      # "localhost" y désignant le conteneur frontend lui-même. Toutes ces
+      # pages rendaient des listes vides sans erreur visible (fetch avalé
+      # par un .catch(() => [])). API_INTERNAL_URL cible l'api-gateway par
+      # son nom de service Docker, résolu par le DNS interne du réseau
+      # billetix-net — jamais exposé au bundle navigateur (pas de préfixe
+      # NEXT_PUBLIC_, donc invisible côté client, où il n'aurait de toute
+      # façon aucun sens).
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api-gateway:4000/api/v1}
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
     ports:
       - "3000:3000"

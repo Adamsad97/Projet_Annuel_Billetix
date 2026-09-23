@@ -1,11 +1,12 @@
 // Client pour les endpoints /events de l'api-gateway
 // (backend/api-gateway/src/event/event.controller.ts). Câblage réel.
 
+import { getApiBaseUrl } from "./base-url";
 import { apiGet, apiPost } from "./client";
 import { ApiError, extractErrorMessage } from "./http-error";
 import type { ApiTicket } from "./tickets";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+const API_URL = getApiBaseUrl();
 
 // Correspond exactement à l'enum EventStatus du backend (event.entity.ts) —
 // un rejet ne crée pas de statut "REJECTED" séparé : l'événement repasse en
