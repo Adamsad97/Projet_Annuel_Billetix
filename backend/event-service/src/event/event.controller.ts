@@ -3,6 +3,7 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AdminActionDto } from './dto/admin-action.dto';
 import { CreateEventDto } from './dto/create-event.dto';
 import { EventService } from './event.service';
+import { EventStatus } from './event.entity';
 
 @Controller()
 export class EventController {
@@ -16,6 +17,11 @@ export class EventController {
   @MessagePattern('event.get')
   getById(@Payload() data: { id: string }) {
     return this.eventService.getById(data.id);
+  }
+
+  @MessagePattern('event.get_by_ids')
+  getByIds(@Payload() data: { ids: string[] }) {
+    return this.eventService.getByIds(data.ids);
   }
 
   @MessagePattern('event.list_published')
@@ -48,6 +54,11 @@ export class EventController {
   @MessagePattern('event.list_by_organizer')
   listByOrganizer(@Payload() data: { organizer_id: string }) {
     return this.eventService.listByOrganizer(data.organizer_id);
+  }
+
+  @MessagePattern('event.list_all')
+  listAll(@Payload() data: { status?: EventStatus }) {
+    return this.eventService.listAll(data?.status);
   }
 
   @MessagePattern('event.get_count_by_status')

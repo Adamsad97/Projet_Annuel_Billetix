@@ -3,7 +3,7 @@ import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { isUUID } from 'class-validator';
 import { firstValueFrom } from 'rxjs';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CategoryService } from '../category/category.service';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { CategoryVisibility, TicketCategory } from '../ticket-category/ticket-category.entity';
@@ -175,6 +175,13 @@ export class EventService {
     const event = await this.repo.findOne({ where: { id } });
     if (!event) throw new RpcException({ statusCode: 404, message: 'Événement introuvable' });
     return event;
+  }
+
+  /** Résolution par lot (ex. liste admin des reversements, un événement par
+   * payout) — évite un aller-retour par événement. */
+  async getByIds(ids: string[]): Promise<Event[]> {
+    if (ids.length === 0) return [];
+    return this.repo.findBy({ id: In(ids) });
   }
 
   /**
@@ -372,6 +379,21 @@ export class EventService {
 
   async listByOrganizer(organizerId: string): Promise<Event[]> {
     return this.repo.find({ where: { organizer_id: organizerId }, order: { created_at: 'DESC' } });
+  }
+
+  /**
+   * Bug corrigé : la page admin "Événements" (gestion globale, tous statuts)
+   * n'a jamais été reliée au backend — elle affichait des données 100%
+   * fictives (lib/mock/admin-events.ts côté frontend), aucun événement
+   * réel n'y apparaissait jamais. `status` filtré en SQL (léger, peu de
+   * lignes) ; la recherche texte (titre/organisateur) reste côté gateway
+   * après enrichissement, l'organisateur n'existant pas dans cette base.
+   */
+  async listAll(status?: EventStatus): Promise<Event[]> {
+    return this.repo.find({
+      where: status ? { status } : {},
+      order: { created_at: 'DESC' },
+    });
   }
 
   /** Répartition des événements par statut — utilisé par le dashboard KPIs admin. */
