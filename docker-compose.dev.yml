@@ -142,10 +142,15 @@ services:
       - /app/.next
     environment:
       NODE_ENV: development
-      # Bind mount Windows->Docker : les évènements fs natifs ne remontent
-      # pas de façon fiable jusqu'au watcher de Next.js (chokidar), les
-      # modifications de fichiers restent invisibles sans polling actif.
-      WATCHPACK_POLLING: "true"
+    # Bug corrigé : WATCHPACK_POLLING (webpack) retiré — ce projet tourne sur
+    # une version de Next.js où Turbopack est le bundler par défaut en dev,
+    # WATCHPACK_POLLING n'a donc aucun effet dessus. La doc Next.js elle-même
+    # prévient que le HMR Turbopack via un bind mount Windows/Mac peut
+    # prendre "des secondes, voire des minutes" — en pratique quasi jamais
+    # côté Windows. Pas de solution fiable en conteneur : redémarrer le
+    # service frontend après chaque changement de fichier plutôt que
+    # compter sur le hot-reload (cf. node_modules/next/dist/docs/01-app/
+    # 02-guides/local-development.md, point 8).
     command: npm run dev
     ports:
       - "3000:3000"
