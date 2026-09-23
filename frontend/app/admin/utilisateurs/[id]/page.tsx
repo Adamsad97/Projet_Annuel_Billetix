@@ -10,6 +10,8 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
+import { getStoredUser } from "@/lib/auth/session";
+import type { AuthUser } from "@/lib/api/auth";
 import { DocumentGrid } from "@/components/admin/document-viewer";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import {
@@ -45,6 +47,7 @@ const roleStyles: Record<ApiUserRole, string> = {
   ORGANIZER: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
   ADMIN: "bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30",
   AGENT: "bg-teal-500/15 text-teal-300 ring-1 ring-inset ring-teal-500/30",
+  SUPER_ADMIN: "bg-fuchsia-500/15 text-fuchsia-300 ring-1 ring-inset ring-fuchsia-500/30",
 };
 
 const roleLabels: Record<ApiUserRole, string> = {
@@ -52,6 +55,7 @@ const roleLabels: Record<ApiUserRole, string> = {
   ORGANIZER: "Organisateur",
   ADMIN: "Admin",
   AGENT: "Agent",
+  SUPER_ADMIN: "Super-admin",
 };
 
 const kycStatusBadge: Record<string, { label: string; className: string }> = {
@@ -65,6 +69,15 @@ const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: 
 
 export default function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  // Bug corrigé (faille de contrôle d'accès) : cette page laissait n'importe
+  // quel ADMIN suspendre, révoquer ou changer le rôle d'un autre ADMIN — le
+  // backend refuse désormais ces actions (403) si l'appelant n'est pas
+  // SUPER_ADMIN, mais les boutons restaient affichés et cliquables. On les
+  // masque ici pour ne pas laisser un admin normal se heurter à des erreurs
+  // sur des actions qui ne lui sont plus permises. Lu en useEffect (comme
+  // navbar.tsx) pour éviter un hydration mismatch : getStoredUser() lit le
+  // localStorage, absent côté serveur.
+  const [me, setMe] = useState<AuthUser | null>(null);
   const [user, setUser] = useState<ApiAdminUser | null | undefined>(undefined);
   const [organizerProfile, setOrganizerProfile] = useState<ApiOrganizerProfile | null>(null);
   const [orders, setOrders] = useState<ApiOrder[] | null>(null);
@@ -93,6 +106,10 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   }
 
   useEffect(load, [id]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMe(getStoredUser());
+  }, []);
 
   function handleResendTickets(order: ApiOrder) {
     setDialog({
@@ -231,13 +248,13 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     });
   }
 
-  function handleChangeRole(newRole: "BUYER" | "ORGANIZER" | "ADMIN") {
+  function handleChangeRole(newRole: ApiUserRole) {
     if (!user || newRole === user.role) return;
     setDialog({
       title: `Changer le rôle en "${roleLabels[newRole]}" ?`,
       message: "Cette action est journalisée dans l'audit trail.",
       confirmLabel: "Changer",
-      danger: newRole === "ADMIN",
+      danger: newRole === "ADMIN" || newRole === "SUPER_ADMIN",
       onConfirm: async () => {
         setBusy(true);
         try {
@@ -295,6 +312,13 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       },
     });
   }
+
+  const isSelf = !!me && !!user && me.id === user.id;
+  const targetIsElevated = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  // Reflète assertCanManageTarget() côté auth-service : un ADMIN normal ne
+  // peut agir ni sur un autre admin, ni sur son propre compte.
+  const canManageTarget = !isSelf && (!targetIsElevated || me?.role === "SUPER_ADMIN");
+  const canGrantElevatedRole = me?.role === "SUPER_ADMIN";
 
   return (
     <AdminShell active="/admin/utilisateurs">
@@ -359,29 +383,49 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             </div>
 
             <div className="flex flex-wrap justify-end gap-2">
-              {user.role !== "ADMIN" && user.role !== "AGENT" ? (
+              {canManageTarget && user.role !== "AGENT" ? (
                 <select
                   disabled={busy}
                   value={user.role}
-                  onChange={(e) => handleChangeRole(e.target.value as "BUYER" | "ORGANIZER" | "ADMIN")}
+                  onChange={(e) => handleChangeRole(e.target.value as ApiUserRole)}
                   className="rounded-full border border-white/15 bg-[#12101c] px-4 py-2 text-sm font-medium text-gray-200 focus:border-violet-500 focus:outline-none disabled:opacity-50"
                 >
                   <option value="BUYER">Acheteur</option>
                   <option value="ORGANIZER">Organisateur</option>
-                  <option value="ADMIN">Admin</option>
+                  {/* Bug corrigé : AGENT (agent de contrôle) n'était pas
+                      proposé — seule façon de le devenir jusqu'ici était un
+                      appel API direct, aucun chemin dans l'interface. */}
+                  <option value="AGENT">Agent de contrôle</option>
+                  {/* Accorder ADMIN/SUPER_ADMIN est réservé au super-admin —
+                      le backend rejette (403) sinon, cf. AuthService.
+                      changeRole/grantsElevatedRole. */}
+                  {canGrantElevatedRole ? (
+                    <>
+                      <option value="ADMIN">Admin</option>
+                      <option value="SUPER_ADMIN">Super-admin</option>
+                    </>
+                  ) : null}
                 </select>
               ) : null}
 
-              <button
-                type="button"
-                disabled={busy || resetSent}
-                onClick={handleResetPassword}
-                className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white disabled:opacity-50"
-              >
-                {resetSent ? "✓ Lien envoyé" : "Réinitialiser le mot de passe"}
-              </button>
+              {/* Bug corrigé (pas pro) : ce bouton déclenche le flux public
+                  "mot de passe oublié" — le backend ne peut pas le
+                  restreindre (n'importe qui connaissant l'email peut déjà
+                  le déclencher depuis /mot-de-passe-oublie), mais le
+                  proposer comme action admin sur un compte admin/
+                  super-admin était trompeur. Masqué comme le reste. */}
+              {canManageTarget ? (
+                <button
+                  type="button"
+                  disabled={busy || resetSent}
+                  onClick={handleResetPassword}
+                  className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white disabled:opacity-50"
+                >
+                  {resetSent ? "✓ Lien envoyé" : "Réinitialiser le mot de passe"}
+                </button>
+              ) : null}
 
-              {!user.is_email_verified ? (
+              {!user.is_email_verified && canManageTarget ? (
                 <button
                   type="button"
                   disabled={busy}
@@ -392,7 +436,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                 </button>
               ) : null}
 
-              {user.locked_until && new Date(user.locked_until) > new Date() ? (
+              {user.locked_until && new Date(user.locked_until) > new Date() && canManageTarget ? (
                 <button
                   type="button"
                   disabled={busy}
@@ -403,7 +447,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                 </button>
               ) : null}
 
-              {user.two_factor_enabled ? (
+              {user.two_factor_enabled && canManageTarget ? (
                 <button
                   type="button"
                   disabled={busy}
@@ -414,25 +458,27 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                 </button>
               ) : null}
 
-              {user.is_suspended ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={handleUnsuspend}
-                  className="rounded-full bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
-                >
-                  Réactiver
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={handleSuspend}
-                  className="rounded-full bg-red-500/15 px-4 py-2 text-sm font-medium text-red-300 ring-1 ring-inset ring-red-500/30 transition-colors hover:bg-red-500/25 disabled:opacity-50"
-                >
-                  Suspendre
-                </button>
-              )}
+              {canManageTarget ? (
+                user.is_suspended ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={handleUnsuspend}
+                    className="rounded-full bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
+                  >
+                    Réactiver
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={handleSuspend}
+                    className="rounded-full bg-red-500/15 px-4 py-2 text-sm font-medium text-red-300 ring-1 ring-inset ring-red-500/30 transition-colors hover:bg-red-500/25 disabled:opacity-50"
+                  >
+                    Suspendre
+                  </button>
+                )
+              ) : null}
             </div>
           </div>
 

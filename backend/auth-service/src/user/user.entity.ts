@@ -12,6 +12,10 @@ export enum UserRole {
   ORGANIZER = "ORGANIZER",
   AGENT = "AGENT",
   ADMIN = "ADMIN",
+  // Seul rôle habilité à agir sur un compte ADMIN ou SUPER_ADMIN (changer
+  // son rôle, le suspendre/réactiver) — un ADMIN normal ne peut gérer que
+  // BUYER/ORGANIZER/AGENT (cf. AuthService.assertCanManageTarget()).
+  SUPER_ADMIN = "SUPER_ADMIN",
 }
 
 export enum OAuthProvider {

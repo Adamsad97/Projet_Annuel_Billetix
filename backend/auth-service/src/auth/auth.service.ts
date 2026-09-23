@@ -10,6 +10,7 @@ import { In, Repository } from "typeorm";
 import { REDIS_CLIENT } from "../redis/redis.module";
 import { PlatformConfigCache } from "../platform-config/platform-config.cache";
 import { OAuthProvider, User, UserRole } from "../user/user.entity";
+import { assertCanManageTarget } from "./assert-can-manage-target";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -560,13 +561,19 @@ export class AuthService {
     return { success: true };
   }
 
-  async suspendUser(id: string, adminId: string, reason: string) {
+  async suspendUser(
+    id: string,
+    adminId: string,
+    reason: string,
+    actorRole: UserRole,
+  ) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user)
       throw new RpcException({
         statusCode: 404,
         message: "Utilisateur introuvable",
       });
+    assertCanManageTarget(user, adminId, actorRole);
 
     user.is_suspended = true;
     user.suspension_reason = reason;
@@ -577,13 +584,14 @@ export class AuthService {
     return this.sanitize(user);
   }
 
-  async unsuspendUser(id: string) {
+  async unsuspendUser(id: string, actorId: string, actorRole: UserRole) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user)
       throw new RpcException({
         statusCode: 404,
         message: "Utilisateur introuvable",
       });
+    assertCanManageTarget(user, actorId, actorRole);
 
     user.is_suspended = false;
     user.suspension_reason = null;
@@ -600,13 +608,14 @@ export class AuthService {
    * place), mais aucun handler ne répondait à ce pattern ici — timeout RPC
    * garanti, la route était en réalité entièrement cassée.
    */
-  async unlockAccount(id: string) {
+  async unlockAccount(id: string, actorId: string, actorRole: UserRole) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user)
       throw new RpcException({
         statusCode: 404,
         message: "Utilisateur introuvable",
       });
+    assertCanManageTarget(user, actorId, actorRole);
 
     user.failed_login_attempts = 0;
     user.locked_until = null;
@@ -620,7 +629,7 @@ export class AuthService {
    * /admin/users/:id/activate appelait auth.activate_account, jamais géré
    * côté auth-service.
    */
-  async activateAccount(id: string) {
+  async activateAccount(id: string, actorId: string, actorRole: UserRole) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user)
       throw new RpcException({
@@ -633,6 +642,7 @@ export class AuthService {
         message: "Ce compte est déjà activé",
       });
     }
+    assertCanManageTarget(user, actorId, actorRole);
 
     user.is_email_verified = true;
     await this.userRepo.save(user);
@@ -640,9 +650,24 @@ export class AuthService {
     return this.sanitize(user);
   }
 
-  async changeRole(id: string, role: UserRole) {
+  async changeRole(
+    id: string,
+    role: UserRole,
+    actorId: string,
+    actorRole: UserRole,
+  ) {
     if (!Object.values(UserRole).includes(role)) {
       throw new RpcException({ statusCode: 400, message: "Rôle invalide" });
+    }
+    // Accorder ADMIN/SUPER_ADMIN est tout aussi sensible qu'agir sur un
+    // admin existant (cf. assertCanManageTarget) — même garde-fou.
+    const grantsElevatedRole =
+      role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
+    if (grantsElevatedRole && actorRole !== UserRole.SUPER_ADMIN) {
+      throw new RpcException({
+        statusCode: 403,
+        message: "Seul un super-admin peut accorder ce rôle",
+      });
     }
 
     const user = await this.userRepo.findOne({ where: { id } });
@@ -651,6 +676,7 @@ export class AuthService {
         statusCode: 404,
         message: "Utilisateur introuvable",
       });
+    assertCanManageTarget(user, actorId, actorRole);
 
     user.role = role;
     await this.userRepo.save(user);

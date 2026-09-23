@@ -9,7 +9,8 @@ import { IsNull, Repository } from "typeorm";
 import { authenticator } from "otplib";
 import * as QRCode from "qrcode";
 import { REDIS_CLIENT } from "../redis/redis.module";
-import { TwoFactorMethod, User } from "../user/user.entity";
+import { TwoFactorMethod, User, UserRole } from "../user/user.entity";
+import { assertCanManageTarget } from "./assert-can-manage-target";
 import { BackupCode } from "./backup-code.entity";
 
 const BACKUP_CODE_COUNT = 8;
@@ -234,7 +235,11 @@ export class TwoFactorService {
    * compte. La 2FA repasse à false : l'utilisateur peut se reconnecter et
    * devra la reconfigurer lui-même s'il le souhaite (setupTotp()).
    */
-  async resetByAdmin(userId: string): Promise<{ success: boolean; email: string; first_name: string }> {
+  async resetByAdmin(
+    userId: string,
+    actorId: string,
+    actorRole: UserRole,
+  ): Promise<{ success: boolean; email: string; first_name: string }> {
     const user = await this.getUser(userId);
     if (!user.two_factor_enabled) {
       throw new RpcException({
@@ -242,6 +247,10 @@ export class TwoFactorService {
         message: "La 2FA n'est pas activée sur ce compte",
       });
     }
+    // Même règle que suspend/unlock/activate/change-role (cf.
+    // assertCanManageTarget) : un ADMIN normal ne réinitialise pas la 2FA
+    // d'un autre admin.
+    assertCanManageTarget(user, actorId, actorRole);
 
     await this.userRepo
       .createQueryBuilder()

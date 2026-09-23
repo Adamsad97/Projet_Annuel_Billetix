@@ -25,8 +25,8 @@ const navLinks: Array<{ href: string; label: string; allowGuest?: boolean; roles
   // ORGANIZER scanne ses propres événements (vérifié côté gateway via
   // event.get), AGENT c'est son seul métier sur la plateforme.
   { href: "/scan", label: "Scan", roles: ["ORGANIZER", "AGENT"] },
-  { href: "/profil", label: "Profil", roles: ["BUYER", "ORGANIZER", "AGENT", "ADMIN"] },
-  { href: "/admin", label: "Back-office", roles: ["ADMIN"] },
+  { href: "/profil", label: "Profil", roles: ["BUYER", "ORGANIZER", "AGENT", "ADMIN", "SUPER_ADMIN"] },
+  { href: "/admin", label: "Back-office", roles: ["ADMIN", "SUPER_ADMIN"] },
 ];
 
 export function Navbar({ active = "/catalogue" }: { active?: string }) {
@@ -80,10 +80,10 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
         <div className="flex items-center gap-3">
           {user === undefined ? null : user ? (
             <>
-              {/* Masqué pour ADMIN : le lien "Admin" du menu suffit déjà, et
-                  le prénom du compte de bootstrap ("Admin BilletiX") créait
-                  un doublon visuel confus avec ce lien de navigation. */}
-              {user.role !== "ADMIN" ? (
+              {/* Masqué pour ADMIN/SUPER_ADMIN : le lien "Back-office" du
+                  menu suffit déjà, et le prénom du compte de bootstrap
+                  ("Admin BilletiX") créait un doublon visuel confus. */}
+              {user.role !== "ADMIN" && user.role !== "SUPER_ADMIN" ? (
                 <Link
                   href="/profil"
                   className="hidden text-sm font-medium text-gray-300 hover:text-white sm:block"

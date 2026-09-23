@@ -18,6 +18,7 @@ const roleFilters: { id: string; label: string }[] = [
   { id: "ORGANIZER", label: "Organisateurs" },
   { id: "ADMIN", label: "Admins" },
   { id: "AGENT", label: "Agents" },
+  { id: "SUPER_ADMIN", label: "Super-admins" },
 ];
 
 export function UsersExplorer() {

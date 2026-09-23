@@ -13,6 +13,7 @@ const roleLabels: Record<AuthUser["role"], string> = {
   ORGANIZER: "Organisateur",
   ADMIN: "Administrateur",
   AGENT: "Agent de contrôle",
+  SUPER_ADMIN: "Super-administrateur",
 };
 
 const roleStyles: Record<AuthUser["role"], string> = {
@@ -20,6 +21,7 @@ const roleStyles: Record<AuthUser["role"], string> = {
   ORGANIZER: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
   ADMIN: "bg-rose-500/15 text-rose-300 ring-1 ring-inset ring-rose-500/30",
   AGENT: "bg-teal-500/15 text-teal-300 ring-1 ring-inset ring-teal-500/30",
+  SUPER_ADMIN: "bg-fuchsia-500/15 text-fuchsia-300 ring-1 ring-inset ring-fuchsia-500/30",
 };
 
 function initialsOf(user: AuthUser): string {

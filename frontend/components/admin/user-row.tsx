@@ -6,6 +6,7 @@ const roleStyles: Record<ApiUserRole, string> = {
   ORGANIZER: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
   ADMIN: "bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30",
   AGENT: "bg-teal-500/15 text-teal-300 ring-1 ring-inset ring-teal-500/30",
+  SUPER_ADMIN: "bg-fuchsia-500/15 text-fuchsia-300 ring-1 ring-inset ring-fuchsia-500/30",
 };
 
 const roleLabels: Record<ApiUserRole, string> = {
@@ -13,6 +14,7 @@ const roleLabels: Record<ApiUserRole, string> = {
   ORGANIZER: "Organisateur",
   ADMIN: "Admin",
   AGENT: "Agent",
+  SUPER_ADMIN: "Super-admin",
 };
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" });

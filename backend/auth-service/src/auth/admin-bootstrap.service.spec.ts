@@ -34,19 +34,19 @@ describe("AdminBootstrapService", () => {
     expect(userRepo.save).not.toHaveBeenCalled();
   });
 
-  it("ne recrée jamais un admin si un compte ADMIN existe déjà", async () => {
+  it("ne recrée jamais de super-admin si un compte SUPER_ADMIN existe déjà", async () => {
     config.get.mockImplementation((key: string) =>
       key === "BOOTSTRAP_ADMIN_EMAIL" ? "admin@billetix.local" : "SuperSecret123!",
     );
-    userRepo.findOne.mockResolvedValue({ id: "existing-admin" });
+    userRepo.findOne.mockResolvedValue({ id: "existing-super-admin" });
 
     await service.onModuleInit();
 
-    expect(userRepo.findOne).toHaveBeenCalledWith({ where: { role: UserRole.ADMIN } });
+    expect(userRepo.findOne).toHaveBeenCalledWith({ where: { role: UserRole.SUPER_ADMIN } });
     expect(userRepo.save).not.toHaveBeenCalled();
   });
 
-  it("crée le premier admin quand aucun n'existe et que les variables sont définies", async () => {
+  it("crée le premier super-admin quand aucun n'existe et que les variables sont définies", async () => {
     config.get.mockImplementation((key: string) =>
       key === "BOOTSTRAP_ADMIN_EMAIL" ? "admin@billetix.local" : "SuperSecret123!",
     );
@@ -59,9 +59,40 @@ describe("AdminBootstrapService", () => {
       expect.objectContaining({
         email: "admin@billetix.local",
         password_hash: "hashed",
-        role: UserRole.ADMIN,
+        role: UserRole.SUPER_ADMIN,
         is_email_verified: true,
       }),
     );
+  });
+
+  it("promeut en SUPER_ADMIN le compte ADMIN déjà existant à cet email (déploiement pré-existant)", async () => {
+    config.get.mockImplementation((key: string) =>
+      key === "BOOTSTRAP_ADMIN_EMAIL" ? "admin@billetix.local" : "SuperSecret123!",
+    );
+    const legacyAdmin = { id: "legacy-admin", email: "admin@billetix.local", role: UserRole.ADMIN };
+    userRepo.findOne
+      .mockResolvedValueOnce(null) // aucun SUPER_ADMIN
+      .mockResolvedValueOnce(legacyAdmin); // mais le compte bootstrap existe déjà en ADMIN
+
+    await service.onModuleInit();
+
+    expect(bcrypt.hash).not.toHaveBeenCalled();
+    expect(userRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "legacy-admin", role: UserRole.SUPER_ADMIN }),
+    );
+  });
+
+  it("ne promeut jamais un compte existant à cet email si son rôle n'est pas ADMIN", async () => {
+    config.get.mockImplementation((key: string) =>
+      key === "BOOTSTRAP_ADMIN_EMAIL" ? "admin@billetix.local" : "SuperSecret123!",
+    );
+    const unrelatedAccount = { id: "someone-else", email: "admin@billetix.local", role: UserRole.BUYER };
+    userRepo.findOne
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(unrelatedAccount);
+
+    await service.onModuleInit();
+
+    expect(userRepo.save).not.toHaveBeenCalled();
   });
 });

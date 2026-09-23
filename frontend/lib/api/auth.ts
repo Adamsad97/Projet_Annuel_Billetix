@@ -1,14 +1,17 @@
 // Client pour les endpoints /auth de l'api-gateway (backend/api-gateway/src/auth).
 // Câblage réel — plus de données mock pour ces deux flux.
 
+import { getApiBaseUrl } from "./base-url";
 import { ApiError, extractErrorMessage } from "./http-error";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+const API_URL = getApiBaseUrl();
 
 // Bug corrigé : "AGENT" manquait de ce type alors que le rôle existe bien
 // côté backend (agents de contrôle promus depuis un compte BUYER) — un
-// agent connecté avait un `user.role` hors du type déclaré.
-export type UserRole = "BUYER" | "ORGANIZER" | "ADMIN" | "AGENT";
+// agent connecté avait un `user.role` hors du type déclaré. SUPER_ADMIN
+// ajouté avec le rôle backend du même nom (seul habilité à gérer un
+// compte ADMIN — révoquer, suspendre, changer son rôle).
+export type UserRole = "BUYER" | "ORGANIZER" | "ADMIN" | "AGENT" | "SUPER_ADMIN";
 
 export interface AuthUser {
   id: string;

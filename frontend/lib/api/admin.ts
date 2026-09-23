@@ -72,9 +72,31 @@ export function verifyNonProfit(id: string, approved: boolean): Promise<ApiEvent
   return apiPost<ApiEvent>(`/admin/events/${id}/verify-non-profit`, { approved });
 }
 
+// ─── Gestion globale des événements (tous statuts) ─────────────────────────
+// Bug corrigé : cette page n'a jamais été reliée au backend, elle affichait
+// des données 100% fictives (lib/mock/admin-events.ts) — aucun événement
+// réel, publié ou non, n'y apparaissait jamais.
+
+export interface ApiAdminEvent extends ApiEvent {
+  organizer_name: string;
+  category_label: string;
+  category_emoji: string | null;
+  sold: number;
+  total_quota: number;
+}
+
+export function getAdminEvents(status?: string): Promise<ApiAdminEvent[]> {
+  const qs = status && status !== "all" ? `?status=${encodeURIComponent(status)}` : "";
+  return apiGet<ApiAdminEvent[]>(`/admin/events${qs}`);
+}
+
+export function getAdminEvent(id: string): Promise<ApiAdminEvent> {
+  return apiGet<ApiAdminEvent>(`/admin/events/${id}`);
+}
+
 // ─── Création d'événement pour un organisateur (accueil physique) ──────────
 
-export type ApiUserRole = "BUYER" | "ORGANIZER" | "ADMIN" | "AGENT";
+export type ApiUserRole = "BUYER" | "ORGANIZER" | "ADMIN" | "AGENT" | "SUPER_ADMIN";
 
 export interface ApiAdminUser {
   id: string;
@@ -133,7 +155,7 @@ export function resendOrderTicketsAsSupport(orderId: string): Promise<{ success:
 
 /** Compte trouvé mais pas encore organisateur (ex: déjà acheteur) — même
  * mécanisme que la page admin de gestion des comptes. */
-export function changeUserRole(userId: string, role: "BUYER" | "ORGANIZER" | "ADMIN"): Promise<ApiAdminUser> {
+export function changeUserRole(userId: string, role: ApiUserRole): Promise<ApiAdminUser> {
   return apiPost<ApiAdminUser>(`/admin/users/${userId}/change-role`, { role });
 }
 
@@ -215,4 +237,71 @@ export async function getAuditLogs(filters: AuditLogFilters = {}): Promise<ApiAu
     `/admin/audit-logs${qs ? `?${qs}` : ""}`,
   );
   return result.logs;
+}
+
+// ─── Reversements ───────────────────────────────────────────────────────────
+
+export type ApiPayoutStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "BLOCKED" | "FAILED";
+
+export interface ApiPayout {
+  id: string;
+  organizer_id: string;
+  organizer_name: string;
+  organizer_email: string | null;
+  event_id: string;
+  event_name: string;
+  status: ApiPayoutStatus;
+  gross_amount: number;
+  commission_amount: number;
+  payment_fees_amount: number;
+  net_amount: number;
+  stripe_transfer_id: string | null;
+  scheduled_at: string;
+  processed_at: string | null;
+  blocked_at: string | null;
+  blocked_reason: string | null;
+  requested_early_at: string | null;
+  early_request_approved_by: string | null;
+  created_at: string;
+}
+
+export interface ApiPayoutDetail extends ApiPayout {
+  bank_owner_name: string | null;
+}
+
+export function getPayoutStats(): Promise<{
+  pending_total: number;
+  paid_this_month_total: number;
+  blocked_total: number;
+}> {
+  return apiGet("/admin/payouts/stats");
+}
+
+export function listPayouts(params: { status?: string; limit?: number; offset?: number } = {}): Promise<{ data: ApiPayout[]; total: number }> {
+  const search = new URLSearchParams();
+  if (params.status) search.set("status", params.status);
+  if (params.limit) search.set("limit", String(params.limit));
+  if (params.offset) search.set("offset", String(params.offset));
+  const qs = search.toString();
+  return apiGet(`/admin/payouts${qs ? `?${qs}` : ""}`);
+}
+
+export function getPayout(id: string): Promise<ApiPayoutDetail> {
+  return apiGet(`/admin/payouts/${id}`);
+}
+
+export function blockPayout(id: string, reason: string): Promise<ApiPayout> {
+  return apiPost(`/admin/payouts/${id}/block`, { reason });
+}
+
+export function unblockPayout(id: string): Promise<ApiPayout> {
+  return apiPost(`/admin/payouts/${id}/unblock`);
+}
+
+export function processPayout(id: string): Promise<ApiPayout> {
+  return apiPost(`/admin/payouts/${id}/process`);
+}
+
+export function approveEarlyPayout(id: string): Promise<ApiPayout> {
+  return apiPost(`/admin/payouts/${id}/approve-early`);
 }

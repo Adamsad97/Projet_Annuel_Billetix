@@ -22,6 +22,7 @@ const roleLabel: Record<ApiAdminUser["role"], string> = {
   ORGANIZER: "Organisateur",
   ADMIN: "Admin",
   AGENT: "Agent",
+  SUPER_ADMIN: "Super-admin",
 };
 
 function isValidEmail(value: string): boolean {
@@ -183,7 +184,11 @@ export default function AdminCreateEventForOrganizerPage() {
               {results.length > 0 ? (
                 <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
                   {results.map((account) => {
-                    const selectable = !account.is_suspended && account.role !== "ADMIN" && account.role !== "AGENT";
+                    const selectable =
+                      !account.is_suspended &&
+                      account.role !== "ADMIN" &&
+                      account.role !== "AGENT" &&
+                      account.role !== "SUPER_ADMIN";
                     const needsPromotion = account.role === "BUYER";
                     return (
                       <button

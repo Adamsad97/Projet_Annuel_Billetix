@@ -305,6 +305,7 @@ export class AdminController {
         id,
         admin_id: user.sub,
         reason: dto.reason,
+        actor_role: user.role,
       }),
     )) as { email: string; first_name: string };
     this.audit(user, req, "USER_SUSPENDED", "USER", id, dto.reason);
@@ -325,7 +326,11 @@ export class AdminController {
     @Param("id") id: string,
   ) {
     const result = (await firstValueFrom(
-      this.authClient.send("auth.unsuspend_user", { id, admin_id: user.sub }),
+      this.authClient.send("auth.unsuspend_user", {
+        id,
+        admin_id: user.sub,
+        actor_role: user.role,
+      }),
     )) as { email: string; first_name: string };
     this.audit(user, req, "USER_UNSUSPENDED", "USER", id);
     this.notifClient.emit("notification.account_unsuspended", {
@@ -347,7 +352,11 @@ export class AdminController {
     @Param("id") id: string,
   ) {
     const result = (await firstValueFrom(
-      this.authClient.send("auth.unlock_account", { id, admin_id: user.sub }),
+      this.authClient.send("auth.unlock_account", {
+        id,
+        admin_id: user.sub,
+        actor_role: user.role,
+      }),
     )) as { email: string; first_name: string };
     this.audit(user, req, "USER_ACCOUNT_UNLOCKED", "USER", id);
     this.notifClient.emit("notification.account_unlocked", {
@@ -377,6 +386,7 @@ export class AdminController {
         user_id: id,
         admin_id: user.sub,
         reason: dto.reason,
+        actor_role: user.role,
       }),
     )) as { email: string; first_name: string };
     this.audit(user, req, "USER_2FA_RESET", "USER", id, dto.reason);
@@ -400,7 +410,11 @@ export class AdminController {
     @Param("id") id: string,
   ) {
     const result = (await firstValueFrom(
-      this.authClient.send("auth.activate_account", { id, admin_id: user.sub }),
+      this.authClient.send("auth.activate_account", {
+        id,
+        admin_id: user.sub,
+        actor_role: user.role,
+      }),
     )) as { email: string; first_name: string };
     this.audit(user, req, "USER_ACCOUNT_ACTIVATED", "USER", id);
     this.notifClient.emit("notification.account_activated", {
@@ -424,6 +438,7 @@ export class AdminController {
         id,
         role: dto.role,
         admin_id: user.sub,
+        actor_role: user.role,
       }),
     );
     this.audit(user, req, "USER_ROLE_CHANGED", "USER", id, undefined, {
@@ -482,6 +497,75 @@ export class AdminController {
     );
   }
 
+  /**
+   * Bug corrigé : la page admin "Événements" (gestion globale, tous
+   * statuts) n'a jamais été reliée au backend — elle affichait des données
+   * 100% fictives (lib/mock/admin-events.ts côté frontend), aucun
+   * événement réel n'y apparaissait jamais, y compris ceux fraîchement
+   * publiés par un organisateur.
+   */
+  /** Enrichissement organisateur/catégorie/remplissage partagé par la liste
+   * globale et la fiche détail — un seul aller-retour par info, batché sur
+   * tous les événements passés (jamais un par ligne côté frontend). */
+  private async enrichAdminEvents<
+    T extends { id: string; organizer_id: string; category: string },
+  >(events: T[]): Promise<
+    Array<T & { organizer_name: string; category_label: string; category_emoji: string | null; sold: number; total_quota: number }>
+  > {
+    const organizerIds = [...new Set(events.map((event) => event.organizer_id))];
+    const [organizers, categories, fillStatsList] = await Promise.all([
+      firstValueFrom(
+        this.authClient.send("auth.get_users_by_ids", { ids: organizerIds }),
+      ).catch(() => []) as Promise<Array<{ id: string; first_name: string; last_name: string; email: string }>>,
+      firstValueFrom(this.eventClient.send("event.category.list_all", {})).catch(
+        () => [],
+      ) as Promise<Array<{ code: string; label: string; emoji: string | null }>>,
+      // Un aller-retour par événement (comme le dashboard organisateur,
+      // event.controller.ts getOrganizerDashboard) — pas de table
+      // d'agrégats dédiée, volume admin restant modeste.
+      Promise.all(
+        events.map((event) =>
+          firstValueFrom(this.eventClient.send("event.get_fill_stats", { event_id: event.id })).catch(
+            () => ({ total_quota: 0, sold: 0 }),
+          ),
+        ),
+      ) as Promise<Array<{ total_quota: number; sold: number }>>,
+    ]);
+
+    const organizerById = new Map(organizers.map((organizer) => [organizer.id, organizer]));
+    const categoryByCode = new Map(categories.map((category) => [category.code, category]));
+
+    return events.map((event, index) => {
+      const organizer = organizerById.get(event.organizer_id);
+      const category = categoryByCode.get(event.category);
+      const fillStats = fillStatsList[index];
+      return {
+        ...event,
+        organizer_name: organizer ? `${organizer.first_name} ${organizer.last_name}` : "Compte supprimé",
+        category_label: category?.label ?? event.category,
+        category_emoji: category?.emoji ?? null,
+        sold: fillStats.sold,
+        total_quota: fillStats.total_quota,
+      };
+    });
+  }
+
+  /**
+   * Bug corrigé : la page admin "Événements" (gestion globale, tous
+   * statuts) n'a jamais été reliée au backend — elle affichait des données
+   * 100% fictives (lib/mock/admin-events.ts côté frontend), aucun
+   * événement réel n'y apparaissait jamais, y compris ceux fraîchement
+   * publiés par un organisateur.
+   */
+  @Get("events")
+  @ApiOperation({ summary: "Tous les événements, tous statuts confondus (gestion globale)" })
+  async listAllEvents(@Query("status") status?: string) {
+    const events = (await firstValueFrom(
+      this.eventClient.send("event.list_all", { status }),
+    )) as Array<{ id: string; organizer_id: string; category: string; [key: string]: unknown }>;
+    return this.enrichAdminEvents(events);
+  }
+
   @Get("events/pending")
   @ApiOperation({ summary: "Événements en attente de modération" })
   async getPendingEvents() {
@@ -505,6 +589,24 @@ export class AdminController {
         organizer_email: organizer?.email ?? null,
       };
     });
+  }
+
+  // Bug corrigé : la fiche détail (app/admin/evenements/[id]) était elle
+  // aussi 100% mock — un clic sur "Détails" depuis la liste désormais réelle
+  // menait à un événement introuvable (id mock vs UUID réel). Déclarée
+  // après "events/pending" — une route ":id" placée avant avalerait
+  // "pending" comme si c'était un id (même piège que /tickets/resale).
+  @Get("events/:id")
+  @ApiOperation({ summary: "Détail enrichi d'un événement (gestion globale)" })
+  async getAdminEvent(@Param("id") id: string) {
+    const event = (await firstValueFrom(this.eventClient.send("event.get", { id }))) as {
+      id: string;
+      organizer_id: string;
+      category: string;
+      [key: string]: unknown;
+    };
+    const [enriched] = await this.enrichAdminEvents([event]);
+    return enriched;
   }
 
   @Post("events/:id/approve")
@@ -644,6 +746,89 @@ export class AdminController {
   }
 
   // ─── Gestion des reversements ─────────────────────────────────────────────────
+
+  @Get("payouts/stats")
+  @ApiOperation({ summary: "KPIs reversements (en attente / versé ce mois / bloqué)" })
+  getPayoutStats() {
+    return firstValueFrom(this.paymentClient.send("payment.get_payout_stats", {}));
+  }
+
+  /** Liste globale enrichie (nom organisateur, titre événement) — les deux
+   * n'existent que dans auth-service/event-service, jamais dénormalisés sur
+   * le Payout lui-même, résolus ici par lot (get_users_by_ids/get_by_ids)
+   * plutôt qu'un aller-retour par ligne. */
+  private async enrichPayouts<T extends { organizer_id: string; event_id: string }>(
+    payouts: T[],
+  ): Promise<Array<T & { organizer_name: string; organizer_email: string | null; event_name: string }>> {
+    const organizerIds = [...new Set(payouts.map((p) => p.organizer_id))];
+    const eventIds = [...new Set(payouts.map((p) => p.event_id))];
+
+    const [organizers, events] = await Promise.all([
+      organizerIds.length
+        ? firstValueFrom(
+            this.authClient.send<Array<{ id: string; first_name: string; last_name: string; email: string }>>(
+              "auth.get_users_by_ids",
+              { ids: organizerIds },
+            ),
+          )
+        : Promise.resolve([]),
+      eventIds.length
+        ? firstValueFrom(
+            this.eventClient.send<Array<{ id: string; title: string }>>("event.get_by_ids", { ids: eventIds }),
+          )
+        : Promise.resolve([]),
+    ]);
+    const organizerById = new Map(organizers.map((o) => [o.id, o]));
+    const eventById = new Map(events.map((e) => [e.id, e]));
+
+    return payouts.map((payout) => {
+      const organizer = organizerById.get(payout.organizer_id);
+      const event = eventById.get(payout.event_id);
+      return {
+        ...payout,
+        organizer_name: organizer ? `${organizer.first_name} ${organizer.last_name}` : "Compte supprimé",
+        organizer_email: organizer?.email ?? null,
+        event_name: event?.title ?? "Événement supprimé",
+      };
+    });
+  }
+
+  @Get("payouts")
+  @ApiOperation({ summary: "Liste des reversements, tous organisateurs confondus" })
+  async listPayouts(
+    @Query("status") status?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+  ) {
+    const result = (await firstValueFrom(
+      this.paymentClient.send("payment.list_all_payouts", {
+        status,
+        limit: limit ? parseInt(limit) : undefined,
+        offset: offset ? parseInt(offset) : undefined,
+      }),
+    )) as {
+      data: Array<{ id: string; organizer_id: string; event_id: string }>;
+      total: number;
+    };
+
+    return { total: result.total, data: await this.enrichPayouts(result.data) };
+  }
+
+  @Get("payouts/:id")
+  @ApiOperation({ summary: "Détail d'un reversement" })
+  async getPayoutDetail(@Param("id") id: string) {
+    const payout = (await firstValueFrom(
+      this.paymentClient.send("payment.get_payout", { id }),
+    )) as { organizer_id: string; event_id: string };
+
+    const [enriched] = await this.enrichPayouts([payout]);
+
+    const organizerProfile = await firstValueFrom(
+      this.userClient.send("user.get_organizer_profile", { user_id: payout.organizer_id }),
+    ).catch(() => null) as { bank_owner_name: string | null; stripe_connect_account_id: string | null } | null;
+
+    return { ...enriched, bank_owner_name: organizerProfile?.bank_owner_name ?? null };
+  }
 
   @Post("payouts/:id/block")
   @HttpCode(HttpStatus.OK)

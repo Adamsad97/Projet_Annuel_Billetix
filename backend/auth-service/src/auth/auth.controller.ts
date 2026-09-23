@@ -124,8 +124,14 @@ export class AuthController {
   // Bug corrigé : la route gateway POST /admin/users/:id/reset-2fa appelait
   // déjà ce pattern, mais aucun handler n'existait ici — timeout RPC garanti.
   @MessagePattern("auth.2fa.reset_by_admin")
-  reset2faByAdmin(@Payload() data: { user_id: string }) {
-    return this.twoFactorService.resetByAdmin(data.user_id);
+  reset2faByAdmin(
+    @Payload() data: { user_id: string; admin_id: string; actor_role: UserRole },
+  ) {
+    return this.twoFactorService.resetByAdmin(
+      data.user_id,
+      data.admin_id,
+      data.actor_role,
+    );
   }
 
   @MessagePattern("auth.get_user")
@@ -147,33 +153,51 @@ export class AuthController {
 
   @MessagePattern("auth.suspend_user")
   suspendUser(
-    @Payload() data: { id: string; admin_id: string; reason: string },
+    @Payload()
+    data: { id: string; admin_id: string; reason: string; actor_role: UserRole },
   ) {
-    return this.authService.suspendUser(data.id, data.admin_id, data.reason);
+    return this.authService.suspendUser(
+      data.id,
+      data.admin_id,
+      data.reason,
+      data.actor_role,
+    );
   }
 
   @MessagePattern("auth.unsuspend_user")
-  unsuspendUser(@Payload() data: { id: string; admin_id: string }) {
-    return this.authService.unsuspendUser(data.id);
+  unsuspendUser(
+    @Payload() data: { id: string; admin_id: string; actor_role: UserRole },
+  ) {
+    return this.authService.unsuspendUser(data.id, data.admin_id, data.actor_role);
   }
 
   // Bug corrigé : les routes gateway correspondantes appelaient déjà ces
   // patterns, mais aucun handler n'existait ici — timeout RPC garanti.
   @MessagePattern("auth.unlock_account")
-  unlockAccount(@Payload() data: { id: string; admin_id: string }) {
-    return this.authService.unlockAccount(data.id);
+  unlockAccount(
+    @Payload() data: { id: string; admin_id: string; actor_role: UserRole },
+  ) {
+    return this.authService.unlockAccount(data.id, data.admin_id, data.actor_role);
   }
 
   @MessagePattern("auth.activate_account")
-  activateAccount(@Payload() data: { id: string; admin_id: string }) {
-    return this.authService.activateAccount(data.id);
+  activateAccount(
+    @Payload() data: { id: string; admin_id: string; actor_role: UserRole },
+  ) {
+    return this.authService.activateAccount(data.id, data.admin_id, data.actor_role);
   }
 
   @MessagePattern("auth.change_role")
   changeRole(
-    @Payload() data: { id: string; role: UserRole; admin_id: string },
+    @Payload()
+    data: { id: string; role: UserRole; admin_id: string; actor_role: UserRole },
   ) {
-    return this.authService.changeRole(data.id, data.role);
+    return this.authService.changeRole(
+      data.id,
+      data.role,
+      data.admin_id,
+      data.actor_role,
+    );
   }
 
   @MessagePattern("auth.self_upgrade_to_organizer")
