@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{subject}}</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #7c3aed; padding: 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0; font-size: 22px; }
+    .body { padding: 32px; color: #333; line-height: 1.6; }
+    .content { white-space: pre-wrap; }
+    .footer { padding: 20px 32px; background: #f9f9f9; color: #999; font-size: 12px; text-align: center; }
+    .footer a { color: #7c3aed; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>📧 {{subject}}</h1></div>
+    <div class="body">
+      <p>Bonjour {{firstName}},</p>
+      <div class="content">{{body}}</div>
+    </div>
+    <div class="footer">
+      © {{year}} BilletiX — Tous droits réservés<br />
+      Tu reçois cet email car tu es abonné à la newsletter BilletiX. Tu peux te désabonner à tout moment depuis ton profil.
+    </div>
+  </div>
+</body>
+</html>

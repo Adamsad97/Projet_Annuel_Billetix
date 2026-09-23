@@ -15,7 +15,7 @@ cd Projet_Annuel_Billetix
 cp .env.example .env
 ```
 
-Ouvrir `.env` et renseigner au minimum les secrets cryptographiques (voir les commentaires dans `.env.example` pour la commande de génération de chacun) : `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `QR_HMAC_SECRET`, `IBAN_ENCRYPTION_KEY`, ainsi que les mots de passe PostgreSQL/Redis/RabbitMQ/MinIO de votre choix. Les clés Stripe, PayPal, SendGrid et Google/Facebook OAuth peuvent rester vides si ces intégrations ne sont pas utilisées.
+Ouvrir `.env` et renseigner au minimum les secrets cryptographiques (voir les commentaires dans `.env.example` pour la commande de génération de chacun) : `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `IBAN_ENCRYPTION_KEY`, ainsi que les mots de passe PostgreSQL/Redis/RabbitMQ/MinIO de votre choix. Les clés Stripe, PayPal, SendGrid et Google/Facebook OAuth peuvent rester vides si ces intégrations ne sont pas utilisées.
 
 # Partie A — Avec Docker (recommandé)
 

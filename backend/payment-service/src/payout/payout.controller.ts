@@ -38,6 +38,16 @@ export class PayoutController {
     return this.payoutService.getByOrganizer(data.organizer_id);
   }
 
+  @MessagePattern('payment.get_payout_stats')
+  getStats() {
+    return this.payoutService.getStats();
+  }
+
+  @MessagePattern('payment.list_all_payouts')
+  listAll(@Payload() data: { status?: string; limit?: number; offset?: number }) {
+    return this.payoutService.listAll(data as Parameters<PayoutService['listAll']>[0]);
+  }
+
   @MessagePattern('payment.process_payout')
   process(@Payload() data: { id: string; stripe_account_id: string }) {
     return this.payoutService.process(data.id, data.stripe_account_id);

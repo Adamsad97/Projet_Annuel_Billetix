@@ -25,6 +25,7 @@ import { PayoutCompletedDto } from './dto/payout-completed.dto';
 import { RefundCompletedDto } from './dto/refund-completed.dto';
 import { ResaleListedDto } from './dto/resale-listed.dto';
 import { ResaleSoldDto } from './dto/resale-sold.dto';
+import { ResaleWithdrawnDto } from './dto/resale-withdrawn.dto';
 import { KycApprovedDto } from './dto/kyc-approved.dto';
 import { KycRejectedDto } from './dto/kyc-rejected.dto';
 import { NewsletterDto } from './dto/newsletter.dto';
@@ -463,6 +464,20 @@ export class NotificationController {
       to: data.email,
       subject: `Ton billet est en vente — ${data.eventName}`,
       template: 'resale-listed',
+      context: {
+        ...data,
+        ticketsUrl: `${this.appUrl}/profil/billets`,
+      },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.resale_withdrawn')
+  async onResaleWithdrawn(@Payload() data: ResaleWithdrawnDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Ton billet a été retiré de la vente — ${data.eventName}`,
+      template: 'resale-withdrawn',
       context: {
         ...data,
         ticketsUrl: `${this.appUrl}/profil/billets`,

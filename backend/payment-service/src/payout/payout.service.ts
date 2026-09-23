@@ -165,6 +165,59 @@ export class PayoutService {
     return this.repo.find({ where: { organizer_id: organizerId }, order: { scheduled_at: 'DESC' } });
   }
 
+  /** Cartes KPI de la page admin des reversements — un seul aller-retour SQL
+   * plutôt que trois (pending/versé ce mois-ci/bloqué). */
+  async getStats(): Promise<{
+    pending_total: number;
+    paid_this_month_total: number;
+    blocked_total: number;
+  }> {
+    const row = await this.repo
+      .createQueryBuilder('payout')
+      .select(
+        "COALESCE(SUM(payout.net_amount) FILTER (WHERE payout.status IN ('PENDING', 'PROCESSING')), 0)",
+        'pending_total',
+      )
+      .addSelect(
+        "COALESCE(SUM(payout.net_amount) FILTER (WHERE payout.status = 'COMPLETED' AND date_trunc('month', payout.processed_at) = date_trunc('month', now())), 0)",
+        'paid_this_month_total',
+      )
+      .addSelect(
+        "COALESCE(SUM(payout.net_amount) FILTER (WHERE payout.status = 'BLOCKED'), 0)",
+        'blocked_total',
+      )
+      .getRawOne<Record<string, string>>();
+
+    return {
+      pending_total: parseFloat(row?.pending_total ?? '0'),
+      paid_this_month_total: parseFloat(row?.paid_this_month_total ?? '0'),
+      blocked_total: parseFloat(row?.blocked_total ?? '0'),
+    };
+  }
+
+  /** Liste globale pour l'admin (tous organisateurs confondus), paginée et
+   * filtrable par statut — distincte de getByOrganizer (un seul organisateur,
+   * pas de pagination car volume par compte toujours restreint). */
+  async listAll(filters: {
+    status?: PayoutStatus;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ data: Payout[]; total: number }> {
+    const limit = Math.min(filters.limit ?? 20, 100);
+    const offset = filters.offset ?? 0;
+
+    const qb = this.repo
+      .createQueryBuilder('payout')
+      .orderBy('payout.scheduled_at', 'DESC')
+      .skip(offset)
+      .take(limit);
+
+    if (filters.status) qb.andWhere('payout.status = :status', { status: filters.status });
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, total };
+  }
+
   async getDuePayouts(): Promise<Payout[]> {
     // net_amount > 0 uniquement : un virement Stripe ne peut pas être négatif
     // ou nul. Les ajustements négatifs créés par recalculateForRefund() (sur

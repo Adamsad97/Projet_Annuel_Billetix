@@ -547,16 +547,45 @@ export class TicketController {
   @Post("resale/:resaleId/withdraw")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Retirer un billet de la revente" })
-  withdrawResale(
+  async withdrawResale(
     @CurrentUser() user: JwtPayload,
     @Param("resaleId") resaleId: string,
   ) {
-    return firstValueFrom(
+    const resale = (await firstValueFrom(
       this.ticketClient.send("ticket.withdraw_resale", {
         resale_id: resaleId,
         buyer_id: user.sub,
       }),
+    )) as { ticket_id: string };
+
+    // Bug corrigé : aucune confirmation n'était envoyée au vendeur après un
+    // retrait — symétrique à notifyResaleListed/notifyResaleSold qui, eux,
+    // couvrent déjà tout le reste du cycle de vie de l'annonce.
+    this.notifyResaleWithdrawn(user.sub, resale.ticket_id).catch((err) =>
+      this.logger.error(`Erreur notification retrait revente ${resaleId}: ${err?.message}`),
     );
+
+    return resale;
+  }
+
+  private async notifyResaleWithdrawn(sellerId: string, ticketId: string): Promise<void> {
+    if (!(await this.wantsResaleUpdates(sellerId))) return;
+
+    const [seller, ticket] = await Promise.all([
+      firstValueFrom(
+        this.authClient.send("auth.get_user", { id: sellerId }),
+      ) as Promise<{ email: string; first_name: string } | null>,
+      firstValueFrom(
+        this.ticketClient.send("ticket.get", { id: ticketId }),
+      ) as Promise<{ event_name: string }>,
+    ]);
+    if (!seller?.email) return;
+
+    this.notifClient.emit("notification.resale_withdrawn", {
+      email: seller.email,
+      firstName: seller.first_name,
+      eventName: ticket.event_name,
+    });
   }
 
   // ─── Agent de contrôle : scan ────────────────────────────────────────────────
