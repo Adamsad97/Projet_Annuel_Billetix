@@ -72,7 +72,8 @@ export class UpdateEventDto {
   @ApiPropertyOptional() @IsOptional()
   venue_longitude?: number;
 
-  @ApiPropertyOptional() @IsUrl() @IsOptional()
+  // require_tld: false — cf. create-event.dto.ts (URLs MinIO en localhost).
+  @ApiPropertyOptional() @IsUrl({ require_tld: false }) @IsOptional()
   poster_url?: string;
 
   @ApiPropertyOptional() @IsInt() @Min(1) @IsOptional()

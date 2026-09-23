@@ -34,7 +34,7 @@ export class CreateEventDto {
   // non lucratif" — sans lui, l'admin n'a rien à vérifier avant d'accorder
   // l'exonération de commission (cf. EventService.computeCommissionRate).
   @ValidateIf((dto: CreateEventDto) => dto.is_non_profit === true)
-  @IsUrl({}, { message: 'Un justificatif est requis pour une déclaration à but non lucratif' })
+  @IsUrl({ require_tld: false }, { message: 'Un justificatif est requis pour une déclaration à but non lucratif' })
   non_profit_document_url?: string;
 
   @IsDateString()
@@ -70,7 +70,8 @@ export class CreateEventDto {
   @IsOptional()
   venue_longitude?: number;
 
-  @IsUrl()
+  // require_tld: false — même correctif que non_profit_document_url ci-dessus.
+  @IsUrl({ require_tld: false })
   poster_url: string;
 
   @IsInt() @Min(1)

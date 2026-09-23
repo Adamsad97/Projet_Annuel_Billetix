@@ -2,12 +2,20 @@
 // Multipart — ne peut pas passer par lib/api/client.ts (qui JSON.stringify
 // systématiquement le corps de la requête).
 
+import { getApiBaseUrl } from "./base-url";
 import { getAccessToken } from "@/lib/auth/session";
 import { ApiError, extractErrorMessage } from "./http-error";
+import { refreshAccessToken } from "./client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+const API_URL = getApiBaseUrl();
 
-async function uploadFile(path: string, file: File): Promise<{ url: string }> {
+// Bug corrigé : contrairement à lib/api/client.ts (request()), cet appel
+// n'essayait jamais de rafraîchir un access token expiré avant d'abandonner
+// — un upload (affiche d'événement, document KYC...) tombant pile après
+// l'expiration du token (courte durée, 15 min) affichait le message brut du
+// guard JWT ("Token invalide ou expiré") au lieu de rafraîchir la session en
+// silence comme partout ailleurs dans l'app.
+async function uploadFile(path: string, file: File, isRetry = false): Promise<{ url: string }> {
   const token = getAccessToken();
   const formData = new FormData();
   formData.append("file", file);
@@ -23,6 +31,11 @@ async function uploadFile(path: string, file: File): Promise<{ url: string }> {
     throw new ApiError(0, "Impossible de contacter le serveur — vérifie ta connexion ou réessaie plus tard.");
   }
 
+  if (response.status === 401 && !isRetry && token) {
+    const newToken = await refreshAccessToken();
+    if (newToken) return uploadFile(path, file, true);
+  }
+
   let data: unknown = null;
   try {
     data = await response.json();
@@ -31,7 +44,12 @@ async function uploadFile(path: string, file: File): Promise<{ url: string }> {
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, extractErrorMessage(data, "Le téléversement a échoué, réessaie."));
+    throw new ApiError(
+      response.status,
+      response.status === 401
+        ? "Ta session a expiré — reconnecte-toi pour continuer."
+        : extractErrorMessage(data, "Le téléversement a échoué, réessaie."),
+    );
   }
 
   return data as { url: string };

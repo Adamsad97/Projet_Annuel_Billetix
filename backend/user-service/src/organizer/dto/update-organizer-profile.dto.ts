@@ -9,7 +9,9 @@ export class UpdateOrganizerProfileDto {
   @IsOptional()
   description?: string;
 
-  @IsUrl()
+  // require_tld: false — logo hébergé sur MinIO, http://localhost:9000/...
+  // en dev (contrairement à website_url, un vrai domaine externe).
+  @IsUrl({ require_tld: false })
   @IsOptional()
   logo_url?: string;
 

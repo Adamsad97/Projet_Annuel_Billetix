@@ -77,7 +77,11 @@ export class CreateEventDto {
   @ApiPropertyOptional() @IsOptional()
   venue_longitude?: number;
 
-  @ApiProperty() @IsUrl()
+  // Bug corrigé : @IsUrl() sans option rejette "localhost" par défaut
+  // (require_tld implicite) — les URLs MinIO en dev (http://localhost:9000/
+  // posters/...) échouaient systématiquement à la validation avec "poster_url
+  // must be a URL address", alors que l'upload lui-même avait réussi.
+  @ApiProperty() @IsUrl({ require_tld: false })
   poster_url: string;
 
   @ApiProperty() @IsInt() @Min(1)

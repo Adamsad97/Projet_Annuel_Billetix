@@ -9,7 +9,8 @@ export class UpdateKycDto {
   @IsOptional()
   kyc_rejected_reason?: string;
 
-  @IsUrl()
+  // require_tld: false — document hébergé sur MinIO, localhost en dev.
+  @IsUrl({ require_tld: false })
   @IsOptional()
   kyc_document_url?: string;
 }

@@ -12,8 +12,10 @@ export class CreateOrganizerProfileDto {
   @IsOptional()
   description?: string;
 
+  // require_tld: false — logo hébergé sur MinIO, http://localhost:9000/...
+  // en dev (contrairement à website_url, un vrai domaine externe).
   @ApiPropertyOptional()
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   @IsOptional()
   logo_url?: string;
 
