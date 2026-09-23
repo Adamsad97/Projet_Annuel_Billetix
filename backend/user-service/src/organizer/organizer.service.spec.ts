@@ -58,16 +58,30 @@ describe('OrganizerService', () => {
     it('horodate la soumission KYC', async () => {
       repo.findOne.mockResolvedValue({ user_id: 'user-1', kyc_status: KycStatus.PENDING });
 
-      const result = await service.updateKyc('user-1', { kyc_status: KycStatus.SUBMITTED });
+      // Bug corrigé (test obsolète) : un justificatif est désormais
+      // obligatoire pour soumettre (cf. OrganizerService.updateKyc).
+      const result = await service.updateKyc('user-1', {
+        kyc_status: KycStatus.SUBMITTED,
+        kyc_document_url: 'https://minio.example.com/kbis.pdf',
+      });
 
       expect(result.kyc_status).toBe(KycStatus.SUBMITTED);
       expect(result.kyc_submitted_at).toBeInstanceOf(Date);
     });
 
     it('efface le motif de rejet précédent quand le KYC est validé', async () => {
+      // Bug corrigé (test obsolète) : VERIFIED/REJECTED n'est désormais
+      // accepté que depuis SUBMITTED (workflow soumission→examen imposé),
+      // et VERIFIED exige un justificatif déjà présent sur le profil —
+      // REJECTED seul (sans nouvelle soumission) est justement rejeté par
+      // le code depuis ce correctif. kyc_rejected_reason simule ici un
+      // reliquat d'un rejet précédent sur un profil qui vient d'être
+      // resoumis (la resoumission elle-même l'efface déjà, mais VERIFIED
+      // doit rester défensif quel que soit l'état de ce champ).
       repo.findOne.mockResolvedValue({
         user_id: 'user-1',
-        kyc_status: KycStatus.REJECTED,
+        kyc_status: KycStatus.SUBMITTED,
+        kyc_document_url: 'https://minio.example.com/kbis.pdf',
         kyc_rejected_reason: 'Document illisible',
       });
 
