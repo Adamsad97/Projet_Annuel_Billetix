@@ -206,6 +206,17 @@ export default function DashboardEventDetailPage({
                       >
                         Voir la page publique →
                       </Link>
+                      {event.status !== "SUSPENDED" &&
+                      event.status !== "CANCELLED" &&
+                      event.status !== "TERMINATED" &&
+                      event.status !== "ARCHIVED" ? (
+                        <Link
+                          href={`/evenements/${id}/modifier`}
+                          className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+                        >
+                          ✎ Modifier
+                        </Link>
+                      ) : null}
                       <button
                         type="button"
                         onClick={handleDuplicate}
