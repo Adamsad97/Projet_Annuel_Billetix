@@ -1,49 +1,45 @@
-import { notFound } from "next/navigation";
+"use client";
+
+// Bug corrigé : page 100% maquette (eventDetails factice) — câblée sur
+// GET /events/:id/dashboard (déjà vérifié organisateur/propriétaire côté
+// gateway) et PATCH /events/:id, jamais appelés jusqu'ici malgré un
+// backend complet. Composant client (comme les autres pages organisateur/
+// admin) : le token vit dans le navigateur, inaccessible à un Server
+// Component qui tournerait dans le conteneur.
+
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { AuthHeader } from "@/components/layout/auth-header";
-import {
-  CreateEventForm,
-  type CreateEventFormInitial,
-} from "@/components/create-event/create-event-form";
-import { eventDetails } from "@/lib/mock/event-details";
-import { listCategories } from "@/lib/api/categories";
-import { listTicketTierTypes } from "@/lib/api/ticket-tier-types";
+import { EditEventForm } from "@/components/create-event/edit-event-form";
+import { getEventDashboardDetail } from "@/lib/api/events";
+import { listCategories, type ApiCategory } from "@/lib/api/categories";
+import type { ApiEvent } from "@/lib/api/events";
+import { ApiError } from "@/lib/api/http-error";
 
-export function generateStaticParams() {
-  return Object.keys(eventDetails).map((id) => ({ id }));
-}
-
-export default async function EditEventPage({
+export default function ModifierEvenementPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const event = eventDetails[id];
-  const [categories, tierTypes] = await Promise.all([
-    listCategories().catch(() => []),
-    listTicketTierTypes().catch(() => []),
-  ]);
+  const { id } = use(params);
+  const [event, setEvent] = useState<ApiEvent | null | undefined>(undefined);
+  const [categories, setCategories] = useState<ApiCategory[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!event) {
-    notFound();
-  }
-
-  const initial: CreateEventFormInitial = {
-    title: event.title,
-    description: event.description,
-    category: event.categoryLabel.toLowerCase(),
-    startAt: "2026-08-15T20:00",
-    endAt: "2026-08-16T02:00",
-    venueName: event.venueName,
-    address: event.address,
-    ticketTiers: event.tickets.map((ticket) => ({
-      name: ticket.label,
-      price: String(ticket.price),
-      quota: "500",
-      maxPerOrder: "4",
-    })),
-  };
+  useEffect(() => {
+    Promise.all([getEventDashboardDetail(id), listCategories().catch(() => [])])
+      .then(([detail, categoriesResult]) => {
+        setEvent(detail.event);
+        setCategories(categoriesResult);
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
+          setEvent(null);
+          return;
+        }
+        setError(err instanceof ApiError ? err.message : "Impossible de charger cet événement.");
+      });
+  }, [id]);
 
   return (
     <div className="flex flex-1 flex-col bg-[#07060c]">
@@ -52,21 +48,30 @@ export default async function EditEventPage({
       <main className="flex-1 px-6 py-10">
         <Link
           href={`/dashboard/evenements/${id}`}
-          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
+          className="mx-auto mb-6 flex w-full max-w-2xl items-center gap-1.5 text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
         >
           ← Retour à l&apos;événement
         </Link>
 
-        <div className="mb-10 text-center">
-          <h1 className="text-2xl font-bold text-white">
-            Modifier « {event.title} »
-          </h1>
-          <p className="mt-1 text-sm text-violet-300">
-            Les changements substantiels repassent en file de validation.
-          </p>
+        <div className="mx-auto mb-10 w-full max-w-2xl text-center">
+          <h1 className="text-2xl font-bold text-white">Modifier l&apos;événement</h1>
         </div>
 
-        <CreateEventForm categories={categories} tierTypes={tierTypes} initial={initial} mode="edit" />
+        {error ? (
+          <div className="mx-auto mb-6 w-full max-w-2xl rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-center text-sm text-red-300">
+            {error}
+          </div>
+        ) : null}
+
+        {event === undefined ? (
+          <p className="text-center text-sm text-gray-500">Chargement…</p>
+        ) : event === null ? (
+          <p className="text-center text-sm text-gray-500">
+            Cet événement n&apos;existe pas ou n&apos;appartient pas à ton compte.
+          </p>
+        ) : (
+          <EditEventForm event={event} categories={categories} />
+        )}
       </main>
     </div>
   );

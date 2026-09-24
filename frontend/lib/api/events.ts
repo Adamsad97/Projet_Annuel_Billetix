@@ -2,7 +2,7 @@
 // (backend/api-gateway/src/event/event.controller.ts). Câblage réel.
 
 import { getApiBaseUrl } from "./base-url";
-import { apiGet, apiPost } from "./client";
+import { apiGet, apiPatch, apiPost } from "./client";
 import { ApiError, extractErrorMessage } from "./http-error";
 import type { ApiTicket } from "./tickets";
 
@@ -152,6 +152,44 @@ export interface CreateEventDto {
 
 export function createEvent(dto: CreateEventDto): Promise<ApiEvent> {
   return apiPost<ApiEvent>("/events", dto);
+}
+
+// Bug corrigé : /evenements/:id/modifier n'a jamais été relié au serveur
+// (page 100% maquette) et le formulaire bloquait explicitement le mode
+// édition. Champs réellement modifiables selon le statut, imposé côté
+// serveur (event-service EventService.update) :
+// - DRAFT : tous les champs ci-dessous (sauf les catégories de billets,
+//   qui n'ont pas d'API de modification/suppression, seulement création).
+// - PENDING_VALIDATION / PUBLISHED : uniquement les 3 champs "cosmétiques"
+//   (description, affiche, conditions d'accès) — les acheteurs déjà
+//   inscrits ne doivent pas voir prix/dates/lieu changer sous eux.
+// - Statut suspendu/annulé/terminé/archivé : non modifiable du tout.
+export const EVENT_COSMETIC_FIELDS = ["description", "poster_url", "access_conditions"] as const;
+
+// Distinct de CreateEventDto (frontend) : le formulaire de création ne
+// collecte pas access_conditions, alors que c'est justement l'un des 3
+// champs "cosmétiques" modifiables une fois l'événement soumis/publié.
+export interface UpdateEventDto {
+  title?: string;
+  description?: string;
+  category?: string;
+  start_date?: string;
+  end_date?: string;
+  venue_name?: string;
+  venue_address_line1?: string;
+  venue_city?: string;
+  venue_postal_code?: string;
+  venue_country?: string;
+  poster_url?: string;
+  total_capacity?: number;
+  sales_start_date?: string;
+  sales_end_date?: string;
+  refund_policy?: "NON_REFUNDABLE" | "REFUNDABLE";
+  access_conditions?: string;
+}
+
+export function updateEvent(eventId: string, dto: UpdateEventDto): Promise<ApiEvent> {
+  return apiPatch<ApiEvent>(`/events/${eventId}`, dto);
 }
 
 export interface CreateTicketCategoryDto {
