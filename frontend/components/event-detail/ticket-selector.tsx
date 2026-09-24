@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { TicketOption } from "@/lib/mock/event-details";
 import { reserveStock } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/http-error";
 import { saveCart } from "@/lib/checkout/cart";
-import { getAccessToken } from "@/lib/auth/session";
+import { getAccessToken, getStoredUser } from "@/lib/auth/session";
 
 const currency = new Intl.NumberFormat("fr-FR", {
   style: "currency",
@@ -17,10 +18,12 @@ export function TicketSelector({
   eventId,
   eventTitle,
   tickets,
+  organizerId,
 }: {
   eventId: string;
   eventTitle: string;
   tickets: TicketOption[];
+  organizerId: string;
 }) {
   const router = useRouter();
   const [quantities, setQuantities] = useState<Record<string, number>>(() =>
@@ -28,6 +31,18 @@ export function TicketSelector({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Bug corrigé : le backend refuse déjà qu'un organisateur achète un
+  // billet pour son propre événement (order.service.ts create()), mais la
+  // page publique proposait quand même le formulaire d'achat — l'erreur
+  // n'arrivait qu'après réservation + saisie de facturation, beaucoup
+  // trop tard. Lu en useEffect (comme partout ailleurs dans l'app) : le
+  // compte connecté vit dans le localStorage, absent côté serveur.
+  const [isOwnEvent, setIsOwnEvent] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsOwnEvent(getStoredUser()?.id === organizerId);
+  }, [organizerId]);
 
   const total = useMemo(
     () =>
@@ -93,6 +108,24 @@ export function TicketSelector({
     } finally {
       setLoading(false);
     }
+  }
+
+  if (isOwnEvent) {
+    return (
+      <div className="sticky top-24 rounded-2xl border border-white/5 bg-[#12101c] p-5">
+        <h2 className="text-base font-bold text-white">Choisir mes billets</h2>
+        <p className="mt-4 text-sm text-gray-400">
+          C&apos;est ton événement — un organisateur ne peut pas acheter de billet pour son propre
+          événement.
+        </p>
+        <Link
+          href={`/dashboard/evenements/${eventId}`}
+          className="mt-4 block rounded-full border border-white/15 px-4 py-2.5 text-center text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+        >
+          Gérer cet événement →
+        </Link>
+      </div>
+    );
   }
 
   return (

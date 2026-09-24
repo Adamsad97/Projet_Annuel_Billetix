@@ -15,12 +15,14 @@ export default async function EventDetailPage({
   const { id } = await params;
 
   let event;
+  let organizerId: string;
   try {
     const [apiEvent, categories] = await Promise.all([
       getEvent(id),
       getEventCategories(id),
     ]);
     event = apiEventToDetail(apiEvent, categories);
+    organizerId = apiEvent.organizer_id;
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       notFound();
@@ -71,7 +73,7 @@ export default async function EventDetailPage({
           </div>
 
           <div className="lg:col-span-1">
-            <TicketSelector eventId={id} eventTitle={event.title} tickets={event.tickets} />
+            <TicketSelector eventId={id} eventTitle={event.title} tickets={event.tickets} organizerId={organizerId} />
           </div>
         </div>
       </main>
