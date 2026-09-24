@@ -119,7 +119,10 @@ export default function DashboardEventDetailPage({
     setError(null);
     try {
       const clone = await duplicateEvent(id);
-      router.push(`/dashboard/evenements/${clone.id}`);
+      // Redirige directement vers la modification (pas la fiche) : le clone
+      // reprend les dates de l'original telles quelles, la première chose à
+      // faire est justement de les changer (ex : même artiste, autre date).
+      router.push(`/evenements/${clone.id}/modifier`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Impossible de dupliquer l'événement.");
       setActionBusy(false);
@@ -217,14 +220,22 @@ export default function DashboardEventDetailPage({
                           ✎ Modifier
                         </Link>
                       ) : null}
-                      <button
-                        type="button"
-                        onClick={handleDuplicate}
-                        disabled={actionBusy}
-                        className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white disabled:opacity-50"
-                      >
-                        ⎘ Dupliquer
-                      </button>
+                      {/* Bug corrigé (règle produit) : dupliquer n'a de sens
+                          qu'une fois complet — sinon deux événements se
+                          disputent le même stock. Cas réel : un artiste qui
+                          rejoue le même jour, au même endroit, une fois les
+                          places épuisées. */}
+                      {fill_stats.total_quota > 0 && fill_stats.remaining === 0 ? (
+                        <button
+                          type="button"
+                          onClick={handleDuplicate}
+                          disabled={actionBusy}
+                          title="Programmer une nouvelle date pour ce même événement, maintenant complet"
+                          className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white disabled:opacity-50"
+                        >
+                          ⎘ Programmer une nouvelle date
+                        </button>
+                      ) : null}
                       {event.status === "DRAFT" ? (
                         <button
                           type="button"

@@ -39,7 +39,7 @@ describe('EventService', () => {
     getById: jest.Mock;
     respond: jest.Mock;
   };
-  let ticketCategoryService: { getByEvent: jest.Mock; create: jest.Mock };
+  let ticketCategoryService: { getByEvent: jest.Mock; create: jest.Mock; getFillStats: jest.Mock };
   let categoryService: { assertActive: jest.Mock };
 
   const config = {
@@ -82,6 +82,10 @@ describe('EventService', () => {
     ticketCategoryService = {
       getByEvent: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
+      // Épuisé par défaut — la plupart des tests duplicate() veulent passer
+      // ce garde-fou sans s'en préoccuper ; le test dédié au refus le
+      // surcharge explicitement avec du stock restant.
+      getFillStats: jest.fn().mockResolvedValue({ total_quota: 500, remaining: 0, sold: 500, fill_rate: 100, categories: [] }),
     };
     categoryService = { assertActive: jest.fn().mockResolvedValue(undefined) };
 
@@ -481,12 +485,40 @@ describe('EventService', () => {
       expect(repo.save).not.toHaveBeenCalled();
     });
 
-    it('crée un nouveau brouillon avec le titre suffixé "(copie)"', async () => {
+    it('refuse si des billets restent disponibles (règle : dupliquer seulement un événement épuisé)', async () => {
+      repo.findOne.mockResolvedValue(original);
+      ticketCategoryService.getFillStats.mockResolvedValue({
+        total_quota: 500,
+        remaining: 50,
+        sold: 450,
+        fill_rate: 90,
+        categories: [],
+      });
+
+      await expect(service.duplicate('11111111-1111-4111-8111-111111111111', 'organizer-1')).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuse si aucune catégorie de billet (rien n\'a jamais pu se vendre)', async () => {
+      repo.findOne.mockResolvedValue(original);
+      ticketCategoryService.getFillStats.mockResolvedValue({
+        total_quota: 0,
+        remaining: 0,
+        sold: 0,
+        fill_rate: 0,
+        categories: [],
+      });
+
+      await expect(service.duplicate('11111111-1111-4111-8111-111111111111', 'organizer-1')).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('crée un nouveau brouillon avec le même titre (pas suffixé "(copie)" — doit se présenter comme un autre événement)', async () => {
       repo.findOne.mockResolvedValue(original);
 
       const clone = await service.duplicate('11111111-1111-4111-8111-111111111111', 'organizer-1');
 
-      expect(clone.title).toBe('Concert Été (copie)');
+      expect(clone.title).toBe('Concert Été');
       expect(clone.status).toBe(EventStatus.DRAFT);
       expect(clone.venue_name).toBe('Zenith');
     });

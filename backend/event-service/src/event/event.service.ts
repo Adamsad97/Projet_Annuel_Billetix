@@ -445,9 +445,16 @@ export class EventService {
   }
 
   /**
-   * Duplication simple — crée un nouveau brouillon reprenant les infos et
-   * catégories de billets de l'événement d'origine (quotas remis à zéro),
-   * à charge pour l'organisateur d'ajuster les dates avant de soumettre.
+   * Bug corrigé (règle produit) : la duplication était possible à tout
+   * moment, y compris sur un événement dont il restait encore des billets
+   * à vendre — créant deux événements en concurrence directe sur le même
+   * stock. Réservée désormais aux événements totalement épuisés (cas
+   * d'usage réel : un artiste qui rejoue le même jour, au même endroit,
+   * une fois complet — pas un simple outil de clonage générique). Le
+   * clone reprend les dates de l'original tel quel (à ajuster ensuite via
+   * /evenements/:id/modifier, redirigé automatiquement côté frontend) et
+   * n'est plus suffixé "(copie)" : il doit se présenter comme un second
+   * événement à part entière, pas comme un doublon de l'original.
    */
   async duplicate(id: string, organizerId: string): Promise<Event> {
     const original = await this.getById(id);
@@ -455,9 +462,18 @@ export class EventService {
       throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
     }
 
+    const fillStats = await this.ticketCategoryService.getFillStats(id);
+    if (fillStats.total_quota === 0 || fillStats.remaining > 0) {
+      throw new RpcException({
+        statusCode: 400,
+        message:
+          'La duplication n\'est possible que lorsque tous les billets sont épuisés (ex : programmer une nouvelle date une fois complet).',
+      });
+    }
+
     const clone = this.repo.create({
       organizer_id: original.organizer_id,
-      title: `${original.title} (copie)`,
+      title: original.title,
       description: original.description,
       category: original.category,
       is_non_profit: original.is_non_profit,
