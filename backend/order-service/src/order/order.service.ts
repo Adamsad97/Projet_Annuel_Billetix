@@ -30,11 +30,26 @@ export class OrderService {
     // event-service à partir des réglages admin (platform_settings) — un
     // acheteur ne peut donc jamais imposer un taux de son choix (ex: 0%).
     const event = await firstValueFrom(
-      this.eventClient.send<{ commission_rate: number }>('event.get', {
+      this.eventClient.send<{ commission_rate: number; organizer_id: string }>('event.get', {
         id: reservation.event_id,
       }),
     );
     const commission_rate = Number(event.commission_rate);
+
+    // Bug corrigé (règle produit) : rien n'empêchait un organisateur
+    // d'acheter un billet pour son propre événement — gonflait
+    // artificiellement les ventes/le taux de remplissage affichés sur son
+    // propre dashboard. Même principe déjà appliqué à la revente (un
+    // vendeur ne peut pas racheter son propre billet, cf. createFromResale
+    // ci-dessous) — organizer_id relu depuis l'événement réel, jamais
+    // depuis dto.organizer_id (optionnel, fourni par le client).
+    if (event.organizer_id === dto.buyer_id) {
+      await this.reservationService.release(dto.reservation_token);
+      throw new RpcException({
+        statusCode: 403,
+        message: 'Un organisateur ne peut pas acheter de billet pour son propre événement',
+      });
+    }
 
     // Prix unitaire : jamais accepté depuis le client — relu depuis les
     // catégories de billets réelles de l'événement (event-service), seule

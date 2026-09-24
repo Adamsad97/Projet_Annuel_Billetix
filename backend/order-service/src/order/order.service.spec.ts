@@ -19,7 +19,7 @@ describe('OrderService', () => {
   };
   let abandonedQueryBuilder: { where: jest.Mock; andWhere: jest.Mock; getMany: jest.Mock };
   let itemRepo: { find: jest.Mock };
-  let reservationService: { restoreItems: jest.Mock; validate: jest.Mock; consume: jest.Mock };
+  let reservationService: { restoreItems: jest.Mock; validate: jest.Mock; consume: jest.Mock; release: jest.Mock };
   let platformConfig: { get: jest.Mock };
   let eventClient: { send: jest.Mock };
   let ticketClient: { send: jest.Mock };
@@ -42,6 +42,7 @@ describe('OrderService', () => {
       restoreItems: jest.fn().mockResolvedValue(undefined),
       validate: jest.fn(),
       consume: jest.fn().mockResolvedValue(undefined),
+      release: jest.fn().mockResolvedValue({ success: true }),
     };
     platformConfig = {
       get: jest.fn().mockResolvedValue({
@@ -270,6 +271,7 @@ describe('OrderService', () => {
     /** Configure eventClient.send pour répondre selon le pattern TCP appelé. */
     function mockEventClient(overrides: {
       commission_rate?: number;
+      organizer_id?: string;
       categories?: Array<{ id: string; name: string; price_ht: number }>;
       promoResult?: {
         valid: boolean;
@@ -284,7 +286,7 @@ describe('OrderService', () => {
       ];
       eventClient.send.mockImplementation((pattern: string) => {
         if (pattern === 'event.get') {
-          return of({ commission_rate: overrides.commission_rate ?? 10 });
+          return of({ commission_rate: overrides.commission_rate ?? 10, organizer_id: overrides.organizer_id });
         }
         if (pattern === 'event.get_categories') return of(categories);
         if (pattern === 'event.validate_promo_code') return of(overrides.promoResult);
@@ -321,6 +323,18 @@ describe('OrderService', () => {
       // total_ht = 50 * 2 = 100 ; commission à 10% = 10
       expect(order.total_commission).toBe(10);
       expect(order.net_organizer_amount).toBe(90);
+    });
+
+    it("refuse qu'un organisateur achète un billet pour son propre événement (libère aussitôt la réservation)", async () => {
+      // organizer_id relu depuis l'événement réel (event-service), pas
+      // depuis un champ du DTO — un client ne peut pas contourner en
+      // omettant simplement organizer_id de sa requête.
+      mockEventClient({ organizer_id: 'buyer-1' });
+
+      await expect(service.create({ ...baseDto, buyer_id: 'buyer-1' } as any)).rejects.toThrow(RpcException);
+
+      expect(reservationService.release).toHaveBeenCalledWith('tok-1');
+      expect(dataSource.transaction).not.toHaveBeenCalled();
     });
 
     it('applique bien un taux non-lucratif à 0% quand c\'est réellement le cas côté event-service', async () => {
