@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Headers,
   HttpCode,
@@ -60,9 +61,23 @@ export class PaymentController {
     );
   }
 
+  // Bug corrigé (fuite de contrôle d'accès) : cette route renvoyait le
+  // paiement de n'importe quelle commande à n'importe quel utilisateur
+  // authentifié, provider_client_secret compris — sans même vérifier que
+  // l'appelant est bien l'acheteur de la commande. Jamais appelée par le
+  // frontend jusqu'ici (retrouvée en construisant la reprise de paiement),
+  // mais restait un endpoint réel et atteignable.
   @Get("order/:orderId")
-  @ApiOperation({ summary: "Paiement d'une commande" })
-  getByOrder(@Param("orderId") orderId: string) {
+  @ApiOperation({ summary: "Paiement d'une commande (le titulaire, ou un admin)" })
+  async getByOrder(@CurrentUser() user: JwtPayload, @Param("orderId") orderId: string) {
+    const { order } = (await firstValueFrom(
+      this.orderClient.send("order.get", { id: orderId }),
+    )) as { order: { buyer_id: string } };
+
+    if (order.buyer_id !== user.sub && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      throw new ForbiddenException("Non autorisé");
+    }
+
     return firstValueFrom(
       this.paymentClient.send("payment.get_by_order", { order_id: orderId }),
     );

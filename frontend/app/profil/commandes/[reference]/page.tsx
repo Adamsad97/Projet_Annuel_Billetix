@@ -9,9 +9,13 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { Elements } from "@stripe/react-stripe-js";
 import { AuthHeader } from "@/components/layout/auth-header";
+import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
 import { getOrder, resendTickets, type ApiOrder, type ApiOrderItem } from "@/lib/api/orders";
 import { getTicketsByOrder, type ApiTicket } from "@/lib/api/tickets";
+import { createPaymentIntent } from "@/lib/api/payments";
+import { getStripe } from "@/lib/stripe/client";
 import { orderStatusBadge } from "@/lib/mock/profile";
 import { apiOrderItemsToLines, orderStatusFor, paymentMethodLabel } from "@/lib/mappers/profile-mappers";
 import { ApiError } from "@/lib/api/http-error";
@@ -32,6 +36,16 @@ export default function OrderDetailPage({
   const [error, setError] = useState<string | null>(null);
   const [resendState, setResendState] = useState<"idle" | "loading" | "sent" | "error">("idle");
   const [resendError, setResendError] = useState<string | null>(null);
+  // Bug corrigé (fonctionnalité absente) : une commande abandonnée en cours
+  // de paiement (PENDING_PAYMENT) restait bloquée sans aucun moyen d'y
+  // revenir — le stock est pourtant déjà décompté pour elle (order.create
+  // consomme la réservation), il ne manquait qu'un nouveau PaymentIntent.
+  // POST /payments/intent (déjà utilisé par le tunnel d'achat normal)
+  // revalide tout côté serveur (propriétaire, montant, statut déjà payé) :
+  // aucune confiance accordée au client ici non plus.
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [resumeLoading, setResumeLoading] = useState(false);
+  const [resumeError, setResumeError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,6 +93,32 @@ export default function OrderDetailPage({
   const badge = order ? orderStatusBadge[orderStatusFor(order.status)] : null;
   const lines = apiOrderItemsToLines(items);
   const canResend = order?.status === "CONFIRMED" || order?.status === "TICKETS_SENT";
+  const canResume = order?.status === "PENDING_PAYMENT";
+
+  async function handleResume() {
+    if (!order) return;
+    setResumeLoading(true);
+    setResumeError(null);
+    try {
+      const intent = await createPaymentIntent(order.id);
+      if (intent.client_secret) {
+        setClientSecret(intent.client_secret);
+      } else {
+        setResumeError("Ce moyen de paiement n'est pas encore disponible — seule la carte bancaire est câblée pour l'instant.");
+      }
+    } catch (err) {
+      // "Commande déjà payée" (409) : un webhook a pu arriver entre-temps
+      // (ex: autre onglet) — on recharge simplement l'état réel plutôt que
+      // d'afficher une erreur trompeuse sur une commande en fait réglée.
+      if (err instanceof ApiError && err.status === 409) {
+        getOrder(orderId).then((result) => setOrder(result.order));
+      } else {
+        setResumeError(err instanceof ApiError ? err.message : "Impossible de reprendre le paiement, réessaie.");
+      }
+    } finally {
+      setResumeLoading(false);
+    }
+  }
 
   async function handleResend() {
     if (!order) return;
@@ -155,6 +195,40 @@ export default function OrderDetailPage({
                 💳 {paymentMethodLabel(order.payment_method)}
               </p>
             </div>
+
+            {canResume ? (
+              <div className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+                {clientSecret ? (
+                  <Elements stripe={getStripe()} options={{ clientSecret, locale: "fr" }}>
+                    <StripePaymentForm
+                      orderId={order.id}
+                      amountLabel={currency.format(Number(order.total_amount_ttc))}
+                    />
+                  </Elements>
+                ) : (
+                  <>
+                    <h2 className="mb-1 text-sm font-semibold text-amber-200">Paiement non terminé</h2>
+                    <p className="mb-4 text-sm text-amber-200/70">
+                      Cette commande n&apos;a pas encore été réglée — tes places restent réservées le
+                      temps de finaliser le paiement.
+                    </p>
+                    {resumeError ? (
+                      <p className="mb-3 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-inset ring-red-500/30">
+                        {resumeError}
+                      </p>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={handleResume}
+                      disabled={resumeLoading}
+                      className="w-full rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {resumeLoading ? "Préparation du paiement…" : "Reprendre le paiement →"}
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : null}
 
             <h2 className="mb-3 mt-6 text-sm font-semibold text-gray-200">Billets inclus</h2>
             <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
