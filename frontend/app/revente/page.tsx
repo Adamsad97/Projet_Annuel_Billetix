@@ -3,6 +3,7 @@
 // annonces LISTED confondues).
 
 import { Navbar } from "@/components/layout/navbar";
+import { BuyerOnlyGate } from "@/components/layout/buyer-only-gate";
 import { ResaleCard } from "@/components/resale/resale-card";
 import { listResaleListings } from "@/lib/api/resale";
 import { resaleNote } from "@/lib/mock/resale";
@@ -11,8 +12,9 @@ export default async function RevendePage() {
   const listings = await listResaleListings().catch(() => []);
 
   return (
-    <div className="flex flex-1 flex-col bg-[#07060c]">
-      <Navbar />
+    <BuyerOnlyGate>
+      <div className="flex flex-1 flex-col bg-[#07060c]">
+        <Navbar />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
         <div className="mb-2">
@@ -38,6 +40,7 @@ export default async function RevendePage() {
           </div>
         )}
       </main>
-    </div>
+      </div>
+    </BuyerOnlyGate>
   );
 }

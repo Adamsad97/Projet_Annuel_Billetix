@@ -8,6 +8,7 @@ import { reserveStock } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/http-error";
 import { saveCart } from "@/lib/checkout/cart";
 import { getAccessToken, getStoredUser } from "@/lib/auth/session";
+import { CountdownDigits, SalesCountdown } from "@/components/event-detail/sales-countdown";
 
 const currency = new Intl.NumberFormat("fr-FR", {
   style: "currency",
@@ -19,11 +20,15 @@ export function TicketSelector({
   eventTitle,
   tickets,
   organizerId,
+  salesStartAt,
+  salesEndAt,
 }: {
   eventId: string;
   eventTitle: string;
   tickets: TicketOption[];
   organizerId: string;
+  salesStartAt: string;
+  salesEndAt: string;
 }) {
   const router = useRouter();
   const [quantities, setQuantities] = useState<Record<string, number>>(() =>
@@ -37,12 +42,53 @@ export function TicketSelector({
   // n'arrivait qu'après réservation + saisie de facturation, beaucoup
   // trop tard. Lu en useEffect (comme partout ailleurs dans l'app) : le
   // compte connecté vit dans le localStorage, absent côté serveur.
-  const [isOwnEvent, setIsOwnEvent] = useState(false);
+  //
+  // Bug corrigé (règle produit incomplète) : un compte ADMIN/SUPER_ADMIN
+  // reste purement administratif, jamais acheteur (cf. commit 220f98e) —
+  // ce gate ne couvrait que l'organisateur de CET événement, pas un admin
+  // achetant sur l'événement de quelqu'un d'autre (bloqué côté backend
+  // depuis order.controller.ts, mais l'erreur arrivait tout aussi tard).
+  const [blockReason, setBlockReason] = useState<"own_event" | "admin" | null>(
+    null,
+  );
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsOwnEvent(getStoredUser()?.id === organizerId);
+    const user = getStoredUser();
+    if (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setBlockReason("admin");
+    } else if (user?.id === organizerId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setBlockReason("own_event");
+    } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setBlockReason(null);
+    }
   }, [organizerId]);
+
+  // Bug corrigé : sales_start_date/sales_end_date étaient stockées mais
+  // jamais vérifiées à l'achat, même une fois l'événement validé par un
+  // admin — le backend refuse maintenant la réservation hors fenêtre
+  // (ticket-category.service.ts decrementQuota()), mais l'erreur n'arrivait
+  // qu'après avoir rempli le formulaire. "loading" le temps du useEffect,
+  // pour éviter tout calcul de "maintenant" pendant le rendu serveur.
+  const [salesState, setSalesState] = useState<"loading" | "not_open" | "open" | "closed">(
+    "loading",
+  );
+
+  useEffect(() => {
+    const now = Date.now();
+    if (now < new Date(salesStartAt).getTime()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSalesState("not_open");
+    } else if (now > new Date(salesEndAt).getTime()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSalesState("closed");
+    } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSalesState("open");
+    }
+  }, [salesStartAt, salesEndAt]);
 
   const total = useMemo(
     () =>
@@ -110,7 +156,35 @@ export function TicketSelector({
     }
   }
 
-  if (isOwnEvent) {
+  if (blockReason === "admin") {
+    return (
+      <div className="sticky top-24 rounded-2xl border border-white/5 bg-[#12101c] p-5">
+        <h2 className="text-base font-bold text-white">Choisir mes billets</h2>
+        <p className="mt-4 text-sm text-gray-400">
+          Un compte administrateur ne peut pas acheter de billets.
+        </p>
+        {/* Bug corrigé : l'organisateur/admin voyait uniquement le message
+            de blocage, aucune info sur l'état des ventes de l'événement
+            qu'il consulte — le tableau de compte à rebours n'apparaissait
+            que côté acheteur. Repris ici en lecture seule (onZero: no-op,
+            aucun formulaire d'achat à révéler pour ces rôles). */}
+        {salesState === "not_open" ? (
+          <div className="mt-4 border-t border-white/10 pt-4">
+            <p className="mb-3 text-xs text-gray-500">Ouverture des ventes dans :</p>
+            <CountdownDigits targetIso={salesStartAt} onZero={() => {}} />
+          </div>
+        ) : null}
+        <Link
+          href="/admin"
+          className="mt-4 block rounded-full border border-white/15 px-4 py-2.5 text-center text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+        >
+          Retour au back-office →
+        </Link>
+      </div>
+    );
+  }
+
+  if (blockReason === "own_event") {
     return (
       <div className="sticky top-24 rounded-2xl border border-white/5 bg-[#12101c] p-5">
         <h2 className="text-base font-bold text-white">Choisir mes billets</h2>
@@ -118,12 +192,47 @@ export function TicketSelector({
           C&apos;est ton événement — un organisateur ne peut pas acheter de billet pour son propre
           événement.
         </p>
+        {salesState === "not_open" ? (
+          <div className="mt-4 border-t border-white/10 pt-4">
+            <p className="mb-3 text-xs text-gray-500">Ouverture des ventes dans :</p>
+            <CountdownDigits targetIso={salesStartAt} onZero={() => {}} />
+          </div>
+        ) : null}
         <Link
           href={`/dashboard/evenements/${eventId}`}
           className="mt-4 block rounded-full border border-white/15 px-4 py-2.5 text-center text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
         >
           Gérer cet événement →
         </Link>
+      </div>
+    );
+  }
+
+  if (salesState === "loading") {
+    return (
+      <div className="sticky top-24 rounded-2xl border border-white/5 bg-[#12101c] p-5">
+        <h2 className="text-base font-bold text-white">Choisir mes billets</h2>
+        <p className="mt-4 text-sm text-gray-500">Chargement…</p>
+      </div>
+    );
+  }
+
+  if (salesState === "not_open") {
+    return (
+      <SalesCountdown
+        salesStartAt={salesStartAt}
+        onSalesOpen={() => setSalesState("open")}
+      />
+    );
+  }
+
+  if (salesState === "closed") {
+    return (
+      <div className="sticky top-24 rounded-2xl border border-white/5 bg-[#12101c] p-5">
+        <h2 className="text-base font-bold text-white">Choisir mes billets</h2>
+        <p className="mt-4 text-sm text-gray-400">
+          Les ventes pour cet événement sont closes.
+        </p>
       </div>
     );
   }

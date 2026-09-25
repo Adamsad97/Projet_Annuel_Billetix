@@ -53,6 +53,16 @@ export class OrderController {
       items: { ticket_category_id: string; quantity: number }[];
     },
   ) {
+    // Bug corrigé : un compte ADMIN/SUPER_ADMIN reste purement administratif,
+    // jamais acheteur (cf. commit 220f98e) — la règle n'était appliquée que
+    // côté front (nav, page Profil). Rien n'empêchait un admin d'appeler
+    // directement cette route. Bloqué dès la réservation de stock (étape 1)
+    // pour couper court à tout le tunnel d'achat.
+    if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
+      throw new ForbiddenException(
+        "Un compte administrateur ne peut pas acheter de billets.",
+      );
+    }
     return firstValueFrom(
       this.orderClient.send("order.reserve_stock", {
         buyer_id: user.sub,
@@ -97,6 +107,13 @@ export class OrderController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: Record<string, unknown>,
   ) {
+    // Défense en profondeur : même blocage qu'à l'étape reserve() ci-dessus.
+    if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
+      throw new ForbiddenException(
+        "Un compte administrateur ne peut pas acheter de billets.",
+      );
+    }
+
     // Snapshot événement/organisateur — jamais fourni par le client (bug
     // corrigé : dto.event_name/dto.event_venue_name/etc. n'étaient jamais
     // renseignés en pratique, laissant ces colonnes NULL sur la commande,

@@ -1,4 +1,5 @@
 import { Navbar } from "@/components/layout/navbar";
+import { BuyerOnlyGate } from "@/components/layout/buyer-only-gate";
 import { Hero } from "@/components/home/hero";
 import { FeaturedEvents } from "@/components/home/featured-events";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -28,13 +29,15 @@ export default async function Home() {
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-[#07060c]">
-      <Navbar active="/catalogue" />
-      <main className="flex-1">
-        <Hero />
-        <FeaturedEvents events={featured} />
-      </main>
-      <SiteFooter />
-    </div>
+    <BuyerOnlyGate>
+      <div className="flex flex-1 flex-col bg-[#07060c]">
+        <Navbar active="/catalogue" />
+        <main className="flex-1">
+          <Hero />
+          <FeaturedEvents events={featured} />
+        </main>
+        <SiteFooter />
+      </div>
+    </BuyerOnlyGate>
   );
 }
