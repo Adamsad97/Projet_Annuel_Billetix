@@ -78,6 +78,40 @@ export class EventService {
     private readonly categoryService: CategoryService,
   ) {}
 
+  /**
+   * Bug corrigé (règle produit jamais appliquée) : @IsDateString() sur le
+   * DTO ne vérifie qu'un format de date valide, jamais la cohérence
+   * métier — rien n'empêchait de créer un événement dans le passé, ni une
+   * fin antérieure au début. `existing` sert sur update() : si seul
+   * end_date change (start_date absent du dto), la comparaison se fait
+   * quand même contre le start_date déjà en base.
+   */
+  private assertValidDates(dto: { start_date?: string; end_date?: string }, existing?: Event): void {
+    const startDate = dto.start_date
+      ? new Date(dto.start_date)
+      : existing
+        ? new Date(existing.start_date)
+        : null;
+    const endDate = dto.end_date
+      ? new Date(dto.end_date)
+      : existing
+        ? new Date(existing.end_date)
+        : null;
+
+    if (dto.start_date !== undefined && startDate && startDate.getTime() < Date.now()) {
+      throw new RpcException({
+        statusCode: 400,
+        message: 'La date de début ne peut pas être dans le passé',
+      });
+    }
+    if (startDate && endDate && endDate.getTime() <= startDate.getTime()) {
+      throw new RpcException({
+        statusCode: 400,
+        message: 'La date de fin doit être postérieure à la date de début',
+      });
+    }
+  }
+
   /** Résout email/prénom de l'organisateur — nécessaire au bon format attendu par notification-service. */
   private async getOrganizerContact(organizerId: string): Promise<{ email: string | null; firstName: string | null }> {
     try {
@@ -92,6 +126,7 @@ export class EventService {
 
   async create(organizerId: string, dto: CreateEventDto): Promise<Event> {
     await this.categoryService.assertActive(dto.category);
+    this.assertValidDates(dto);
     const commission_rate = await this.computeCommissionRate(dto.total_capacity, false);
 
     const event = this.repo.create({
@@ -418,6 +453,9 @@ export class EventService {
 
     if (event.status === EventStatus.DRAFT) {
       if (dto.category) await this.categoryService.assertActive(dto.category);
+      if (dto.start_date !== undefined || dto.end_date !== undefined) {
+        this.assertValidDates(dto, event);
+      }
       Object.assign(event, pickUpdatableFields(dto));
       return this.repo.save(event);
     }
@@ -550,6 +588,18 @@ export class EventService {
     const event = await this.getById(id);
     if (event.status !== EventStatus.PENDING_VALIDATION) {
       throw new RpcException({ statusCode: 400, message: 'L\'événement n\'est pas en attente de validation' });
+    }
+    // Bug corrigé : create()/update() rejettent désormais une date passée,
+    // mais un événement resté en attente de validation assez longtemps
+    // (délai de traitement, demande de complément d'info...) peut voir sa
+    // date de début franchir "maintenant" avant qu'un admin ne le traite —
+    // publier un événement déjà passé n'a pas de sens, mieux vaut le
+    // rejeter explicitement (motif clair pour l'organisateur).
+    if (new Date(event.start_date).getTime() < Date.now()) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "La date de début de cet événement est déjà passée — rejette-le plutôt que de le valider.",
+      });
     }
     event.commission_rate = await this.computeCommissionRate(event.total_capacity, event.non_profit_verified);
     event.status = EventStatus.PUBLISHED;

@@ -165,6 +165,34 @@ export class TicketCategoryService {
       });
     }
 
+    // Bug corrigé (règle produit jamais appliquée) : sales_start_date/
+    // sales_end_date (événement + override optionnel par catégorie,
+    // ticket-category.entity.ts) étaient stockées mais jamais vérifiées à
+    // l'achat — un événement validé par un admin restait achetable à
+    // n'importe quel moment, même avant l'ouverture des ventes choisie par
+    // l'organisateur ou après leur fermeture. Un override par catégorie
+    // (s'il est défini) prime sur la fenêtre globale de l'événement — sinon
+    // on hérite de celle de l'événement.
+    const event = await this.eventRepo.findOne({ where: { id: category.event_id } });
+    if (!event) {
+      throw new RpcException({ statusCode: 404, message: 'Événement introuvable' });
+    }
+    const salesStart = category.sales_start_date ?? event.sales_start_date;
+    const salesEnd = category.sales_end_date ?? event.sales_end_date;
+    const now = Date.now();
+    if (salesStart && now < new Date(salesStart).getTime()) {
+      throw new RpcException({
+        statusCode: 403,
+        message: `Les ventes pour "${category.name}" ne sont pas encore ouvertes (ouverture le ${new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(salesStart))})`,
+      });
+    }
+    if (salesEnd && now > new Date(salesEnd).getTime()) {
+      throw new RpcException({
+        statusCode: 403,
+        message: `Les ventes pour "${category.name}" sont closes depuis le ${new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(salesEnd))}`,
+      });
+    }
+
     const rows = await this.dataSource.query(
       `UPDATE events.ticket_categories
        SET remaining_quota = remaining_quota - $1

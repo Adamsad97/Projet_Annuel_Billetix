@@ -17,6 +17,7 @@ describe('TicketCategoryService', () => {
   let notifClient: { emit: jest.Mock };
   let platformConfig: { get: jest.Mock };
   let ticketTierTypeService: { assertActive: jest.Mock };
+  let dataSource: { query: jest.Mock };
 
   beforeEach(async () => {
     repo = {
@@ -32,6 +33,7 @@ describe('TicketCategoryService', () => {
     notifClient = { emit: jest.fn() };
     platformConfig = { get: jest.fn() };
     ticketTierTypeService = { assertActive: jest.fn().mockResolvedValue(undefined) };
+    dataSource = { query: jest.fn() };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -41,7 +43,7 @@ describe('TicketCategoryService', () => {
         { provide: 'NOTIFICATION_SERVICE', useValue: notifClient },
         { provide: 'AUTH_SERVICE', useValue: { send: jest.fn().mockReturnValue(of(null)) } },
         { provide: 'USER_SERVICE', useValue: userClient },
-        { provide: DataSource, useValue: { query: jest.fn() } },
+        { provide: DataSource, useValue: dataSource },
         { provide: PlatformConfigCache, useValue: platformConfig },
         { provide: TicketTierTypeService, useValue: ticketTierTypeService },
       ],
@@ -253,6 +255,94 @@ describe('TicketCategoryService', () => {
       await (service as any).checkAndNotifyFillThresholds('event-1');
 
       expect(notifClient.emit).toHaveBeenCalled();
+    });
+  });
+
+  // Bug corrigé : sales_start_date/sales_end_date (événement + override
+  // optionnel par catégorie) étaient stockées mais jamais vérifiées à
+  // l'achat — un événement validé restait achetable à n'importe quel
+  // moment.
+  describe('decrementQuota — fenêtre de vente', () => {
+    const HOUR = 60 * 60 * 1000;
+    const baseCategory = {
+      id: 'cat-1',
+      event_id: 'evt-1',
+      name: 'Standard',
+      max_per_order: 10,
+      sales_start_date: null as string | null,
+      sales_end_date: null as string | null,
+    };
+
+    beforeEach(() => {
+      dataSource.query.mockResolvedValue([[{ id: 'cat-1', event_id: 'evt-1' }], 1]);
+    });
+
+    it("refuse si les ventes de l'événement ne sont pas encore ouvertes", async () => {
+      repo.findOne.mockResolvedValue({ ...baseCategory });
+      eventRepo.findOne.mockResolvedValue({
+        id: 'evt-1',
+        sales_start_date: new Date(Date.now() + HOUR).toISOString(),
+        sales_end_date: new Date(Date.now() + 2 * HOUR).toISOString(),
+      });
+
+      await expect(service.decrementQuota('cat-1', 1)).rejects.toThrow(RpcException);
+      expect(dataSource.query).not.toHaveBeenCalled();
+    });
+
+    it("refuse si les ventes de l'événement sont closes", async () => {
+      repo.findOne.mockResolvedValue({ ...baseCategory });
+      eventRepo.findOne.mockResolvedValue({
+        id: 'evt-1',
+        sales_start_date: new Date(Date.now() - 2 * HOUR).toISOString(),
+        sales_end_date: new Date(Date.now() - HOUR).toISOString(),
+      });
+
+      await expect(service.decrementQuota('cat-1', 1)).rejects.toThrow(RpcException);
+      expect(dataSource.query).not.toHaveBeenCalled();
+    });
+
+    it('autorise pendant la fenêtre de vente de l\'événement', async () => {
+      repo.findOne.mockResolvedValue({ ...baseCategory });
+      eventRepo.findOne.mockResolvedValue({
+        id: 'evt-1',
+        sales_start_date: new Date(Date.now() - HOUR).toISOString(),
+        sales_end_date: new Date(Date.now() + HOUR).toISOString(),
+      });
+
+      await expect(service.decrementQuota('cat-1', 1)).resolves.toEqual({ success: true });
+      expect(dataSource.query).toHaveBeenCalled();
+    });
+
+    it("un override de la catégorie plus restrictif prime sur l'événement", async () => {
+      repo.findOne.mockResolvedValue({
+        ...baseCategory,
+        // La catégorie n'ouvre que dans 1h alors que l'événement vend déjà.
+        sales_start_date: new Date(Date.now() + HOUR).toISOString(),
+      });
+      eventRepo.findOne.mockResolvedValue({
+        id: 'evt-1',
+        sales_start_date: new Date(Date.now() - HOUR).toISOString(),
+        sales_end_date: new Date(Date.now() + 2 * HOUR).toISOString(),
+      });
+
+      await expect(service.decrementQuota('cat-1', 1)).rejects.toThrow(RpcException);
+      expect(dataSource.query).not.toHaveBeenCalled();
+    });
+
+    it("un override de la catégorie plus permissif prime aussi sur l'événement", async () => {
+      repo.findOne.mockResolvedValue({
+        ...baseCategory,
+        // La catégorie (ex: presale VIP) ouvre déjà alors que l'événement
+        // grand public n'a pas encore ouvert ses ventes.
+        sales_start_date: new Date(Date.now() - HOUR).toISOString(),
+      });
+      eventRepo.findOne.mockResolvedValue({
+        id: 'evt-1',
+        sales_start_date: new Date(Date.now() + HOUR).toISOString(),
+        sales_end_date: new Date(Date.now() + 2 * HOUR).toISOString(),
+      });
+
+      await expect(service.decrementQuota('cat-1', 1)).resolves.toEqual({ success: true });
     });
   });
 });
