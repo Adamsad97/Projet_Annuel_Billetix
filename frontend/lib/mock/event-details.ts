@@ -18,7 +18,11 @@ export interface EventDetail {
   venueName: string;
   dateLabel: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
   city: string;
+  salesStartAt: string;
+  salesEndAt: string;
   remainingLabel: string;
   statusLabel: string;
   heroEmoji: string;
@@ -38,7 +42,11 @@ export const eventDetails: Record<string, EventDetail> = {
     venueName: "La Défense Arena",
     dateLabel: "Samedi 15 août 2026 — 20h00",
     address: "2 Esplanade de la Défense, 92000 Puteaux",
+    latitude: 48.8918,
+    longitude: 2.2385,
     city: "La Défense Arena, Puteaux",
+    salesStartAt: "2026-01-01T00:00:00.000Z",
+    salesEndAt: "2026-08-15T18:00:00.000Z",
     remainingLabel: "1 200 places restantes",
     statusLabel: "Validé",
     heroEmoji: "🎵",

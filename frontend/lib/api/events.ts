@@ -40,6 +40,11 @@ export interface ApiEvent {
   venue_city: string;
   venue_postal_code: string;
   venue_country: string;
+  // String, pas number : colonne DECIMAL TypeORM (même convention que
+  // commission_rate/price_ht ci-dessous) — convertir avec Number() au point
+  // d'usage, jamais assigner directement à un state numérique.
+  venue_latitude: string | null;
+  venue_longitude: string | null;
   poster_url: string | null;
   total_capacity: number;
   sales_start_date: string;
@@ -76,6 +81,11 @@ export interface ListEventsParams {
   q?: string;
   min_price?: number;
   max_price?: number;
+  // Filtre "près de moi" — les trois doivent être fournis ensemble, cf.
+  // event.service.ts listPublished() côté event-service (formule Haversine).
+  lat?: number;
+  lng?: number;
+  radius_km?: number;
 }
 
 export interface ListEventsResult {
@@ -143,6 +153,8 @@ export interface CreateEventDto {
   venue_city: string;
   venue_postal_code: string;
   venue_country: string;
+  venue_latitude?: number;
+  venue_longitude?: number;
   poster_url: string;
   total_capacity: number;
   sales_start_date: string;
@@ -180,6 +192,8 @@ export interface UpdateEventDto {
   venue_city?: string;
   venue_postal_code?: string;
   venue_country?: string;
+  venue_latitude?: number;
+  venue_longitude?: number;
   poster_url?: string;
   total_capacity?: number;
   sales_start_date?: string;

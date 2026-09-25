@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import { InfoCard } from "@/components/event-detail/info-card";
 import { CategoryPicker } from "@/components/create-event/category-picker";
 import { PosterDropzone } from "@/components/create-event/poster-dropzone";
+import { LocationPicker } from "@/components/map/location-picker";
+import { AddressAutocomplete } from "@/components/create-event/address-autocomplete";
 import type { ApiCategory } from "@/lib/api/categories";
 import { updateEvent, type ApiEvent, type UpdateEventDto } from "@/lib/api/events";
 import { uploadPoster } from "@/lib/api/upload";
@@ -51,6 +53,7 @@ export function EditEventForm({
   const [event, setEvent] = useState(initialEvent);
   const isDraft = event.status === "DRAFT";
   const isFullyLocked = event.status in LOCKED_STATUS_MESSAGE;
+  const minDatetimeLocal = toDatetimeLocal(new Date().toISOString());
   // PENDING_VALIDATION/PUBLISHED : seuls les champs "cosmétiques" restent
   // ouverts (cf. commentaire lib/api/events.ts) — DRAFT autorise tout sauf
   // les catégories de billets, jamais modifiables une fois créées.
@@ -65,6 +68,14 @@ export function EditEventForm({
   const [city, setCity] = useState(event.venue_city);
   const [postalCode, setPostalCode] = useState(event.venue_postal_code);
   const [country, setCountry] = useState(event.venue_country);
+  // event.venue_latitude/longitude sont des string (colonne DECIMAL,
+  // cf. lib/api/events.ts) — LocationPicker attend des number.
+  const [latitude, setLatitude] = useState<number | null>(
+    event.venue_latitude !== null ? Number(event.venue_latitude) : null,
+  );
+  const [longitude, setLongitude] = useState<number | null>(
+    event.venue_longitude !== null ? Number(event.venue_longitude) : null,
+  );
   const [totalCapacity, setTotalCapacity] = useState(String(event.total_capacity));
   const [salesStartAt, setSalesStartAt] = useState(toDatetimeLocal(event.sales_start_date));
   const [salesEndAt, setSalesEndAt] = useState(toDatetimeLocal(event.sales_end_date));
@@ -84,6 +95,23 @@ export function EditEventForm({
   async function handleSubmit() {
     setError(null);
     setSaved(false);
+
+    // Bug corrigé (règle produit non appliquée) : rien n'empêchait de
+    // repousser un événement DRAFT à une date déjà passée, ni une fin
+    // antérieure au début — même règle qu'à la création (create-event-form.tsx).
+    if (isDraft) {
+      const nextStart = toIsoOrNull(startAt) ?? event.start_date;
+      const nextEnd = toIsoOrNull(endAt) ?? event.end_date;
+      if (new Date(nextStart).getTime() < Date.now()) {
+        setError("La date de début ne peut pas être dans le passé.");
+        return;
+      }
+      if (new Date(nextEnd).getTime() <= new Date(nextStart).getTime()) {
+        setError("La date de fin doit être postérieure à la date de début.");
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       let posterUrl: string | undefined;
@@ -104,6 +132,9 @@ export function EditEventForm({
             venue_city: city,
             venue_postal_code: postalCode,
             venue_country: country,
+            ...(latitude !== null && longitude !== null
+              ? { venue_latitude: latitude, venue_longitude: longitude }
+              : {}),
             total_capacity: Number(totalCapacity),
             sales_start_date: toIsoOrNull(salesStartAt) ?? event.sales_start_date,
             sales_end_date: toIsoOrNull(salesEndAt) ?? event.sales_end_date,
@@ -198,19 +229,19 @@ export function EditEventForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-violet-200/80">Début</span>
-            <input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
+            <input type="datetime-local" min={minDatetimeLocal} value={startAt} onChange={(e) => setStartAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-violet-200/80">Fin</span>
-            <input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
+            <input type="datetime-local" min={startAt || minDatetimeLocal} value={endAt} onChange={(e) => setEndAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-violet-200/80">Début des ventes</span>
-            <input type="datetime-local" value={salesStartAt} onChange={(e) => setSalesStartAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
+            <input type="datetime-local" min={minDatetimeLocal} value={salesStartAt} onChange={(e) => setSalesStartAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-violet-200/80">Fin des ventes</span>
-            <input type="datetime-local" value={salesEndAt} onChange={(e) => setSalesEndAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
+            <input type="datetime-local" min={salesStartAt || minDatetimeLocal} value={salesEndAt} onChange={(e) => setSalesEndAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
           </label>
         </div>
       </InfoCard>
@@ -218,12 +249,36 @@ export function EditEventForm({
       <InfoCard icon="📍" title="Lieu">
         <div className="flex flex-col gap-4">
           <input value={venueName} onChange={(e) => setVenueName(e.target.value)} disabled={!isDraft} placeholder="Nom du lieu" className={fieldClassName} />
-          <input value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} disabled={!isDraft} placeholder="Adresse" className={fieldClassName} />
+          <AddressAutocomplete
+            value={addressLine1}
+            onChangeText={setAddressLine1}
+            country={country}
+            onSelect={(suggestion) => {
+              setAddressLine1(suggestion.addressLine1);
+              if (suggestion.city) setCity(suggestion.city);
+              if (suggestion.postalCode) setPostalCode(suggestion.postalCode);
+              if (suggestion.country) setCountry(suggestion.country);
+              setLatitude(suggestion.lat);
+              setLongitude(suggestion.lng);
+            }}
+            disabled={!isDraft}
+            placeholder="Adresse"
+          />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <input value={city} onChange={(e) => setCity(e.target.value)} disabled={!isDraft} placeholder="Ville" className={fieldClassName} />
             <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} disabled={!isDraft} placeholder="Code postal" className={fieldClassName} />
             <input value={country} onChange={(e) => setCountry(e.target.value)} disabled={!isDraft} placeholder="Pays" className={fieldClassName} />
           </div>
+
+          <LocationPicker
+            latitude={latitude}
+            longitude={longitude}
+            onChange={(lat, lng) => {
+              setLatitude(lat);
+              setLongitude(lng);
+            }}
+            disabled={!isDraft}
+          />
         </div>
       </InfoCard>
 

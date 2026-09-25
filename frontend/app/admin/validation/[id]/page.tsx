@@ -11,7 +11,7 @@ import { AdminShell } from "@/components/layout/admin-shell";
 import { DocumentGrid, type SubmittedDocument } from "@/components/admin/document-viewer";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import { listCategories, type ApiCategory } from "@/lib/api/categories";
-import { getEvent, type ApiEvent } from "@/lib/api/events";
+import { getEvent, getEventCategories, type ApiEvent, type ApiTicketCategory } from "@/lib/api/events";
 import {
   approveEvent,
   getPendingEvents,
@@ -22,8 +22,21 @@ import {
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
 import { statusBadgeStyles } from "@/lib/mock/dashboard";
+import { EventLocationMap } from "@/components/map/event-location-map";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+// Bug corrigé : l'en-tête affichait created_at (date de création du
+// brouillon en base) à la place de start_date (date choisie par
+// l'organisateur pour l'événement) — un admin validait donc "à l'aveugle"
+// sur une date qui n'avait aucun rapport avec l'événement réel.
+const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 
 export default function AdminValidationDetailPage({
   params,
@@ -34,6 +47,7 @@ export default function AdminValidationDetailPage({
 
   const [event, setEvent] = useState<ApiEvent | ApiPendingEvent | null | undefined>(undefined);
   const [categories, setCategories] = useState<ApiCategory[]>([]);
+  const [ticketCategories, setTicketCategories] = useState<ApiTicketCategory[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -66,6 +80,7 @@ export default function AdminValidationDetailPage({
 
   useEffect(() => {
     listCategories().then(setCategories).catch(() => setCategories([]));
+    getEventCategories(id).then(setTicketCategories).catch(() => setTicketCategories([]));
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -215,9 +230,15 @@ export default function AdminValidationDetailPage({
                 </div>
                 <p className="text-sm text-gray-500">
                   {organizerName ?? "Organisateur inconnu"}
-                  {organizerEmail ? ` (${organizerEmail})` : ""} · {dateFormatter.format(new Date(event.created_at))}
+                  {organizerEmail ? ` (${organizerEmail})` : ""} · {dateTimeFormatter.format(new Date(event.start_date))}
                   {" · "}
                   {event.venue_name}, {event.venue_city}
+                </p>
+                <p className="mt-0.5 text-xs text-gray-600">
+                  Soumis le {dateFormatter.format(new Date(event.created_at))}
+                  {event && "validation_deadline" in event && isPending
+                    ? ` · à traiter avant le ${dateTimeFormatter.format(new Date(event.validation_deadline))}`
+                    : ""}
                 </p>
               </div>
             </div>
@@ -278,6 +299,95 @@ export default function AdminValidationDetailPage({
               ) : null}
             </div>
           ) : null}
+
+          {/* Bug corrigé : page de validation ne montrait que titre, date
+              (fausse, cf. plus haut) et ville — un admin devait approuver ou
+              rejeter un événement public sans voir catégorie, capacité,
+              adresse complète, tarifs, période de vente ni politique de
+              remboursement, alors que toutes ces données étaient déjà
+              chargées (ApiPendingEvent hérite d'ApiEvent en entier). */}
+          <div className="mb-6 rounded-2xl border border-white/5 bg-[#12101c] p-5">
+            <h2 className="mb-3 text-sm font-semibold text-gray-200">Informations de l&apos;événement</h2>
+            <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-gray-500">Catégorie</dt>
+                <dd className="text-gray-200">{categoryByCode.get(event.category)?.label ?? event.category}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">Capacité totale</dt>
+                <dd className="text-gray-200">{event.total_capacity} places</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">Début</dt>
+                <dd className="text-gray-200">{dateTimeFormatter.format(new Date(event.start_date))}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">Fin</dt>
+                <dd className="text-gray-200">{dateTimeFormatter.format(new Date(event.end_date))}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">Ventes ouvertes</dt>
+                <dd className="text-gray-200">
+                  {dateTimeFormatter.format(new Date(event.sales_start_date))} → {dateTimeFormatter.format(new Date(event.sales_end_date))}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">Politique de remboursement</dt>
+                <dd className="text-gray-200">
+                  {event.refund_policy === "REFUNDABLE"
+                    ? `Remboursable${event.refund_deadline_days ? ` (jusqu'à J-${event.refund_deadline_days})` : ""}`
+                    : "Non remboursable"}
+                </dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-gray-500">Lieu</dt>
+                <dd className="text-gray-200">
+                  {event.venue_name} — {event.venue_address_line1}
+                  {event.venue_address_line2 ? `, ${event.venue_address_line2}` : ""}, {event.venue_postal_code}{" "}
+                  {event.venue_city}, {event.venue_country}
+                </dd>
+              </div>
+              {event.access_conditions ? (
+                <div className="sm:col-span-2">
+                  <dt className="text-gray-500">Conditions d&apos;accès</dt>
+                  <dd className="text-gray-200">{event.access_conditions}</dd>
+                </div>
+              ) : null}
+            </dl>
+
+            <div className="mt-4">
+              <EventLocationMap
+                latitude={event.venue_latitude !== null ? Number(event.venue_latitude) : null}
+                longitude={event.venue_longitude !== null ? Number(event.venue_longitude) : null}
+                label={event.venue_name}
+              />
+            </div>
+          </div>
+
+          <div className="mb-6 rounded-2xl border border-white/5 bg-[#12101c] p-5">
+            <h2 className="mb-3 text-sm font-semibold text-gray-200">
+              Catégories de billets {ticketCategories.length > 0 ? `(${ticketCategories.length})` : ""}
+            </h2>
+            {ticketCategories.length === 0 ? (
+              <p className="text-sm text-gray-500">Aucune catégorie de billet créée.</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {ticketCategories.map((tc) => (
+                  <li key={tc.id} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-200">
+                      {tc.name}
+                      {tc.visibility === "PRIVATE" ? (
+                        <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-gray-400">Privé</span>
+                      ) : null}
+                    </span>
+                    <span className="text-gray-400">
+                      {currency.format(Number(tc.price_ht))} HT · {tc.quota} places · max {tc.max_per_order}/commande
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           <div className="mb-6 rounded-2xl border border-white/5 bg-[#12101c] p-5">
             <h2 className="mb-2 text-sm font-semibold text-gray-200">Description</h2>

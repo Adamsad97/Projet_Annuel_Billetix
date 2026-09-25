@@ -19,12 +19,48 @@ const categories: { id: string; label: string; emoji?: string; apiCode?: string 
   { id: "gratuit", label: "Gratuit", emoji: "🎫" },
 ];
 
+// Bug corrigé : event-service exposait déjà un filtre de distance
+// (Haversine, params lat/lng/radius_km) jamais branché sur le catalogue —
+// aucun moyen de voir "les événements près de moi" malgré le travail déjà
+// fait côté backend.
+const RADIUS_OPTIONS_KM = [10, 25, 50, 100] as const;
+const DEFAULT_RADIUS_KM = 25;
+
 export function CatalogueExplorer() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [events, setEvents] = useState<MockEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [nearMe, setNearMe] = useState<{ lat: number; lng: number } | null>(null);
+  const [radiusKm, setRadiusKm] = useState(DEFAULT_RADIUS_KM);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
+
+  function handleToggleNearMe() {
+    if (nearMe) {
+      setNearMe(null);
+      return;
+    }
+    if (!("geolocation" in navigator)) {
+      setLocateError("La géolocalisation n'est pas disponible sur ce navigateur.");
+      return;
+    }
+    setLocateError(null);
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setNearMe({ lat: position.coords.latitude, lng: position.coords.longitude });
+        setLocating(false);
+      },
+      () => {
+        setLocateError("Position refusée ou indisponible — autorise la géolocalisation pour utiliser ce filtre.");
+        setLocating(false);
+      },
+      { enableHighAccuracy: false, timeout: 10_000 },
+    );
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -38,6 +74,9 @@ export function CatalogueExplorer() {
         const { data } = await listPublishedEvents({
           q: search.trim() || undefined,
           category: selected?.apiCode,
+          ...(nearMe
+            ? { lat: nearMe.lat, lng: nearMe.lng, radius_km: radiusKm }
+            : {}),
         });
 
         const withCategories = await Promise.all(
@@ -72,7 +111,7 @@ export function CatalogueExplorer() {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [search, category]);
+  }, [search, category, nearMe, radiusKm]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -98,12 +137,46 @@ export function CatalogueExplorer() {
           })}
         </div>
 
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleToggleNearMe}
+            disabled={locating}
+            className={
+              nearMe
+                ? "rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white shadow shadow-violet-900/40"
+                : "rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-gray-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            }
+          >
+            {locating ? "Localisation…" : nearMe ? "📍 Près de moi ✕" : "📍 Près de moi"}
+          </button>
+          {nearMe ? (
+            <select
+              value={radiusKm}
+              onChange={(event) => setRadiusKm(Number(event.target.value))}
+              className="rounded-full bg-white/5 px-3 py-2 text-sm font-medium text-gray-300 ring-1 ring-inset ring-white/10"
+            >
+              {RADIUS_OPTIONS_KM.map((km) => (
+                <option key={km} value={km} className="bg-[#12101c]">
+                  {km} km
+                </option>
+              ))}
+            </select>
+          ) : null}
+        </div>
+
         <SearchInput
           value={search}
           onChange={setSearch}
           placeholder="Rechercher un événement ou une ville…"
         />
       </div>
+
+      {locateError ? (
+        <p className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-5 py-3 text-sm text-amber-300">
+          {locateError}
+        </p>
+      ) : null}
 
       {error ? (
         <p className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">

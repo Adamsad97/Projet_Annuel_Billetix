@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { InfoCard } from "@/components/event-detail/info-card";
 import { CategoryPicker } from "@/components/create-event/category-picker";
 import { PosterDropzone } from "@/components/create-event/poster-dropzone";
+import { LocationPicker } from "@/components/map/location-picker";
+import { AddressAutocomplete } from "@/components/create-event/address-autocomplete";
 import {
   TicketTiersEditor,
   makeInitialTierRows,
@@ -38,6 +40,17 @@ function toIsoOrNull(datetimeLocal: string): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+// Bug corrigé (règle produit non appliquée) : rien n'empêchait de créer un
+// événement à une date déjà passée — ni côté navigateur (aucun `min` sur
+// les <input type="datetime-local">), ni à la soumission. Format attendu
+// par l'attribut `min` d'un datetime-local : "AAAA-MM-JJThh:mm", local
+// (pas UTC) — cf. toDatetimeLocal() dans edit-event-form.tsx, même logique.
+function nowAsDatetimeLocal(): string {
+  const date = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function CreateEventForm({
   categories,
   tierTypes,
@@ -67,6 +80,8 @@ export function CreateEventForm({
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [country, setCountry] = useState("France");
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
   const [totalCapacity, setTotalCapacity] = useState("500");
   const [salesStartAt, setSalesStartAt] = useState("");
   const [salesEndAt, setSalesEndAt] = useState("");
@@ -77,6 +92,7 @@ export function CreateEventForm({
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const minDatetimeLocal = nowAsDatetimeLocal();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,6 +130,14 @@ export function CreateEventForm({
       setError("Vérifie les dates de l'événement et de la période de vente.");
       return;
     }
+    if (new Date(startIso).getTime() < Date.now()) {
+      setError("La date de début ne peut pas être dans le passé.");
+      return;
+    }
+    if (new Date(endIso).getTime() <= new Date(startIso).getTime()) {
+      setError("La date de fin doit être postérieure à la date de début.");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -130,6 +154,9 @@ export function CreateEventForm({
         venue_city: city,
         venue_postal_code: postalCode,
         venue_country: country,
+        ...(latitude !== null && longitude !== null
+          ? { venue_latitude: latitude, venue_longitude: longitude }
+          : {}),
         poster_url: posterUrl,
         total_capacity: Number(totalCapacity),
         sales_start_date: salesStartIso,
@@ -219,6 +246,7 @@ export function CreateEventForm({
               <input
                 type="datetime-local"
                 required
+                min={minDatetimeLocal}
                 value={startAt}
                 onChange={(event) => setStartAt(event.target.value)}
                 className={fieldClassName}
@@ -231,6 +259,7 @@ export function CreateEventForm({
               <input
                 type="datetime-local"
                 required
+                min={startAt || minDatetimeLocal}
                 value={endAt}
                 onChange={(event) => setEndAt(event.target.value)}
                 className={fieldClassName}
@@ -256,13 +285,19 @@ export function CreateEventForm({
             <span className="text-sm font-medium text-violet-200/80">
               Adresse *
             </span>
-            <input
-              type="text"
-              required
+            <AddressAutocomplete
               value={addressLine1}
-              onChange={(event) => setAddressLine1(event.target.value)}
+              onChangeText={setAddressLine1}
+              country={country}
+              onSelect={(suggestion) => {
+                setAddressLine1(suggestion.addressLine1);
+                if (suggestion.city) setCity(suggestion.city);
+                if (suggestion.postalCode) setPostalCode(suggestion.postalCode);
+                if (suggestion.country) setCountry(suggestion.country);
+                setLatitude(suggestion.lat);
+                setLongitude(suggestion.lng);
+              }}
               placeholder="2 Esplanade de la Défense"
-              className={fieldClassName}
             />
           </label>
 
@@ -300,6 +335,15 @@ export function CreateEventForm({
               />
             </label>
           </div>
+
+          <LocationPicker
+            latitude={latitude}
+            longitude={longitude}
+            onChange={(lat, lng) => {
+              setLatitude(lat);
+              setLongitude(lng);
+            }}
+          />
         </div>
       </InfoCard>
 
@@ -339,6 +383,7 @@ export function CreateEventForm({
               <span className="text-sm font-medium text-violet-200/80">Ouverture des ventes</span>
               <input
                 type="datetime-local"
+                min={minDatetimeLocal}
                 value={salesStartAt}
                 onChange={(event) => setSalesStartAt(event.target.value)}
                 className={fieldClassName}
@@ -349,6 +394,7 @@ export function CreateEventForm({
               <span className="text-sm font-medium text-violet-200/80">Fermeture des ventes</span>
               <input
                 type="datetime-local"
+                min={salesStartAt || minDatetimeLocal}
                 value={salesEndAt}
                 onChange={(event) => setSalesEndAt(event.target.value)}
                 className={fieldClassName}

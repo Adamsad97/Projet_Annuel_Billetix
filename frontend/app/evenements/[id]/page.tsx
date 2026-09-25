@@ -3,6 +3,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { EventHero } from "@/components/event-detail/event-hero";
 import { InfoCard } from "@/components/event-detail/info-card";
 import { TicketSelector } from "@/components/event-detail/ticket-selector";
+import { EventLocationMap } from "@/components/map/event-location-map";
 import { getEvent, getEventCategories } from "@/lib/api/events";
 import { apiEventToDetail } from "@/lib/mappers/event-mappers";
 import { ApiError } from "@/lib/api/http-error";
@@ -51,13 +52,13 @@ export default async function EventDetailPage({
             </InfoCard>
 
             <InfoCard icon="📍" title="Lieu & accès">
-              <div className="flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-white/10 bg-white/[0.02] py-10 text-center">
-                <span className="text-sm text-gray-500">
-                  🗺️ Carte interactive
-                </span>
-                <span className="text-sm text-gray-600">
-                  {event.address}
-                </span>
+              <div className="flex flex-col gap-3">
+                <p className="text-sm text-gray-400">{event.address}</p>
+                <EventLocationMap
+                  latitude={event.latitude}
+                  longitude={event.longitude}
+                  label={event.venueName}
+                />
               </div>
             </InfoCard>
 
@@ -73,7 +74,14 @@ export default async function EventDetailPage({
           </div>
 
           <div className="lg:col-span-1">
-            <TicketSelector eventId={id} eventTitle={event.title} tickets={event.tickets} organizerId={organizerId} />
+            <TicketSelector
+              eventId={id}
+              eventTitle={event.title}
+              tickets={event.tickets}
+              organizerId={organizerId}
+              salesStartAt={event.salesStartAt}
+              salesEndAt={event.salesEndAt}
+            />
           </div>
         </div>
       </main>
