@@ -120,6 +120,47 @@ describe("AuthService", () => {
     service = module.get(AuthService);
   });
 
+  // Bug corrigé : register() renvoyait des tokens et connectait aussitôt,
+  // en contradiction directe avec login() qui rejette tout compte non
+  // vérifié (CDC §2.2, cf. describe("login") ci-dessous) — un utilisateur
+  // avait donc accès juste après inscription, puis se retrouvait bloqué
+  // dès la connexion suivante pour ce même compte jamais vérifié entretemps.
+  describe("register", () => {
+    it("ne renvoie aucun token — le compte doit être vérifié avant tout accès", async () => {
+      repo.findOne.mockResolvedValue(null); // email disponible
+      repo.create.mockImplementation((data) => ({ id: "new-user", ...data }));
+      repo.save.mockImplementation((user) => Promise.resolve(user));
+
+      const result = await service.register({
+        email: "nouveau@example.com",
+        password: "MotDePasse123!",
+        first_name: "Nouveau",
+        last_name: "Compte",
+      } as any);
+
+      expect(result).not.toHaveProperty("access_token");
+      expect(result).not.toHaveProperty("refresh_token");
+      expect(jwtService.sign).not.toHaveBeenCalled();
+      expect(result).toEqual(
+        expect.objectContaining({ email_verification_required: true }),
+      );
+    });
+
+    it("rejette si l'email est déjà utilisé", async () => {
+      repo.findOne.mockResolvedValue({ ...baseUser });
+
+      await expect(
+        service.register({
+          email: "jean@example.com",
+          password: "MotDePasse123!",
+          first_name: "Jean",
+          last_name: "Dupont",
+        } as any),
+      ).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+  });
+
   describe("login", () => {
     it("rejette un email inconnu", async () => {
       queryBuilder.getOne.mockResolvedValue(null);
@@ -247,6 +288,67 @@ describe("AuthService", () => {
           last_name: "Dupont",
         }),
       ).rejects.toThrow(RpcException);
+    });
+
+    // Bug corrigé (faille de sécurité) : la 2FA n'était jamais demandée lors
+    // d'une connexion OAuth, contrairement au login email/mot de passe —
+    // délivrait les tokens directement même sur un compte protégé.
+    it("ne délivre pas de tokens si la 2FA est activée, renvoie un pending_token à la place", async () => {
+      repo.findOne.mockResolvedValue({
+        ...baseUser,
+        two_factor_enabled: true,
+        two_factor_method: TwoFactorMethod.TOTP,
+      });
+
+      const result = await service.oauthLogin({
+        provider: OAuthProvider.GOOGLE,
+        oauth_id: "g-123",
+        email: baseUser.email!,
+        first_name: "Jean",
+        last_name: "Dupont",
+      });
+
+      expect(result).toEqual({
+        requires_2fa: true,
+        two_factor_method: TwoFactorMethod.TOTP,
+        pending_token: expect.any(String),
+      });
+      expect(redis.set).toHaveBeenCalledWith(
+        expect.stringMatching(/^oauth_2fa_pending:/),
+        "user-1",
+        "EX",
+        expect.any(Number),
+      );
+    });
+  });
+
+  describe("verifyOauth2fa — second temps du login OAuth quand la 2FA est activée", () => {
+    it("rejette si le pending_token est expiré ou inconnu", async () => {
+      redis.get.mockResolvedValue(null);
+
+      await expect(service.verifyOauth2fa("tok-expire", "123456")).rejects.toThrow(RpcException);
+      expect(twoFactorService.verify).not.toHaveBeenCalled();
+    });
+
+    it("rejette un code 2FA invalide", async () => {
+      redis.get.mockResolvedValue("user-1");
+      repo.findOne.mockResolvedValue({ ...baseUser, two_factor_enabled: true });
+      twoFactorService.verify.mockResolvedValue(false);
+
+      await expect(service.verifyOauth2fa("tok-valide", "000000")).rejects.toThrow(RpcException);
+      // Usage unique : supprimé même en cas d'échec, pas de réutilisation du pending_token.
+      expect(redis.del).toHaveBeenCalledWith("oauth_2fa_pending:tok-valide");
+    });
+
+    it("délivre les tokens avec un code 2FA valide", async () => {
+      redis.get.mockResolvedValue("user-1");
+      repo.findOne.mockResolvedValue({ ...baseUser, two_factor_enabled: true });
+      twoFactorService.verify.mockResolvedValue(true);
+
+      const result = await service.verifyOauth2fa("tok-valide", "123456");
+
+      expect(result).toHaveProperty("access_token");
+      expect(twoFactorService.verify).toHaveBeenCalledWith("user-1", "123456");
     });
   });
 

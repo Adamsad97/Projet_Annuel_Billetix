@@ -25,6 +25,16 @@ const EMAIL_VERIFY_TTL = 24 * 60 * 60; // 24 heures
 // Court délai avant expiration du code d'échange OAuth — le temps d'une
 // redirection navigateur, pas plus (usage unique de toute façon).
 const OAUTH_EXCHANGE_TTL = 60;
+// Plus long que OAUTH_EXCHANGE_TTL : laisse le temps de saisir un code TOTP
+// (contrairement à l'échange de tokens, immédiat côté serveur après la
+// redirection).
+const OAUTH_2FA_PENDING_TTL = 300;
+
+// Deux formes possibles selon que le compte a la 2FA activée ou non — voir
+// AuthService.oauthLogin().
+type OAuthExchangePayload =
+  | { access_token: string; refresh_token: string }
+  | { requires_2fa: true; two_factor_method: string; pending_token: string };
 
 @Injectable()
 export class AuthService {
@@ -81,8 +91,17 @@ export class AuthService {
       token: verifyToken,
     });
 
+    // Bug corrigé (contradiction directe avec une règle déjà appliquée
+    // ailleurs) : register() renvoyait des tokens et connectait aussitôt,
+    // alors que login() rejette explicitement tout compte non vérifié
+    // (CDC §2.2, voir commentaire plus haut) — un utilisateur avait donc un
+    // accès complet juste après inscription, puis se retrouvait bloqué dès
+    // sa prochaine connexion (après déconnexion) pour ce même compte
+    // jamais vérifié entre-temps. Aucun token ici : l'inscription crée le
+    // compte et envoie l'email, l'accès réel passe par login() une fois
+    // vérifié (ou par resendVerificationEmail() si le lien a expiré).
     return {
-      ...this.generateTokens(user),
+      email_verification_required: true,
       user: this.sanitize(user),
     };
   }
@@ -318,6 +337,68 @@ export class AuthService {
       });
     }
 
+    // Bug corrigé (faille de sécurité) : login() (email/mot de passe) exige
+    // le code 2FA avant de délivrer les tokens — oauthLogin() les délivrait
+    // directement, sans jamais la demander. Un compte protégé par la 2FA
+    // (obligatoire dès qu'un IBAN organisateur est enregistré, CDC §2.3)
+    // restait entièrement ouvert via Google/Facebook, y compris pour un
+    // attaquant qui n'aurait compromis que le compte Google/Facebook de la
+    // victime, jamais son mot de passe ni sa 2FA BilletiX.
+    //
+    // Flux par redirection (pas de formulaire synchrone comme login()) :
+    // pas de tokens ici, juste une référence opaque à usage unique vers ce
+    // compte, que le frontend renverra avec le code une fois saisi
+    // (verifyOauth2fa ci-dessous).
+    if (user.two_factor_enabled) {
+      const pendingToken = randomBytes(32).toString("hex");
+      await this.redis.set(
+        `oauth_2fa_pending:${pendingToken}`,
+        user.id,
+        "EX",
+        OAUTH_2FA_PENDING_TTL,
+      );
+      return {
+        requires_2fa: true,
+        two_factor_method: user.two_factor_method,
+        pending_token: pendingToken,
+      };
+    }
+
+    return { ...this.generateTokens(user), user: this.sanitize(user) };
+  }
+
+  /** Second temps du login OAuth quand la 2FA est activée — voir oauthLogin(). */
+  async verifyOauth2fa(pendingToken: string, code: string) {
+    const key = `oauth_2fa_pending:${pendingToken}`;
+    const userId = await this.redis.get(key);
+    if (!userId) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "Session de connexion expirée — reconnectez-vous.",
+      });
+    }
+    await this.redis.del(key); // usage unique
+
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new RpcException({ statusCode: 404, message: "Utilisateur introuvable" });
+    }
+    // Re-vérifié : la fenêtre entre oauthLogin() et cet appel (jusqu'à
+    // OAUTH_2FA_PENDING_TTL) laisse le temps à un admin de suspendre le
+    // compte entre-temps.
+    if (!user.is_active || user.is_suspended) {
+      throw new RpcException({
+        statusCode: 403,
+        message: "Compte suspendu ou désactivé",
+      });
+    }
+
+    const validCode = await this.twoFactorService.verify(user.id, code);
+    if (!validCode) {
+      await this.registerFailedLoginAttempt(user);
+      throw new RpcException({ statusCode: 401, message: "Code 2FA invalide" });
+    }
+
     return { ...this.generateTokens(user), user: this.sanitize(user) };
   }
 
@@ -325,23 +406,22 @@ export class AuthService {
    * Après un callback OAuth réussi, on ne redirige jamais avec les tokens en
    * clair dans l'URL (historique navigateur, logs proxy, header Referer) —
    * on stocke les tokens sous un code opaque à usage unique et courte durée
-   * de vie, échangé ensuite côté serveur via exchangeOAuthCode().
+   * de vie, échangé ensuite côté serveur via exchangeOAuthCode(). Sert aussi
+   * à transporter le pending_token quand la 2FA est requise (même besoin :
+   * rien en clair dans l'URL de redirection).
    */
-  async createOAuthExchangeCode(tokens: {
-    access_token: string;
-    refresh_token: string;
-  }): Promise<string> {
+  async createOAuthExchangeCode(payload: OAuthExchangePayload): Promise<string> {
     const code = randomBytes(32).toString("hex");
     await this.redis.set(
       `oauth_exchange:${code}`,
-      JSON.stringify(tokens),
+      JSON.stringify(payload),
       "EX",
       OAUTH_EXCHANGE_TTL,
     );
     return code;
   }
 
-  async exchangeOAuthCode(code: string): Promise<{ access_token: string; refresh_token: string }> {
+  async exchangeOAuthCode(code: string): Promise<OAuthExchangePayload> {
     const key = `oauth_exchange:${code}`;
     const raw = await this.redis.get(key);
     if (!raw) {

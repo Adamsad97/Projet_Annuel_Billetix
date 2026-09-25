@@ -1,11 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { registerUser } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/http-error";
-import { saveSession } from "@/lib/auth/session";
+
+// Même mécanisme que login-form.tsx : oauthLogin() (auth-service) crée le
+// compte s'il n'existe pas déjà — inscription et connexion partagent le
+// même point d'entrée, donc le même lien. NEXT_PUBLIC_API_URL (pas
+// getApiBaseUrl(), qui varie entre rendu serveur et navigateur) : un href
+// affiché doit être identique des deux côtés, sinon React refuse
+// l'hydratation (déjà rencontré sur le formulaire de connexion).
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
 const accountTypes = [
   {
@@ -23,7 +29,6 @@ const accountTypes = [
 ] as const;
 
 export function SignupForm() {
-  const router = useRouter();
   const [accountType, setAccountType] = useState<"buyer" | "organizer">("buyer");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,16 +52,20 @@ export function SignupForm() {
 
     setLoading(true);
     try {
-      const session = await registerUser({
+      // Bug corrigé : register() connectait aussitôt (session complète
+      // sauvegardée ici), en contradiction avec login() qui rejette tout
+      // compte non vérifié (CDC §2.2) — accès complet à l'inscription, puis
+      // blocage à la prochaine connexion pour ce même compte jamais
+      // vérifié entretemps. Plus de session à sauvegarder : l'accès réel
+      // passe par la page de connexion, une fois le lien reçu par email cliqué.
+      await registerUser({
         email,
         password,
         first_name: firstName,
         last_name: lastName,
         role: accountType === "organizer" ? "ORGANIZER" : "BUYER",
       });
-      saveSession(session);
       setSuccess(true);
-      setTimeout(() => router.push("/"), 1200);
     } catch (err) {
       setError(
         err instanceof ApiError
@@ -76,9 +85,15 @@ export function SignupForm() {
         </div>
         <h1 className="text-xl font-bold text-white">Compte créé !</h1>
         <p className="mt-2 text-sm text-violet-200/70">
-          Vérifie ta boîte mail pour activer complètement ton compte.
-          Redirection en cours…
+          Clique sur le lien reçu par email pour activer ton compte, puis
+          connecte-toi — l&apos;accès n&apos;est possible qu&apos;une fois l&apos;adresse vérifiée.
         </p>
+        <Link
+          href="/connexion"
+          className="mt-5 inline-block rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90"
+        >
+          Aller à la connexion →
+        </Link>
       </div>
     );
   }
@@ -125,15 +140,22 @@ export function SignupForm() {
         })}
       </div>
 
-      <button
-        type="button"
-        disabled
-        title="Pas encore câblé — inscription email/mot de passe uniquement pour l'instant"
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] py-3 text-sm font-medium text-gray-500 opacity-50"
-      >
-        <span className="font-bold">G</span>
-        S&apos;inscrire avec Google
-      </button>
+      <div className="flex flex-col gap-3">
+        <a
+          href={`${API_URL}/auth/google`}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] py-3 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+        >
+          <span className="font-bold">G</span>
+          S&apos;inscrire avec Google
+        </a>
+        <a
+          href={`${API_URL}/auth/facebook`}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] py-3 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+        >
+          <span className="font-bold">f</span>
+          S&apos;inscrire avec Facebook
+        </a>
+      </div>
 
       <div className="my-6 flex items-center gap-3">
         <div className="h-px flex-1 bg-white/10" />

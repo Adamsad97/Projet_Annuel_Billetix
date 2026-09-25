@@ -183,17 +183,20 @@ export class AuthController {
       last_name: string;
     };
 
+    // Bug corrigé (faille de sécurité) : auth.oauth_login peut désormais
+    // renvoyer soit des tokens, soit { requires_2fa, pending_token } si le
+    // compte a la 2FA activée — le résultat entier transite tel quel vers le
+    // code d'échange (avant, seuls access_token/refresh_token étaient
+    // transmis, perdant silencieusement le cas 2FA).
     const result = await firstValueFrom(
       this.authClient.send("auth.oauth_login", oauthUser),
     );
 
-    // Jamais les tokens en clair dans l'URL (historique, logs, Referer) —
-    // un code d'échange opaque, court et à usage unique à la place.
+    // Jamais les tokens (ni le pending_token 2FA) en clair dans l'URL
+    // (historique, logs, Referer) — un code d'échange opaque, court et à
+    // usage unique à la place.
     const code = await firstValueFrom(
-      this.authClient.send("auth.create_oauth_exchange_code", {
-        access_token: result.access_token,
-        refresh_token: result.refresh_token,
-      }),
+      this.authClient.send("auth.create_oauth_exchange_code", result),
     );
 
     res.redirect(`${this.frontendUrl}/auth/callback?code=${code}`);
@@ -229,10 +232,7 @@ export class AuthController {
     );
 
     const code = await firstValueFrom(
-      this.authClient.send("auth.create_oauth_exchange_code", {
-        access_token: result.access_token,
-        refresh_token: result.refresh_token,
-      }),
+      this.authClient.send("auth.create_oauth_exchange_code", result),
     );
 
     res.redirect(`${this.frontendUrl}/auth/callback?code=${code}`);
@@ -247,6 +247,21 @@ export class AuthController {
   exchangeOAuthCode(@Body() dto: { code: string }) {
     return firstValueFrom(
       this.authClient.send("auth.exchange_oauth_code", { code: dto.code }),
+    );
+  }
+
+  // Bug corrigé (faille de sécurité) : la connexion OAuth ne demandait
+  // jamais la 2FA. Second temps du flux quand le compte l'a activée — le
+  // pending_token vient de exchangeOAuthCode() ci-dessus (requires_2fa: true).
+  @Public()
+  @Post("oauth/verify-2fa")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Valider le code 2FA après une connexion OAuth qui l'exige",
+  })
+  verifyOAuth2fa(@Body() dto: { pending_token: string; code: string }) {
+    return firstValueFrom(
+      this.authClient.send("auth.oauth_verify_2fa", dto),
     );
   }
 

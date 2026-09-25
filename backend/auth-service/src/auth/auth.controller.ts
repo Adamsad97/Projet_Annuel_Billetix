@@ -94,6 +94,11 @@ export class AuthController {
     return this.authService.exchangeOAuthCode(data.code);
   }
 
+  @MessagePattern("auth.oauth_verify_2fa")
+  verifyOauth2fa(@Payload() data: { pending_token: string; code: string }) {
+    return this.authService.verifyOauth2fa(data.pending_token, data.code);
+  }
+
   // ──────────────── 2FA TOTP ────────────────
 
   @MessagePattern("auth.2fa.setup")

@@ -38,6 +38,17 @@ export interface RegisterPayload {
   role: "BUYER" | "ORGANIZER";
 }
 
+// Bug corrigé : register() renvoyait auparavant une AuthSession complète
+// (connexion immédiate), en contradiction avec login() qui rejette tout
+// compte non vérifié (CDC §2.2) — accès complet à l'inscription, puis
+// blocage à la connexion suivante pour ce même compte. L'inscription ne
+// renvoie plus de tokens : l'accès réel passe par login() une fois le lien
+// reçu par email cliqué.
+export interface RegisterResult {
+  email_verification_required: true;
+  user: AuthUser;
+}
+
 export interface LoginPayload {
   email: string;
   password: string;
@@ -108,8 +119,12 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return data as T;
 }
 
-export function registerUser(payload: RegisterPayload): Promise<AuthSession> {
-  return postJson<AuthSession>("/auth/register", payload);
+export function registerUser(payload: RegisterPayload): Promise<RegisterResult> {
+  return postJson<RegisterResult>("/auth/register", payload);
+}
+
+export function resendVerificationEmail(email: string): Promise<{ success: boolean }> {
+  return postJson("/auth/resend-verification-email", { email });
 }
 
 export function loginUser(payload: LoginPayload): Promise<LoginResult> {
@@ -135,6 +150,29 @@ export function refreshTokens(refreshToken: string): Promise<RefreshResult> {
 
 export function resetPassword(token: string, newPassword: string): Promise<{ success?: boolean }> {
   return postJson("/auth/reset-password", { token, new_password: newPassword });
+}
+
+// ─── OAuth Google/Facebook ───────────────────────────────────────────────
+// Le callback backend redirige vers /auth/callback?code=... (jamais de
+// token en clair dans l'URL) — cette page échange le code une fois, puis
+// enchaîne sur verifyOAuth2fa si le compte a la 2FA activée.
+
+export type OAuthExchangeResult =
+  | AuthSession
+  | { requires_2fa: true; two_factor_method: string; pending_token: string };
+
+export function exchangeOAuthCode(code: string): Promise<OAuthExchangeResult> {
+  return postJson<OAuthExchangeResult>("/auth/oauth/exchange", { code });
+}
+
+export function verifyOAuth2fa(pendingToken: string, code: string): Promise<AuthSession> {
+  return postJson<AuthSession>("/auth/oauth/verify-2fa", { pending_token: pendingToken, code });
+}
+
+export function isOAuthPending2fa(
+  result: OAuthExchangeResult,
+): result is { requires_2fa: true; two_factor_method: string; pending_token: string } {
+  return "requires_2fa" in result;
 }
 
 export function verifyEmail(token: string): Promise<{ success?: boolean }> {

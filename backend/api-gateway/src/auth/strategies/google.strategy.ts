@@ -13,9 +13,13 @@ export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
       clientID: config.get<string>("GOOGLE_CLIENT_ID", "") || "not_configured",
       clientSecret:
         config.get<string>("GOOGLE_CLIENT_SECRET", "") || "not_configured",
+      // Bug corrigé : ce fallback pointait vers le port 3000 (frontend) au
+      // lieu de 4000 (api-gateway, seul service à exposer /api/v1/auth/...)
+      // — sans conséquence dans ce docker-compose (GOOGLE_CALLBACK_URL y est
+      // toujours fourni), mais un piège si ce service tournait autrement.
       callbackURL: config.get<string>(
         "GOOGLE_CALLBACK_URL",
-        "http://localhost:3000/api/v1/auth/google/callback",
+        "http://localhost:4000/api/v1/auth/google/callback",
       ),
       scope: ["email", "profile"],
     });
