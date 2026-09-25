@@ -24,11 +24,18 @@ export function AuthHeader() {
     router.push("/");
   }
 
+  // Bug corrigé : le logo pointait vers "/" pour tout le monde, y compris
+  // dans le back-office. Pour un ADMIN/SUPER_ADMIN, "/" rebondit maintenant
+  // aussitôt vers "/admin" (BuyerOnlyGate) — le clic semblait ne rien faire.
+  // Le logo redevient "/admin" pour eux, "/" pour les autres rôles.
+  const homeHref =
+    user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" ? "/admin" : "/";
+
   return (
     <header className="border-b border-white/10 bg-[#0a0812]/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         <Link
-          href="/"
+          href={homeHref}
           className="bg-gradient-to-r from-amber-400 via-orange-500 to-fuchsia-500 bg-clip-text text-xl font-extrabold tracking-tight text-transparent"
         >
           BilleTiX
