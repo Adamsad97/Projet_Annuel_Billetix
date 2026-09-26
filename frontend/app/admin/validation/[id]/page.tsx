@@ -161,8 +161,8 @@ export default function AdminValidationDetailPage({
   if (event === null) {
     return (
       <AdminShell active="/admin/validation">
-        <p className="text-center text-sm text-gray-500">Cet événement n&apos;existe pas.</p>
-        <Link href="/admin/validation" className="mt-4 block text-center text-sm font-medium text-violet-400 hover:text-violet-300">
+        <p className="text-center text-sm text-ink-5">Cet événement n&apos;existe pas.</p>
+        <Link href="/admin/validation" className="mt-4 block text-center text-sm font-medium text-link hover:text-link-hover">
           ← Validation
         </Link>
       </AdminShell>
@@ -189,13 +189,13 @@ export default function AdminValidationDetailPage({
     <AdminShell active="/admin/validation">
       <Link
         href="/admin/validation"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
+        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
       >
         ← Validation
       </Link>
 
       {event === undefined ? (
-        <p className="text-center text-sm text-gray-500">Chargement…</p>
+        <p className="text-center text-sm text-ink-5">Chargement…</p>
       ) : (
         <>
           {error ? (
@@ -211,12 +211,12 @@ export default function AdminValidationDetailPage({
 
           <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-center gap-4">
-              <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/5 text-2xl">
+              <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-hairline-1 text-2xl">
                 {categoryEmoji}
               </span>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-xl font-bold text-white">{event.title}</h1>
+                  <h1 className="text-xl font-bold text-ink-1">{event.title}</h1>
                   {event.is_non_profit ? (
                     <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30">
                       Non lucratif
@@ -228,13 +228,13 @@ export default function AdminValidationDetailPage({
                     </span>
                   ) : null}
                 </div>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-ink-5">
                   {organizerName ?? "Organisateur inconnu"}
                   {organizerEmail ? ` (${organizerEmail})` : ""} · {dateTimeFormatter.format(new Date(event.start_date))}
                   {" · "}
                   {event.venue_name}, {event.venue_city}
                 </p>
-                <p className="mt-0.5 text-xs text-gray-600">
+                <p className="mt-0.5 text-xs text-ink-6">
                   Soumis le {dateFormatter.format(new Date(event.created_at))}
                   {event && "validation_deadline" in event && isPending
                     ? ` · à traiter avant le ${dateTimeFormatter.format(new Date(event.validation_deadline))}`
@@ -270,9 +270,9 @@ export default function AdminValidationDetailPage({
           </div>
 
           {event.is_non_profit ? (
-            <div className="mb-6 rounded-2xl border border-white/5 bg-[#12101c] p-5">
-              <h2 className="mb-2 text-sm font-semibold text-gray-200">Vérification « à but non lucratif »</h2>
-              <p className="mb-3 text-sm text-gray-400">
+            <div className="mb-6 rounded-2xl border border-hairline-1 bg-card p-5">
+              <h2 className="mb-2 text-sm font-semibold text-ink-2">Vérification « à but non lucratif »</h2>
+              <p className="mb-3 text-sm text-ink-4">
                 {event.non_profit_verified
                   ? "✓ Justificatif déjà vérifié — commission à 0% appliquée."
                   : "Justificatif non encore vérifié — l'exonération de commission ne s'applique pas tant que ce n'est pas fait."}
@@ -306,42 +306,42 @@ export default function AdminValidationDetailPage({
               adresse complète, tarifs, période de vente ni politique de
               remboursement, alors que toutes ces données étaient déjà
               chargées (ApiPendingEvent hérite d'ApiEvent en entier). */}
-          <div className="mb-6 rounded-2xl border border-white/5 bg-[#12101c] p-5">
-            <h2 className="mb-3 text-sm font-semibold text-gray-200">Informations de l&apos;événement</h2>
+          <div className="mb-6 rounded-2xl border border-hairline-1 bg-card p-5">
+            <h2 className="mb-3 text-sm font-semibold text-ink-2">Informations de l&apos;événement</h2>
             <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div>
-                <dt className="text-gray-500">Catégorie</dt>
-                <dd className="text-gray-200">{categoryByCode.get(event.category)?.label ?? event.category}</dd>
+                <dt className="text-ink-5">Catégorie</dt>
+                <dd className="text-ink-2">{categoryByCode.get(event.category)?.label ?? event.category}</dd>
               </div>
               <div>
-                <dt className="text-gray-500">Capacité totale</dt>
-                <dd className="text-gray-200">{event.total_capacity} places</dd>
+                <dt className="text-ink-5">Capacité totale</dt>
+                <dd className="text-ink-2">{event.total_capacity} places</dd>
               </div>
               <div>
-                <dt className="text-gray-500">Début</dt>
-                <dd className="text-gray-200">{dateTimeFormatter.format(new Date(event.start_date))}</dd>
+                <dt className="text-ink-5">Début</dt>
+                <dd className="text-ink-2">{dateTimeFormatter.format(new Date(event.start_date))}</dd>
               </div>
               <div>
-                <dt className="text-gray-500">Fin</dt>
-                <dd className="text-gray-200">{dateTimeFormatter.format(new Date(event.end_date))}</dd>
+                <dt className="text-ink-5">Fin</dt>
+                <dd className="text-ink-2">{dateTimeFormatter.format(new Date(event.end_date))}</dd>
               </div>
               <div>
-                <dt className="text-gray-500">Ventes ouvertes</dt>
-                <dd className="text-gray-200">
+                <dt className="text-ink-5">Ventes ouvertes</dt>
+                <dd className="text-ink-2">
                   {dateTimeFormatter.format(new Date(event.sales_start_date))} → {dateTimeFormatter.format(new Date(event.sales_end_date))}
                 </dd>
               </div>
               <div>
-                <dt className="text-gray-500">Politique de remboursement</dt>
-                <dd className="text-gray-200">
+                <dt className="text-ink-5">Politique de remboursement</dt>
+                <dd className="text-ink-2">
                   {event.refund_policy === "REFUNDABLE"
                     ? `Remboursable${event.refund_deadline_days ? ` (jusqu'à J-${event.refund_deadline_days})` : ""}`
                     : "Non remboursable"}
                 </dd>
               </div>
               <div className="sm:col-span-2">
-                <dt className="text-gray-500">Lieu</dt>
-                <dd className="text-gray-200">
+                <dt className="text-ink-5">Lieu</dt>
+                <dd className="text-ink-2">
                   {event.venue_name} — {event.venue_address_line1}
                   {event.venue_address_line2 ? `, ${event.venue_address_line2}` : ""}, {event.venue_postal_code}{" "}
                   {event.venue_city}, {event.venue_country}
@@ -349,8 +349,8 @@ export default function AdminValidationDetailPage({
               </div>
               {event.access_conditions ? (
                 <div className="sm:col-span-2">
-                  <dt className="text-gray-500">Conditions d&apos;accès</dt>
-                  <dd className="text-gray-200">{event.access_conditions}</dd>
+                  <dt className="text-ink-5">Conditions d&apos;accès</dt>
+                  <dd className="text-ink-2">{event.access_conditions}</dd>
                 </div>
               ) : null}
             </dl>
@@ -364,23 +364,23 @@ export default function AdminValidationDetailPage({
             </div>
           </div>
 
-          <div className="mb-6 rounded-2xl border border-white/5 bg-[#12101c] p-5">
-            <h2 className="mb-3 text-sm font-semibold text-gray-200">
+          <div className="mb-6 rounded-2xl border border-hairline-1 bg-card p-5">
+            <h2 className="mb-3 text-sm font-semibold text-ink-2">
               Catégories de billets {ticketCategories.length > 0 ? `(${ticketCategories.length})` : ""}
             </h2>
             {ticketCategories.length === 0 ? (
-              <p className="text-sm text-gray-500">Aucune catégorie de billet créée.</p>
+              <p className="text-sm text-ink-5">Aucune catégorie de billet créée.</p>
             ) : (
               <ul className="flex flex-col gap-2">
                 {ticketCategories.map((tc) => (
                   <li key={tc.id} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-200">
+                    <span className="text-ink-2">
                       {tc.name}
                       {tc.visibility === "PRIVATE" ? (
-                        <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-gray-400">Privé</span>
+                        <span className="ml-2 rounded-full bg-hairline-2 px-2 py-0.5 text-[11px] text-ink-4">Privé</span>
                       ) : null}
                     </span>
-                    <span className="text-gray-400">
+                    <span className="text-ink-4">
                       {currency.format(Number(tc.price_ht))} HT · {tc.quota} places · max {tc.max_per_order}/commande
                     </span>
                   </li>
@@ -389,14 +389,14 @@ export default function AdminValidationDetailPage({
             )}
           </div>
 
-          <div className="mb-6 rounded-2xl border border-white/5 bg-[#12101c] p-5">
-            <h2 className="mb-2 text-sm font-semibold text-gray-200">Description</h2>
-            <p className="text-sm text-gray-400">{event.description}</p>
+          <div className="mb-6 rounded-2xl border border-hairline-1 bg-card p-5">
+            <h2 className="mb-2 text-sm font-semibold text-ink-2">Description</h2>
+            <p className="text-sm text-ink-4">{event.description}</p>
           </div>
 
           {documents.length > 0 ? (
             <>
-              <h2 className="mb-3 text-sm font-semibold text-gray-200">
+              <h2 className="mb-3 text-sm font-semibold text-ink-2">
                 Documents soumis ({documents.length})
               </h2>
               <DocumentGrid documents={documents} />
@@ -404,9 +404,9 @@ export default function AdminValidationDetailPage({
           ) : null}
 
           {isPending ? (
-            <div className="mt-6 rounded-2xl border border-white/5 bg-[#12101c] p-5">
-              <h2 className="mb-2 text-sm font-semibold text-gray-200">Demander un complément d&apos;information</h2>
-              <p className="mb-3 text-xs text-gray-500">
+            <div className="mt-6 rounded-2xl border border-hairline-1 bg-card p-5">
+              <h2 className="mb-2 text-sm font-semibold text-ink-2">Demander un complément d&apos;information</h2>
+              <p className="mb-3 text-xs text-ink-5">
                 Suspend le délai de traitement jusqu&apos;à la réponse de l&apos;organisateur.
               </p>
               <textarea
@@ -414,13 +414,13 @@ export default function AdminValidationDetailPage({
                 value={infoMessage}
                 onChange={(evt) => setInfoMessage(evt.target.value)}
                 placeholder="Ex : Précisez l'adresse exacte du lieu."
-                className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+                className="w-full resize-none rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
               />
               <button
                 type="button"
                 onClick={handleRequestInfo}
                 disabled={busy || !infoMessage.trim()}
-                className="mt-3 rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                className="mt-3 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 Envoyer la demande
               </button>

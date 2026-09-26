@@ -26,38 +26,38 @@ export default async function AdminDisputeDetailPage({
     <AdminShell active="/admin/litiges">
       <Link
         href="/admin/litiges"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
+        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
       >
         ← Litiges
       </Link>
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-white">
+          <h1 className="text-xl font-bold text-ink-1">
             {dispute.orderRef} · {dispute.event}
           </h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-ink-5">
             {dispute.buyer} · {dispute.openedLabel}
           </p>
           <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}>
             {badge.label}
           </span>
         </div>
-        <span className="text-2xl font-bold text-white">{dispute.amountLabel}</span>
+        <span className="text-2xl font-bold text-ink-1">{dispute.amountLabel}</span>
       </div>
 
-      <div className="rounded-2xl border border-white/5 bg-[#12101c] p-5">
-        <h2 className="mb-1 text-sm font-semibold text-gray-200">Motif</h2>
-        <p className="text-sm text-gray-400">{dispute.reason}</p>
+      <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+        <h2 className="mb-1 text-sm font-semibold text-ink-2">Motif</h2>
+        <p className="text-sm text-ink-4">{dispute.reason}</p>
       </div>
 
       {isOpen ? (
-        <div className="mt-6 rounded-2xl border border-white/5 bg-[#12101c] p-5">
-          <h2 className="mb-3 text-sm font-semibold text-gray-200">Résolution</h2>
+        <div className="mt-6 rounded-2xl border border-hairline-1 bg-card p-5">
+          <h2 className="mb-3 text-sm font-semibold text-ink-2">Résolution</h2>
           <textarea
             rows={3}
             placeholder="Note de résolution, échanges avec l'acheteur/organisateur…"
-            className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+            className="w-full resize-none rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
           />
           <div className="mt-4 flex flex-wrap gap-2">
             <button
@@ -68,7 +68,7 @@ export default async function AdminDisputeDetailPage({
             </button>
             <button
               type="button"
-              className="rounded-lg bg-white/5 px-4 py-2 text-sm font-medium text-gray-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10"
+              className="rounded-lg bg-hairline-1 px-4 py-2 text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
             >
               Marquer résolu
             </button>

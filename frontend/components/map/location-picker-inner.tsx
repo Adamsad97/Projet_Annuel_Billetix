@@ -55,7 +55,7 @@ export default function LocationPickerInner({
   const center: [number, number] = hasPin ? [latitude, longitude] : DEFAULT_CENTER;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10">
+    <div className="overflow-hidden rounded-xl border border-hairline-2">
       <MapContainer
         center={center}
         zoom={hasPin ? PIN_ZOOM : DEFAULT_ZOOM}

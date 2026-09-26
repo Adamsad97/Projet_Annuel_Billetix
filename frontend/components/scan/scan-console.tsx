@@ -63,20 +63,20 @@ export function ScanConsole() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6">
       <div className="text-center">
-        <p className="text-xs font-semibold uppercase tracking-wide text-violet-400">
+        <p className="text-xs font-semibold uppercase tracking-wide text-link">
           Contrôle d&apos;accès
         </p>
-        <h1 className="text-xl font-bold text-white">{currentScanEvent.name}</h1>
-        <p className="text-sm text-gray-500">{currentScanEvent.dateLabel}</p>
+        <h1 className="text-xl font-bold text-ink-1">{currentScanEvent.name}</h1>
+        <p className="text-sm text-ink-5">{currentScanEvent.dateLabel}</p>
       </div>
 
       <button
         type="button"
         onClick={simulateScan}
-        className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-white/15 bg-white/[0.02] py-14 transition-colors hover:border-violet-500/40 hover:bg-violet-500/5"
+        className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-hairline-3 bg-hairline-1 py-14 transition-colors hover:border-blue-500/40 hover:bg-blue-500/5"
       >
         <span className="text-4xl">📷</span>
-        <span className="text-sm font-medium text-gray-400">
+        <span className="text-sm font-medium text-ink-4">
           Toucher pour scanner un QR code
         </span>
       </button>
@@ -92,7 +92,7 @@ export function ScanConsole() {
           </p>
         </div>
       ) : (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] px-5 py-4 text-center text-sm text-gray-500">
+        <div className="rounded-2xl border border-hairline-2 bg-hairline-1 px-5 py-4 text-center text-sm text-ink-5">
           En attente d&apos;un scan…
         </div>
       )}
@@ -104,20 +104,20 @@ export function ScanConsole() {
           onChange={(event) => setManualCode(event.target.value)}
           onKeyDown={(event) => event.key === "Enter" && verifyManualCode()}
           placeholder="Saisie manuelle — TKT-2026-XXXXXX"
-          className="w-full rounded-full border border-white/10 bg-white/[0.02] px-4 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+          className="w-full rounded-full border border-hairline-2 bg-hairline-1 px-4 py-2.5 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
         />
         <button
           type="button"
           onClick={verifyManualCode}
-          className="shrink-0 rounded-full bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          className="shrink-0 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
         >
           Vérifier
         </button>
       </div>
 
       {history.length > 0 ? (
-        <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
-          <p className="border-b border-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+          <p className="border-b border-hairline-1 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-5">
             Derniers scans
           </p>
           {history.map((entry) => {
@@ -125,17 +125,17 @@ export function ScanConsole() {
             return (
               <div
                 key={entry.id}
-                className="flex items-center justify-between gap-3 border-b border-white/5 px-4 py-3 text-sm last:border-b-0"
+                className="flex items-center justify-between gap-3 border-b border-hairline-1 px-4 py-3 text-sm last:border-b-0"
               >
                 <div>
-                  <p className="font-medium text-white">{entry.reference}</p>
-                  <p className="text-xs text-gray-500">{entry.holderName}</p>
+                  <p className="font-medium text-ink-1">{entry.reference}</p>
+                  <p className="text-xs text-ink-5">{entry.holderName}</p>
                 </div>
                 <div className="text-right">
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${entryStyle.className}`}>
                     {entryStyle.icon} {entryStyle.label}
                   </span>
-                  <p className="mt-0.5 text-xs text-gray-600">{entry.timeLabel}</p>
+                  <p className="mt-0.5 text-xs text-ink-6">{entry.timeLabel}</p>
                 </div>
               </div>
             );

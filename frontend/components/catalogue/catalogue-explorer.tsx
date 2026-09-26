@@ -7,6 +7,7 @@ import { getEventCategories, listPublishedEvents } from "@/lib/api/events";
 import { apiEventToCard } from "@/lib/mappers/event-mappers";
 import { ApiError } from "@/lib/api/http-error";
 import type { MockEvent } from "@/lib/mock/events";
+import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 
 const categories: { id: string; label: string; emoji?: string; apiCode?: string }[] = [
   { id: "all", label: "Tous" },
@@ -126,8 +127,8 @@ export function CatalogueExplorer() {
                 onClick={() => setCategory(cat.id)}
                 className={
                   isActive
-                    ? "rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white shadow shadow-violet-900/40"
-                    : "rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-gray-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10 hover:text-white"
+                    ? "rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow shadow-blue-900/40"
+                    : "rounded-full bg-hairline-1 px-4 py-2 text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2 hover:text-ink-1"
                 }
               >
                 {cat.emoji ? <span className="mr-1.5">{cat.emoji}</span> : null}
@@ -144,20 +145,27 @@ export function CatalogueExplorer() {
             disabled={locating}
             className={
               nearMe
-                ? "rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white shadow shadow-violet-900/40"
-                : "rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-gray-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                ? "rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow shadow-blue-900/40"
+                : "rounded-full bg-hairline-1 px-4 py-2 text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2 hover:text-ink-1 disabled:cursor-not-allowed disabled:opacity-50"
             }
           >
-            {locating ? "Localisation…" : nearMe ? "📍 Près de moi ✕" : "📍 Près de moi"}
+            {locating ? (
+              "Localisation…"
+            ) : (
+              <span className="inline-flex items-center gap-1.5">
+                <LocationPinIcon />
+                {nearMe ? "Près de moi ✕" : "Près de moi"}
+              </span>
+            )}
           </button>
           {nearMe ? (
             <select
               value={radiusKm}
               onChange={(event) => setRadiusKm(Number(event.target.value))}
-              className="rounded-full bg-white/5 px-3 py-2 text-sm font-medium text-gray-300 ring-1 ring-inset ring-white/10"
+              className="rounded-full bg-hairline-1 px-3 py-2 text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2"
             >
               {RADIUS_OPTIONS_KM.map((km) => (
-                <option key={km} value={km} className="bg-[#12101c]">
+                <option key={km} value={km} className="bg-card">
                   {km} km
                 </option>
               ))}
@@ -185,10 +193,10 @@ export function CatalogueExplorer() {
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Chargement des événements…</p>
+        <p className="text-sm text-ink-5">Chargement des événements…</p>
       ) : (
         <>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-ink-5">
             {events?.length ?? 0} événement{(events?.length ?? 0) > 1 ? "s" : ""} trouvé
             {(events?.length ?? 0) > 1 ? "s" : ""}
           </p>
@@ -200,7 +208,7 @@ export function CatalogueExplorer() {
               ))}
             </div>
           ) : (
-            <p className="rounded-2xl border border-white/5 bg-[#12101c] px-5 py-10 text-center text-sm text-gray-500">
+            <p className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
               Aucun événement ne correspond à cette recherche.
             </p>
           )}

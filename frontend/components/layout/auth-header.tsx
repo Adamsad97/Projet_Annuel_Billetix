@@ -6,8 +6,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { clearSession, getStoredUser } from "@/lib/auth/session";
+import { logout } from "@/lib/auth/logout";
+import { getStoredUser } from "@/lib/auth/session";
 import type { AuthUser } from "@/lib/api/auth";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { Logo } from "@/components/layout/logo";
 
 export function AuthHeader() {
   const router = useRouter();
@@ -18,8 +21,9 @@ export function AuthHeader() {
     setUser(getStoredUser());
   }, []);
 
-  function handleLogout() {
-    clearSession();
+  // Révoque aussi la session côté serveur (cf. lib/auth/logout.ts).
+  async function handleLogout() {
+    await logout();
     setUser(null);
     router.push("/");
   }
@@ -32,36 +36,36 @@ export function AuthHeader() {
     user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" ? "/admin" : "/";
 
   return (
-    <header className="border-b border-white/10 bg-[#0a0812]/90 backdrop-blur">
+    <header className="border-b border-hairline-2 bg-header/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Link
-          href={homeHref}
-          className="bg-gradient-to-r from-amber-400 via-orange-500 to-fuchsia-500 bg-clip-text text-xl font-extrabold tracking-tight text-transparent"
-        >
-          BilleTiX
+        <Link href={homeHref}>
+          <Logo />
         </Link>
 
-        {user === undefined ? null : user ? (
-          <div className="flex items-center gap-3">
-            <span className="hidden text-sm font-medium text-gray-300 sm:block">
-              {user.first_name} {user.last_name}
-            </span>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          {user === undefined ? null : user ? (
+            <>
+              <span className="hidden text-sm font-medium text-ink-3 sm:block">
+                {user.first_name} {user.last_name}
+              </span>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+              >
+                Déconnexion
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/connexion"
+              className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
             >
-              Déconnexion
-            </button>
-          </div>
-        ) : (
-          <Link
-            href="/connexion"
-            className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
-          >
-            Connexion
-          </Link>
-        )}
+              Connexion
+            </Link>
+          )}
+        </div>
       </div>
     </header>
   );

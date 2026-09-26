@@ -27,7 +27,7 @@ export default function ConfidentialitePage() {
           vous disposez d&apos;un droit d&apos;accès, de rectification,
           d&apos;effacement et de portabilité de vos données. Vous pouvez
           exercer ces droits depuis votre{" "}
-          <a href="/profil" className="text-violet-400 hover:text-violet-300">
+          <a href="/profil" className="text-link hover:text-link-hover">
             profil
           </a>{" "}
           ou en nous contactant.

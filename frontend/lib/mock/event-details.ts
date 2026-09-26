@@ -31,6 +31,12 @@ export interface EventDetail {
   lineup?: string;
   accessConditions: string;
   tickets: TicketOption[];
+  // Page détail réelle (mapper) : absents des données de démonstration.
+  posterUrl?: string | null;
+  /** Ex. "17 oct. 2026 → 18 oct. 2026" (une seule date si même jour) */
+  dateRangeLabel?: string;
+  /** Ex. "de 14:00 à 23:00" */
+  timeRangeLabel?: string;
 }
 
 export const eventDetails: Record<string, EventDetail> = {
@@ -50,7 +56,7 @@ export const eventDetails: Record<string, EventDetail> = {
     remainingLabel: "1 200 places restantes",
     statusLabel: "Validé",
     heroEmoji: "🎵",
-    band: "from-violet-700 via-purple-800 to-indigo-950",
+    band: "from-blue-700 via-purple-800 to-indigo-950",
     description:
       "Une soirée inoubliable au cœur de La Défense Arena avec les meilleurs DJs de la scène internationale. 6 heures de musique non-stop, lasers et ambiance unique.",
     lineup: "Martin Garrix · Amelie Lens · Charlotte de Witte",

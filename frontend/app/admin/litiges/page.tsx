@@ -5,8 +5,8 @@ export default function AdminDisputesPage() {
   return (
     <AdminShell active="/admin/litiges">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Litiges</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-ink-1">Litiges</h1>
+        <p className="mt-1 text-sm text-ink-5">
           Réclamations, contestations bancaires et remboursements en cours de traitement.
         </p>
       </div>

@@ -29,7 +29,7 @@ export const adminEvents: AdminEvent[] = [
     category: "Concert",
     dateLabel: "15 août 2026",
     emoji: "🎧",
-    iconBg: "bg-violet-500/15",
+    iconBg: "bg-blue-500/15",
     status: "published",
     ticketsLabel: "720 / 1 000",
   },
@@ -117,11 +117,11 @@ export const eventStatusBadge: Record<
   },
   draft: {
     label: "Brouillon",
-    className: "bg-white/5 text-gray-400 ring-1 ring-inset ring-white/10",
+    className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",
   },
   archived: {
     label: "Archivé",
-    className: "bg-white/5 text-gray-400 ring-1 ring-inset ring-white/10",
+    className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",
   },
   cancelled: {
     label: "✕ Annulé",

@@ -53,21 +53,21 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="flex flex-1 flex-col bg-[#07060c]">
+    <div className="flex flex-1 flex-col bg-page">
       <AuthHeader />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-10">
         <Link
           href="/"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
         >
           ← Accueil
         </Link>
 
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Tableau de bord</h1>
-            <p className="mt-1 text-sm text-violet-300">
+            <h1 className="text-2xl font-bold text-ink-1">Tableau de bord</h1>
+            <p className="mt-1 text-sm text-accent">
               Bonjour {firstName || ""} 👋 — performances tous événements confondus
             </p>
           </div>
@@ -75,13 +75,13 @@ export default function DashboardPage() {
           <div className="flex gap-2">
             <Link
               href="/dashboard/paiements"
-              className="rounded-full border border-white/15 px-4 py-2.5 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+              className="rounded-full border border-hairline-3 px-4 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
             >
               💳 Paiements
             </Link>
             <Link
               href="/creer-evenement"
-              className="rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90"
+              className="rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
             >
               + Créer un événement
             </Link>
@@ -93,7 +93,7 @@ export default function DashboardPage() {
             {error}
           </div>
         ) : dashboard === undefined ? (
-          <p className="text-center text-sm text-gray-500">Chargement…</p>
+          <p className="text-center text-sm text-ink-5">Chargement…</p>
         ) : (
           <>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -103,21 +103,21 @@ export default function DashboardPage() {
             </div>
 
             <div className="mb-4 mt-10 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">Mes événements</h2>
+              <h2 className="text-xl font-bold text-ink-1">Mes événements</h2>
               <Link
                 href="/dashboard/finances"
-                className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+                className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
               >
                 Finances →
               </Link>
             </div>
 
             {dashboard.events.length === 0 ? (
-              <div className="rounded-2xl border border-white/5 bg-[#12101c] px-5 py-10 text-center text-sm text-gray-500">
+              <div className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
                 Tu n&apos;as encore créé aucun événement.
               </div>
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
+              <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
                 {dashboard.events.map((event) => (
                   <OrganizerEventRow
                     key={event.id}

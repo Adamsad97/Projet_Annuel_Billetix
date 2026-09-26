@@ -15,11 +15,11 @@ const statusBadge: Record<string, { label: string; className: string }> = {
   },
   DRAFT: {
     label: "Brouillon",
-    className: "bg-white/5 text-gray-400 ring-1 ring-inset ring-white/10",
+    className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",
   },
   ARCHIVED: {
     label: "Archivé",
-    className: "bg-white/5 text-gray-400 ring-1 ring-inset ring-white/10",
+    className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",
   },
   CANCELLED: {
     label: "✕ Annulé",
@@ -31,7 +31,7 @@ const statusBadge: Record<string, { label: string; className: string }> = {
   },
   TERMINATED: {
     label: "Terminé",
-    className: "bg-white/5 text-gray-400 ring-1 ring-inset ring-white/10",
+    className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",
   },
 };
 
@@ -45,25 +45,25 @@ export function AdminEventRow({ event }: { event: ApiAdminEvent }) {
       : `${new Intl.NumberFormat("fr-FR").format(event.sold)} / ${new Intl.NumberFormat("fr-FR").format(event.total_quota)}`;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/5 px-5 py-4 last:border-b-0">
+    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 last:border-b-0">
       <div className="flex items-center gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 text-xl">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-hairline-1 text-xl">
           {event.category_emoji ?? "🎫"}
         </span>
         <div>
-          <p className="text-sm font-bold text-white">{event.title}</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm font-bold text-ink-1">{event.title}</p>
+          <p className="text-xs text-ink-5">
             {event.organizer_name} · {event.category_label} · {dateFormatter.format(new Date(event.start_date))}
           </p>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-sm text-gray-400">{ticketsLabel}</span>
+        <span className="text-sm text-ink-4">{ticketsLabel}</span>
         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${badge.className}`}>{badge.label}</span>
         <Link
           href={`/admin/evenements/${event.id}`}
-          className="rounded-lg bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10"
+          className="rounded-lg bg-hairline-1 px-3 py-1.5 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
         >
           ● Détails
         </Link>

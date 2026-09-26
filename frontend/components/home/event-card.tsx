@@ -1,20 +1,25 @@
 import Link from "next/link";
 import { categoryPillStyles, type MockEvent } from "@/lib/mock/events";
+import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 
 export function EventCard({ event }: { event: MockEvent }) {
   return (
     <Link
       href={`/evenements/${event.id}`}
-      className="block overflow-hidden rounded-2xl border border-white/5 bg-[#12101c] transition-transform hover:-translate-y-0.5 hover:border-white/10"
+      className="block overflow-hidden rounded-2xl border border-hairline-1 bg-card transition-transform hover:-translate-y-0.5 hover:border-hairline-2"
     >
       <div
-        className={`relative flex h-44 items-center justify-center bg-gradient-to-br ${event.band}`}
+        className={`relative flex h-44 items-center justify-center ${event.band}`}
       >
         <span className="text-5xl opacity-90">{event.emoji}</span>
 
+        {/* Bug corrigé : badges sur fond fixe (dégradé de catégorie +
+            pastille bg-black/50), jamais liés au thème — leur texte
+            épinglé en blanc plutôt que sur les tokens ink-* (sombres en
+            mode clair, donc invisibles ici). */}
         <div className="absolute left-3 top-3 rounded-lg bg-black/50 px-2.5 py-1.5 text-center leading-none backdrop-blur">
           <div className="text-base font-bold text-white">{event.day}</div>
-          <div className="text-[10px] uppercase tracking-wide text-gray-300">
+          <div className="text-[10px] uppercase tracking-wide text-white/80">
             {event.month}
           </div>
         </div>
@@ -28,19 +33,22 @@ export function EventCard({ event }: { event: MockEvent }) {
 
       <div className="flex flex-col gap-3 p-4">
         <div>
-          <h3 className="font-bold leading-snug text-white">{event.title}</h3>
+          <h3 className="font-bold leading-snug text-ink-1">{event.title}</h3>
           {event.subtitle ? (
-            <p className="text-sm text-violet-300">{event.subtitle}</p>
+            <p className="text-sm text-accent">{event.subtitle}</p>
           ) : null}
-          <p className="mt-0.5 text-sm text-gray-400">📍 {event.city}</p>
+          <p className="mt-0.5 flex items-center gap-1 text-sm text-ink-4">
+            <LocationPinIcon size={14} />
+            {event.city}
+          </p>
         </div>
 
-        <div className="flex items-center justify-between border-t border-white/5 pt-3">
+        <div className="flex items-center justify-between border-t border-hairline-1 pt-3">
           <span
             className={
               event.free
                 ? "font-semibold text-emerald-400"
-                : "font-semibold text-white"
+                : "font-semibold text-ink-1"
             }
           >
             {event.priceLabel}

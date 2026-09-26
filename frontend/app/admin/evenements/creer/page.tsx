@@ -16,6 +16,8 @@ import { listTicketTierTypes, type ApiTicketTierType } from "@/lib/api/ticket-ti
 import { changeUserRole, searchUsers, type ApiAdminUser } from "@/lib/api/admin";
 import { registerUser, requestPasswordReset } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/http-error";
+import { ageInYears, underageMessage } from "@/lib/auth/age";
+import { useRegistrationPolicy } from "@/lib/auth/use-registration-policy";
 
 const roleLabel: Record<ApiAdminUser["role"], string> = {
   BUYER: "Acheteur",
@@ -34,7 +36,10 @@ function isValidEmail(value: string): boolean {
 function randomPassword(): string {
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
-  return btoa(String.fromCharCode(...bytes));
+  // Suffixe fixe : garantit majuscule/minuscule/chiffre/caractère spécial,
+  // que le base64 seul ne fournit pas toujours (politique de mot de passe
+  // d'auth-service) — l'aléa reste dans les 32 premiers caractères.
+  return `${btoa(String.fromCharCode(...bytes))}Aa1!`;
 }
 
 export default function AdminCreateEventForOrganizerPage() {
@@ -50,6 +55,9 @@ export default function AdminCreateEventForOrganizerPage() {
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [newFirstName, setNewFirstName] = useState("");
   const [newLastName, setNewLastName] = useState("");
+  const [newBirthDate, setNewBirthDate] = useState("");
+  const { minimumAge } = useRegistrationPolicy();
+  const newAccountUnderage = newBirthDate !== "" && ageInYears(newBirthDate) < minimumAge;
   const [newPhone, setNewPhone] = useState("");
   const [creatingAccount, setCreatingAccount] = useState(false);
 
@@ -111,6 +119,7 @@ export default function AdminCreateEventForOrganizerPage() {
         password: randomPassword(),
         first_name: newFirstName.trim(),
         last_name: newLastName.trim(),
+        birth_date: newBirthDate,
         role: "ORGANIZER",
       });
       // Le mot de passe généré n'est connu de personne — l'organisateur
@@ -149,14 +158,14 @@ export default function AdminCreateEventForOrganizerPage() {
     <AdminShell active="/admin/evenements">
       <Link
         href="/admin/evenements"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
+        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
       >
         ← Événements
       </Link>
 
       <div className="mb-8 text-center">
-        <h1 className="text-2xl font-bold text-white">Créer un événement pour un organisateur</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-ink-1">Créer un événement pour un organisateur</h1>
+        <p className="mt-1 text-sm text-ink-5">
           Pour un organisateur venu directement au bureau — l&apos;événement sera créé sous son compte.
         </p>
       </div>
@@ -164,25 +173,25 @@ export default function AdminCreateEventForOrganizerPage() {
       {!selected ? (
         <div className="mx-auto flex max-w-md flex-col gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Organisateur (nom ou email) *</span>
+            <span className="text-sm font-medium text-accent/80">Organisateur (nom ou email) *</span>
             <input
               type="text"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="ex: marie.kone@email.com"
               autoFocus
-              className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+              className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
             />
           </label>
 
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
           {searching ? (
-            <p className="text-center text-sm text-gray-500">Recherche…</p>
+            <p className="text-center text-sm text-ink-5">Recherche…</p>
           ) : results !== undefined ? (
             <>
               {results.length > 0 ? (
-                <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
+                <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
                   {results.map((account) => {
                     const selectable =
                       !account.is_suspended &&
@@ -196,40 +205,40 @@ export default function AdminCreateEventForOrganizerPage() {
                         type="button"
                         onClick={() => (selectable ? (needsPromotion ? handlePromoteAndSelect(account) : setSelected(account)) : undefined)}
                         disabled={!selectable || busyId === account.id}
-                        className="flex w-full items-center justify-between gap-3 border-b border-white/5 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-40"
+                        className="flex w-full items-center justify-between gap-3 border-b border-hairline-1 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-hairline-1 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <span>
-                          <span className="block text-sm font-medium text-white">
+                          <span className="block text-sm font-medium text-ink-1">
                             {account.first_name} {account.last_name}
                           </span>
-                          <span className="block text-xs text-gray-500">{account.email} · {roleLabel[account.role]}</span>
+                          <span className="block text-xs text-ink-5">{account.email} · {roleLabel[account.role]}</span>
                         </span>
                         {account.is_suspended ? (
                           <span className="shrink-0 rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-300">
                             Suspendu
                           </span>
                         ) : busyId === account.id ? (
-                          <span className="shrink-0 text-xs text-gray-500">…</span>
+                          <span className="shrink-0 text-xs text-ink-5">…</span>
                         ) : needsPromotion ? (
-                          <span className="shrink-0 text-xs font-medium text-violet-400">Passer organisateur →</span>
+                          <span className="shrink-0 text-xs font-medium text-link">Passer organisateur →</span>
                         ) : selectable ? (
-                          <span className="shrink-0 text-sm text-violet-400">Choisir →</span>
+                          <span className="shrink-0 text-sm text-link">Choisir →</span>
                         ) : null}
                       </button>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-center text-sm text-gray-500">Aucun compte trouvé pour cette recherche.</p>
+                <p className="text-center text-sm text-ink-5">Aucun compte trouvé pour cette recherche.</p>
               )}
 
               {isValidEmail(query.trim()) ? (
                 showCreateAccount ? (
                   <form
                     onSubmit={handleCreateAccount}
-                    className="flex flex-col gap-3 rounded-2xl border border-white/5 bg-[#12101c] p-4"
+                    className="flex flex-col gap-3 rounded-2xl border border-hairline-1 bg-card p-4"
                   >
-                    <p className="text-sm font-medium text-white">
+                    <p className="text-sm font-medium text-ink-1">
                       Nouveau compte organisateur — {query.trim()}
                     </p>
                     <div className="grid grid-cols-2 gap-3">
@@ -238,29 +247,46 @@ export default function AdminCreateEventForOrganizerPage() {
                         value={newFirstName}
                         onChange={(event) => setNewFirstName(event.target.value)}
                         placeholder="Prénom"
-                        className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+                        className="rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
                       />
                       <input
                         required
                         value={newLastName}
                         onChange={(event) => setNewLastName(event.target.value)}
                         placeholder="Nom"
-                        className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+                        className="rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
                       />
                     </div>
+                    <label className="flex flex-col gap-1 text-xs text-ink-4">
+                      Date de naissance
+                      <input
+                        type="date"
+                        required
+                        max={new Date().toISOString().slice(0, 10)}
+                        value={newBirthDate}
+                        onChange={(event) => setNewBirthDate(event.target.value)}
+                        aria-invalid={newAccountUnderage}
+                        className={`rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none ${newAccountUnderage ? "border-danger" : ""}`}
+                      />
+                    </label>
+                    {newAccountUnderage ? (
+                      <p role="alert" className="rounded-xl bg-danger/10 px-3 py-2 text-xs font-medium text-danger ring-1 ring-inset ring-danger/30">
+                        {underageMessage(minimumAge)}
+                      </p>
+                    ) : null}
                     <input
                       value={newPhone}
                       onChange={(event) => setNewPhone(event.target.value)}
                       placeholder="Téléphone (optionnel)"
-                      className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+                      className="rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
                     />
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-ink-5">
                       Un email lui sera envoyé pour qu&apos;il définisse son mot de passe.
                     </p>
                     <button
                       type="submit"
-                      disabled={creatingAccount}
-                      className="rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
+                      disabled={creatingAccount || newAccountUnderage}
+                      className="rounded-full bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
                     >
                       {creatingAccount ? "Création…" : "Créer le compte et continuer →"}
                     </button>
@@ -269,7 +295,7 @@ export default function AdminCreateEventForOrganizerPage() {
                   <button
                     type="button"
                     onClick={() => setShowCreateAccount(true)}
-                    className="rounded-xl border border-dashed border-white/10 py-2.5 text-sm font-medium text-violet-400 transition-colors hover:border-white/20 hover:text-violet-300"
+                    className="rounded-xl border border-dashed border-hairline-2 py-2.5 text-sm font-medium text-link transition-colors hover:border-hairline-4 hover:text-link-hover"
                   >
                     + Nouveau compte organisateur pour « {query.trim()} »
                   </button>
@@ -280,14 +306,14 @@ export default function AdminCreateEventForOrganizerPage() {
         </div>
       ) : (
         <>
-          <div className="mx-auto mb-6 flex max-w-2xl items-center justify-between rounded-2xl border border-violet-500/20 bg-violet-500/5 px-5 py-3">
-            <p className="text-sm text-violet-200">
+          <div className="mx-auto mb-6 flex max-w-2xl items-center justify-between rounded-2xl border border-blue-500/20 bg-blue-500/5 px-5 py-3">
+            <p className="text-sm text-accent">
               Pour <span className="font-semibold">{selected.first_name} {selected.last_name}</span> ({selected.email})
             </p>
             <button
               type="button"
               onClick={() => setSelected(null)}
-              className="text-sm font-medium text-gray-400 hover:text-white"
+              className="text-sm font-medium text-ink-4 hover:text-ink-1"
             >
               Changer
             </button>

@@ -167,8 +167,8 @@ export default function AdminCategoriesPage() {
   return (
     <AdminShell active="/admin/categories">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Catégories</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-ink-1">Catégories</h1>
+        <p className="mt-1 text-sm text-ink-5">
           Ces deux listes alimentent les dropdowns du formulaire de création
           d&apos;événement côté organisateur — désactive une entrée plutôt que
           la supprimer si elle est déjà utilisée.
@@ -176,24 +176,24 @@ export default function AdminCategoriesPage() {
       </div>
 
       <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold text-white">Catégories d&apos;événement</h2>
+        <h2 className="mb-3 text-lg font-semibold text-ink-1">Catégories d&apos;événement</h2>
 
         <form
           onSubmit={handleCreateCategory}
-          className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-white/5 bg-[#12101c] p-4"
+          className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-hairline-1 bg-card p-4"
         >
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-violet-200/80">Emoji</span>
+            <span className="text-xs font-medium text-accent/80">Emoji</span>
             <input
               value={newEmoji}
               onChange={(event) => setNewEmoji(event.target.value)}
               maxLength={8}
               placeholder="🎨"
-              className="w-16 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-center text-sm text-white focus:border-violet-500 focus:outline-none"
+              className="w-16 rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-center text-sm text-ink-1 focus:border-blue-500 focus:outline-none"
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-violet-200/80">Code *</span>
+            <span className="text-xs font-medium text-accent/80">Code *</span>
             <input
               required
               value={newCode}
@@ -201,23 +201,23 @@ export default function AdminCategoriesPage() {
               placeholder="EXPOSITION"
               pattern="[A-Z][A-Z0-9_]*"
               title="Majuscules, chiffres et underscore uniquement"
-              className="w-40 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+              className="w-40 rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
             />
           </label>
           <label className="flex flex-1 flex-col gap-1.5">
-            <span className="text-xs font-medium text-violet-200/80">Libellé *</span>
+            <span className="text-xs font-medium text-accent/80">Libellé *</span>
             <input
               required
               value={newLabel}
               onChange={(event) => setNewLabel(event.target.value)}
               placeholder="Exposition"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+              className="w-full rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
             />
           </label>
           <button
             type="submit"
             disabled={creatingCategory}
-            className="rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {creatingCategory ? "Ajout…" : "+ Ajouter"}
           </button>
@@ -230,14 +230,14 @@ export default function AdminCategoriesPage() {
         ) : null}
 
         {categories === undefined ? (
-          <p className="text-center text-sm text-gray-500">Chargement…</p>
+          <p className="text-center text-sm text-ink-5">Chargement…</p>
         ) : categories.length === 0 ? (
-          <div className="rounded-2xl border border-white/5 bg-[#12101c] px-5 py-10 text-center text-sm text-gray-500">
+          <div className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
             Aucune catégorie — ajoute la première ci-dessus.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
-            <div className="grid grid-cols-[60px_1fr_90px_auto] gap-3 border-b border-white/5 px-4 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+          <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+            <div className="grid grid-cols-[60px_1fr_90px_auto] gap-3 border-b border-hairline-1 px-4 py-2 text-xs font-medium uppercase tracking-wide text-ink-5">
               <span />
               <span>Catégorie</span>
               <span className="text-center">Ordre</span>
@@ -257,40 +257,40 @@ export default function AdminCategoriesPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-white">Catégories de billets</h2>
-        <p className="mb-3 text-sm text-gray-500">
+        <h2 className="mb-3 text-lg font-semibold text-ink-1">Catégories de billets</h2>
+        <p className="mb-3 text-sm text-ink-5">
           Noms disponibles quand un organisateur ajoute une catégorie de
           billet à son événement (ex: Standard, VIP) — plus de saisie libre.
         </p>
 
         <form
           onSubmit={handleCreateTierType}
-          className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-white/5 bg-[#12101c] p-4"
+          className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-hairline-1 bg-card p-4"
         >
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-violet-200/80">Emoji</span>
+            <span className="text-xs font-medium text-accent/80">Emoji</span>
             <input
               value={newTierEmoji}
               onChange={(event) => setNewTierEmoji(event.target.value)}
               maxLength={8}
               placeholder="🎟️"
-              className="w-16 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-center text-sm text-white focus:border-violet-500 focus:outline-none"
+              className="w-16 rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-center text-sm text-ink-1 focus:border-blue-500 focus:outline-none"
             />
           </label>
           <label className="flex flex-1 flex-col gap-1.5">
-            <span className="text-xs font-medium text-violet-200/80">Nom *</span>
+            <span className="text-xs font-medium text-accent/80">Nom *</span>
             <input
               required
               value={newTierLabel}
               onChange={(event) => setNewTierLabel(event.target.value)}
               placeholder="Early Bird"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+              className="w-full rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
             />
           </label>
           <button
             type="submit"
             disabled={creatingTierType}
-            className="rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {creatingTierType ? "Ajout…" : "+ Ajouter"}
           </button>
@@ -303,14 +303,14 @@ export default function AdminCategoriesPage() {
         ) : null}
 
         {tierTypes === undefined ? (
-          <p className="text-center text-sm text-gray-500">Chargement…</p>
+          <p className="text-center text-sm text-ink-5">Chargement…</p>
         ) : tierTypes.length === 0 ? (
-          <div className="rounded-2xl border border-white/5 bg-[#12101c] px-5 py-10 text-center text-sm text-gray-500">
+          <div className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
             Aucun nom — ajoute le premier ci-dessus.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
-            <div className="grid grid-cols-[60px_1fr_90px_auto] gap-3 border-b border-white/5 px-4 py-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+          <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+            <div className="grid grid-cols-[60px_1fr_90px_auto] gap-3 border-b border-hairline-1 px-4 py-2 text-xs font-medium uppercase tracking-wide text-ink-5">
               <span />
               <span>Nom</span>
               <span className="text-center">Ordre</span>

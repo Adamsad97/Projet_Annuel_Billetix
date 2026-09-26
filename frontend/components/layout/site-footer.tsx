@@ -10,9 +10,9 @@ const links = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-white/5 px-6 py-8">
+    <footer className="border-t border-hairline-1 px-6 py-8">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-ink-6">
           © 2026 BilletiX SAS — Plateforme de billetterie sécurisée.
         </p>
         <nav className="flex flex-wrap gap-x-5 gap-y-2">
@@ -20,7 +20,7 @@ export function SiteFooter() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-xs text-gray-500 transition-colors hover:text-gray-300"
+              className="text-xs text-ink-5 transition-colors hover:text-ink-3"
             >
               {link.label}
             </Link>

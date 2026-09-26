@@ -11,11 +11,6 @@
 
 import { useEffect, useState } from "react";
 
-const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", {
-  dateStyle: "long",
-  timeStyle: "short",
-});
-
 function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
@@ -32,8 +27,8 @@ function splitRemaining(ms: number) {
 
 /**
  * Le tableau d'affichage seul (jours/heures/min/sec), sans la carte qui
- * l'entoure — réutilisé à la fois par SalesCountdown (acheteur, remplace
- * entièrement le formulaire) et par TicketSelector pour l'organisateur/un
+ * l'entoure — réutilisé par TicketSelector, côté acheteur (remplace le
+ * formulaire d'achat jusqu'à l'ouverture) comme pour l'organisateur/un
  * admin consultant sa propre fiche : ceux-ci voient déjà un message de
  * blocage dans leur propre carte, doubler la carte "Choisir mes billets"
  * par-dessus serait redondant — seul le compte à rebours en lui-même
@@ -67,7 +62,7 @@ export function CountdownDigits({
   }, [targetIso]);
 
   if (remainingMs === null || remainingMs <= 0) {
-    return <p className="text-sm text-gray-500">Chargement…</p>;
+    return <p className="text-sm text-ink-5">Chargement…</p>;
   }
 
   const { days, hours, minutes, seconds } = splitRemaining(remainingMs);
@@ -88,36 +83,11 @@ export function CountdownDigits({
           <span className="font-mono text-2xl font-bold tabular-nums text-emerald-400 [text-shadow:0_0_8px_rgba(16,185,129,0.6)]">
             {pad(unit.value)}
           </span>
-          <span className="mt-1 text-[10px] uppercase tracking-wider text-gray-500">
+          <span className="mt-1 text-[10px] uppercase tracking-wider text-ink-5">
             {unit.label}
           </span>
         </div>
       ))}
-    </div>
-  );
-}
-
-export function SalesCountdown({
-  salesStartAt,
-  onSalesOpen,
-}: {
-  salesStartAt: string;
-  onSalesOpen: () => void;
-}) {
-  return (
-    <div className="sticky top-24 rounded-2xl border border-white/5 bg-[#12101c] p-5">
-      <h2 className="text-base font-bold text-white">Choisir mes billets</h2>
-      <p className="mt-3 text-sm text-gray-400">
-        Les ventes ouvrent le {dateTimeFormatter.format(new Date(salesStartAt))}
-      </p>
-
-      <div className="mt-5">
-        <CountdownDigits targetIso={salesStartAt} onZero={onSalesOpen} />
-      </div>
-
-      <p className="mt-4 text-center text-xs text-gray-500">
-        ⏳ La billetterie s&apos;ouvre automatiquement, pas besoin de recharger la page
-      </p>
     </div>
   );
 }

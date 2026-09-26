@@ -100,9 +100,9 @@ export function UsersExplorer() {
         <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">{error}</div>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
+      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
         {users === null ? (
-          <p className="px-5 py-8 text-center text-sm text-gray-500">Chargement…</p>
+          <p className="px-5 py-8 text-center text-sm text-ink-5">Chargement…</p>
         ) : users.length > 0 ? (
           users.map((user) => (
             <UserRow
@@ -114,12 +114,12 @@ export function UsersExplorer() {
             />
           ))
         ) : (
-          <p className="px-5 py-8 text-center text-sm text-gray-500">Aucun utilisateur ne correspond à cette recherche.</p>
+          <p className="px-5 py-8 text-center text-sm text-ink-5">Aucun utilisateur ne correspond à cette recherche.</p>
         )}
       </div>
 
       {users && users.length > 0 ? (
-        <p className="text-center text-xs text-gray-600">
+        <p className="text-center text-xs text-ink-6">
           {users.length} sur {total} compte{total > 1 ? "s" : ""}
         </p>
       ) : null}

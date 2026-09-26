@@ -7,8 +7,8 @@ export default function AdminCommissionsPage() {
   return (
     <AdminShell active="/admin/commissions">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Commissions</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-ink-1">Commissions</h1>
+        <p className="mt-1 text-sm text-ink-5">
           Barème de frais appliqué par moyen de paiement. Modifiable depuis
           Paramètres.
         </p>

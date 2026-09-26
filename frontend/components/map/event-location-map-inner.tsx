@@ -14,7 +14,7 @@ export default function EventLocationMapInner({
   label: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10">
+    <div className="overflow-hidden rounded-xl border border-hairline-2">
       <MapContainer
         center={[latitude, longitude]}
         zoom={15}

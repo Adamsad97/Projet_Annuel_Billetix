@@ -115,9 +115,9 @@ export function PayoutsExplorer() {
         <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">{error}</div>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
+      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
         {payouts === null ? (
-          <p className="px-5 py-8 text-center text-sm text-gray-500">Chargement…</p>
+          <p className="px-5 py-8 text-center text-sm text-ink-5">Chargement…</p>
         ) : payouts.length > 0 ? (
           payouts.map((payout) => (
             <PayoutRow
@@ -130,12 +130,12 @@ export function PayoutsExplorer() {
             />
           ))
         ) : (
-          <p className="px-5 py-8 text-center text-sm text-gray-500">Aucun reversement dans cette catégorie.</p>
+          <p className="px-5 py-8 text-center text-sm text-ink-5">Aucun reversement dans cette catégorie.</p>
         )}
       </div>
 
       {payouts && payouts.length > 0 ? (
-        <p className="text-center text-xs text-gray-600">
+        <p className="text-center text-xs text-ink-6">
           {payouts.length} sur {total} reversement{total > 1 ? "s" : ""}
         </p>
       ) : null}

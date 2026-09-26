@@ -21,7 +21,7 @@ import { uploadPoster } from "@/lib/api/upload";
 import { ApiError } from "@/lib/api/http-error";
 
 const fieldClassName =
-  "rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none";
+  "rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none";
 
 export interface CreateEventFormInitial {
   title: string;
@@ -200,7 +200,7 @@ export function CreateEventForm({
       <InfoCard icon="📋" title="Informations générales">
         <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">
+            <span className="text-sm font-medium text-accent/80">
               Titre *
             </span>
             <input
@@ -214,7 +214,7 @@ export function CreateEventForm({
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">
+            <span className="text-sm font-medium text-accent/80">
               Description *
             </span>
             <textarea
@@ -228,7 +228,7 @@ export function CreateEventForm({
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">
+            <span className="text-sm font-medium text-accent/80">
               Catégorie *
             </span>
             <CategoryPicker categories={categories} value={category} onChange={setCategory} />
@@ -240,7 +240,7 @@ export function CreateEventForm({
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-violet-200/80">
+              <span className="text-sm font-medium text-accent/80">
                 Date de début *
               </span>
               <input
@@ -253,7 +253,7 @@ export function CreateEventForm({
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-violet-200/80">
+              <span className="text-sm font-medium text-accent/80">
                 Date de fin *
               </span>
               <input
@@ -268,7 +268,7 @@ export function CreateEventForm({
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">
+            <span className="text-sm font-medium text-accent/80">
               Nom du lieu *
             </span>
             <input
@@ -282,7 +282,7 @@ export function CreateEventForm({
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">
+            <span className="text-sm font-medium text-accent/80">
               Adresse *
             </span>
             <AddressAutocomplete
@@ -303,7 +303,7 @@ export function CreateEventForm({
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_1fr_1fr]">
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-violet-200/80">Ville *</span>
+              <span className="text-sm font-medium text-accent/80">Ville *</span>
               <input
                 type="text"
                 required
@@ -314,7 +314,7 @@ export function CreateEventForm({
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-violet-200/80">Code postal *</span>
+              <span className="text-sm font-medium text-accent/80">Code postal *</span>
               <input
                 type="text"
                 required
@@ -325,7 +325,7 @@ export function CreateEventForm({
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-violet-200/80">Pays *</span>
+              <span className="text-sm font-medium text-accent/80">Pays *</span>
               <input
                 type="text"
                 required
@@ -355,7 +355,7 @@ export function CreateEventForm({
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-violet-200/80">Capacité totale *</span>
+              <span className="text-sm font-medium text-accent/80">Capacité totale *</span>
               <input
                 type="number"
                 required
@@ -366,21 +366,21 @@ export function CreateEventForm({
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-violet-200/80">Politique de remboursement *</span>
+              <span className="text-sm font-medium text-accent/80">Politique de remboursement *</span>
               <select
                 value={refundPolicy}
                 onChange={(event) => setRefundPolicy(event.target.value as "NON_REFUNDABLE" | "REFUNDABLE")}
                 className={fieldClassName}
               >
-                <option value="NON_REFUNDABLE" className="bg-[#12101c]">Non remboursable</option>
-                <option value="REFUNDABLE" className="bg-[#12101c]">Remboursable</option>
+                <option value="NON_REFUNDABLE" className="bg-card">Non remboursable</option>
+                <option value="REFUNDABLE" className="bg-card">Remboursable</option>
               </select>
             </label>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-violet-200/80">Ouverture des ventes</span>
+              <span className="text-sm font-medium text-accent/80">Ouverture des ventes</span>
               <input
                 type="datetime-local"
                 min={minDatetimeLocal}
@@ -388,10 +388,10 @@ export function CreateEventForm({
                 onChange={(event) => setSalesStartAt(event.target.value)}
                 className={fieldClassName}
               />
-              <span className="text-xs text-gray-500">Laisser vide pour ouvrir dès la validation.</span>
+              <span className="text-xs text-ink-5">Laisser vide pour ouvrir dès la validation.</span>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-violet-200/80">Fermeture des ventes</span>
+              <span className="text-sm font-medium text-accent/80">Fermeture des ventes</span>
               <input
                 type="datetime-local"
                 min={salesStartAt || minDatetimeLocal}
@@ -399,7 +399,7 @@ export function CreateEventForm({
                 onChange={(event) => setSalesEndAt(event.target.value)}
                 className={fieldClassName}
               />
-              <span className="text-xs text-gray-500">Laisser vide pour fermer au début de l&apos;événement.</span>
+              <span className="text-xs text-ink-5">Laisser vide pour fermer au début de l&apos;événement.</span>
             </label>
           </div>
         </div>
@@ -423,7 +423,7 @@ export function CreateEventForm({
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-full bg-blue-700 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {submitting
           ? "Envoi en cours…"
@@ -435,15 +435,15 @@ export function CreateEventForm({
       </button>
 
       {adminOrganizerId ? (
-        <p className="text-center text-xs text-gray-500">
+        <p className="text-center text-xs text-ink-5">
           L&apos;événement sera créé sous le compte de l&apos;organisateur puis soumis à validation — tu seras redirigé vers sa fiche pour la traiter.
         </p>
       ) : mode === "create" ? (
-        <p className="text-center text-xs text-gray-500">
+        <p className="text-center text-xs text-ink-5">
           ⏱️ Délai de traitement : 48h ouvrées maximum
         </p>
       ) : (
-        <p className="text-center text-xs text-gray-500">
+        <p className="text-center text-xs text-ink-5">
           ⏱️ Toute modification substantielle repasse en validation (48h ouvrées).
         </p>
       )}

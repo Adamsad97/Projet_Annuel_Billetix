@@ -9,8 +9,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { clearSession, getStoredUser } from "@/lib/auth/session";
+import { logout } from "@/lib/auth/logout";
+import { getStoredUser } from "@/lib/auth/session";
 import type { AuthUser, UserRole } from "@/lib/api/auth";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { Logo } from "@/components/layout/logo";
 
 // Matrice de rôles de la navbar — un compte n'a qu'un seul rôle à la fois,
 // chaque onglet ne sert donc qu'à celui à qui il est réellement utile
@@ -19,7 +22,8 @@ import type { AuthUser, UserRole } from "@/lib/api/auth";
 // (vitrine publique) ; `roles` s'applique seulement une fois connecté.
 const navLinks: Array<{ href: string; label: string; allowGuest?: boolean; roles: UserRole[] }> = [
   { href: "/catalogue", label: "Catalogue", allowGuest: true, roles: ["BUYER"] },
-  { href: "/revente", label: "Revente", allowGuest: true, roles: ["BUYER"] },
+  // Revente réservée aux acheteurs connectés : plus visible des visiteurs.
+  { href: "/revente", label: "Revente", roles: ["BUYER"] },
   { href: "/profil/billets", label: "Mes billets", roles: ["BUYER"] },
   { href: "/dashboard", label: "Dashboard", roles: ["ORGANIZER"] },
   // ORGANIZER scanne ses propres événements (vérifié côté gateway via
@@ -38,8 +42,9 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
     setUser(getStoredUser());
   }, []);
 
-  function handleLogout() {
-    clearSession();
+  // Révoque aussi la session côté serveur (cf. lib/auth/logout.ts).
+  async function handleLogout() {
+    await logout();
     setUser(null);
     router.push("/");
   }
@@ -49,13 +54,10 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
   );
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0812]/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Link
-          href="/"
-          className="bg-gradient-to-r from-amber-400 via-orange-500 to-fuchsia-500 bg-clip-text text-xl font-extrabold tracking-tight text-transparent"
-        >
-          BilleTiX
+    <header className="sticky top-0 z-50 border-b border-hairline-2 bg-header/90 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6">
+        <Link href="/" className="shrink-0">
+          <Logo />
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
@@ -67,8 +69,8 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
                 href={link.href}
                 className={
                   isActive
-                    ? "rounded-full bg-violet-600/20 px-4 py-2 text-sm font-medium text-violet-200 ring-1 ring-inset ring-violet-500/40"
-                    : "rounded-full px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:text-white"
+                    ? "rounded-full bg-blue-600/20 px-4 py-2 text-sm font-medium text-accent ring-1 ring-inset ring-blue-500/40"
+                    : "rounded-full px-4 py-2 text-sm font-medium text-ink-3 transition-colors hover:text-ink-1"
                 }
               >
                 {link.label}
@@ -77,7 +79,8 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
           })}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle />
           {user === undefined ? null : user ? (
             <>
               {/* Masqué pour ADMIN/SUPER_ADMIN : le lien "Back-office" du
@@ -86,7 +89,7 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
               {user.role !== "ADMIN" && user.role !== "SUPER_ADMIN" ? (
                 <Link
                   href="/profil"
-                  className="hidden text-sm font-medium text-gray-300 hover:text-white sm:block"
+                  className="hidden text-sm font-medium text-ink-3 hover:text-ink-1 sm:block"
                 >
                   {user.first_name}
                 </Link>
@@ -94,7 +97,7 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+                className="whitespace-nowrap rounded-full border border-hairline-3 px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 sm:px-4"
               >
                 Déconnexion
               </button>
@@ -103,13 +106,13 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
             <>
               <Link
                 href="/connexion"
-                className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+                className="whitespace-nowrap rounded-full border border-hairline-3 px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 sm:px-4"
               >
                 Connexion
               </Link>
               <Link
                 href="/inscription"
-                className="rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90"
+                className="whitespace-nowrap rounded-full bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 sm:px-4"
               >
                 S&apos;inscrire
               </Link>

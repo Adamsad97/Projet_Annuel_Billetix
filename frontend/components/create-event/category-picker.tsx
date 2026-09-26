@@ -15,7 +15,7 @@ export function CategoryPicker({
 }) {
   if (categories.length === 0) {
     return (
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-ink-5">
         Aucune catégorie disponible pour le moment — contacte l&apos;équipe BilletiX.
       </p>
     );
@@ -25,10 +25,10 @@ export function CategoryPicker({
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white focus:border-violet-500 focus:outline-none"
+      className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 focus:border-blue-500 focus:outline-none"
     >
       {categories.map((category) => (
-        <option key={category.code} value={category.code} className="bg-[#12101c]">
+        <option key={category.code} value={category.code} className="bg-card">
           {category.emoji ? `${category.emoji} ` : ""}
           {category.label}
         </option>

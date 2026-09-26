@@ -132,12 +132,12 @@ export function ValidationTabs() {
         <p className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-300">{error}</p>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
+      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
         {tab === "pending" ? (
           pending === undefined ? (
-            <p className="px-5 py-8 text-center text-sm text-gray-500">Chargement…</p>
+            <p className="px-5 py-8 text-center text-sm text-ink-5">Chargement…</p>
           ) : pending.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-gray-500">Aucun événement en attente.</p>
+            <p className="px-5 py-8 text-center text-sm text-ink-5">Aucun événement en attente.</p>
           ) : (
             pending.map((event) => (
               <ValidationRow
@@ -155,9 +155,9 @@ export function ValidationTabs() {
 
         {tab === "approved" ? (
           approved === undefined ? (
-            <p className="px-5 py-8 text-center text-sm text-gray-500">Chargement…</p>
+            <p className="px-5 py-8 text-center text-sm text-ink-5">Chargement…</p>
           ) : approved.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-gray-500">Aucun événement validé récemment.</p>
+            <p className="px-5 py-8 text-center text-sm text-ink-5">Aucun événement validé récemment.</p>
           ) : (
             approved.map((entry) => <ValidationHistoryRow key={entry.id} entry={entry} outcome="approved" />)
           )
@@ -165,9 +165,9 @@ export function ValidationTabs() {
 
         {tab === "rejected" ? (
           rejected === undefined ? (
-            <p className="px-5 py-8 text-center text-sm text-gray-500">Chargement…</p>
+            <p className="px-5 py-8 text-center text-sm text-ink-5">Chargement…</p>
           ) : rejected.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-gray-500">Aucun événement rejeté récemment.</p>
+            <p className="px-5 py-8 text-center text-sm text-ink-5">Aucun événement rejeté récemment.</p>
           ) : (
             rejected.map((entry) => <ValidationHistoryRow key={entry.id} entry={entry} outcome="rejected" />)
           )

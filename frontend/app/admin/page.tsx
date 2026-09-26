@@ -91,7 +91,7 @@ export default function AdminDashboardPage() {
           d'être redondant avec l'entrée "Dashboard" de la sidebar puisqu'on
           est déjà sur la page d'accueil du back-office ici. Supprimé. */}
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-white">Dashboard administrateur</h1>
+        <h1 className="text-2xl font-bold text-ink-1">Dashboard administrateur</h1>
       </div>
 
       {error ? (
@@ -101,7 +101,7 @@ export default function AdminDashboardPage() {
       ) : null}
 
       {dashboard === undefined ? (
-        <p className="text-center text-sm text-gray-500">Chargement…</p>
+        <p className="text-center text-sm text-ink-5">Chargement…</p>
       ) : (
         <>
           {dashboard.alerts.length > 0 ? (
@@ -127,25 +127,25 @@ export default function AdminDashboardPage() {
             ))}
           </div>
 
-          <h2 className="mb-3 mt-10 text-lg font-bold text-white">Ventes</h2>
+          <h2 className="mb-3 mt-10 text-lg font-bold text-ink-1">Ventes</h2>
           <RevenueTrendChart />
         </>
       )}
 
       <div className="mb-4 mt-10 flex items-center justify-between">
-        <h2 className="text-lg font-bold text-white">
+        <h2 className="text-lg font-bold text-ink-1">
           File de validation {pending !== undefined ? `— ${pending.length} événement(s) en attente` : ""}
         </h2>
-        <Link href="/admin/validation" className="text-sm font-medium text-violet-400 hover:text-violet-300">
+        <Link href="/admin/validation" className="text-sm font-medium text-link hover:text-link-hover">
           Tout voir →
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
+      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
         {pending === undefined ? (
-          <p className="px-5 py-8 text-center text-sm text-gray-500">Chargement…</p>
+          <p className="px-5 py-8 text-center text-sm text-ink-5">Chargement…</p>
         ) : pending.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-gray-500">Aucun événement en attente.</p>
+          <p className="px-5 py-8 text-center text-sm text-ink-5">Aucun événement en attente.</p>
         ) : (
           pending
             .slice(0, 5)

@@ -41,7 +41,7 @@ export const statusBadgeStyles: Record<
 > = {
   DRAFT: {
     label: "Brouillon",
-    className: "bg-white/10 text-gray-300 ring-1 ring-inset ring-white/15",
+    className: "bg-hairline-2 text-ink-3 ring-1 ring-inset ring-white/15",
   },
   PENDING_VALIDATION: {
     label: "⏳ En validation",
@@ -59,11 +59,11 @@ export const statusBadgeStyles: Record<
   },
   TERMINATED: {
     label: "Terminé",
-    className: "bg-white/10 text-gray-400 ring-1 ring-inset ring-white/15",
+    className: "bg-hairline-2 text-ink-4 ring-1 ring-inset ring-white/15",
   },
   ARCHIVED: {
     label: "Archivé",
-    className: "bg-white/10 text-gray-500 ring-1 ring-inset ring-white/15",
+    className: "bg-hairline-2 text-ink-5 ring-1 ring-inset ring-white/15",
   },
   SUSPENDED: {
     label: "Suspendu",

@@ -29,27 +29,27 @@ export function PayoutRow({
   const awaitingEarlyApproval = Boolean(payout.requested_early_at) && !payout.early_request_approved_by;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/5 px-5 py-4 last:border-b-0">
+    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 last:border-b-0">
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-bold text-white">
+          <p className="text-sm font-bold text-ink-1">
             {payout.event_name} — {payout.organizer_name}
           </p>
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}>{badge.label}</span>
           {awaitingEarlyApproval ? (
-            <span className="rounded-full bg-violet-500/15 px-2.5 py-0.5 text-xs font-medium text-violet-300 ring-1 ring-inset ring-violet-500/30">
+            <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-xs font-medium text-accent ring-1 ring-inset ring-blue-500/30">
               Demande anticipée
             </span>
           ) : null}
         </div>
-        <p className="mt-0.5 text-xs text-gray-500">
+        <p className="mt-0.5 text-xs text-ink-5">
           Prévu le {dateFormatter.format(new Date(payout.scheduled_at))}
           {payout.blocked_reason ? ` · ${payout.blocked_reason}` : ""}
         </p>
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
-        <span className="text-lg font-bold text-white">{currency.format(payout.net_amount)}</span>
+        <span className="text-lg font-bold text-ink-1">{currency.format(payout.net_amount)}</span>
 
         {awaitingEarlyApproval ? (
           <button
@@ -84,7 +84,7 @@ export function PayoutRow({
 
         <Link
           href={`/admin/reversements/${payout.id}`}
-          className="rounded-lg bg-white/5 px-3.5 py-2 text-xs font-medium text-gray-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10"
+          className="rounded-lg bg-hairline-1 px-3.5 py-2 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
         >
           ● Détails
         </Link>

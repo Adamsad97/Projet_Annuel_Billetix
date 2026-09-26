@@ -7,8 +7,8 @@ export function FaqAccordion({ category }: { category: FaqCategory }) {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <div className="rounded-2xl border border-white/5 bg-[#12101c]">
-      <h2 className="flex items-center gap-2 border-b border-white/5 px-5 py-4 text-sm font-semibold text-gray-200">
+    <div className="rounded-2xl border border-hairline-1 bg-card">
+      <h2 className="flex items-center gap-2 border-b border-hairline-1 px-5 py-4 text-sm font-semibold text-ink-2">
         <span>{category.emoji}</span>
         {category.title}
       </h2>
@@ -17,19 +17,19 @@ export function FaqAccordion({ category }: { category: FaqCategory }) {
         {category.items.map((item, index) => {
           const isOpen = index === openIndex;
           return (
-            <div key={item.question} className="border-b border-white/5 last:border-b-0">
+            <div key={item.question} className="border-b border-hairline-1 last:border-b-0">
               <button
                 type="button"
                 onClick={() => setOpenIndex(isOpen ? null : index)}
-                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-medium text-white"
+                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-medium text-ink-1"
               >
                 {item.question}
-                <span className={isOpen ? "text-violet-400" : "text-gray-500"}>
+                <span className={isOpen ? "text-link" : "text-ink-5"}>
                   {isOpen ? "−" : "+"}
                 </span>
               </button>
               {isOpen ? (
-                <p className="px-5 pb-4 text-sm leading-relaxed text-gray-400">
+                <p className="px-5 pb-4 text-sm leading-relaxed text-ink-4">
                   {item.answer}
                 </p>
               ) : null}

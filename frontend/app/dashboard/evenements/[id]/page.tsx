@@ -147,13 +147,13 @@ export default function DashboardEventDetailPage({
 
   if (notFoundError) {
     return (
-      <div className="flex flex-1 flex-col bg-[#07060c]">
+      <div className="flex flex-1 flex-col bg-page">
         <AuthHeader />
         <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10 text-center">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-ink-5">
             Cet événement n&apos;existe pas ou n&apos;appartient pas à ton compte.
           </p>
-          <Link href="/dashboard" className="mt-4 inline-block text-sm font-medium text-violet-400 hover:text-violet-300">
+          <Link href="/dashboard" className="mt-4 inline-block text-sm font-medium text-link hover:text-link-hover">
             ← Retour au dashboard
           </Link>
         </main>
@@ -162,13 +162,13 @@ export default function DashboardEventDetailPage({
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-[#07060c]">
+    <div className="flex flex-1 flex-col bg-page">
       <AuthHeader />
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
         <Link
           href="/dashboard"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
         >
           ← Dashboard
         </Link>
@@ -180,7 +180,7 @@ export default function DashboardEventDetailPage({
         ) : null}
 
         {detail === undefined ? (
-          <p className="text-center text-sm text-gray-500">Chargement…</p>
+          <p className="text-center text-sm text-ink-5">Chargement…</p>
         ) : (
           <>
             {(() => {
@@ -193,19 +193,19 @@ export default function DashboardEventDetailPage({
                   <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <h1 className="text-2xl font-bold text-white">{event.title}</h1>
+                        <h1 className="text-2xl font-bold text-ink-1">{event.title}</h1>
                         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${badge.className}`}>
                           {badge.label}
                         </span>
                       </div>
-                      <p className="mt-1 text-sm text-gray-500">
+                      <p className="mt-1 text-sm text-ink-5">
                         {dateFormatter.format(new Date(event.start_date))} · {event.venue_name}, {event.venue_city}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <Link
                         href={`/evenements/${id}`}
-                        className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+                        className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
                       >
                         Voir la page publique →
                       </Link>
@@ -215,7 +215,7 @@ export default function DashboardEventDetailPage({
                       event.status !== "ARCHIVED" ? (
                         <Link
                           href={`/evenements/${id}/modifier`}
-                          className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+                          className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
                         >
                           ✎ Modifier
                         </Link>
@@ -231,7 +231,7 @@ export default function DashboardEventDetailPage({
                           onClick={handleDuplicate}
                           disabled={actionBusy}
                           title="Programmer une nouvelle date pour ce même événement, maintenant complet"
-                          className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white disabled:opacity-50"
+                          className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-50"
                         >
                           ⎘ Programmer une nouvelle date
                         </button>
@@ -241,7 +241,7 @@ export default function DashboardEventDetailPage({
                           type="button"
                           onClick={handleSubmit}
                           disabled={actionBusy}
-                          className="rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
+                          className="rounded-full bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
                         >
                           Soumettre à la validation →
                         </button>
@@ -277,9 +277,9 @@ export default function DashboardEventDetailPage({
                   ) : null}
 
                   {event.status === "CANCELLED" && event.cancellation_reason ? (
-                    <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.02] px-5 py-4 text-sm text-gray-300">
+                    <div className="mb-6 rounded-2xl border border-hairline-2 bg-hairline-1 px-5 py-4 text-sm text-ink-3">
                       <p className="font-semibold">Événement annulé</p>
-                      <p className="mt-1 text-gray-400">{event.cancellation_reason}</p>
+                      <p className="mt-1 text-ink-4">{event.cancellation_reason}</p>
                     </div>
                   ) : null}
 
@@ -298,13 +298,13 @@ export default function DashboardEventDetailPage({
                               setResponseDrafts((prev) => ({ ...prev, [request.id]: evt.target.value }))
                             }
                             placeholder="Ta réponse…"
-                            className="mt-3 w-full resize-none rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+                            className="mt-3 w-full resize-none rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
                           />
                           <button
                             type="button"
                             onClick={() => handleRespond(request.id)}
                             disabled={actionBusy || !responseDrafts[request.id]?.trim()}
-                            className="mt-2 rounded-full bg-violet-600 px-4 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                            className="mt-2 rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                           >
                             Envoyer la réponse
                           </button>
@@ -314,7 +314,7 @@ export default function DashboardEventDetailPage({
                   ) : null}
 
                   <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-4">
-                    <StatCard stat={{ id: "sold", label: "Billets vendus", value: String(tickets.total), accent: "bg-violet-500" }} />
+                    <StatCard stat={{ id: "sold", label: "Billets vendus", value: String(tickets.total), accent: "bg-blue-500" }} />
                     <StatCard stat={{ id: "checked", label: "Entrées scannées", value: String(tickets.used), accent: "bg-emerald-500" }} />
                     <StatCard
                       stat={{
@@ -336,20 +336,20 @@ export default function DashboardEventDetailPage({
 
                   {fill_stats.categories.length > 0 ? (
                     <>
-                      <h2 className="mb-3 text-lg font-bold text-white">Catégories de billets</h2>
-                      <div className="mb-8 overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
+                      <h2 className="mb-3 text-lg font-bold text-ink-1">Catégories de billets</h2>
+                      <div className="mb-8 overflow-hidden rounded-2xl border border-hairline-1 bg-card">
                         {fill_stats.categories.map((category) => (
                           <div
                             key={category.id}
-                            className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 px-5 py-3.5 last:border-b-0"
+                            className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline-1 px-5 py-3.5 last:border-b-0"
                           >
                             <div>
-                              <p className="text-sm font-bold text-white">{category.name}</p>
-                              <p className="text-xs text-gray-500">{currency.format(category.price_ht)} HT</p>
+                              <p className="text-sm font-bold text-ink-1">{category.name}</p>
+                              <p className="text-xs text-ink-5">{currency.format(category.price_ht)} HT</p>
                             </div>
-                            <p className="text-sm text-gray-300">
+                            <p className="text-sm text-ink-3">
                               {category.sold} / {category.quota} vendus
-                              <span className="ml-2 text-xs text-gray-500">({category.remaining_quota} restantes)</span>
+                              <span className="ml-2 text-xs text-ink-5">({category.remaining_quota} restantes)</span>
                             </p>
                           </div>
                         ))}
@@ -357,14 +357,14 @@ export default function DashboardEventDetailPage({
                     </>
                   ) : null}
 
-                  <h2 className="mb-4 text-lg font-bold text-white">Participants</h2>
-                  <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
+                  <h2 className="mb-4 text-lg font-bold text-ink-1">Participants</h2>
+                  <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
                     {attendees.length > 0 ? (
                       attendees.map((ticket) => (
                         <AttendeeRow key={ticket.id} attendee={apiTicketToAttendee(ticket)} />
                       ))
                     ) : (
-                      <p className="px-5 py-8 text-center text-sm text-gray-500">
+                      <p className="px-5 py-8 text-center text-sm text-ink-5">
                         Aucun participant pour cet événement.
                       </p>
                     )}

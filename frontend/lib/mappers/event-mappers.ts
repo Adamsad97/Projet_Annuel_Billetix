@@ -65,6 +65,59 @@ export function apiEventToCard(event: ApiEvent, categories: ApiTicketCategory[])
   };
 }
 
+// Heure du lieu de l'événement (event.timezone), pas celle du serveur qui
+// rend la page (UTC en conteneur) — sinon "14:00" à Conakry s'afficherait
+// selon le fuseau du rendu.
+function formatInZone(isoDate: string, timeZone: string, options: Intl.DateTimeFormatOptions): string {
+  try {
+    return new Intl.DateTimeFormat("fr-FR", { ...options, timeZone }).format(new Date(isoDate));
+  } catch {
+    return new Intl.DateTimeFormat("fr-FR", options).format(new Date(isoDate)); // fuseau inconnu
+  }
+}
+
+const SHORT_DATE: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
+const TIME: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
+
+function formatFeaturedDate(isoDate: string, timeZone: string): string {
+  return formatInZone(isoDate, timeZone, { ...SHORT_DATE, ...TIME });
+}
+
+/** Carte du carrousel « À la une » (affiche en grand + pastilles d'infos). */
+export interface FeaturedEvent {
+  id: string;
+  title: string;
+  venueName: string;
+  city: string;
+  country: string;
+  posterUrl: string | null;
+  /** Ex. "10 oct. 2026, 14:00" */
+  dateLabel: string;
+  /** null tant qu'aucune catégorie de billet active n'existe. */
+  isFree: boolean | null;
+  categoryLabel: string;
+  categoryEmoji: string;
+  band: string;
+}
+
+export function apiEventToFeatured(event: ApiEvent, categories: ApiTicketCategory[]): FeaturedEvent {
+  const meta = apiCategoryMeta[event.category] ?? apiCategoryMeta.AUTRE;
+  const min = lowestPrice(categories);
+  return {
+    id: event.id,
+    title: event.title,
+    venueName: event.venue_name,
+    city: event.venue_city,
+    country: event.venue_country,
+    posterUrl: event.poster_url,
+    dateLabel: formatFeaturedDate(event.start_date, event.timezone),
+    isFree: min === null ? null : min === 0,
+    categoryLabel: meta.label,
+    categoryEmoji: meta.emoji,
+    band: meta.band,
+  };
+}
+
 /**
  * Convertit un événement réel + ses catégories en détail complet pour la
  * page /evenements/[id].
@@ -104,5 +157,12 @@ export function apiEventToDetail(event: ApiEvent, categories: ApiTicketCategory[
     description: event.description,
     accessConditions: event.access_conditions ?? "Aucune condition d'accès particulière.",
     tickets,
+    posterUrl: event.poster_url,
+    dateRangeLabel: (() => {
+      const from = formatInZone(event.start_date, event.timezone, SHORT_DATE);
+      const to = formatInZone(event.end_date, event.timezone, SHORT_DATE);
+      return from === to ? from : `${from} → ${to}`;
+    })(),
+    timeRangeLabel: `de ${formatInZone(event.start_date, event.timezone, TIME)} à ${formatInZone(event.end_date, event.timezone, TIME)}`,
   };
 }

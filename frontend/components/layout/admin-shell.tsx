@@ -10,7 +10,7 @@ export function AdminShell({
   children: ReactNode;
 }) {
   return (
-    <div className="flex flex-1 flex-col bg-[#07060c]">
+    <div className="flex flex-1 flex-col bg-page">
       <AuthHeader />
       <div className="flex flex-1">
         <AdminSidebar active={active} />

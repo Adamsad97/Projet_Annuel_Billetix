@@ -60,13 +60,13 @@ export function EventsExplorer() {
         <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">{error}</div>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
+      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
         {filtered === null ? (
-          <p className="px-5 py-8 text-center text-sm text-gray-500">Chargement…</p>
+          <p className="px-5 py-8 text-center text-sm text-ink-5">Chargement…</p>
         ) : filtered.length > 0 ? (
           filtered.map((event) => <AdminEventRow key={event.id} event={event} />)
         ) : (
-          <p className="px-5 py-8 text-center text-sm text-gray-500">
+          <p className="px-5 py-8 text-center text-sm text-ink-5">
             Aucun événement ne correspond à cette recherche.
           </p>
         )}

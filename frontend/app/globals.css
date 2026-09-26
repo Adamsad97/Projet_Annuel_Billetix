@@ -1,27 +1,92 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Mode clair/sombre — bug corrigé : toute l'appli était codée en dur avec
+   des couleurs fixes (#07060c, #12101c, text-white, text-gray-400…),
+   aucun mode clair n'existait, malgré les variables --background/
+   --foreground par défaut du template Next.js ci-dessous (jamais
+   réellement utilisées par aucune page — body est toujours caché derrière
+   les divs pleine page de chaque composant).
+   Le sombre reste la valeur par défaut de chaque token (aucun changement
+   visuel si le thème ne se charge pas, ex. JS désactivé) — le clair
+   s'active en surchargeant les mêmes variables sous [data-theme="light"].
+   Ces tokens génèrent automatiquement les classes bg-page/text-ink-1/
+   border-hairline-2/etc. via @theme (convention Tailwind v4). */
+@theme {
+  --color-page: #07060c;
+  --color-card: #12101c;
+  /* Bug corrigé : #0a0812 était quasi identique à --color-page (#07060c,
+     à peine 3 valeurs RGB d'écart) — la navbar n'avait donc visuellement
+     aucun fond à elle, elle se fondait dans la page. Réutilise la couleur
+     des cartes, déjà nettement distincte du fond de page. */
+  --color-header: #12101c;
+  --color-popover: #181523;
+
+  --color-ink-1: #ffffff;
+  --color-ink-2: #e5e7eb;
+  --color-ink-3: #d1d5db;
+  --color-ink-4: #9ca3af;
+  --color-ink-5: #6b7280;
+  --color-ink-6: #4b5563;
+
+  --color-hairline-1: rgb(255 255 255 / 3%);
+  --color-hairline-2: rgb(255 255 255 / 10%);
+  --color-hairline-3: rgb(255 255 255 / 15%);
+  --color-hairline-4: rgb(255 255 255 / 20%);
+  --color-hairline-5: rgb(255 255 255 / 30%);
+
+  /* Bug corrigé (2 passes) : d'abord text-violet-200 illisible en clair
+     (nuance de violet la plus claire de Tailwind), puis demande produit de
+     retirer complètement le violet/fuchsia de toute l'appli — recoloré en
+     bleu "corporate". --color-accent = libellés/sous-titres/onglet actif
+     (ton doux) ; --color-link/--color-link-hover = liens et logo (ton plus
+     affirmé, meilleur contraste en clair). */
+  --color-accent: #93c5fd;
+  --color-link: #60a5fa;
+  --color-link-hover: #93c5fd;
+
+  /* Logo (demande produit, exemple fourni) : icône billet + "TiX" en
+     corail/orange fixe, identique clair/sombre — jamais adaptatif comme le
+     reste de la palette, c'est la couleur de marque. */
+  --color-brand: #e8532b;
+
+  /* États (validation de saisie, indicateurs) — plus foncés en clair pour
+     garder un contraste lisible sur fond blanc. */
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+[data-theme="light"] {
+  --color-page: #f6f6fa;
+  --color-card: #ffffff;
+  --color-header: #ffffff;
+  --color-popover: #ffffff;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-ink-1: #12111a;
+  --color-ink-2: #27272f;
+  --color-ink-3: #3f3f47;
+  --color-ink-4: #55555f;
+  --color-ink-5: #6b6b75;
+  --color-ink-6: #8b8b95;
+
+  --color-hairline-1: rgb(0 0 0 / 5%);
+  --color-hairline-2: rgb(0 0 0 / 8%);
+  --color-hairline-3: rgb(0 0 0 / 12%);
+  --color-hairline-4: rgb(0 0 0 / 16%);
+  --color-hairline-5: rgb(0 0 0 / 24%);
+
+  --color-accent: #1d4ed8;
+  --color-link: #1d4ed8;
+  --color-link-hover: #1e40af;
+
+  --color-success: #047857;
+  --color-warning: #b45309;
+  --color-danger: #b91c1c;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-page);
+  color: var(--color-ink-1);
   font-family: Arial, Helvetica, sans-serif;
 }
 

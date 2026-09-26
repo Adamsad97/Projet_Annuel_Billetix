@@ -43,7 +43,7 @@ export function RevenueTrendChart() {
   const activeMetric = METRICS.find((entry) => entry.id === metric)!;
 
   return (
-    <div className="rounded-2xl border border-white/5 bg-[#12101c] p-5">
+    <div className="rounded-2xl border border-hairline-1 bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-1.5">
           {METRICS.map((entry) => (
@@ -52,21 +52,21 @@ export function RevenueTrendChart() {
               onClick={() => setMetric(entry.id)}
               className={
                 entry.id === metric
-                  ? "rounded-full bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white"
-                  : "rounded-full bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-400 hover:bg-white/10 hover:text-gray-200"
+                  ? "rounded-full bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white"
+                  : "rounded-full bg-hairline-1 px-3 py-1.5 text-xs font-medium text-ink-4 hover:bg-hairline-2 hover:text-ink-2"
               }
             >
               {entry.label}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-400">
+        <div className="flex items-center gap-2 text-xs text-ink-4">
           <input
             type="date"
             value={from}
             max={to}
             onChange={(e) => setFrom(e.target.value)}
-            className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-gray-200 [color-scheme:dark]"
+            className="rounded-lg border border-hairline-2 bg-hairline-1 px-2 py-1.5 text-ink-2 [color-scheme:dark]"
           />
           <span>→</span>
           <input
@@ -75,7 +75,7 @@ export function RevenueTrendChart() {
             min={from}
             max={toDateInputValue(new Date())}
             onChange={(e) => setTo(e.target.value)}
-            className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-gray-200 [color-scheme:dark]"
+            className="rounded-lg border border-hairline-2 bg-hairline-1 px-2 py-1.5 text-ink-2 [color-scheme:dark]"
           />
         </div>
       </div>
@@ -83,9 +83,9 @@ export function RevenueTrendChart() {
       {error ? (
         <p className="px-1 py-6 text-center text-sm text-red-300">{error}</p>
       ) : trend === undefined ? (
-        <p className="px-1 py-6 text-center text-sm text-gray-500">Chargement…</p>
+        <p className="px-1 py-6 text-center text-sm text-ink-5">Chargement…</p>
       ) : trend.length === 0 ? (
-        <p className="px-1 py-6 text-center text-sm text-gray-500">Pas encore de données de vente sur cette période.</p>
+        <p className="px-1 py-6 text-center text-sm text-ink-5">Pas encore de données de vente sur cette période.</p>
       ) : (
         <div className="flex items-end gap-2 overflow-x-auto" style={{ height: 160 }}>
           {trend.map((point) => {
@@ -94,13 +94,13 @@ export function RevenueTrendChart() {
             const heightPercent = Math.max((value / maxValue) * 100, value > 0 ? 4 : 0);
             return (
               <div key={point.day} className="flex h-full min-w-[2.5rem] flex-1 flex-col items-center justify-end gap-1.5">
-                <span className="text-[11px] font-medium text-gray-400">{activeMetric.format(value)}</span>
+                <span className="text-[11px] font-medium text-ink-4">{activeMetric.format(value)}</span>
                 <div
                   title={`${dayFormatter.format(new Date(point.day))} — ${activeMetric.format(value)}`}
-                  className="w-full rounded-t-md bg-gradient-to-t from-violet-600 to-fuchsia-500 transition-opacity hover:opacity-80"
+                  className="w-full rounded-t-md bg-blue-600 transition-opacity hover:opacity-80"
                   style={{ height: `${heightPercent}%`, minHeight: value > 0 ? 4 : 0 }}
                 />
-                <span className="text-[11px] text-gray-500">{dayFormatter.format(new Date(point.day))}</span>
+                <span className="text-[11px] text-ink-5">{dayFormatter.format(new Date(point.day))}</span>
               </div>
             );
           })}

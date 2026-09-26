@@ -37,8 +37,8 @@ export function PosterDropzone({
       }}
       className={
         isDragging
-          ? "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-violet-500 bg-violet-500/5 py-10 text-center"
-          : "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] py-10 text-center transition-colors hover:border-white/20"
+          ? "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-blue-500 bg-blue-500/5 py-10 text-center"
+          : "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-hairline-2 bg-hairline-1 py-10 text-center transition-colors hover:border-hairline-4"
       }
     >
       {previewUrl ? (
@@ -48,9 +48,9 @@ export function PosterDropzone({
         <span className="text-2xl">🖼️</span>
       )}
       {fileName ? (
-        <span className="text-sm font-medium text-violet-300">{fileName}</span>
+        <span className="text-sm font-medium text-accent">{fileName}</span>
       ) : (
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-ink-5">
           Glissez votre affiche ou cliquez — JPG/PNG max 5 Mo
         </span>
       )}

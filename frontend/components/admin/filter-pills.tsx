@@ -20,8 +20,8 @@ export function FilterPills({
             onClick={() => onChange(option.id)}
             className={
               isActive
-                ? "rounded-full bg-violet-600 px-3.5 py-1.5 text-sm font-medium text-white"
-                : "rounded-full bg-white/5 px-3.5 py-1.5 text-sm font-medium text-gray-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10 hover:text-white"
+                ? "rounded-full bg-blue-600 px-3.5 py-1.5 text-sm font-medium text-white"
+                : "rounded-full bg-hairline-1 px-3.5 py-1.5 text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2 hover:text-ink-1"
             }
           >
             {option.label}

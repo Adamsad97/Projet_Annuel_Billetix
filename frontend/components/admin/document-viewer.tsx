@@ -16,10 +16,13 @@ function DocumentThumb({ doc, large = false }: { doc: SubmittedDocument; large?:
   if (isPdf(doc.url)) {
     return (
       <div
-        className={`flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 ${
+        className={`flex flex-col items-center justify-center gap-2 bg-gray-800 ${
           large ? "aspect-[3/4] w-full max-w-sm rounded-2xl" : "h-40 w-full rounded-xl"
         }`}
       >
+        {/* Bug corrigé : fond gris foncé fixe (icône PDF), jamais lié au
+            thème — texte épinglé plutôt que sur un token ink-* (sombre en
+            mode clair, invisible sur ce fond toujours sombre). */}
         <span className={large ? "text-6xl opacity-90" : "text-3xl opacity-90"}>📄</span>
         <span className="text-xs text-gray-400">Document PDF</span>
       </div>
@@ -51,13 +54,13 @@ export function DocumentGrid({ documents }: { documents: SubmittedDocument[] }) 
             key={doc.id}
             type="button"
             onClick={() => (isPdf(doc.url) ? window.open(doc.url, "_blank") : setOpen(doc))}
-            className="group flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-left transition-colors hover:border-white/20"
+            className="group flex flex-col gap-2 rounded-xl border border-hairline-2 bg-hairline-1 p-3 text-left transition-colors hover:border-hairline-4"
           >
             <DocumentThumb doc={doc} />
             <div>
-              <p className="text-sm font-medium text-white">{doc.label}</p>
+              <p className="text-sm font-medium text-ink-1">{doc.label}</p>
             </div>
-            <span className="text-xs font-medium text-violet-400 group-hover:text-violet-300">
+            <span className="text-xs font-medium text-link group-hover:text-link-hover">
               {isPdf(doc.url) ? "📥 Ouvrir le PDF" : "🔍 Voir en grand"}
             </span>
           </button>
@@ -73,14 +76,14 @@ export function DocumentGrid({ documents }: { documents: SubmittedDocument[] }) 
         >
           <div
             onClick={(event) => event.stopPropagation()}
-            className="flex w-full max-w-md cursor-auto flex-col items-center gap-4 rounded-2xl border border-white/10 bg-[#12101c] p-6"
+            className="flex w-full max-w-md cursor-auto flex-col items-center gap-4 rounded-2xl border border-hairline-2 bg-card p-6"
           >
             <DocumentThumb doc={open} large />
-            <p className="text-center font-medium text-white">{open.label}</p>
+            <p className="text-center font-medium text-ink-1">{open.label}</p>
             <button
               type="button"
               onClick={() => setOpen(null)}
-              className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+              className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
             >
               Fermer
             </button>

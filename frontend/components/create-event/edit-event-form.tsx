@@ -19,9 +19,10 @@ import type { ApiCategory } from "@/lib/api/categories";
 import { updateEvent, type ApiEvent, type UpdateEventDto } from "@/lib/api/events";
 import { uploadPoster } from "@/lib/api/upload";
 import { ApiError } from "@/lib/api/http-error";
+import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 
 const fieldClassName =
-  "rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50";
 
 function toDatetimeLocal(iso: string): string {
   const date = new Date(iso);
@@ -166,7 +167,7 @@ export function EditEventForm({
   if (isFullyLocked) {
     return (
       <InfoCard icon="🔒" title="Modification impossible">
-        <p className="text-sm text-gray-400">{LOCKED_STATUS_MESSAGE[event.status]}</p>
+        <p className="text-sm text-ink-4">{LOCKED_STATUS_MESSAGE[event.status]}</p>
       </InfoCard>
     );
   }
@@ -193,7 +194,7 @@ export function EditEventForm({
       <InfoCard icon="📝" title="Informations générales">
         <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Titre</span>
+            <span className="text-sm font-medium text-accent/80">Titre</span>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -202,7 +203,7 @@ export function EditEventForm({
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Description</span>
+            <span className="text-sm font-medium text-accent/80">Description</span>
             <textarea
               rows={4}
               value={description}
@@ -211,7 +212,7 @@ export function EditEventForm({
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Catégorie</span>
+            <span className="text-sm font-medium text-accent/80">Catégorie</span>
             {isDraft ? (
               <CategoryPicker categories={categories} value={category} onChange={setCategory} />
             ) : (
@@ -228,25 +229,25 @@ export function EditEventForm({
       <InfoCard icon="📅" title="Dates">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Début</span>
+            <span className="text-sm font-medium text-accent/80">Début</span>
             <input type="datetime-local" min={minDatetimeLocal} value={startAt} onChange={(e) => setStartAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Fin</span>
+            <span className="text-sm font-medium text-accent/80">Fin</span>
             <input type="datetime-local" min={startAt || minDatetimeLocal} value={endAt} onChange={(e) => setEndAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Début des ventes</span>
+            <span className="text-sm font-medium text-accent/80">Début des ventes</span>
             <input type="datetime-local" min={minDatetimeLocal} value={salesStartAt} onChange={(e) => setSalesStartAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Fin des ventes</span>
+            <span className="text-sm font-medium text-accent/80">Fin des ventes</span>
             <input type="datetime-local" min={salesStartAt || minDatetimeLocal} value={salesEndAt} onChange={(e) => setSalesEndAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
           </label>
         </div>
       </InfoCard>
 
-      <InfoCard icon="📍" title="Lieu">
+      <InfoCard icon={<LocationPinIcon />} title="Lieu">
         <div className="flex flex-col gap-4">
           <input value={venueName} onChange={(e) => setVenueName(e.target.value)} disabled={!isDraft} placeholder="Nom du lieu" className={fieldClassName} />
           <AddressAutocomplete
@@ -285,7 +286,7 @@ export function EditEventForm({
       <InfoCard icon="🎟️" title="Capacité, remboursement et accès">
         <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Capacité totale</span>
+            <span className="text-sm font-medium text-accent/80">Capacité totale</span>
             <input
               type="number"
               min="1"
@@ -296,19 +297,19 @@ export function EditEventForm({
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Politique de remboursement</span>
+            <span className="text-sm font-medium text-accent/80">Politique de remboursement</span>
             <select
               value={refundPolicy}
               onChange={(e) => setRefundPolicy(e.target.value as "NON_REFUNDABLE" | "REFUNDABLE")}
               disabled={!isDraft}
               className={fieldClassName}
             >
-              <option value="NON_REFUNDABLE" className="bg-[#12101c]">Non remboursable</option>
-              <option value="REFUNDABLE" className="bg-[#12101c]">Remboursable</option>
+              <option value="NON_REFUNDABLE" className="bg-card">Non remboursable</option>
+              <option value="REFUNDABLE" className="bg-card">Remboursable</option>
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Conditions d&apos;accès</span>
+            <span className="text-sm font-medium text-accent/80">Conditions d&apos;accès</span>
             <textarea
               rows={3}
               value={accessConditions}
@@ -324,7 +325,7 @@ export function EditEventForm({
         <button
           type="button"
           onClick={() => router.push(`/dashboard/evenements/${event.id}`)}
-          className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+          className="rounded-full border border-hairline-3 px-5 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
         >
           ← Retour
         </button>
@@ -332,7 +333,7 @@ export function EditEventForm({
           type="button"
           onClick={handleSubmit}
           disabled={submitting}
-          className="rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="rounded-full bg-blue-700 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {submitting ? "Enregistrement…" : "Enregistrer les modifications"}
         </button>

@@ -34,7 +34,7 @@ export default function MentionsLegalesPage() {
         <p>
           Pour toute question relative aux présentes mentions légales,
           contactez-nous via la page{" "}
-          <a href="/contact" className="text-violet-400 hover:text-violet-300">
+          <a href="/contact" className="text-link hover:text-link-hover">
             Contact
           </a>
           .

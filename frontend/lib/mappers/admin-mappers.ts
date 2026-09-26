@@ -21,7 +21,7 @@ export function apiDashboardToAdminStats(dashboard: ApiAdminDashboard): AdminSta
       id: "active-events",
       label: "Événements publiés",
       value: String(publishedEvents),
-      valueClassName: "text-white",
+      valueClassName: "text-ink-1",
     },
     {
       id: "sales",
@@ -33,13 +33,13 @@ export function apiDashboardToAdminStats(dashboard: ApiAdminDashboard): AdminSta
       id: "commissions",
       label: "Commissions",
       value: currency.format(dashboard.kpis.total_commission),
-      valueClassName: "text-white",
+      valueClassName: "text-ink-1",
     },
     {
       id: "open-disputes",
       label: "Litiges ouverts",
       value: String(dashboard.kpis.open_disputes),
-      valueClassName: dashboard.kpis.open_disputes > 0 ? "text-red-400" : "text-white",
+      valueClassName: dashboard.kpis.open_disputes > 0 ? "text-red-400" : "text-ink-1",
     },
   ];
 }
@@ -76,7 +76,7 @@ export function auditLogToValidationHistoryEntry(
     eventId: log.entity_id,
     title: event?.title ?? "Événement supprimé",
     emoji: categoryEmoji,
-    iconBg: "bg-white/5",
+    iconBg: "bg-hairline-1",
     performedBy: log.performed_by_email,
     decidedLabel: `${log.action === "EVENT_APPROVED" ? "Validé" : "Rejeté"} le ${dateTimeFormatter.format(new Date(log.created_at))}`,
     reason: log.reason ?? undefined,

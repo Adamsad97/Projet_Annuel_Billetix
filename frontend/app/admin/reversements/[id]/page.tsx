@@ -131,7 +131,7 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
     <AdminShell active="/admin/reversements">
       <Link
         href="/admin/reversements"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
+        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
       >
         ← Reversements
       </Link>
@@ -141,74 +141,74 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
       ) : null}
 
       {payout === undefined ? (
-        <p className="text-center text-sm text-gray-500">Chargement…</p>
+        <p className="text-center text-sm text-ink-5">Chargement…</p>
       ) : payout === null ? (
-        <div className="rounded-2xl border border-white/5 bg-[#12101c] p-8 text-center">
+        <div className="rounded-2xl border border-hairline-1 bg-card p-8 text-center">
           <div className="mb-3 text-4xl">💸</div>
-          <h1 className="text-lg font-bold text-white">Reversement introuvable</h1>
+          <h1 className="text-lg font-bold text-ink-1">Reversement introuvable</h1>
         </div>
       ) : (
         <>
           <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold text-white">
+              <h1 className="text-xl font-bold text-ink-1">
                 {payout.event_name} — {payout.organizer_name}
               </h1>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-ink-5">
                 {payout.organizer_email} · Prévu le {dateFormatter.format(new Date(payout.scheduled_at))}
               </p>
               <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${payoutStatusBadge[payout.status].className}`}>
                 {payoutStatusBadge[payout.status].label}
               </span>
               {payout.requested_early_at && !payout.early_request_approved_by ? (
-                <span className="ml-2 inline-block rounded-full bg-violet-500/15 px-2.5 py-0.5 text-xs font-medium text-violet-300 ring-1 ring-inset ring-violet-500/30">
+                <span className="ml-2 inline-block rounded-full bg-blue-500/15 px-2.5 py-0.5 text-xs font-medium text-accent ring-1 ring-inset ring-blue-500/30">
                   Demande de reversement anticipé en attente
                 </span>
               ) : null}
             </div>
-            <span className="text-2xl font-bold text-white">{currency.format(payout.net_amount)}</span>
+            <span className="text-2xl font-bold text-ink-1">{currency.format(payout.net_amount)}</span>
           </div>
 
-          <div className="rounded-2xl border border-white/5 bg-[#12101c] p-5">
-            <h2 className="mb-3 text-sm font-semibold text-gray-200">Détail du calcul</h2>
+          <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+            <h2 className="mb-3 text-sm font-semibold text-ink-2">Détail du calcul</h2>
             <div className="flex flex-col gap-2 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Montant brut</span>
-                <span className="text-gray-300">{currency.format(payout.gross_amount)}</span>
+                <span className="text-ink-4">Montant brut</span>
+                <span className="text-ink-3">{currency.format(payout.gross_amount)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Commission plateforme</span>
+                <span className="text-ink-4">Commission plateforme</span>
                 <span className="text-amber-400">− {currency.format(payout.commission_amount)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Frais de paiement</span>
+                <span className="text-ink-4">Frais de paiement</span>
                 <span className="text-amber-400">− {currency.format(payout.payment_fees_amount)}</span>
               </div>
-              <div className="flex items-center justify-between border-t border-white/10 pt-2">
-                <span className="font-bold text-white">Net à verser</span>
-                <span className="font-bold text-white">{currency.format(payout.net_amount)}</span>
+              <div className="flex items-center justify-between border-t border-hairline-2 pt-2">
+                <span className="font-bold text-ink-1">Net à verser</span>
+                <span className="font-bold text-ink-1">{currency.format(payout.net_amount)}</span>
               </div>
             </div>
 
             {payout.bank_owner_name ? (
-              <div className="mt-4 border-t border-white/10 pt-4">
-                <p className="text-xs uppercase tracking-wide text-gray-500">Titulaire du compte bancaire</p>
-                <p className="text-sm text-gray-300">{payout.bank_owner_name}</p>
-                <p className="mt-1 text-xs text-gray-600">
+              <div className="mt-4 border-t border-hairline-2 pt-4">
+                <p className="text-xs uppercase tracking-wide text-ink-5">Titulaire du compte bancaire</p>
+                <p className="text-sm text-ink-3">{payout.bank_owner_name}</p>
+                <p className="mt-1 text-xs text-ink-6">
                   L&apos;IBAN est chiffré et utilisé uniquement par Stripe pour le virement — non affiché ici.
                 </p>
               </div>
             ) : null}
 
             {payout.stripe_transfer_id ? (
-              <div className="mt-4 border-t border-white/10 pt-4">
-                <p className="text-xs uppercase tracking-wide text-gray-500">Référence virement Stripe</p>
-                <p className="font-mono text-sm text-gray-300">{payout.stripe_transfer_id}</p>
+              <div className="mt-4 border-t border-hairline-2 pt-4">
+                <p className="text-xs uppercase tracking-wide text-ink-5">Référence virement Stripe</p>
+                <p className="font-mono text-sm text-ink-3">{payout.stripe_transfer_id}</p>
               </div>
             ) : null}
 
             {payout.blocked_reason ? (
-              <p className="mt-4 border-t border-white/10 pt-4 text-sm text-red-300">
+              <p className="mt-4 border-t border-hairline-2 pt-4 text-sm text-red-300">
                 Motif du blocage : {payout.blocked_reason}
               </p>
             ) : null}
@@ -231,7 +231,7 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
                   type="button"
                   disabled={busy}
                   onClick={handleProcess}
-                  className="rounded-full bg-white/5 px-5 py-2.5 text-sm font-medium text-gray-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10 disabled:opacity-50"
+                  className="rounded-full bg-hairline-1 px-5 py-2.5 text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2 disabled:opacity-50"
                 >
                   Déclencher le virement maintenant
                 </button>

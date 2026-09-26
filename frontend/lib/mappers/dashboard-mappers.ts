@@ -20,10 +20,10 @@ const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: 
 // par nom de catégorie — n'importe quelle catégorie, même future, obtient
 // une couleur cohérente sans modification de ce fichier.
 const COLOR_PALETTE: Array<{ iconBg: string; progressColor: string }> = [
-  { iconBg: "bg-violet-500/15", progressColor: "bg-violet-500" },
+  { iconBg: "bg-blue-500/15", progressColor: "bg-blue-500" },
   { iconBg: "bg-amber-500/15", progressColor: "bg-amber-500" },
   { iconBg: "bg-pink-500/15", progressColor: "bg-pink-500" },
-  { iconBg: "bg-fuchsia-500/15", progressColor: "bg-fuchsia-500" },
+  { iconBg: "bg-blue-500/15", progressColor: "bg-blue-500" },
   { iconBg: "bg-blue-500/15", progressColor: "bg-blue-500" },
   { iconBg: "bg-emerald-500/15", progressColor: "bg-emerald-500" },
 ];
@@ -80,7 +80,7 @@ export function buildOrganizerDashboardStats(
       id: "revenue",
       label: "Ventes totales",
       value: currency.format(Number(dashboard.totals.revenue_ttc)),
-      accent: "bg-violet-500",
+      accent: "bg-blue-500",
     },
     {
       id: "tickets",

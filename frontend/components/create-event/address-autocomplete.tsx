@@ -9,22 +9,22 @@
 // pour ne laisser que la nôtre.
 
 import { useEffect, useRef, useState } from "react";
-import { resolveCountryBias, searchAddress, type AddressSuggestion } from "@/lib/geo/photon";
+import { searchAddress, type AddressSuggestion } from "@/lib/geo/photon";
 
 const fieldClassName =
-  "rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50";
+  "rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50";
 
 export function AddressAutocomplete({
   value,
   onChangeText,
   onSelect,
-  // Valeur actuelle du champ "Pays" du formulaire — biaise la recherche
-  // vers ce pays plutôt que de rester figé sur la France (plateforme
-  // censée rester accessible à l'international, cf. lib/geo/photon.ts
-  // resolveCountryBias).
+  // Valeur actuelle du champ "Pays" du formulaire — ses adresses passent en
+  // tête des propositions, sans jamais exclure les autres pays (cf.
+  // lib/geo/photon.ts searchAddress).
   country,
   disabled = false,
   placeholder,
+  name,
 }: {
   value: string;
   onChangeText: (text: string) => void;
@@ -32,6 +32,8 @@ export function AddressAutocomplete({
   country: string;
   disabled?: boolean;
   placeholder?: string;
+  /** Pour une lecture via FormData (formulaires de facturation). */
+  name?: string;
 }) {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [open, setOpen] = useState(false);
@@ -40,6 +42,7 @@ export function AddressAutocomplete({
 
   useEffect(() => {
     if (value.trim().length < 3) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSuggestions([]);
       return;
     }
@@ -49,9 +52,7 @@ export function AddressAutocomplete({
     const timeout = setTimeout(async () => {
       setLoading(true);
       try {
-        const bias = await resolveCountryBias(country);
-        if (cancelled) return;
-        const results = await searchAddress(value, bias);
+        const results = await searchAddress(value, country);
         if (!cancelled) setSuggestions(results);
       } catch {
         if (!cancelled) setSuggestions([]);
@@ -69,6 +70,7 @@ export function AddressAutocomplete({
     <div className="relative">
       <input
         type="text"
+        name={name}
         required
         disabled={disabled}
         value={value}
@@ -84,14 +86,14 @@ export function AddressAutocomplete({
           blurTimeout.current = setTimeout(() => setOpen(false), 150);
         }}
         placeholder={placeholder}
-        className={fieldClassName}
+        className={`w-full ${fieldClassName}`}
         autoComplete="off"
       />
 
       {open && (loading || suggestions.length > 0) ? (
-        <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-white/10 bg-[#181523] shadow-xl">
+        <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-hairline-2 bg-popover shadow-xl">
           {loading ? (
-            <li className="px-4 py-2.5 text-sm text-gray-500">Recherche…</li>
+            <li className="px-4 py-2.5 text-sm text-ink-5">Recherche…</li>
           ) : (
             suggestions.map((suggestion, index) => (
               <li key={`${suggestion.lat}-${suggestion.lng}-${index}`}>
@@ -106,7 +108,7 @@ export function AddressAutocomplete({
                     setSuggestions([]);
                     setOpen(false);
                   }}
-                  className="block w-full px-4 py-2.5 text-left text-sm text-gray-200 transition-colors hover:bg-white/10"
+                  className="block w-full px-4 py-2.5 text-left text-sm text-ink-2 transition-colors hover:bg-hairline-2"
                 >
                   {suggestion.label}
                 </button>

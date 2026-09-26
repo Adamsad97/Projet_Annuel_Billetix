@@ -70,7 +70,7 @@ export function TicketTiersEditor({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="hidden grid-cols-[1fr_120px_100px_100px_28px] gap-3 px-1 text-xs font-medium uppercase tracking-wide text-gray-500 sm:grid">
+      <div className="hidden grid-cols-[1fr_120px_100px_100px_28px] gap-3 px-1 text-xs font-medium uppercase tracking-wide text-ink-5 sm:grid">
         <span>Nom</span>
         <span>Prix HT (€)</span>
         <span>Quota</span>
@@ -94,13 +94,13 @@ export function TicketTiersEditor({
             <select
               value={row.name}
               onChange={(event) => updateRow(row.id, "name", event.target.value)}
-              className="col-span-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white focus:border-violet-500 focus:outline-none sm:col-span-1"
+              className="col-span-2 rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2.5 text-sm text-ink-1 focus:border-blue-500 focus:outline-none sm:col-span-1"
             >
               {optionsForRow.length === 0 ? (
-                <option value="" className="bg-[#12101c]">Aucun nom disponible</option>
+                <option value="" className="bg-card">Aucun nom disponible</option>
               ) : (
                 optionsForRow.map((type) => (
-                  <option key={type.label} value={type.label} className="bg-[#12101c]">
+                  <option key={type.label} value={type.label} className="bg-card">
                     {type.emoji ? `${type.emoji} ` : ""}
                     {type.label}
                   </option>
@@ -114,7 +114,7 @@ export function TicketTiersEditor({
               placeholder="Prix"
               min="0"
               step="0.01"
-              className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+              className="rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2.5 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
             />
             <input
               type="number"
@@ -123,7 +123,7 @@ export function TicketTiersEditor({
               placeholder="Quota"
               min="1"
               max={maxForRow}
-              className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+              className="rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2.5 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
             />
             <input
               type="number"
@@ -131,14 +131,14 @@ export function TicketTiersEditor({
               onChange={(event) => updateRow(row.id, "maxPerOrder", event.target.value)}
               placeholder="Max"
               min="1"
-              className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+              className="rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2.5 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
             />
             <button
               type="button"
               onClick={() => removeRow(row.id)}
               disabled={rows.length === 1}
               aria-label="Retirer cette catégorie de billet"
-              className="justify-self-end text-gray-500 transition-colors hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30 sm:justify-self-center"
+              className="justify-self-end text-ink-5 transition-colors hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30 sm:justify-self-center"
             >
               ✕
             </button>
@@ -147,7 +147,7 @@ export function TicketTiersEditor({
       })}
 
       {totalCapacity > 0 ? (
-        <p className={overCapacity ? "text-center text-xs font-medium text-red-400" : "text-center text-xs text-gray-500"}>
+        <p className={overCapacity ? "text-center text-xs font-medium text-red-400" : "text-center text-xs text-ink-5"}>
           {totalQuota} / {totalCapacity} places réparties
           {overCapacity ? ` — dépasse la capacité totale de ${totalQuota - totalCapacity}` : ""}
         </p>
@@ -157,12 +157,12 @@ export function TicketTiersEditor({
         type="button"
         onClick={addRow}
         disabled={availableForNewRow.length === 0}
-        className="mt-1 rounded-xl border border-dashed border-white/10 py-2.5 text-sm font-medium text-violet-400 transition-colors hover:border-white/20 hover:text-violet-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-white/10 disabled:hover:text-violet-400"
+        className="mt-1 rounded-xl border border-dashed border-hairline-2 py-2.5 text-sm font-medium text-link transition-colors hover:border-hairline-4 hover:text-link-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-hairline-2 disabled:hover:text-link"
       >
         + Ajouter une catégorie
       </button>
       {tierTypes.length > 0 && availableForNewRow.length === 0 ? (
-        <p className="text-center text-xs text-gray-500">
+        <p className="text-center text-xs text-ink-5">
           Tous les noms disponibles sont déjà utilisés — demande à un admin d&apos;en ajouter un nouveau si besoin.
         </p>
       ) : null}

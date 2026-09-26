@@ -3,11 +3,11 @@ import { adminNavSections } from "@/lib/mock/admin";
 
 export function AdminSidebar({ active = "/admin" }: { active?: string }) {
   return (
-    <aside className="w-56 shrink-0 border-r border-white/5 px-3 py-6">
+    <aside className="w-56 shrink-0 border-r border-hairline-1 px-3 py-6">
       <nav className="flex flex-col gap-6">
         {adminNavSections.map((section) => (
           <div key={section.id}>
-            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-gray-600">
+            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-ink-6">
               {section.label}
             </p>
             <div className="flex flex-col gap-0.5">
@@ -19,8 +19,8 @@ export function AdminSidebar({ active = "/admin" }: { active?: string }) {
                     href={item.href}
                     className={
                       isActive
-                        ? "flex items-center justify-between rounded-lg bg-violet-600/20 px-3 py-2 text-sm font-medium text-violet-200 ring-1 ring-inset ring-violet-500/30"
-                        : "flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-white/5 hover:text-gray-200"
+                        ? "flex items-center justify-between rounded-lg bg-blue-600/20 px-3 py-2 text-sm font-medium text-accent ring-1 ring-inset ring-blue-500/30"
+                        : "flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-ink-4 transition-colors hover:bg-hairline-1 hover:text-ink-2"
                     }
                   >
                     <span className="flex items-center gap-2">

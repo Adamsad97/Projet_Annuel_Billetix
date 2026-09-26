@@ -6,17 +6,17 @@ export function InfoCard({
   titleClassName,
   children,
 }: {
-  icon: string;
+  icon: ReactNode;
   title: string;
   titleClassName?: string;
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-white/5 bg-[#12101c] p-5">
+    <div className="rounded-2xl border border-hairline-1 bg-card p-5">
       <h2
-        className={`mb-3 flex items-center gap-2 text-sm font-semibold ${titleClassName ?? "text-gray-200"}`}
+        className={`mb-3 flex items-center gap-2 text-sm font-semibold ${titleClassName ?? "text-ink-2"}`}
       >
-        <span>{icon}</span>
+        <span className="flex items-center">{icon}</span>
         {title}
       </h2>
       {children}

@@ -3,7 +3,7 @@ import { ScanConsole } from "@/components/scan/scan-console";
 
 export default function ScanPage() {
   return (
-    <div className="flex flex-1 flex-col bg-[#07060c]">
+    <div className="flex flex-1 flex-col bg-page">
       <AuthHeader />
 
       <main className="flex-1 px-6 py-10">

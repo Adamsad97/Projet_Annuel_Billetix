@@ -57,20 +57,20 @@ export default function DashboardFinancesPage() {
   const totalCommission = payouts?.reduce((sum, payout) => sum + Number(payout.commission_amount), 0) ?? 0;
 
   return (
-    <div className="flex flex-1 flex-col bg-[#07060c]">
+    <div className="flex flex-1 flex-col bg-page">
       <AuthHeader />
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Finances</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-2xl font-bold text-ink-1">Finances</h1>
+            <p className="mt-1 text-sm text-ink-5">
               Détail des reversements par événement.
             </p>
           </div>
           <Link
             href="/dashboard"
-            className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+            className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
           >
             ← Tableau de bord
           </Link>
@@ -83,11 +83,11 @@ export default function DashboardFinancesPage() {
         ) : null}
 
         {balance === undefined || payouts === undefined ? (
-          <p className="text-center text-sm text-gray-500">Chargement…</p>
+          <p className="text-center text-sm text-ink-5">Chargement…</p>
         ) : (
           <>
             <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-4">
-              <StatCard stat={{ id: "gross", label: "Total encaissé (brut)", value: currency.format(totalGross), accent: "bg-violet-500" }} />
+              <StatCard stat={{ id: "gross", label: "Total encaissé (brut)", value: currency.format(totalGross), accent: "bg-blue-500" }} />
               <StatCard
                 stat={{
                   id: "commission",
@@ -115,11 +115,11 @@ export default function DashboardFinancesPage() {
             </div>
 
             {payouts.length === 0 ? (
-              <div className="rounded-2xl border border-white/5 bg-[#12101c] px-5 py-10 text-center text-sm text-gray-500">
+              <div className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
                 Aucun reversement pour le moment.
               </div>
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
+              <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
                 {payouts.map((payout) => (
                   <FinanceRow
                     key={payout.id}

@@ -31,8 +31,8 @@ export default function AdminPayoutsPage() {
   return (
     <AdminShell active="/admin/reversements">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Reversements</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-ink-1">Reversements</h1>
+        <p className="mt-1 text-sm text-ink-5">
           Suivi des versements aux organisateurs — un reversement anticipé est
           bloqué avant J+2 après la fin de l&apos;événement (CDC 7.2).
         </p>
@@ -41,7 +41,7 @@ export default function AdminPayoutsPage() {
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats === null
           ? [0, 1, 2].map((i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl border border-white/5 bg-[#12101c]" />
+              <div key={i} className="h-24 animate-pulse rounded-2xl border border-hairline-1 bg-card" />
             ))
           : cards.map((stat) => <AdminStatCard key={stat.id} stat={stat} />)}
       </div>

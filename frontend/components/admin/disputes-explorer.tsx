@@ -21,11 +21,11 @@ export function DisputesExplorer() {
     <div className="flex flex-col gap-5">
       <FilterPills options={disputeStatusFilters} active={status} onChange={setStatus} />
 
-      <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
+      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
         {filtered.length > 0 ? (
           filtered.map((dispute) => <DisputeRow key={dispute.id} dispute={dispute} />)
         ) : (
-          <p className="px-5 py-8 text-center text-sm text-gray-500">
+          <p className="px-5 py-8 text-center text-sm text-ink-5">
             Aucun litige dans cette catégorie.
           </p>
         )}

@@ -42,19 +42,19 @@ export default function ModifierEvenementPage({
   }, [id]);
 
   return (
-    <div className="flex flex-1 flex-col bg-[#07060c]">
+    <div className="flex flex-1 flex-col bg-page">
       <AuthHeader />
 
       <main className="flex-1 px-6 py-10">
         <Link
           href={`/dashboard/evenements/${id}`}
-          className="mx-auto mb-6 flex w-full max-w-2xl items-center gap-1.5 text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
+          className="mx-auto mb-6 flex w-full max-w-2xl items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
         >
           ← Retour à l&apos;événement
         </Link>
 
         <div className="mx-auto mb-10 w-full max-w-2xl text-center">
-          <h1 className="text-2xl font-bold text-white">Modifier l&apos;événement</h1>
+          <h1 className="text-2xl font-bold text-ink-1">Modifier l&apos;événement</h1>
         </div>
 
         {error ? (
@@ -64,9 +64,9 @@ export default function ModifierEvenementPage({
         ) : null}
 
         {event === undefined ? (
-          <p className="text-center text-sm text-gray-500">Chargement…</p>
+          <p className="text-center text-sm text-ink-5">Chargement…</p>
         ) : event === null ? (
-          <p className="text-center text-sm text-gray-500">
+          <p className="text-center text-sm text-ink-5">
             Cet événement n&apos;existe pas ou n&apos;appartient pas à ton compte.
           </p>
         ) : (
