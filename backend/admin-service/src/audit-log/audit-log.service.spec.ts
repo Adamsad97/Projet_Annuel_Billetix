@@ -32,6 +32,15 @@ describe('AuditLogService.getLogs', () => {
     });
   });
 
+  it("ne cherche dans l'adresse IP que si c'est autorisé (super admin)", async () => {
+    await service.getLogs({ q: '203.0.113' });
+    expect(qb.andWhere.mock.calls[0][0]).not.toContain('ip_address');
+
+    qb.andWhere.mockClear();
+    await service.getLogs({ q: '203.0.113', search_ip: true });
+    expect(qb.andWhere.mock.calls[0][0]).toContain('log.ip_address ILIKE :q');
+  });
+
   it('filtre par action et ignore une recherche vide', async () => {
     await service.getLogs({ action: AuditAction.TICKET_TRANSFERRED, q: '  ' });
 

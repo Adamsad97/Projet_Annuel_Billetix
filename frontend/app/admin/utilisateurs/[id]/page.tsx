@@ -575,7 +575,6 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                       </p>
                       <p className="text-xs text-ink-6">
                         {new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(transfer.created_at))}
-                        {transfer.ip_address ? ` · IP ${transfer.ip_address}` : ""}
                       </p>
                     </div>
                   );

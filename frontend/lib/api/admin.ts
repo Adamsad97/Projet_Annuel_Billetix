@@ -212,7 +212,8 @@ export interface ApiAuditLogEntry {
   performed_by_email: string;
   reason: string | null;
   metadata: Record<string, unknown> | null;
-  ip_address: string;
+  // Renvoyée au super admin uniquement (donnée personnelle).
+  ip_address?: string | null;
   created_at: string;
 }
 
@@ -338,7 +339,8 @@ export interface ApiTicketTransfer {
   to_email: string;
   to_holder_first_name: string;
   to_holder_last_name: string;
-  ip_address: string | null;
+  // Renvoyée au super admin uniquement (donnée personnelle).
+  ip_address?: string | null;
   user_agent: string | null;
   created_at: string;
   status: "ACTIVE" | "REVERTED";

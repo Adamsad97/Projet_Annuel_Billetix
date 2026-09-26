@@ -22,6 +22,9 @@ export interface GetLogsDto {
   // Recherche libre : email de l'auteur, entité, motif, détails (référence
   // de billet, email du bénéficiaire…), action.
   q?: string;
+  // Recherche aussi dans l'adresse IP : réservée au super admin (donnée
+  // personnelle), cf. api-gateway redact-ip.
+  search_ip?: boolean;
   from?: string;
   to?: string;
   limit?: number;
@@ -56,7 +59,7 @@ export class AuditLogService {
     if (filters.q?.trim()) {
       queryBuilder.andWhere(
         `(log.performed_by_email ILIKE :q OR log.entity_id ILIKE :q OR log.reason ILIKE :q
-          OR log.metadata::text ILIKE :q OR log.action::text ILIKE :q OR log.ip_address ILIKE :q)`,
+          OR log.metadata::text ILIKE :q OR log.action::text ILIKE :q${filters.search_ip ? ' OR log.ip_address ILIKE :q' : ''})`,
         { q: `%${filters.q.trim()}%` },
       );
     }

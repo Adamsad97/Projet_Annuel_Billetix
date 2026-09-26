@@ -23,6 +23,7 @@ import {
 import { Roles } from "../common/decorators/roles.decorator";
 import { CreateEventDto } from "../event/dto/create-event.dto";
 import { formatEventDate } from "../common/event-date";
+import { redactIpUnlessSuperAdmin } from "../common/redact-ip";
 import { RejectTransferRevertDto, RevertTransferDto } from "../ticket/dto/transfer-revert.dto";
 
 /** Annonce de revente renvoyée par le ticket-service. */
@@ -77,13 +78,14 @@ export class AdminController {
    */
   @Get("tickets/transfers")
   @ApiOperation({ summary: "Historique des billets offerts (tous les comptes)" })
-  listTicketTransfers(
+  async listTicketTransfers(
     @Query("q") q?: string,
     @Query("event_id") eventId?: string,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
+    @CurrentUser() user?: JwtPayload,
   ) {
-    return firstValueFrom(
+    const result = await firstValueFrom(
       this.ticketClient.send("ticket.list_transfers", {
         q: q || undefined,
         event_id: eventId || undefined,
@@ -91,23 +93,26 @@ export class AdminController {
         limit: limit ? Number(limit) : undefined,
       }),
     );
+    return redactIpUnlessSuperAdmin(user, result);
   }
 
   /** Demandes d'annulation de transfert faites par les expéditeurs (file de traitement). */
   @Get("tickets/transfer-revert-requests")
   @ApiOperation({ summary: "Demandes d'annulation de transfert" })
-  listTransferRevertRequests(
+  async listTransferRevertRequests(
     @Query("status") status?: string,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
+    @CurrentUser() user?: JwtPayload,
   ) {
-    return firstValueFrom(
+    const result = await firstValueFrom(
       this.ticketClient.send("ticket.list_transfer_revert_requests", {
         status: status || undefined,
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
       }),
     );
+    return redactIpUnlessSuperAdmin(user, result);
   }
 
   /**
@@ -268,8 +273,11 @@ export class AdminController {
   /** Chaîne complète des titulaires d'un billet. */
   @Get("tickets/:id/transfers")
   @ApiOperation({ summary: "Historique des titulaires d'un billet" })
-  getTicketTransfers(@Param("id") id: string) {
-    return firstValueFrom(this.ticketClient.send("ticket.transfers_by_ticket", { ticket_id: id }));
+  async getTicketTransfers(@Param("id") id: string, @CurrentUser() user?: JwtPayload) {
+    return redactIpUnlessSuperAdmin(
+      user,
+      await firstValueFrom(this.ticketClient.send("ticket.transfers_by_ticket", { ticket_id: id })),
+    );
   }
 
   private notifyOrganizer(
@@ -318,8 +326,8 @@ export class AdminController {
 
   @Get("stats")
   @ApiOperation({ summary: "Statistiques de l'audit log" })
-  getStats() {
-    return firstValueFrom(this.adminClient.send("admin.get_stats", {}));
+  async getStats(@CurrentUser() user?: JwtPayload) {
+    return redactIpUnlessSuperAdmin(user, await firstValueFrom(this.adminClient.send("admin.get_stats", {})));
   }
 
   @Get("dashboard")
@@ -430,7 +438,7 @@ export class AdminController {
 
   @Get("audit-logs")
   @ApiOperation({ summary: "Journal des actions admin" })
-  getLogs(
+  async getLogs(
     @Query("entity_type") entity_type?: string,
     @Query("entity_id") entity_id?: string,
     @Query("performed_by") performed_by?: string,
@@ -440,20 +448,23 @@ export class AdminController {
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
     @Query("q") q?: string,
+    @CurrentUser() user?: JwtPayload,
   ) {
-    return firstValueFrom(
+    const logs = await firstValueFrom(
       this.adminClient.send("admin.get_logs", {
         entity_type,
         entity_id,
         performed_by,
         action,
         q: q || undefined,
+        search_ip: user?.role === "SUPER_ADMIN",
         from,
         to,
         limit: limit ? parseInt(limit) : undefined,
         offset: offset ? parseInt(offset) : undefined,
       }),
     );
+    return redactIpUnlessSuperAdmin(user, logs);
   }
 
   // ─── Gestion des utilisateurs ─────────────────────────────────────────────────
@@ -514,8 +525,11 @@ export class AdminController {
    * la fiche compte (POST /admin/orders/:id/resend-tickets ci-dessous). */
   @Get("users/:id/transfers")
   @ApiOperation({ summary: "Billets offerts et reçus par ce compte" })
-  getUserTransfers(@Param("id") id: string) {
-    return firstValueFrom(this.ticketClient.send("ticket.transfers_by_user", { user_id: id }));
+  async getUserTransfers(@Param("id") id: string, @CurrentUser() user?: JwtPayload) {
+    return redactIpUnlessSuperAdmin(
+      user,
+      await firstValueFrom(this.ticketClient.send("ticket.transfers_by_user", { user_id: id })),
+    );
   }
 
   @Get("users/:id/orders")

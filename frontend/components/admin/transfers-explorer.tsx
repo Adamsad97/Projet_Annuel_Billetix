@@ -20,6 +20,7 @@ import {
   type ApiTicketTransfer,
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
+import { describeDevice, formatIp } from "@/lib/format/device";
 
 const PAGE_SIZE = 20;
 const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
@@ -288,8 +289,11 @@ export function TransfersExplorer() {
               </p>
             </DetailSection>
             <DetailSection title="Contexte du transfert">
-              <p className="text-ink-4">IP : {selected.ip_address ?? "—"}</p>
-              <p className="break-words text-ink-4">Appareil : {selected.user_agent ?? "—"}</p>
+              <p className="text-ink-4">Appareil : {describeDevice(selected.user_agent)}</p>
+              {/* IP renvoyée au super admin uniquement (donnée personnelle). */}
+              {selected.ip_address !== undefined ? (
+                <p className="text-ink-4">Adresse IP : {formatIp(selected.ip_address)}</p>
+              ) : null}
             </DetailSection>
             {request ? (
               <DetailSection title="Demande d'annulation de l'expéditeur">
