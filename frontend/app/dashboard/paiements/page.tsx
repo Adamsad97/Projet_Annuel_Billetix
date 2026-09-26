@@ -18,7 +18,7 @@ export default function OrganizerPaymentsOnboardingPage() {
         <div className="mb-6 text-center">
           <h1 className="text-xl font-bold text-ink-1">Configurer les paiements</h1>
           <p className="mt-1 text-sm text-ink-5">
-            Nécessaire pour recevoir les reversements de tes événements.
+            Nécessaire pour recevoir les reversements de vos événements.
           </p>
         </div>
 

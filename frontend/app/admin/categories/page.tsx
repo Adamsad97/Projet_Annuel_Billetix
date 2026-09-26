@@ -233,7 +233,7 @@ export default function AdminCategoriesPage() {
           <p className="text-center text-sm text-ink-5">Chargement…</p>
         ) : categories.length === 0 ? (
           <div className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
-            Aucune catégorie — ajoute la première ci-dessus.
+            Aucune catégorie — ajoutez la première ci-dessus.
           </div>
         ) : (
           <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
@@ -306,7 +306,7 @@ export default function AdminCategoriesPage() {
           <p className="text-center text-sm text-ink-5">Chargement…</p>
         ) : tierTypes.length === 0 ? (
           <div className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
-            Aucun nom — ajoute le premier ci-dessus.
+            Aucun nom — ajoutez le premier ci-dessus.
           </div>
         ) : (
           <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">

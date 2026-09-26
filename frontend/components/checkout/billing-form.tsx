@@ -70,7 +70,7 @@ export function BillingForm({
         return;
       }
       setError(
-        err instanceof ApiError ? err.message : "Impossible de créer la commande, réessaie.",
+        err instanceof ApiError ? err.message : "Impossible de créer la commande, veuillez réessayer.",
       );
     } finally {
       setLoading(false);

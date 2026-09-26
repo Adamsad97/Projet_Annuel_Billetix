@@ -161,10 +161,10 @@ export function SessionManager() {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-6" role="alertdialog" aria-modal="true" aria-labelledby="session-warning-title">
       <div className="w-full max-w-sm rounded-2xl border border-hairline-2 bg-card p-6 text-center shadow-2xl">
         <h2 id="session-warning-title" className="text-lg font-bold text-ink-1">
-          Ta session va expirer
+          Votre session va expirer
         </h2>
         <p className="mt-2 text-sm text-ink-4">
-          Par sécurité, tu seras déconnecté faute d&apos;activité dans{" "}
+          Par sécurité, vous serez déconnecté faute d&apos;activité dans{" "}
           <strong className="font-mono tabular-nums text-warning">{secondsLeft} s</strong>.
         </p>
         <div className="mt-5 flex flex-col gap-2 sm:flex-row">

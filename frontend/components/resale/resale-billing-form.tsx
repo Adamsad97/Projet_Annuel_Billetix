@@ -47,13 +47,13 @@ export function ResaleBillingForm({
         payment_method: "STRIPE",
       });
       if (!result.client_secret) {
-        setError("Impossible d'initialiser le paiement, réessaie.");
+        setError("Impossible d'initialiser le paiement, veuillez réessayer.");
         return;
       }
       onOrderCreated(result.order_id, result.client_secret);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Impossible de créer la commande, réessaie.",
+        err instanceof ApiError ? err.message : "Impossible de créer la commande, veuillez réessayer.",
       );
     } finally {
       setLoading(false);

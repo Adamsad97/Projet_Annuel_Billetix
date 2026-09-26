@@ -22,7 +22,7 @@ export function ForgotPasswordForm() {
       setSent(true);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Impossible d'envoyer l'email, réessaie.",
+        err instanceof ApiError ? err.message : "Impossible d'envoyer l'email, veuillez réessayer.",
       );
     } finally {
       setLoading(false);

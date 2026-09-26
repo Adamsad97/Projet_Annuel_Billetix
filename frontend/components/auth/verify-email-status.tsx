@@ -56,7 +56,7 @@ export function VerifyEmailStatus({ token }: { token: string | null }) {
         <p className="mt-4 text-xs text-ink-5">
           Lien expiré ?{" "}
           <Link href="/contact" className="font-medium text-link hover:text-link-hover">
-            Contacte-nous
+            Contactez-nous
           </Link>
         </p>
       </div>
@@ -70,7 +70,7 @@ export function VerifyEmailStatus({ token }: { token: string | null }) {
       </div>
       <h1 className="text-2xl font-bold text-ink-1">Adresse email vérifiée</h1>
       <p className="mt-2 text-sm text-accent/70">
-        Ton compte BilletiX est maintenant actif. Tu peux te connecter et
+        Votre compte BilletiX est maintenant actif. Vous pouvez vous connecter et
         profiter de tous les événements.
       </p>
 

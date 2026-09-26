@@ -87,7 +87,7 @@ export function TransfersExplorer() {
       setNotice(success);
       setVersion((current) => current + 1);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "L'action a échoué, réessaie.");
+      setError(err instanceof ApiError ? err.message : "L'action a échoué, veuillez réessayer.");
     } finally {
       setBusy(false);
     }

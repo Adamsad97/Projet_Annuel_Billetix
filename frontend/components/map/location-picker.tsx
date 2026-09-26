@@ -48,8 +48,8 @@ export function LocationPicker({
 
       <p className="text-xs text-ink-5">
         {latitude !== null && longitude !== null
-          ? "Repositionné automatiquement depuis l'adresse choisie — clique ou fais glisser le repère pour ajuster précisément."
-          : "Le repère se place automatiquement une fois une adresse choisie ci-dessus, ou clique directement sur la carte."}
+          ? "Repositionné automatiquement depuis l'adresse choisie — cliquez ou faites glisser le repère pour ajuster précisément."
+          : "Le repère se place automatiquement une fois une adresse choisie ci-dessus, ou cliquez directement sur la carte."}
       </p>
     </div>
   );

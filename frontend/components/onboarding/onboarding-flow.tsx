@@ -19,8 +19,8 @@ export function OnboardingFlow() {
         </div>
         <h1 className="text-lg font-bold text-ink-1">Vérification en cours</h1>
         <p className="mt-2 text-sm text-ink-5">
-          Ton dossier a été transmis à Stripe pour vérification (KYC). Cela
-          prend généralement 24 à 48h. Tu recevras un email dès que tes
+          Votre dossier a été transmis à Stripe pour vérification (KYC). Cela
+          prend généralement 24 à 48h. Vous recevrez un email dès que vos
           reversements seront activés.
         </p>
       </div>

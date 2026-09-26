@@ -19,7 +19,7 @@ export default function MesBilletsPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-ink-1">Mes billets</h1>
           <p className="mt-1 text-sm text-ink-5">
-            Tous les billets liés à ton compte, valides ou déjà utilisés.
+            Tous les billets liés à votre compte, valides ou déjà utilisés.
           </p>
         </div>
 

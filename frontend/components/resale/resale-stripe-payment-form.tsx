@@ -39,7 +39,7 @@ export function ResaleStripePaymentForm({
     });
 
     if (submitError) {
-      setError(submitError.message ?? "Le paiement a échoué, réessaie.");
+      setError(submitError.message ?? "Le paiement a échoué, veuillez réessayer.");
       setLoading(false);
       return;
     }

@@ -67,7 +67,7 @@ export default function ModifierEvenementPage({
           <p className="text-center text-sm text-ink-5">Chargement…</p>
         ) : event === null ? (
           <p className="text-center text-sm text-ink-5">
-            Cet événement n&apos;existe pas ou n&apos;appartient pas à ton compte.
+            Cet événement n&apos;existe pas ou n&apos;appartient pas à votre compte.
           </p>
         ) : (
           <EditEventForm event={event} categories={categories} />

@@ -49,9 +49,9 @@ export function ReservationTimer({ expiresAt, onExpire }: { expiresAt: string; o
         <path d="M12 9v4l2 2M9 2h6" />
       </svg>
       <span>
-        Tes places sont réservées pendant{" "}
+        Vos places sont réservées pendant{" "}
         <strong className="font-mono tabular-nums">{label}</strong>
-        {warning ? " — termine vite ta commande !" : ""}
+        {warning ? " — terminez vite votre commande !" : ""}
       </span>
     </div>
   );

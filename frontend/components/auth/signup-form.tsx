@@ -101,7 +101,7 @@ export function SignupForm() {
       setError(
         err instanceof ApiError
           ? err.message
-          : "Impossible de créer le compte, réessaie.",
+          : "Impossible de créer le compte, veuillez réessayer.",
       );
     } finally {
       setLoading(false);
@@ -116,8 +116,8 @@ export function SignupForm() {
         </div>
         <h1 className="text-xl font-bold text-ink-1">Compte créé !</h1>
         <p className="mt-2 text-sm text-accent/70">
-          Clique sur le lien reçu par email pour activer ton compte, puis
-          connecte-toi — l&apos;accès n&apos;est possible qu&apos;une fois l&apos;adresse vérifiée.
+          Cliquez sur le lien reçu par email pour activer votre compte, puis
+          connectez-vous — l&apos;accès n&apos;est possible qu&apos;une fois l&apos;adresse vérifiée.
         </p>
         <Link
           href="/connexion"

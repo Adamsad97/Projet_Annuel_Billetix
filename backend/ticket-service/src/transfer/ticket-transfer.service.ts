@@ -49,7 +49,7 @@ export class TicketTransferService {
 
   async gift(input: GiftTicketInput): Promise<{ ticket: Ticket; transfer: TicketTransfer }> {
     if (input.to_user_id === input.from_user_id) {
-      throw new RpcException({ statusCode: 400, message: 'Tu es déjà titulaire de ce billet.' });
+      throw new RpcException({ statusCode: 400, message: 'Vous êtes déjà titulaire de ce billet.' });
     }
     const config = await this.platformConfig.get();
 
@@ -67,7 +67,7 @@ export class TicketTransferService {
       if (ticket.status === TicketStatus.FOR_RESALE) {
         throw new RpcException({
           statusCode: 409,
-          message: 'Ce billet est en revente : retire-le de la revente avant de l\'offrir.',
+          message: 'Ce billet est en revente : retirez-le de la revente avant de l\'offrir.',
         });
       }
       if (ticket.status !== TicketStatus.GENERATED && ticket.status !== TicketStatus.SENT) {

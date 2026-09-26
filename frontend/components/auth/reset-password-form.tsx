@@ -44,7 +44,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
       setDone(true);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Réinitialisation impossible, réessaie.",
+        err instanceof ApiError ? err.message : "Réinitialisation impossible, veuillez réessayer.",
       );
     } finally {
       setLoading(false);
@@ -59,7 +59,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
         </div>
         <h1 className="text-2xl font-bold text-ink-1">Mot de passe mis à jour</h1>
         <p className="mt-2 text-sm text-accent/70">
-          Tu peux maintenant te connecter avec ton nouveau mot de passe.
+          Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.
         </p>
         <Link
           href="/connexion"
@@ -78,7 +78,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
           Nouveau mot de passe <span>🔑</span>
         </h1>
         <p className="mt-1 text-sm text-accent/70">
-          Choisis un nouveau mot de passe pour ton compte BilletiX.
+          Choisissez un nouveau mot de passe pour votre compte BilletiX.
         </p>
       </div>
 

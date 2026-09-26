@@ -77,7 +77,7 @@ export function CheckoutFlow() {
       setIntentError(
         err instanceof ApiError
           ? err.message
-          : "Impossible d'initialiser le paiement, réessaie.",
+          : "Impossible d'initialiser le paiement, veuillez réessayer.",
       );
     } finally {
       setIntentLoading(false);
@@ -91,10 +91,10 @@ export function CheckoutFlow() {
   if (reservationExpired && cart) {
     return (
       <div className="mx-auto max-w-md rounded-2xl border border-hairline-2 bg-card p-8 text-center">
-        <h2 className="text-lg font-bold text-ink-1">Ta réservation a expiré</h2>
+        <h2 className="text-lg font-bold text-ink-1">Votre réservation a expiré</h2>
         <p className="mt-2 text-sm text-ink-4">
           Les places sont bloquées pendant une durée limitée pour laisser leur chance aux autres
-          acheteurs. Elles ont été remises en vente — tu peux les réserver à nouveau si elles
+          acheteurs. Elles ont été remises en vente — vous pouvez les réserver à nouveau si elles
           sont encore disponibles.
         </p>
         <Link
@@ -111,7 +111,7 @@ export function CheckoutFlow() {
     return (
       <div className="mx-auto max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
         <p className="text-sm text-ink-4">
-          Ton panier est vide ou ta réservation a expiré.
+          Votre panier est vide ou votre réservation a expiré.
         </p>
         <Link
           href="/catalogue"

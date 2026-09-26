@@ -115,7 +115,7 @@ export default function OrderDetailPage({
       if (err instanceof ApiError && err.status === 409) {
         getOrder(orderId).then((result) => setOrder(result.order));
       } else {
-        setResumeError(err instanceof ApiError ? err.message : "Impossible de reprendre le paiement, réessaie.");
+        setResumeError(err instanceof ApiError ? err.message : "Impossible de reprendre le paiement, veuillez réessayer.");
       }
     } finally {
       setResumeLoading(false);
@@ -132,7 +132,7 @@ export default function OrderDetailPage({
     } catch (err) {
       setResendState("error");
       setResendError(
-        err instanceof ApiError ? err.message : "Impossible de renvoyer les billets, réessaie.",
+        err instanceof ApiError ? err.message : "Impossible de renvoyer les billets, veuillez réessayer.",
       );
     }
   }
@@ -211,7 +211,7 @@ export default function OrderDetailPage({
                   <>
                     <h2 className="mb-1 text-sm font-semibold text-amber-200">Paiement non terminé</h2>
                     <p className="mb-4 text-sm text-amber-200/70">
-                      Cette commande n&apos;a pas encore été réglée — tes places restent réservées le
+                      Cette commande n&apos;a pas encore été réglée — vos places restent réservées le
                       temps de finaliser le paiement.
                     </p>
                     {resumeError ? (
@@ -243,7 +243,7 @@ export default function OrderDetailPage({
                     try {
                       await downloadInvoice(order.id, order.reference);
                     } catch (err) {
-                      setInvoiceError(err instanceof ApiError ? err.message : "Téléchargement impossible, réessaie.");
+                      setInvoiceError(err instanceof ApiError ? err.message : "Téléchargement impossible, veuillez réessayer.");
                     } finally {
                       setInvoiceDownloading(false);
                     }

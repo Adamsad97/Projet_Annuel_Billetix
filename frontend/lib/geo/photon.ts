@@ -82,7 +82,7 @@ export async function searchAddress(
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, "Service d'adresses indisponible, réessaie plus tard.");
+    throw new ApiError(response.status, "Service d'adresses indisponible, réessayez plus tard.");
   }
 
   const data = (await response.json()) as { features: PhotonFeature[] };

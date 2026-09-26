@@ -28,7 +28,7 @@ async function uploadFile(path: string, file: File, isRetry = false): Promise<{ 
       body: formData,
     });
   } catch {
-    throw new ApiError(0, "Impossible de contacter le serveur — vérifie ta connexion ou réessaie plus tard.");
+    throw new ApiError(0, "Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard.");
   }
 
   if (response.status === 401 && !isRetry && token) {
@@ -47,8 +47,8 @@ async function uploadFile(path: string, file: File, isRetry = false): Promise<{ 
     throw new ApiError(
       response.status,
       response.status === 401
-        ? "Ta session a expiré — reconnecte-toi pour continuer."
-        : extractErrorMessage(data, "Le téléversement a échoué, réessaie."),
+        ? "Votre session a expiré — veuillez vous reconnecter pour continuer."
+        : extractErrorMessage(data, "Le téléversement a échoué, veuillez réessayer."),
     );
   }
 

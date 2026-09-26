@@ -69,7 +69,7 @@ export function TwoFactorManager() {
       setCode("");
       setStep("backup-codes");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Code invalide, réessaie.");
+      setError(err instanceof ApiError ? err.message : "Code invalide, veuillez réessayer.");
     } finally {
       setSubmitting(false);
     }
@@ -134,7 +134,7 @@ export function TwoFactorManager() {
       <div className="rounded-2xl border border-hairline-1 bg-card p-6">
         <h1 className="text-lg font-bold text-ink-1">Désactiver la 2FA</h1>
         <p className="mt-1 text-sm text-ink-5">
-          Saisis un code de ton application TOTP (ou un code de secours) pour confirmer.
+          Saisissez un code de votre application TOTP (ou un code de secours) pour confirmer.
         </p>
 
         <form onSubmit={handleDisable} className="mt-4 flex flex-col gap-3">
@@ -180,7 +180,7 @@ export function TwoFactorManager() {
         </div>
         <h1 className="text-center text-lg font-bold text-ink-1">2FA activée</h1>
         <p className="mt-1 text-center text-sm text-amber-300">
-          ⚠️ Note ces codes de secours maintenant — ils ne seront plus jamais réaffichés.
+          ⚠️ Notez ces codes de secours maintenant — ils ne seront plus jamais réaffichés.
         </p>
 
         <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl border border-hairline-2 bg-hairline-1 p-4 font-mono text-sm text-ink-1">
@@ -205,7 +205,7 @@ export function TwoFactorManager() {
       <div className="rounded-2xl border border-hairline-1 bg-card p-6">
         <h1 className="text-lg font-bold text-ink-1">Activer la 2FA</h1>
         <p className="mt-1 text-sm text-ink-5">
-          Scanne ce code avec Google Authenticator ou une app TOTP équivalente.
+          Scannez ce code avec Google Authenticator ou une app TOTP équivalente.
         </p>
 
         <div className="mx-auto my-5 w-36">
@@ -248,7 +248,7 @@ export function TwoFactorManager() {
       </div>
       <h1 className="text-lg font-bold text-ink-1">2FA désactivée</h1>
       <p className="mt-1 text-sm text-ink-5">
-        Ton compte est moins protégé sans authentification à deux facteurs.
+        Votre compte est moins protégé sans authentification à deux facteurs.
       </p>
       {error ? <p className="mt-3 text-xs text-red-300">{error}</p> : null}
       <button

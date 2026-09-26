@@ -73,7 +73,7 @@ export function GiftForm({ ticket }: { ticket: TicketDetail }) {
         window.location.assign(`/connexion?reauth=1&next=${encodeURIComponent(`/billets/${ticket.id}/offrir`)}`);
         return;
       }
-      setError(err instanceof ApiError ? err.message : "Le transfert a échoué, réessaie.");
+      setError(err instanceof ApiError ? err.message : "Le transfert a échoué, veuillez réessayer.");
       setStep("form");
     } finally {
       setSubmitting(false);
@@ -207,8 +207,8 @@ export function GiftForm({ ticket }: { ticket: TicketDetail }) {
       </div>
 
       <p className="mt-4 text-xs text-ink-5">
-        🛡️ Le don est gratuit. Pour vendre un billet, utilise la revente (prix plafonné à la valeur faciale).
-        Le transfert est tracé (date, compte, adresse IP) et visible par toi, le bénéficiaire et l&apos;équipe BilleTix.
+        🛡️ Le don est gratuit. Pour vendre un billet, utilisez la revente (prix plafonné à la valeur faciale).
+        Le transfert est tracé (date, compte, adresse IP) et visible par vous, le bénéficiaire et l&apos;équipe BilleTix.
       </p>
 
       {error ? (

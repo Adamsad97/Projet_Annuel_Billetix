@@ -29,7 +29,7 @@ export const notificationPrefGroups: { title: string; prefs: NotificationPref[] 
       {
         id: "resale-updates",
         label: "Suivi de revente",
-        description: "Quand un de tes billets est mis en vente ou vendu",
+        description: "Quand un de vos billets est mis en vente ou vendu",
         defaultEnabled: true,
       },
     ],
@@ -47,7 +47,7 @@ export const notificationPrefGroups: { title: string; prefs: NotificationPref[] 
       {
         id: "payout-sent",
         label: "Reversement effectué",
-        description: "Confirmation d'un virement vers ton compte",
+        description: "Confirmation d'un virement vers votre compte",
         defaultEnabled: true,
         locked: true,
       },
@@ -65,7 +65,7 @@ export const notificationPrefGroups: { title: string; prefs: NotificationPref[] 
       {
         id: "recommendations",
         label: "Recommandations d'événements",
-        description: "Suggestions basées sur tes achats précédents",
+        description: "Suggestions basées sur vos achats précédents",
         defaultEnabled: false,
       },
       {

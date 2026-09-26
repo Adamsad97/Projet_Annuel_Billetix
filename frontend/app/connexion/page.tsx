@@ -6,13 +6,13 @@ import { ForceReauth } from "@/components/auth/force-reauth";
 // du formulaire. Déconnexion pour inactivité : volontairement silencieuse
 // (demande produit), simple retour au formulaire de connexion.
 const SESSION_MESSAGES: Record<string, string> = {
-  duree_max: "Par sécurité, une session a une durée limitée, même en restant actif. Reconnecte-toi pour continuer.",
-  expiree: "Ta session a expiré. Reconnecte-toi pour continuer.",
+  duree_max: "Par sécurité, une session a une durée limitée, même en restant actif. Veuillez vous reconnecter pour continuer.",
+  expiree: "Votre session a expiré. Veuillez vous reconnecter pour continuer.",
 };
 
 // Arrivée depuis un lien d'email vers les billets ou une commande.
 const REAUTH_MESSAGE =
-  "Pour protéger tes billets, une connexion est demandée à chaque accès depuis un email.";
+  "Pour protéger vos billets, une connexion est demandée à chaque accès depuis un email.";
 
 export default async function ConnexionPage({
   searchParams,

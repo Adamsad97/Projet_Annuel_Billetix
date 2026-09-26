@@ -18,7 +18,7 @@ export default function MesCommandesPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-ink-1">Mes commandes</h1>
           <p className="mt-1 text-sm text-ink-5">
-            Toutes les commandes passées avec ton compte.
+            Toutes les commandes passées avec votre compte.
           </p>
         </div>
 

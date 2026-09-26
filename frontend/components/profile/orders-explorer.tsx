@@ -41,7 +41,7 @@ export function OrdersExplorer() {
         if (cancelled) return;
         setOrders(sorted.map((order, index) => apiOrderToProfileOrder(order, ticketCounts[index].length)));
       } catch {
-        if (!cancelled) setError("Impossible de charger tes commandes pour le moment.");
+        if (!cancelled) setError("Impossible de charger vos commandes pour le moment.");
       }
     }
 

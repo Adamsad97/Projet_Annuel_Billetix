@@ -40,9 +40,9 @@ export function ResaleCheckoutFlow({ listing }: { listing: ApiResaleListing }) {
     return (
       <div className="mx-auto max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
         <div className="mb-3 text-4xl">🎫</div>
-        <h1 className="text-lg font-bold text-ink-1">C&apos;est ta propre annonce</h1>
+        <h1 className="text-lg font-bold text-ink-1">C&apos;est votre propre annonce</h1>
         <p className="mt-2 text-sm text-ink-5">
-          Tu ne peux pas racheter un billet que tu as toi-même mis en revente.
+          Vous ne pouvez pas racheter un billet que vous avez vous-même mis en revente.
           Change d&apos;avis directement depuis le billet.
         </p>
         <Link

@@ -47,7 +47,7 @@ export function ResaleCard({ listing }: { listing: ApiResaleListing }) {
         <div className="flex items-center justify-between border-t border-hairline-1 pt-3">
           <div>
             <p className="text-xs text-ink-5">
-              {isOwnListing ? "Ton annonce" : `Vendu par ${sellerInitials(listing.holder_first_name, listing.holder_last_name)}`}
+              {isOwnListing ? "Votre annonce" : `Vendu par ${sellerInitials(listing.holder_first_name, listing.holder_last_name)}`}
             </p>
             <p className="font-bold text-ink-1">{currency.format(Number(listing.resale_price))}</p>
           </div>

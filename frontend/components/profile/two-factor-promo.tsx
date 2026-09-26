@@ -48,10 +48,10 @@ export function TwoFactorPromo({ className = "" }: { className?: string }) {
           </svg>
         </span>
         <div>
-          <p className="text-sm font-semibold text-ink-1">Protège tes billets avec la double authentification</p>
+          <p className="text-sm font-semibold text-ink-1">Protégez vos billets avec la double authentification</p>
           <p className="mt-0.5 text-sm text-ink-4">
-            Un code de ton téléphone sera demandé à la connexion : même avec ton mot de passe,
-            personne ne pourra accéder à tes billets.
+            Un code de votre téléphone sera demandé à la connexion : même avec votre mot de passe,
+            personne ne pourra accéder à vos billets.
           </p>
         </div>
       </div>

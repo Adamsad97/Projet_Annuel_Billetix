@@ -31,7 +31,7 @@ export function NotificationPrefsManager() {
       })
       .catch(() => {
         if (!cancelled) {
-          setError("Impossible de charger tes préférences, valeurs par défaut affichées.");
+          setError("Impossible de charger vos préférences, valeurs par défaut affichées.");
           setValues(defaultValues);
         }
       });
@@ -49,7 +49,7 @@ export function NotificationPrefsManager() {
       await updateNotificationPrefs({ [id]: value });
     } catch (err) {
       setValues(previous ?? null); // annule le changement optimiste en cas d'échec
-      setError(err instanceof ApiError ? err.message : "Impossible d'enregistrer, réessaie.");
+      setError(err instanceof ApiError ? err.message : "Impossible d'enregistrer, veuillez réessayer.");
     } finally {
       setSavingId(null);
     }

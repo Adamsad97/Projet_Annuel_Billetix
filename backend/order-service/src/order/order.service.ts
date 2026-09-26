@@ -239,7 +239,7 @@ export class OrderService {
         .subscribe({ error: () => undefined });
       throw new RpcException({
         statusCode: 400,
-        message: 'Tu ne peux pas racheter ton propre billet mis en revente — retire-le de la vente si tu as changé d\'avis.',
+        message: 'Vous ne pouvez pas racheter votre propre billet mis en revente — retirez-le de la vente si vous avez changé d\'avis.',
       });
     }
 

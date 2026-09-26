@@ -162,7 +162,7 @@ export function TicketSelector({
       router.push("/commande");
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Réservation impossible, réessaie.",
+        err instanceof ApiError ? err.message : "Réservation impossible, veuillez réessayer.",
       );
     } finally {
       setLoading(false);
@@ -209,7 +209,7 @@ export function TicketSelector({
     return shell(
       <>
         <p className="text-sm text-ink-4">
-          C&apos;est ton événement — un organisateur ne peut pas acheter de billet pour son propre
+          C&apos;est votre événement — un organisateur ne peut pas acheter de billet pour son propre
           événement.
         </p>
         {salesState === "not_open" ? (
@@ -341,7 +341,7 @@ export function TicketSelector({
       </button>
 
       <p className="mt-3 text-center text-xs text-ink-5">
-        Prix TTC. Ton billet sera disponible dans ton espace BilleTix après le paiement.
+        Prix TTC. Votre billet sera disponible dans votre espace BilleTix après le paiement.
       </p>
     </>,
   );

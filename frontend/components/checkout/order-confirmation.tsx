@@ -72,7 +72,7 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
       </div>
 
       {loading ? (
-        <p className="text-center text-sm text-ink-5">Chargement de ta commande…</p>
+        <p className="text-center text-sm text-ink-5">Chargement de votre commande…</p>
       ) : loadError || !order ? (
         <p className="mx-auto max-w-lg rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-6 text-center text-sm text-red-300">
           {loadError}
@@ -112,7 +112,7 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
           </div>
 
           <p className="text-sm text-accent">
-            📧 Tes billets (QR code à usage unique) arrivent par email sous 5 minutes.
+            🎫 Vos billets sont disponibles dans « Mes billets ». Votre facture vous est envoyée par email.
           </p>
 
           <div className="flex w-full flex-col gap-3 sm:flex-row">

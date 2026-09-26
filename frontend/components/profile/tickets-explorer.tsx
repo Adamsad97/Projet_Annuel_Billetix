@@ -41,7 +41,7 @@ export function TicketsExplorer() {
         setResold(result.resold ?? []);
       })
       .catch(() => {
-        if (!cancelled) setError("Impossible de charger tes billets pour le moment.");
+        if (!cancelled) setError("Impossible de charger vos billets pour le moment.");
       });
     return () => {
       cancelled = true;

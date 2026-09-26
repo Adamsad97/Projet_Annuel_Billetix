@@ -41,7 +41,7 @@ export function ResaleManagePanel({
     if (!listing) return;
     setDialog({
       title: "Retirer ce billet de la vente ?",
-      message: "L'annonce sera retirée du marketplace — le billet reste valable pour toi.",
+      message: "L'annonce sera retirée du marketplace — le billet reste valable pour vous.",
       confirmLabel: "Retirer",
       onConfirm: async () => {
         setWithdrawing(true);

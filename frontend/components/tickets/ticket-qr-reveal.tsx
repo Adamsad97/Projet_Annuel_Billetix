@@ -63,7 +63,7 @@ export function TicketQrReveal({ ticketId, holderName }: { ticketId: string; hol
         refreshIn: result.refresh_in_seconds,
       });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible d'afficher le QR code, réessaie.");
+      setError(err instanceof ApiError ? err.message : "Impossible d'afficher le QR code, veuillez réessayer.");
     } finally {
       setLoading(false);
     }
@@ -87,8 +87,8 @@ export function TicketQrReveal({ ticketId, holderName }: { ticketId: string; hol
           {loading ? "Chargement…" : "Afficher mon QR code"}
         </button>
         <p className="max-w-xs text-center text-xs text-ink-5">
-          Affiche-le seulement au moment du contrôle, et ne le partage jamais : il permet
-          d&apos;entrer à ta place.
+          Affichez-le seulement au moment du contrôle, et ne le partagez jamais : il permet
+          d&apos;entrer à votre place.
         </p>
         {error ? <p className="text-center text-sm text-danger">{error}</p> : null}
       </div>

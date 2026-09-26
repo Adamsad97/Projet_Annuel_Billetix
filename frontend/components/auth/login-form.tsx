@@ -84,7 +84,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
           setUnverifiedEmail(email);
         }
       } else {
-        setError("Connexion impossible, réessaie.");
+        setError("Connexion impossible, veuillez réessayer.");
       }
     } finally {
       setLoading(false);
@@ -123,7 +123,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
       }
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Vérification impossible, réessaie.",
+        err instanceof ApiError ? err.message : "Vérification impossible, veuillez réessayer.",
       );
     } finally {
       setLoading(false);
@@ -136,7 +136,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold text-ink-1">Code de vérification</h1>
           <p className="mt-1 text-sm text-accent/70">
-            Entre le code affiché dans ton application d&apos;authentification
+            Entrez le code affiché dans votre application d&apos;authentification
             ({pendingCredentials.method}).
           </p>
         </div>
@@ -231,7 +231,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
             <div className="mt-2">
               {resendStatus === "sent" ? (
                 <span className="text-emerald-300">
-                  ✓ Email de vérification renvoyé — vérifie ta boîte mail.
+                  ✓ Email de vérification renvoyé — vérifiez votre boîte mail.
                 </span>
               ) : (
                 <button

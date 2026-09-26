@@ -82,7 +82,7 @@ export default function TicketDetailPage({
             <div className="mb-3 text-4xl">🎫</div>
             <h1 className="text-lg font-bold text-ink-1">Page introuvable</h1>
             <p className="mt-2 text-sm text-ink-5">
-              Ce billet n&apos;existe pas, ou la page que tu cherches a changé d&apos;adresse.
+              Ce billet n&apos;existe pas, ou la page que vous cherchez a changé d&apos;adresse.
             </p>
           </div>
         ) : (
@@ -121,7 +121,7 @@ export default function TicketDetailPage({
                       const { order } = await getOrder(ticket.orderId);
                       await downloadInvoice(order.id, order.reference);
                     } catch (err) {
-                      setDownloadError(err instanceof ApiError ? err.message : "Téléchargement impossible, réessaie.");
+                      setDownloadError(err instanceof ApiError ? err.message : "Téléchargement impossible, veuillez réessayer.");
                     } finally {
                       setDownloading(false);
                     }

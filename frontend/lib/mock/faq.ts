@@ -22,7 +22,7 @@ export const faqCategories: FaqCategory[] = [
       {
         question: "Comment reçois-je mes billets après un achat ?",
         answer:
-          "Tes billets (QR code à usage unique) sont envoyés par email dans les 5 minutes suivant la confirmation du paiement. Tu peux aussi les retrouver à tout moment dans Mes billets.",
+          "Dès la confirmation du paiement, vos billets sont disponibles dans « Mes billets » et votre facture vous est envoyée par email. Pour votre sécurité, le billet et son QR code ne sont jamais envoyés par email : ils ne s'affichent que dans votre espace, après connexion.",
       },
       {
         question: "Quels moyens de paiement sont acceptés ?",
@@ -61,12 +61,12 @@ export const faqCategories: FaqCategory[] = [
       {
         question: "Comment créer mon premier événement ?",
         answer:
-          "Depuis ton tableau de bord, clique sur « Créer un événement ». Ta soumission est examinée par notre équipe sous 48h ouvrées avant publication.",
+          "Depuis votre tableau de bord, cliquez sur « Créer un événement ». Votre soumission est examinée par notre équipe sous 48h ouvrées avant publication.",
       },
       {
         question: "Quand suis-je payé ?",
         answer:
-          "Les reversements sont possibles au plus tôt 2 jours ouvrés (J+2) après la fin de ton événement, une fois ta vérification d'identité (KYC) complétée dans Paiements.",
+          "Les reversements sont possibles au plus tôt 2 jours ouvrés (J+2) après la fin de votre événement, une fois votre vérification d'identité (KYC) complétée dans Paiements.",
       },
       {
         question: "Quelle commission BilletiX prélève-t-elle ?",
@@ -88,7 +88,7 @@ export const faqCategories: FaqCategory[] = [
       {
         question: "J'ai oublié mon mot de passe, que faire ?",
         answer:
-          "Utilise « Mot de passe oublié ? » sur la page de connexion pour recevoir un lien de réinitialisation par email.",
+          "Utilisez « Mot de passe oublié ? » sur la page de connexion pour recevoir un lien de réinitialisation par email.",
       },
     ],
   },

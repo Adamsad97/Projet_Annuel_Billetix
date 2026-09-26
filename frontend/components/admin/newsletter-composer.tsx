@@ -131,7 +131,7 @@ export function NewsletterComposer() {
             rows={10}
             value={body}
             onChange={(event) => setBody(event.target.value)}
-            placeholder="Écris le contenu de ta newsletter ici…"
+            placeholder="Écrivez le contenu de votre newsletter ici…"
             className="resize-none rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
           />
         </label>

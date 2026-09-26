@@ -25,18 +25,18 @@ export function GivenTicketRow({ given, onChanged }: { given: ApiGivenTicket; on
     setDialog({
       title: "Demander l'annulation du transfert ?",
       message:
-        "Notre équipe examinera ta demande. Si elle est acceptée, le billet te sera rendu et le bénéficiaire le perdra. " +
-        "Tu peux aussi appeler le support.",
+        "Notre équipe examinera votre demande. Si elle est acceptée, le billet vous sera rendu et le bénéficiaire le perdra. " +
+        "Vous pouvez aussi appeler le support.",
       confirmLabel: "Envoyer la demande",
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Pourquoi souhaites-tu annuler ce transfert ? (10 caractères minimum)",
+      reasonPlaceholder: "Pourquoi souhaitez-vous annuler ce transfert ? (10 caractères minimum)",
       onConfirm: async (reason) => {
         try {
           await requestTransferRevert(given.id, reason ?? "");
           onChanged();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "La demande n'a pas pu être envoyée, réessaie.");
+          setError(err instanceof ApiError ? err.message : "La demande n'a pas pu être envoyée, veuillez réessayer.");
         }
       },
     });
@@ -60,7 +60,7 @@ export function GivenTicketRow({ given, onChanged }: { given: ApiGivenTicket; on
             </p>
             {reverted && given.reverted_at ? (
               <p className="mt-0.5 text-xs font-medium text-success">
-                Transfert annulé le {dateTimeFormatter.format(new Date(given.reverted_at))} : le billet t&apos;a été rendu.
+                Transfert annulé le {dateTimeFormatter.format(new Date(given.reverted_at))} : le billet vous a été rendu.
               </p>
             ) : request?.status === "REJECTED" ? (
               <p className="mt-0.5 text-xs text-ink-4">

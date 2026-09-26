@@ -114,7 +114,7 @@ export default function DashboardPage() {
 
             {dashboard.events.length === 0 ? (
               <div className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
-                Tu n&apos;as encore créé aucun événement.
+                Vous n&apos;avez encore créé aucun événement.
               </div>
             ) : (
               <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">

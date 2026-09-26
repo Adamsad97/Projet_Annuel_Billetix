@@ -95,7 +95,7 @@ function OAuthCallbackContent() {
         setError(
           err instanceof ApiError
             ? err.message
-            : "Impossible de finaliser la connexion, réessaie.",
+            : "Impossible de finaliser la connexion, veuillez réessayer.",
         );
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,7 +112,7 @@ function OAuthCallbackContent() {
       handleResult(result);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Impossible de finaliser la connexion, réessaie.",
+        err instanceof ApiError ? err.message : "Impossible de finaliser la connexion, veuillez réessayer.",
       );
       setVerifying(false);
     }
@@ -129,7 +129,7 @@ function OAuthCallbackContent() {
       router.push(postLoginPath(session.user.role));
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Code invalide, réessaie.",
+        err instanceof ApiError ? err.message : "Code invalide, veuillez réessayer.",
       );
       setVerifying(false);
     }
@@ -162,7 +162,7 @@ function OAuthCallbackContent() {
                 {firstName ? `Bienvenue ${firstName} !` : "Bienvenue !"}
               </h1>
               <p className="mt-1 text-sm text-accent/70">
-                Une dernière étape : indique ta date de naissance. BilletiX est
+                Une dernière étape : indiquez votre date de naissance. BilletiX est
                 réservé aux personnes d&apos;au moins {minimumAge} ans.
               </p>
             </div>
@@ -218,7 +218,7 @@ function OAuthCallbackContent() {
             <div className="mb-6 text-center">
               <h1 className="text-xl font-bold text-ink-1">Code de vérification</h1>
               <p className="mt-1 text-sm text-accent/70">
-                Entre le code affiché dans ton application d&apos;authentification
+                Entrez le code affiché dans votre application d&apos;authentification
                 ({twoFactorMethod}).
               </p>
             </div>

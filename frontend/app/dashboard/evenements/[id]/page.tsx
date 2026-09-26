@@ -74,7 +74,7 @@ export default function DashboardEventDetailPage({
   function handleSubmit() {
     setDialog({
       title: "Soumettre à la validation ?",
-      message: "L'admin examinera ton événement avant publication (sous 48h ouvrées).",
+      message: "L'admin examinera votre événement avant publication (sous 48h ouvrées).",
       confirmLabel: "Soumettre →",
       onConfirm: async () => {
         setActionBusy(true);
@@ -151,7 +151,7 @@ export default function DashboardEventDetailPage({
         <AuthHeader />
         <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10 text-center">
           <p className="text-sm text-ink-5">
-            Cet événement n&apos;existe pas ou n&apos;appartient pas à ton compte.
+            Cet événement n&apos;existe pas ou n&apos;appartient pas à votre compte.
           </p>
           <Link href="/dashboard" className="mt-4 inline-block text-sm font-medium text-link hover:text-link-hover">
             ← Retour au dashboard
@@ -264,7 +264,7 @@ export default function DashboardEventDetailPage({
                       <p className="font-semibold">Rejeté par l&apos;admin</p>
                       <p className="mt-1 text-amber-200/80">{event.rejection_reason}</p>
                       <p className="mt-1 text-xs text-amber-200/60">
-                        Corrige ta demande puis soumets-la à nouveau.
+                        Corrigez votre demande puis soumettez-la à nouveau.
                       </p>
                     </div>
                   ) : null}
@@ -297,7 +297,7 @@ export default function DashboardEventDetailPage({
                             onChange={(evt) =>
                               setResponseDrafts((prev) => ({ ...prev, [request.id]: evt.target.value }))
                             }
-                            placeholder="Ta réponse…"
+                            placeholder="Votre réponse…"
                             className="mt-3 w-full resize-none rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
                           />
                           <button

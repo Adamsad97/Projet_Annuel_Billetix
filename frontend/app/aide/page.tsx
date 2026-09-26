@@ -24,9 +24,9 @@ export default function AidePage() {
         </div>
 
         <p className="mt-8 text-center text-sm text-ink-5">
-          Tu ne trouves pas ta réponse ?{" "}
+          Vous ne trouvez pas votre réponse ?{" "}
           <Link href="/contact" className="font-medium text-link hover:text-link-hover">
-            Contacte-nous
+            Contactez-nous
           </Link>
         </p>
       </main>

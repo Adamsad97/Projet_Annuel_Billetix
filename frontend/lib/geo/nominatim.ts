@@ -31,7 +31,7 @@ export async function geocodeAddress(query: string): Promise<GeocodeResult | nul
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, "Le service de géolocalisation est indisponible, réessaie plus tard.");
+    throw new ApiError(response.status, "Le service de géolocalisation est indisponible, réessayez plus tard.");
   }
 
   const results = (await response.json()) as Array<{ lat: string; lon: string; display_name: string }>;

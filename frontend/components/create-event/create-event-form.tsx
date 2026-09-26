@@ -120,18 +120,18 @@ export function CreateEventForm({
     }
 
     if (!posterFile) {
-      setError("Choisis une affiche pour ton événement.");
+      setError("Choisissez une affiche pour votre événement.");
       return;
     }
     const validTiers = tierRows.filter((row) => row.name.trim() && row.price && row.quota);
     if (validTiers.length === 0) {
-      setError("Ajoute au moins une catégorie de billet complète (nom, prix, quota).");
+      setError("Ajoutez au moins une catégorie de billet complète (nom, prix, quota).");
       return;
     }
     const totalQuota = validTiers.reduce((sum, row) => sum + Number(row.quota), 0);
     if (totalQuota > Number(totalCapacity)) {
       setError(
-        `La somme des quotas (${totalQuota}) dépasse la capacité totale (${totalCapacity}) — ajuste les catégories de billets ou la capacité.`,
+        `La somme des quotas (${totalQuota}) dépasse la capacité totale (${totalCapacity}) — ajustez les catégories de billets ou la capacité.`,
       );
       return;
     }
@@ -140,7 +140,7 @@ export function CreateEventForm({
     const salesStartIso = toIsoOrNull(salesStartAt) ?? new Date().toISOString();
     const salesEndIso = toIsoOrNull(salesEndAt) ?? startIso;
     if (!startIso || !endIso || !salesEndIso) {
-      setError("Vérifie les dates de l'événement et de la période de vente.");
+      setError("Vérifiez les dates de l'événement et de la période de vente.");
       return;
     }
     if (new Date(startIso).getTime() < Date.now()) {
@@ -203,7 +203,7 @@ export function CreateEventForm({
         router.push("/dashboard");
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Une erreur est survenue, réessaie.");
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue, veuillez réessayer.");
       setSubmitting(false);
     }
   }
@@ -450,7 +450,7 @@ export function CreateEventForm({
 
       {adminOrganizerId ? (
         <p className="text-center text-xs text-ink-5">
-          L&apos;événement sera créé sous le compte de l&apos;organisateur puis soumis à validation — tu seras redirigé vers sa fiche pour la traiter.
+          L&apos;événement sera créé sous le compte de l&apos;organisateur puis soumis à validation — vous serez redirigé vers sa fiche pour la traiter.
         </p>
       ) : mode === "create" ? (
         <p className="text-center text-xs text-ink-5">

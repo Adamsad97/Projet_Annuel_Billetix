@@ -67,7 +67,7 @@ export default function ProfilPage() {
         setTickets(mine.tickets.map(apiTicketToProfileTicket).slice(0, 5));
       } catch {
         if (!cancelled) {
-          setError("Impossible de charger tes commandes et billets pour le moment.");
+          setError("Impossible de charger vos commandes et billets pour le moment.");
         }
       }
     }

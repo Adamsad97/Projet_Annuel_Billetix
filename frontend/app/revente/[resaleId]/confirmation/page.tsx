@@ -49,7 +49,7 @@ export default function ResaleConfirmationPage({
 
       <main className="flex-1 px-6 py-10">
         {status === "loading" ? (
-          <p className="text-center text-sm text-ink-5">Finalisation de ton achat…</p>
+          <p className="text-center text-sm text-ink-5">Finalisation de votre achat…</p>
         ) : status === "error" ? (
           <div className="mx-auto max-w-lg rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-6 text-center text-sm text-red-300">
             {error}
@@ -61,10 +61,10 @@ export default function ResaleConfirmationPage({
             </div>
             <div>
               <h1 className="text-2xl font-bold text-ink-1">Achat confirmé !</h1>
-              <p className="mt-1 text-sm text-ink-5">Le billet t&apos;a été transféré.</p>
+              <p className="mt-1 text-sm text-ink-5">Le billet vous a été transféré.</p>
             </div>
             <p className="text-sm text-accent">
-              📧 Ton billet (QR code à usage unique) arrive par email sous 5 minutes.
+              🎫 Votre billet est disponible dans « Mes billets ». Votre facture vous est envoyée par email.
             </p>
             <div className="flex w-full flex-col gap-3 sm:flex-row">
               <Link

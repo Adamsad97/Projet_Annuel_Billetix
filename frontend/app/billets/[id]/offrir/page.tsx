@@ -56,7 +56,7 @@ export default function GiftTicketPage({ params }: { params: Promise<{ id: strin
         ) : (
           <p className="rounded-2xl border border-hairline-1 bg-card px-5 py-8 text-center text-sm text-ink-5">
             {ticket.status === "for_resale"
-              ? "Ce billet est en revente : retire-le de la revente avant de l'offrir."
+              ? "Ce billet est en revente : retirez-le de la revente avant de l'offrir."
               : "Ce billet n'est plus utilisable : il ne peut pas être offert."}
           </p>
         )}

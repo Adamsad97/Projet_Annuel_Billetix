@@ -64,7 +64,7 @@ async function request<T>(
   } catch {
     throw new ApiError(
       0,
-      "Impossible de contacter le serveur — vérifie ta connexion ou réessaie plus tard.",
+      "Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard.",
     );
   }
 
@@ -87,9 +87,9 @@ async function request<T>(
       response.status,
       response.status === 401
         ? token
-          ? "Ta session a expiré — reconnecte-toi pour continuer."
-          : "Tu dois être connecté pour accéder à cette page."
-        : extractErrorMessage(data, "Une erreur est survenue, réessaie."),
+          ? "Votre session a expiré — veuillez vous reconnecter pour continuer."
+          : "Vous devez être connecté pour accéder à cette page."
+        : extractErrorMessage(data, "Une erreur est survenue, veuillez réessayer."),
       extractErrorCode(data),
     );
   }
@@ -118,7 +118,7 @@ export async function apiDownload(path: string, filename: string, isRetry = fals
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
   } catch {
-    throw new ApiError(0, "Impossible de contacter le serveur — vérifie ta connexion ou réessaie plus tard.");
+    throw new ApiError(0, "Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard.");
   }
 
   if (response.status === 401 && !isRetry && token) {
@@ -132,7 +132,7 @@ export async function apiDownload(path: string, filename: string, isRetry = fals
     } catch {
       // Réponse sans corps JSON.
     }
-    throw new ApiError(response.status, extractErrorMessage(data, "Téléchargement impossible, réessaie."));
+    throw new ApiError(response.status, extractErrorMessage(data, "Téléchargement impossible, veuillez réessayer."));
   }
 
   const url = URL.createObjectURL(await response.blob());

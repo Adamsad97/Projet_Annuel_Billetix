@@ -451,7 +451,7 @@ export class NotificationController {
   ) {
     await this.mail.send({
       to: data.email,
-      subject: 'Des événements qui pourraient te plaire',
+      subject: 'Des événements qui pourraient vous plaire',
       template: 'event-recommendations',
       context: {
         firstName: data.firstName,
@@ -482,7 +482,7 @@ export class NotificationController {
   async onResaleSold(@Payload() data: ResaleSoldDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: `Ton billet est vendu ! — ${data.eventName}`,
+      subject: `Votre billet est vendu ! — ${data.eventName}`,
       template: 'resale-sold',
       context: {
         ...data,
@@ -496,7 +496,7 @@ export class NotificationController {
   async onResaleListed(@Payload() data: ResaleListedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: `Ton billet est en vente — ${data.eventName}`,
+      subject: `Votre billet est en vente — ${data.eventName}`,
       template: 'resale-listed',
       context: {
         ...data,
@@ -510,7 +510,7 @@ export class NotificationController {
   async onResaleWithdrawn(@Payload() data: ResaleWithdrawnDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: `Ton billet a été retiré de la vente — ${data.eventName}`,
+      subject: `Votre billet a été retiré de la vente — ${data.eventName}`,
       template: 'resale-withdrawn',
       context: {
         ...data,

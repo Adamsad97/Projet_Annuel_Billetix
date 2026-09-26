@@ -13,7 +13,7 @@ export function ContactForm() {
         </div>
         <h2 className="text-lg font-bold text-ink-1">Message envoyé</h2>
         <p className="mt-2 text-sm text-ink-5">
-          Notre équipe te répond généralement sous 24h ouvrées.
+          Notre équipe vous répond généralement sous 24h ouvrées.
         </p>
       </div>
     );
@@ -63,7 +63,7 @@ export function ContactForm() {
         <textarea
           required
           rows={5}
-          placeholder="Explique-nous ta demande…"
+          placeholder="Expliquez-nous votre demande…"
           className="resize-none rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
         />
       </label>

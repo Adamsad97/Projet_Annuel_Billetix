@@ -489,7 +489,7 @@ export class TicketController {
       throw new ForbiddenException({
         statusCode: 403,
         code: "REAUTH_REQUIRED",
-        message: "Pour offrir un billet, confirme d'abord ton identité en te reconnectant.",
+        message: "Pour offrir un billet, confirmez d'abord votre identité en vous reconnectant.",
       });
     }
 
@@ -498,7 +498,7 @@ export class TicketController {
       firstValueFrom(this.authClient.send<AccountSummary | null>("auth.find_by_email", { email: dto.recipient_email })),
     ]);
     if (recipient?.id === user.sub) {
-      throw new BadRequestException("Tu ne peux pas t'offrir ton propre billet.");
+      throw new BadRequestException("Vous ne pouvez pas vous offrir votre propre billet.");
     }
     const recipientEligible =
       recipient &&
@@ -509,7 +509,7 @@ export class TicketController {
     if (!recipientEligible) {
       throw new BadRequestException(
         "Aucun compte BilleTix actif et vérifié n'est associé à cet email. " +
-          "Demande à la personne de créer son compte (et de valider son email), puis réessaie.",
+          "Demandez à la personne de créer son compte (et de valider son email), puis réessayez.",
       );
     }
 

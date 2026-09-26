@@ -43,7 +43,7 @@ export function ProfileHeader() {
   if (!user) {
     return (
       <p className="mb-8 text-sm text-ink-5">
-        Connecte-toi pour voir ton profil.
+        Connectez-vous pour voir votre profil.
       </p>
     );
   }

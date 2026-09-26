@@ -9,7 +9,7 @@ export class RequestTransferRevertDto {
   @ApiProperty({ example: "Je me suis trompé de destinataire." })
   @Transform(trim)
   @IsString()
-  @Length(10, 1000, { message: "Explique ta demande (10 à 1000 caractères)" })
+  @Length(10, 1000, { message: "Expliquez votre demande (10 à 1000 caractères)" })
   reason: string;
 }
 
