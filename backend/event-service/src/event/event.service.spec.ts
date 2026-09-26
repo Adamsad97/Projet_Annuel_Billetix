@@ -374,7 +374,10 @@ describe('EventService', () => {
     it('autorise toute modification tant que le brouillon n\'est pas soumis', async () => {
       repo.findOne.mockResolvedValue({ id: '11111111-1111-4111-8111-111111111111', organizer_id: 'organizer-1', status: EventStatus.DRAFT });
 
-      const event = await service.update('11111111-1111-4111-8111-111111111111', 'organizer-1', { venue_name: 'Nouvelle salle', start_date: new Date() } as any);
+      // Date future : « maintenant » (new Date()) devient « passé » dès la
+      // milliseconde suivante et faisait échouer le test au hasard (CI).
+      const inAWeek = new Date(Date.now() + 7 * 24 * 3600_000);
+      const event = await service.update('11111111-1111-4111-8111-111111111111', 'organizer-1', { venue_name: 'Nouvelle salle', start_date: inAWeek } as any);
 
       expect(event.venue_name).toBe('Nouvelle salle');
     });
