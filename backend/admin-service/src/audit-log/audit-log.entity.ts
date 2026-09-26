@@ -53,6 +53,9 @@ export enum AuditAction {
   // Litiges
   DISPUTE_RESOLVED     = 'DISPUTE_RESOLVED',
 
+  // Plateforme
+  PLATFORM_SETTING_UPDATED = 'PLATFORM_SETTING_UPDATED',
+
   // Autre
   CUSTOM               = 'CUSTOM',
 }
@@ -65,6 +68,7 @@ export enum AuditEntityType {
   PAYMENT = 'PAYMENT',
   PAYOUT  = 'PAYOUT',
   DISPUTE = 'DISPUTE',
+  SETTING = 'SETTING',
 }
 
 @Entity({ name: 'audit_logs', schema: 'admin_logs' })

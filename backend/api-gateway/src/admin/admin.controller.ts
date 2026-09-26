@@ -1270,9 +1270,10 @@ export class AdminController {
   @ApiOperation({
     summary: "Liste tous les paramètres configurables de la plateforme",
   })
-  getPlatformConfig() {
+  getPlatformConfig(@CurrentUser() user: JwtPayload) {
+    // Les sections sensibles ne sont renvoyées qu'au super admin.
     return firstValueFrom(
-      this.adminClient.send("admin.list_platform_settings", {}),
+      this.adminClient.send("admin.list_platform_settings", { actor_role: user.role }),
     );
   }
 
@@ -1286,19 +1287,20 @@ export class AdminController {
     @Body() dto: { value: string },
   ) {
     const result = await firstValueFrom(
-      this.adminClient.send("admin.update_platform_setting", {
+      this.adminClient.send<{ key: string; value: string; previous_value: string }>("admin.update_platform_setting", {
         key,
         value: dto.value,
+        actor_role: user.role,
       }),
     );
     this.audit(
       user,
       req,
-      "CUSTOM",
-      "PAYMENT",
+      "PLATFORM_SETTING_UPDATED",
+      "SETTING",
+      key,
       undefined,
-      `Config ${key} → ${dto.value}`,
-      { key, value: dto.value },
+      { key, previous_value: result.previous_value, value: result.value },
     );
     return result;
   }

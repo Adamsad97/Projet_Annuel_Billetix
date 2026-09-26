@@ -2,6 +2,7 @@
 // français de l'action et résumé lisible de ses détails.
 
 import type { ApiAuditLogEntry } from "@/lib/api/admin";
+import { settingLabel, toInput } from "@/lib/admin/settings-catalog";
 
 export const auditActionLabels: Record<string, string> = {
   USER_SUSPENDED: "Suspension de compte",
@@ -36,6 +37,7 @@ export const auditActionLabels: Record<string, string> = {
   PAYOUT_PROCESSED_MANUALLY: "Reversement manuel",
   REFUND_FORCED: "Remboursement forcé",
   DISPUTE_RESOLVED: "Litige résolu",
+  PLATFORM_SETTING_UPDATED: "Paramètre modifié",
   CUSTOM: "Action",
 };
 
@@ -54,6 +56,12 @@ const text = (value: unknown) => (typeof value === "string" && value ? value : n
 export function describeAuditLog(log: ApiAuditLogEntry): string {
   const meta = log.metadata ?? {};
   const reference = text(meta.reference);
+  if (log.action === "PLATFORM_SETTING_UPDATED") {
+    const key = text(meta.key) ?? log.entity_id ?? "?";
+    const before = text(meta.previous_value);
+    const after = text(meta.value);
+    return `${settingLabel(key)} : ${before !== null ? toInput(key, before) : "?"} → ${after !== null ? toInput(key, after) : "?"}`;
+  }
   if (log.action.startsWith("TICKET_TRANSFER")) {
     return [
       reference ? `Billet ${reference}` : null,

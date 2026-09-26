@@ -8,7 +8,8 @@ export type AuditEntityType =
   | "TICKET"
   | "PAYMENT"
   | "PAYOUT"
-  | "DISPUTE";
+  | "DISPUTE"
+  | "SETTING";
 
 export interface AuditEntry {
   id: string;
@@ -29,6 +30,7 @@ export const entityTypeFilters: { id: string; label: string }[] = [
   { id: "PAYMENT", label: "Paiements" },
   { id: "PAYOUT", label: "Reversements" },
   { id: "DISPUTE", label: "Litiges" },
+  { id: "SETTING", label: "Paramètres" },
 ];
 
 export const entityTypeBadgeStyles: Record<AuditEntityType, string> = {
@@ -39,4 +41,5 @@ export const entityTypeBadgeStyles: Record<AuditEntityType, string> = {
   PAYMENT: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30",
   PAYOUT: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30",
   DISPUTE: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
+  SETTING: "bg-hairline-1 text-ink-3 ring-1 ring-inset ring-hairline-2",
 };

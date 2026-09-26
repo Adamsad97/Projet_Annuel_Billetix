@@ -12,12 +12,12 @@ export class PlatformConfigController {
   }
 
   @MessagePattern('admin.list_platform_settings')
-  list() {
-    return this.service.list();
+  list(@Payload() data: { actor_role?: string } = {}) {
+    return this.service.list(data?.actor_role);
   }
 
   @MessagePattern('admin.update_platform_setting')
-  update(@Payload() data: { key: string; value: string }) {
-    return this.service.update(data.key, data.value);
+  update(@Payload() data: { key: string; value: string; actor_role?: string }) {
+    return this.service.update(data.key, data.value, data.actor_role);
   }
 }

@@ -1,6 +1,5 @@
 import { AdminShell } from "@/components/layout/admin-shell";
-import { SettingsSectionCard } from "@/components/admin/settings-section";
-import { settingsSections } from "@/lib/mock/admin-settings";
+import { SettingsAccordion } from "@/components/admin/settings-accordion";
 
 export default function AdminSettingsPage() {
   return (
@@ -8,16 +7,12 @@ export default function AdminSettingsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-ink-1">Paramètres de la plateforme</h1>
         <p className="mt-1 text-sm text-ink-5">
-          Chaque valeur ajustable ici correspond à une clé configurable de
-          platform_settings — aucune constante codée en dur côté services.
+          Ouvrez la section à modifier. Chaque modification prend effet sur la plateforme et est enregistrée dans
+          le journal d&apos;audit.
         </p>
       </div>
 
-      <div className="flex flex-col gap-6">
-        {settingsSections.map((section) => (
-          <SettingsSectionCard key={section.id} section={section} />
-        ))}
-      </div>
+      <SettingsAccordion />
     </AdminShell>
   );
 }

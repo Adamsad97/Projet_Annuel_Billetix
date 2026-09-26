@@ -3,6 +3,7 @@ import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { PlatformSetting } from './platform-config.entity';
+import { numericBoundsError, sectionOf } from './setting-catalog';
 
 export interface PlatformConfig {
   tva_rate: number;
@@ -193,21 +194,38 @@ export class PlatformConfigService implements OnModuleInit {
    * par tous les parseFloat/parseInt des services consommateurs, corrompant
    * un calcul plateforme entier sans aucune erreur visible sur le coup.
    */
-  async update(key: string, value: string): Promise<PlatformSetting> {
+  /**
+   * @param actorRole rôle de l'admin qui modifie : les sections sensibles
+   *   sont réservées au super admin (cf. setting-catalog.ts).
+   */
+  async update(
+    key: string,
+    value: string,
+    actorRole?: string,
+  ): Promise<PlatformSetting & { previous_value: string }> {
     const setting = await this.repo.findOne({ where: { key } });
     if (!setting) {
       throw new RpcException({ statusCode: 404, message: `Paramètre inconnu : ${key}` });
     }
+    if (sectionOf(key).super_admin_only && actorRole !== 'SUPER_ADMIN') {
+      throw new RpcException({ statusCode: 403, message: 'Ce paramètre est réservé au super administrateur.' });
+    }
+    const previousValue = setting.value;
 
     switch (setting.type) {
-      case 'number':
+      case 'number': {
         if (value.trim() === '' || !Number.isFinite(Number(value))) {
           throw new RpcException({
             statusCode: 400,
             message: `Valeur invalide pour "${key}" : un nombre est attendu (reçu "${value}")`,
           });
         }
+        const boundsError = numericBoundsError(key, Number(value));
+        if (boundsError) {
+          throw new RpcException({ statusCode: 400, message: `Valeur invalide pour "${key}" : ${boundsError}` });
+        }
         break;
+      }
       case 'boolean':
         if (value !== 'true' && value !== 'false') {
           throw new RpcException({
@@ -230,10 +248,21 @@ export class PlatformConfigService implements OnModuleInit {
     }
 
     setting.value = value;
-    return this.repo.save(setting);
+    const saved = await this.repo.save(setting);
+    return { ...saved, previous_value: previousValue };
   }
 
-  async list(): Promise<PlatformSetting[]> {
-    return this.repo.find({ order: { key: 'ASC' } });
+  /**
+   * Réglages avec leur section ; ceux des sections sensibles ne sont
+   * renvoyés qu'au super admin.
+   */
+  async list(actorRole?: string): Promise<Array<PlatformSetting & { section: string; super_admin_only: boolean }>> {
+    const settings = await this.repo.find({ order: { key: 'ASC' } });
+    return settings
+      .map((setting) => {
+        const section = sectionOf(setting.key);
+        return { ...setting, section: section.id, super_admin_only: section.super_admin_only };
+      })
+      .filter((setting) => !setting.super_admin_only || actorRole === 'SUPER_ADMIN');
   }
 }

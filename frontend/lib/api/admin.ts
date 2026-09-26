@@ -1,7 +1,7 @@
 // Client pour les endpoints /admin de l'api-gateway
 // (backend/api-gateway/src/admin/admin.controller.ts). Câblage réel.
 
-import { apiGet, apiPost } from "./client";
+import { apiGet, apiPatch, apiPost } from "./client";
 import type { ApiEvent, CreateEventDto, CreateTicketCategoryDto } from "./events";
 import type { ApiOrder } from "./orders";
 
@@ -455,4 +455,24 @@ export function listResales(params: { status?: string; q?: string; page?: number
 /** Reventes d'un compte (vendeur ou acheteur) — fiche utilisateur. */
 export function getUserResales(userId: string): Promise<ApiAdminResale[]> {
   return apiGet(`/admin/users/${userId}/resales`);
+}
+
+// ─── Paramètres de la plateforme ────────────────────────────────────────────
+
+export interface ApiPlatformSetting {
+  key: string;
+  value: string;
+  type: "number" | "string" | "boolean" | "json";
+  description: string | null;
+  section: string;
+  // Section réservée au super admin (le serveur ne l'envoie qu'à lui).
+  super_admin_only: boolean;
+}
+
+export function listPlatformSettings(): Promise<ApiPlatformSetting[]> {
+  return apiGet("/admin/config");
+}
+
+export function updatePlatformSetting(key: string, value: string): Promise<{ key: string; value: string; previous_value: string }> {
+  return apiPatch(`/admin/config/${encodeURIComponent(key)}`, { value });
 }
