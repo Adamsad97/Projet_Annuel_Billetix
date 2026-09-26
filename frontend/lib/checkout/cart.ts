@@ -8,7 +8,9 @@ const CART_KEY = "billetix_cart";
 export interface CartLine {
   ticketCategoryId: string;
   label: string;
+  // Prix TTC unitaire (affiché et payé) ; HT pour le détail « dont TVA ».
   unitPrice: number;
+  unitPriceHt?: number;
   quantity: number;
 }
 
@@ -43,4 +45,11 @@ export function clearCart(): void {
 
 export function cartTotal(cart: Cart): number {
   return cart.lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
+}
+
+/** TVA incluse dans le total, ou null si le détail HT n'est pas connu. */
+export function cartVat(cart: Cart): number | null {
+  if (cart.lines.some((line) => line.unitPriceHt === undefined)) return null;
+  const vat = cart.lines.reduce((sum, line) => sum + (line.unitPrice - (line.unitPriceHt ?? 0)) * line.quantity, 0);
+  return Math.round(vat * 100) / 100;
 }

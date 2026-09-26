@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import type { Cart } from "@/lib/checkout/cart";
-import { cartTotal } from "@/lib/checkout/cart";
+import { cartTotal, cartVat } from "@/lib/checkout/cart";
 import { createOrder, type CreateOrderPayload } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/http-error";
 import { getStoredUser } from "@/lib/auth/session";
@@ -89,6 +89,9 @@ export function BillingForm({
           <span className="text-ink-4">{cart.eventTitle}</span>
           <span className="font-bold text-ink-1">{currency.format(cartTotal(cart))}</span>
         </div>
+        {cartTotal(cart) > 0 && cartVat(cart) !== null ? (
+          <p className="mt-1 text-right text-xs text-ink-5">TTC, dont TVA {currency.format(cartVat(cart) ?? 0)}</p>
+        ) : null}
       </div>
 
       {error ? (

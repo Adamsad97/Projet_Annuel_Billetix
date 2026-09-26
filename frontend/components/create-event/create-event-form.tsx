@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { InfoCard } from "@/components/event-detail/info-card";
 import { CategoryPicker } from "@/components/create-event/category-picker";
@@ -15,7 +15,13 @@ import {
 } from "@/components/create-event/ticket-tiers-editor";
 import type { ApiCategory } from "@/lib/api/categories";
 import type { ApiTicketTierType } from "@/lib/api/ticket-tier-types";
-import { createEvent, createTicketCategory, submitEventForValidation } from "@/lib/api/events";
+import {
+  createEvent,
+  createTicketCategory,
+  getPricingPolicy,
+  submitEventForValidation,
+  type PricingPolicy,
+} from "@/lib/api/events";
 import { createEventForOrganizer, createCategoryForOrganizer, submitEventForOrganizer } from "@/lib/api/admin";
 import { uploadPoster } from "@/lib/api/upload";
 import { ApiError } from "@/lib/api/http-error";
@@ -83,6 +89,13 @@ export function CreateEventForm({
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [totalCapacity, setTotalCapacity] = useState("500");
+  // Taux (TVA, commission, frais) pour le détail des prix pendant la saisie.
+  const [pricing, setPricing] = useState<PricingPolicy | null>(null);
+  useEffect(() => {
+    getPricingPolicy()
+      .then(setPricing)
+      .catch(() => setPricing(null));
+  }, []);
   const [salesStartAt, setSalesStartAt] = useState("");
   const [salesEndAt, setSalesEndAt] = useState("");
   const [refundPolicy, setRefundPolicy] = useState<"NON_REFUNDABLE" | "REFUNDABLE">("NON_REFUNDABLE");
@@ -411,6 +424,7 @@ export function CreateEventForm({
           onChange={setTierRows}
           tierTypes={tierTypes}
           totalCapacity={Number(totalCapacity) || 0}
+          pricing={pricing}
         />
       </InfoCard>
 

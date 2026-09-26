@@ -47,6 +47,7 @@ export class EventController {
     @Inject("PAYMENT_SERVICE") private readonly paymentClient: ClientProxy,
     @Inject("TICKET_SERVICE") private readonly ticketClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
+    @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
   ) {}
 
   // --- Routes publiques ---
@@ -165,6 +166,38 @@ export class EventController {
   @ApiOperation({ summary: "Supprimer un nom de catégorie de billet inutilisé (ADMIN)" })
   deleteTicketTierType(@Param("typeId") typeId: string) {
     return firstValueFrom(this.eventClient.send("event.ticket_tier_type.delete", { id: typeId }));
+  }
+
+  /**
+   * Taux appliqués à un prix de billet (réglages admin) : l'organisateur
+   * voit, pendant la saisie, le prix payé par le client (TTC) et ce qu'il
+   * percevra (après commission et frais de paiement). Déclarée avant
+   * @Get(":id") (sinon « pricing-policy » serait pris pour un identifiant).
+   */
+  @Get("pricing-policy")
+  @Roles("ORGANIZER", "ADMIN")
+  @ApiOperation({ summary: "Taux appliqués au prix d'un billet (TVA, commission, frais)" })
+  async getPricingPolicy() {
+    const config = await firstValueFrom(
+      this.adminClient.send<{
+        tva_rate: number;
+        commission_standard_percent: number;
+        commission_large_event_percent: number;
+        large_event_threshold: number;
+        stripe_fee_percent: number;
+        stripe_fee_fixed_eur: number;
+        free_ticket_fee_eur: number;
+      }>("admin.get_platform_config", {}),
+    );
+    return {
+      tva_rate: config.tva_rate,
+      commission_standard_percent: config.commission_standard_percent,
+      commission_large_event_percent: config.commission_large_event_percent,
+      large_event_threshold: config.large_event_threshold,
+      stripe_fee_percent: config.stripe_fee_percent,
+      stripe_fee_fixed_eur: config.stripe_fee_fixed_eur,
+      free_ticket_fee_eur: config.free_ticket_fee_eur,
+    };
   }
 
   @Public()

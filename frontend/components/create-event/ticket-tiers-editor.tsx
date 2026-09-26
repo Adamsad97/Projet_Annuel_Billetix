@@ -1,7 +1,67 @@
 "use client";
 
 import { useId } from "react";
+import type { PricingPolicy } from "@/lib/api/events";
 import type { ApiTicketTierType } from "@/lib/api/ticket-tier-types";
+import { commissionPercentFor, computePriceBreakdown } from "@/lib/pricing/price-breakdown";
+
+const euros = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+
+/**
+ * Détail d'un prix saisi : ce que le client paiera (affiché sur le site)
+ * et ce que l'organisateur percevra — pour qu'il n'y ait aucune surprise,
+ * ni pour lui ni pour ses clients.
+ */
+function PriceDetail({ price, pricing, commissionPercent }: { price: string; pricing: PricingPolicy; commissionPercent: number }) {
+  const value = Number(price);
+  if (price.trim() === "" || !Number.isFinite(value) || value < 0) return null;
+  const detail = computePriceBreakdown(value, pricing, commissionPercent);
+  const vatPercent = Math.round(pricing.tva_rate * 1000) / 10;
+
+  if (detail.priceHt === 0) {
+    return (
+      <div className="col-span-2 rounded-xl bg-hairline-1 px-4 py-3 text-xs text-ink-4 sm:col-span-5">
+        <p className="text-sm font-semibold text-ink-1">Billet gratuit pour le client</p>
+        <p className="mt-1">
+          Frais de {euros.format(detail.freeTicketFee)} par billet à votre charge, déduits de vos reversements.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="col-span-2 grid gap-x-6 gap-y-1 rounded-xl bg-hairline-1 px-4 py-3 text-xs text-ink-4 sm:col-span-5 sm:grid-cols-2">
+      <div>
+        <p className="flex justify-between gap-3">
+          <span>Votre prix HT</span>
+          <span>{euros.format(detail.priceHt)}</span>
+        </p>
+        <p className="flex justify-between gap-3">
+          <span>+ TVA {vatPercent} %</span>
+          <span>{euros.format(detail.vat)}</span>
+        </p>
+        <p className="mt-1 flex justify-between gap-3 border-t border-hairline-2 pt-1 text-sm font-semibold text-ink-1">
+          <span>Prix affiché et payé par le client</span>
+          <span>{euros.format(detail.priceTtc)}</span>
+        </p>
+      </div>
+      <div className="mt-2 sm:mt-0">
+        <p className="flex justify-between gap-3">
+          <span>Commission BilleTix {commissionPercent} % (sur le HT)</span>
+          <span>− {euros.format(detail.commission)}</span>
+        </p>
+        <p className="flex justify-between gap-3">
+          <span>Frais de paiement (environ)</span>
+          <span>− {euros.format(detail.paymentFees)}</span>
+        </p>
+        <p className="mt-1 flex justify-between gap-3 border-t border-hairline-2 pt-1 text-sm font-semibold text-ink-1">
+          <span>Vous recevez par billet</span>
+          <span>≈ {euros.format(detail.organizerNet)}</span>
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export interface TicketTierRow {
   id: string;
@@ -26,16 +86,21 @@ export function TicketTiersEditor({
   onChange,
   tierTypes,
   totalCapacity,
+  pricing = null,
 }: {
   rows: TicketTierRow[];
   onChange: (rows: TicketTierRow[]) => void;
   tierTypes: ApiTicketTierType[];
+  // Taux des réglages admin : détail du prix sous chaque catégorie (null
+  // tant qu'ils ne sont pas chargés — la saisie reste possible).
+  pricing?: PricingPolicy | null;
   // Bug corrigé : rien n'empêchait la somme des quotas de dépasser la
   // capacité totale de l'événement (ex: 500 places mais 500 + 40 réparties
   // en catégories) — désormais visible en temps réel et plafonné par ligne.
   totalCapacity: number;
 }) {
   const genId = useId();
+  const commissionPercent = pricing ? commissionPercentFor(pricing, totalCapacity) : 0;
 
   const totalQuota = rows.reduce((sum, row) => sum + (parseInt(row.quota, 10) || 0), 0);
   const overCapacity = totalCapacity > 0 && totalQuota > totalCapacity;
@@ -142,9 +207,20 @@ export function TicketTiersEditor({
             >
               ✕
             </button>
+            {pricing ? <PriceDetail price={row.price} pricing={pricing} commissionPercent={commissionPercent} /> : null}
           </div>
         );
       })}
+
+      {pricing ? (
+        <p className="text-center text-xs text-ink-5">
+          Le prix affiché aux clients inclut la TVA. « Vous recevez » est une estimation : les frais de
+          paiement réels dépendent du montant de chaque commande.
+          {totalCapacity > pricing.large_event_threshold
+            ? ` Commission réduite à ${pricing.commission_large_event_percent} % : plus de ${pricing.large_event_threshold} places.`
+            : ""}
+        </p>
+      ) : null}
 
       {totalCapacity > 0 ? (
         <p className={overCapacity ? "text-center text-xs font-medium text-red-400" : "text-center text-xs text-ink-5"}>

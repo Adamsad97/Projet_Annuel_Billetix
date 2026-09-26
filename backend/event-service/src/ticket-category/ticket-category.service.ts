@@ -111,6 +111,20 @@ export class TicketCategoryService {
     return this.repo.save(category);
   }
 
+  /**
+   * Ajoute le prix TTC (celui affiché aux clients et payé), calculé ici avec
+   * le taux de TVA de la plateforme et le même arrondi qu'à la commande
+   * (order-service) : le site n'a jamais à le recalculer, aucun écart
+   * possible entre prix affiché et prix payé.
+   */
+  async withPriceTtc<T extends TicketCategory>(categories: T[]): Promise<Array<T & { price_ttc: number }>> {
+    const { tva_rate } = await this.platformConfig.get();
+    return categories.map((category) => ({
+      ...category,
+      price_ttc: parseFloat((Number(category.price_ht) * (1 + tva_rate)).toFixed(2)),
+    }));
+  }
+
   async getByEvent(eventId: string): Promise<TicketCategory[]> {
     // Bug corrigé (même cause que EventService.getById) : un event_id mal
     // formé faisait planter Postgres ("invalid input syntax for type

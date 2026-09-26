@@ -8,18 +8,20 @@ export class TicketCategoryController {
   constructor(private readonly service: TicketCategoryService) {}
 
   @MessagePattern('event.create_category')
-  create(@Payload() data: { dto: CreateTicketCategoryDto; organizer_id: string }) {
-    return this.service.create(data.dto, data.organizer_id);
+  async create(@Payload() data: { dto: CreateTicketCategoryDto; organizer_id: string }) {
+    const [category] = await this.service.withPriceTtc([await this.service.create(data.dto, data.organizer_id)]);
+    return category;
   }
 
   @MessagePattern('event.get_categories')
-  getByEvent(@Payload() data: { event_id: string }) {
-    return this.service.getByEvent(data.event_id);
+  async getByEvent(@Payload() data: { event_id: string }) {
+    return this.service.withPriceTtc(await this.service.getByEvent(data.event_id));
   }
 
   @MessagePattern('event.update_category')
-  update(@Payload() data: { id: string; dto: Partial<CreateTicketCategoryDto>; organizer_id: string }) {
-    return this.service.update(data.id, data.dto, data.organizer_id);
+  async update(@Payload() data: { id: string; dto: Partial<CreateTicketCategoryDto>; organizer_id: string }) {
+    const [category] = await this.service.withPriceTtc([await this.service.update(data.id, data.dto, data.organizer_id)]);
+    return category;
   }
 
   @MessagePattern('event.deactivate_category')

@@ -155,6 +155,7 @@ export function TicketSelector({
             ticketCategoryId: t.id,
             label: t.label,
             unitPrice: t.price,
+            unitPriceHt: t.priceHt,
             quantity: quantities[t.id],
           })),
       });
@@ -340,7 +341,7 @@ export function TicketSelector({
       </button>
 
       <p className="mt-3 text-center text-xs text-ink-5">
-        QR code unique envoyé par email sous 5 min
+        Prix TTC. Ton billet sera disponible dans ton espace BilleTix après le paiement.
       </p>
     </>,
   );

@@ -4,7 +4,9 @@
 export interface TicketOption {
   id: string;
   label: string;
+  // Prix TTC, celui affiché aux clients et payé.
   price: number;
+  priceHt?: number;
   originalPrice?: number;
   tag?: string;
   defaultQuantity?: number;

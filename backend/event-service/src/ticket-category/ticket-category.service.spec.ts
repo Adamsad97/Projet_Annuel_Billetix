@@ -345,4 +345,24 @@ describe('TicketCategoryService', () => {
       await expect(service.decrementQuota('cat-1', 1)).resolves.toEqual({ success: true });
     });
   });
+
+  describe('withPriceTtc — prix affiché aux clients', () => {
+    it('ajoute le prix TTC avec le taux de TVA de la plateforme et le même arrondi qu’à la commande', async () => {
+      platformConfig.get.mockResolvedValue({ tva_rate: 0.2 });
+      const [standard, reduit, gratuit] = await service.withPriceTtc([
+        { id: 'a', price_ht: '25.00' },
+        { id: 'b', price_ht: '12.34' },
+        { id: 'c', price_ht: '0.00' },
+      ] as unknown as TicketCategory[]);
+      expect(standard.price_ttc).toBe(30);
+      expect(reduit.price_ttc).toBe(14.81);
+      expect(gratuit.price_ttc).toBe(0);
+    });
+
+    it('suit le taux réglé par l’admin (jamais une valeur figée)', async () => {
+      platformConfig.get.mockResolvedValue({ tva_rate: 0.055 });
+      const [category] = await service.withPriceTtc([{ id: 'a', price_ht: '20.00' }] as unknown as TicketCategory[]);
+      expect(category.price_ttc).toBe(21.1);
+    });
+  });
 });

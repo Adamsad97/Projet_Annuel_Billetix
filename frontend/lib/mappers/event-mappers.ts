@@ -20,7 +20,7 @@ const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "
 function lowestPrice(categories: ApiTicketCategory[]): number | null {
   const activePrices = categories
     .filter((c) => c.is_active)
-    .map((c) => Number(c.price_ht));
+    .map((c) => Number(c.price_ttc));
   if (activePrices.length === 0) return null;
   return Math.min(...activePrices);
 }
@@ -132,7 +132,9 @@ export function apiEventToDetail(event: ApiEvent, categories: ApiTicketCategory[
     .map((c) => ({
       id: c.id,
       label: c.name,
-      price: Number(c.price_ht),
+      // Prix payé par le client (TVA incluse) — le HT sert au détail de la TVA.
+      price: Number(c.price_ttc),
+      priceHt: Number(c.price_ht),
     }));
 
   const addressParts = [event.venue_address_line1, event.venue_address_line2].filter(Boolean);

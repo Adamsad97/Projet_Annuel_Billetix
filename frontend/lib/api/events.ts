@@ -67,6 +67,9 @@ export interface ApiTicketCategory {
   name: string;
   description: string | null;
   price_ht: string;
+  // Prix payé par le client (TVA incluse), calculé par le serveur avec le
+  // même arrondi qu'à la commande — c'est lui qui s'affiche aux clients.
+  price_ttc: number;
   quota: number;
   remaining_quota: number;
   max_per_order: number;
@@ -136,6 +139,21 @@ export function listPublishedEvents(
 
 export function getEvent(id: string): Promise<ApiEvent> {
   return getJson<ApiEvent>(`/events/${id}`);
+}
+
+/** Taux appliqués au prix d'un billet (réglages admin), pour l'organisateur. */
+export interface PricingPolicy {
+  tva_rate: number;
+  commission_standard_percent: number;
+  commission_large_event_percent: number;
+  large_event_threshold: number;
+  stripe_fee_percent: number;
+  stripe_fee_fixed_eur: number;
+  free_ticket_fee_eur: number;
+}
+
+export function getPricingPolicy(): Promise<PricingPolicy> {
+  return apiGet<PricingPolicy>("/events/pricing-policy");
 }
 
 export function getEventCategories(id: string): Promise<ApiTicketCategory[]> {
