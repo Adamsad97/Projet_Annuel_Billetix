@@ -68,7 +68,8 @@ export function SessionManager() {
       setSecondsLeft(null);
       if (reason === "manuelle") return; // le bouton gère sa propre navigation
       if (!window.location.pathname.startsWith("/connexion")) {
-        router.replace(`/connexion?session=${reason}`);
+        // Inactivité : déconnexion silencieuse, sans message.
+        router.replace(reason === "inactivite" ? "/connexion" : `/connexion?session=${reason}`);
       }
     }
     const onEnded = (event: Event) => goToLogin((event as CustomEvent<SessionEndReason>).detail);
