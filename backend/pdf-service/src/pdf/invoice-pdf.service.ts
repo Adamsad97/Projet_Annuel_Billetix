@@ -39,6 +39,43 @@ export interface InvoicePdfData {
   platform_address: string;
 }
 
+/** Couleur de marque (corail), identique au site (--color-brand). */
+const BRAND = '#e8532b';
+
+/**
+ * Logo BilleTix en HTML + SVG autonome (aucune ressource externe à charger
+ * par Chromium) : mot-symbole, accroche et icône des deux billets, repris
+ * de components/layout/logo.tsx côté frontend.
+ */
+const LOGO_HTML = `<div class="logo" aria-label="BilleTix">
+        <div class="logo-text">
+          <div class="logo-word">Bille<span>Tix</span></div>
+          <div class="logo-tagline">Simple &amp; sûr !</div>
+        </div>
+        <svg viewBox="0 0 44 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <mask id="logo-back">
+              <rect x="-10" y="-10" width="64" height="54" fill="white"/>
+              <circle cx="9" cy="12.5" r="3" fill="black"/>
+              <circle cx="37" cy="12.5" r="3" fill="black"/>
+            </mask>
+            <mask id="logo-front">
+              <rect x="-10" y="-10" width="64" height="54" fill="white"/>
+              <circle cx="5" cy="20" r="3.2" fill="black"/>
+              <circle cx="35" cy="20" r="3.2" fill="black"/>
+            </mask>
+          </defs>
+          <g transform="rotate(12 22 14)">
+            <rect x="9" y="5" width="28" height="15" rx="2.1" fill="#f4a07f" mask="url(#logo-back)"/>
+          </g>
+          <g transform="rotate(-10 20 20)">
+            <rect x="5" y="12" width="30" height="16" rx="2.2" fill="${BRAND}" mask="url(#logo-front)"/>
+            <polygon points="16,16 16.94,18.71 19.8,18.76 17.52,20.49 18.35,23.24 16,21.6 13.65,23.24 14.48,20.49 12.2,18.76 15.06,18.71" fill="white"/>
+            <line x1="27" y1="14.9" x2="27" y2="25.1" stroke="white" stroke-width="1.1" stroke-dasharray="1.6 1.45" stroke-linecap="round"/>
+          </g>
+        </svg>
+      </div>`;
+
 @Injectable()
 export class InvoicePdfService {
   private readonly logger = new Logger(InvoicePdfService.name);
@@ -102,8 +139,14 @@ export class InvoicePdfService {
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: 'Arial', sans-serif; color: #1a1a1a; font-size: 12px; }
     .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
-    .brand { font-size: 24px; font-weight: 900; color: #6c3de0; }
-    .brand-info { font-size: 10px; color: #6b7280; margin-top: 6px; line-height: 1.5; }
+    /* Logo BilleTix (identique à celui du site : components/layout/logo.tsx) */
+    .logo { display: inline-flex; align-items: flex-start; }
+    .logo-text { display: flex; flex-direction: column; align-items: flex-end; line-height: 1; }
+    .logo-word { font-size: 28px; font-weight: 900; letter-spacing: -1.4px; color: #111827; }
+    .logo-word span { color: ${BRAND}; }
+    .logo-tagline { font-size: 9px; font-weight: 700; color: ${BRAND}; margin-top: 1px; padding-right: 2px; letter-spacing: -0.2px; }
+    .logo svg { margin-left: -4px; margin-top: -8px; width: 46px; height: 36px; }
+    .brand-info { font-size: 10px; color: #6b7280; margin-top: 10px; line-height: 1.5; }
     .invoice-title { text-align: right; }
     .invoice-title h1 { font-size: 20px; color: #1a1a1a; }
     .invoice-title .ref { font-size: 11px; color: #6b7280; margin-top: 4px; }
@@ -113,14 +156,14 @@ export class InvoicePdfService {
     .party-label { font-size: 9px; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.5px; margin-bottom: 4px; }
 
     table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    thead th { background: #f3f0ff; color: #6c3de0; font-size: 10px; text-transform: uppercase; text-align: left; padding: 8px 10px; }
+    thead th { background: #fdeee8; color: ${BRAND}; font-size: 10px; text-transform: uppercase; text-align: left; padding: 8px 10px; }
     thead th.num { text-align: right; }
     tbody td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; font-size: 11px; }
     tbody td.num { text-align: right; }
 
     .totals { margin-left: auto; width: 260px; }
     .totals-row { display: flex; justify-content: space-between; padding: 6px 10px; font-size: 11px; }
-    .totals-row.total { font-weight: 900; font-size: 14px; border-top: 2px solid #6c3de0; margin-top: 4px; padding-top: 10px; color: #6c3de0; }
+    .totals-row.total { font-weight: 900; font-size: 14px; border-top: 2px solid ${BRAND}; margin-top: 4px; padding-top: 10px; color: ${BRAND}; }
 
     .footer { margin-top: 40px; font-size: 9px; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 10px; }
   </style>
@@ -129,7 +172,7 @@ export class InvoicePdfService {
 
   <div class="header">
     <div>
-      <div class="brand">BilletiX</div>
+      ${LOGO_HTML}
       <div class="brand-info">
         ${this.esc(invoiceData.platform_legal_name)}<br/>
         ${invoiceData.platform_address ? this.esc(invoiceData.platform_address) + '<br/>' : ''}
@@ -179,7 +222,7 @@ export class InvoicePdfService {
   </div>
 
   <div class="footer">
-    Facture générée automatiquement par BilletiX — document à conserver pour votre comptabilité.
+    Facture générée automatiquement par BilleTix — document à conserver pour votre comptabilité.
   </div>
 
 </body>
