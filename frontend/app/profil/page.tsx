@@ -17,6 +17,7 @@ import { apiOrderToProfileOrder, apiTicketToProfileTicket } from "@/lib/mappers/
 import type { ProfileOrder, ProfileTicket } from "@/lib/mock/profile";
 import { getAccessToken, getStoredUser } from "@/lib/auth/session";
 import { TwoFactorPromo } from "@/components/profile/two-factor-promo";
+import { effectiveRole, isAdminRole } from "@/lib/auth/preview";
 
 // Nombre de commandes récentes prises en compte pour les deux panneaux
 // (au-delà, "Tout voir →" mènera aux listes complètes une fois câblées).
@@ -26,13 +27,14 @@ export default function ProfilPage() {
   const [orders, setOrders] = useState<ProfileOrder[] | null>(null);
   const [tickets, setTickets] = useState<ProfileTicket[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Un compte ADMIN reste purement administratif — jamais aussi acheteur
-  // (cf. Navbar : Catalogue/Revente déjà masqués pour ce rôle), donc ni
-  // achats ni billets à afficher ici.
+  // Un compte ADMIN ou SUPER_ADMIN reste purement administratif — jamais
+  // acheteur —, donc ni billets ni commandes à afficher ici. Bug corrigé :
+  // seul ADMIN était testé, un super admin voyait les blocs acheteur. En
+  // mode aperçu acheteur, la page s'affiche comme pour un client.
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const admin = getStoredUser()?.role === "ADMIN";
+    const admin = isAdminRole(effectiveRole(getStoredUser()));
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsAdmin(admin);
 

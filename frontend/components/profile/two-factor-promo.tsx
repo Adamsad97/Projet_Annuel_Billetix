@@ -1,6 +1,7 @@
 "use client";
 
-// Mise en avant de la double authentification (2FA) auprès des acheteurs :
+// Mise en avant de la double authentification (2FA) — message adapté pour
+// un compte administrateur (accès au back-office). Auprès des acheteurs :
 // avec leurs billets, leur compte a désormais de la valeur — un mot de
 // passe volé ne doit pas suffire pour entrer à leur place. Affiché
 // uniquement si la 2FA n'est pas activée ; « Plus tard » masque le bandeau
@@ -9,11 +10,16 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { get2faStatus } from "@/lib/api/two-factor";
+import { getStoredUser } from "@/lib/auth/session";
+import { effectiveRole, isAdminRole } from "@/lib/auth/preview";
 
 const DISMISS_KEY = "billetix_2fa_promo_dismissed";
 
 export function TwoFactorPromo({ className = "" }: { className?: string }) {
   const [visible, setVisible] = useState(false);
+  // Compte administrateur (hors mode aperçu) : pas de billets à protéger,
+  // mais l'accès au back-office — message adapté.
+  const [forAdmin, setForAdmin] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -24,7 +30,9 @@ export function TwoFactorPromo({ className = "" }: { className?: string }) {
     }
     get2faStatus()
       .then((enabled) => {
-        if (!cancelled && !enabled) setVisible(true);
+        if (cancelled || enabled) return;
+        setForAdmin(isAdminRole(effectiveRole(getStoredUser())));
+        setVisible(true);
       })
       .catch(() => undefined);
     return () => {
@@ -48,10 +56,16 @@ export function TwoFactorPromo({ className = "" }: { className?: string }) {
           </svg>
         </span>
         <div>
-          <p className="text-sm font-semibold text-ink-1">Protégez vos billets avec la double authentification</p>
+          <p className="text-sm font-semibold text-ink-1">
+            {forAdmin
+              ? "Protégez l'accès au back-office avec la double authentification"
+              : "Protégez vos billets avec la double authentification"}
+          </p>
           <p className="mt-0.5 text-sm text-ink-4">
             Un code de votre téléphone sera demandé à la connexion : même avec votre mot de passe,
-            personne ne pourra accéder à vos billets.
+            {forAdmin
+              ? " personne ne pourra agir sur la plateforme à votre place."
+              : " personne ne pourra accéder à vos billets."}
           </p>
         </div>
       </div>
