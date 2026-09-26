@@ -215,8 +215,11 @@ export class EventService {
   /** Résolution par lot (ex. liste admin des reversements, un événement par
    * payout) — évite un aller-retour par événement. */
   async getByIds(ids: string[]): Promise<Event[]> {
-    if (ids.length === 0) return [];
-    return this.repo.findBy({ id: In(ids) });
+    // Identifiants mal formés ignorés : un seul faisait échouer toute la
+    // requête (erreur SQL « invalid input syntax for type uuid »).
+    const validIds = ids.filter((id) => isUUID(id));
+    if (validIds.length === 0) return [];
+    return this.repo.findBy({ id: In(validIds) });
   }
 
   /**

@@ -775,7 +775,7 @@ export class AdminController {
       const fillStats = fillStatsList[index];
       return {
         ...event,
-        organizer_name: organizer ? `${organizer.first_name} ${organizer.last_name}` : "Compte supprimé",
+        organizer_name: organizer ? `${organizer.first_name} ${organizer.last_name}` : "Organisateur introuvable",
         category_label: category?.label ?? event.category,
         category_emoji: category?.emoji ?? null,
         sold: fillStats.sold,
@@ -1004,12 +1004,13 @@ export class AdminController {
               "auth.get_users_by_ids",
               { ids: organizerIds },
             ),
-          )
+            // Noms indisponibles : la liste financière s'affiche quand même.
+          ).catch(() => [])
         : Promise.resolve([]),
       eventIds.length
         ? firstValueFrom(
             this.eventClient.send<Array<{ id: string; title: string }>>("event.get_by_ids", { ids: eventIds }),
-          )
+          ).catch(() => [])
         : Promise.resolve([]),
     ]);
     const organizerById = new Map(organizers.map((o) => [o.id, o]));
@@ -1020,9 +1021,9 @@ export class AdminController {
       const event = eventById.get(payout.event_id);
       return {
         ...payout,
-        organizer_name: organizer ? `${organizer.first_name} ${organizer.last_name}` : "Compte supprimé",
+        organizer_name: organizer ? `${organizer.first_name} ${organizer.last_name}` : "Organisateur introuvable",
         organizer_email: organizer?.email ?? null,
-        event_name: event?.title ?? "Événement supprimé",
+        event_name: event?.title ?? "Événement introuvable",
       };
     });
   }

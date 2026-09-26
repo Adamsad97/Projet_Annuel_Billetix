@@ -1,3 +1,4 @@
+import { isUUID } from "class-validator";
 import { Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
@@ -802,7 +803,9 @@ export class AuthService {
   }
 
   async getUserById(id: string) {
-    const user = await this.userRepo.findOne({ where: { id } });
+    // Identifiant mal formé (ex. « demo-organizer » des données de
+    // démonstration) : introuvable, plutôt qu'une erreur SQL en 500.
+    const user = isUUID(id) ? await this.userRepo.findOne({ where: { id } }) : null;
     if (!user)
       throw new RpcException({
         statusCode: 404,
@@ -826,8 +829,12 @@ export class AuthService {
 
   /** Résolution par lot (ex. newsletter) — évite un aller-retour par utilisateur. */
   async getUsersByIds(ids: string[]) {
-    if (ids.length === 0) return [];
-    const users = await this.userRepo.findBy({ id: In(ids) });
+    // Bug corrigé : un seul identifiant mal formé (ex. « demo-organizer »)
+    // faisait échouer toute la requête — et la liste admin des reversements
+    // avec. Les identifiants invalides sont ignorés (comptes introuvables).
+    const validIds = ids.filter((id) => isUUID(id));
+    if (validIds.length === 0) return [];
+    const users = await this.userRepo.findBy({ id: In(validIds) });
     return users.map((u) => this.sanitize(u));
   }
 

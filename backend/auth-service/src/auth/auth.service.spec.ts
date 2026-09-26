@@ -912,10 +912,25 @@ describe("AuthService", () => {
         { ...baseUser, id: "user-2", email: "autre@example.com", password_hash: "secret-hash" },
       ]);
 
-      const result = await service.getUsersByIds(["user-1", "user-2"]);
+      const result = await service.getUsersByIds([
+        "11111111-1111-4111-8111-111111111111",
+        "22222222-2222-4222-8222-222222222222",
+      ]);
 
       expect(result).toHaveLength(2);
       expect(result.every((u) => !("password_hash" in u))).toBe(true);
+    });
+
+    it("ignore un identifiant mal formé au lieu de faire échouer toute la requête", async () => {
+      repo.findBy.mockResolvedValue([]);
+
+      await service.getUsersByIds(["demo-organizer", "11111111-1111-4111-8111-111111111111"]);
+      expect(repo.findBy).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(repo.findBy.mock.calls[0][0])).not.toContain("demo-organizer");
+
+      repo.findBy.mockClear();
+      await expect(service.getUsersByIds(["demo-organizer"])).resolves.toEqual([]);
+      expect(repo.findBy).not.toHaveBeenCalled();
     });
 
     it("ne fait aucun appel base pour une liste vide", async () => {
