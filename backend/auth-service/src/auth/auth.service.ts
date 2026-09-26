@@ -803,8 +803,7 @@ export class AuthService {
   }
 
   async getUserById(id: string) {
-    // Identifiant mal formé (ex. « demo-organizer » des données de
-    // démonstration) : introuvable, plutôt qu'une erreur SQL en 500.
+    // Identifiant mal formé : introuvable, plutôt qu'une erreur SQL en 500.
     const user = isUUID(id) ? await this.userRepo.findOne({ where: { id } }) : null;
     if (!user)
       throw new RpcException({
@@ -829,9 +828,8 @@ export class AuthService {
 
   /** Résolution par lot (ex. newsletter) — évite un aller-retour par utilisateur. */
   async getUsersByIds(ids: string[]) {
-    // Bug corrigé : un seul identifiant mal formé (ex. « demo-organizer »)
-    // faisait échouer toute la requête — et la liste admin des reversements
-    // avec. Les identifiants invalides sont ignorés (comptes introuvables).
+    // Un seul identifiant mal formé ne doit pas faire échouer toute la
+    // requête : les identifiants invalides sont ignorés (comptes introuvables).
     const validIds = ids.filter((id) => isUUID(id));
     if (validIds.length === 0) return [];
     const users = await this.userRepo.findBy({ id: In(validIds) });

@@ -924,12 +924,12 @@ describe("AuthService", () => {
     it("ignore un identifiant mal formé au lieu de faire échouer toute la requête", async () => {
       repo.findBy.mockResolvedValue([]);
 
-      await service.getUsersByIds(["demo-organizer", "11111111-1111-4111-8111-111111111111"]);
+      await service.getUsersByIds(["identifiant-invalide", "11111111-1111-4111-8111-111111111111"]);
       expect(repo.findBy).toHaveBeenCalledTimes(1);
-      expect(JSON.stringify(repo.findBy.mock.calls[0][0])).not.toContain("demo-organizer");
+      expect(JSON.stringify(repo.findBy.mock.calls[0][0])).not.toContain("identifiant-invalide");
 
       repo.findBy.mockClear();
-      await expect(service.getUsersByIds(["demo-organizer"])).resolves.toEqual([]);
+      await expect(service.getUsersByIds(["identifiant-invalide"])).resolves.toEqual([]);
       expect(repo.findBy).not.toHaveBeenCalled();
     });
 
