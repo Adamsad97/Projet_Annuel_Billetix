@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ApiAdminEvent } from "@/lib/api/admin";
 
-// Bug corrigé : reposait sur lib/mock/admin-events.ts (emoji/couleur/libellé
+// Bug corrigé : reposait sur lib/constants/admin-events.ts (emoji/couleur/libellé
 // de statut figés) — la catégorie et le statut viennent désormais du vrai
 // événement (event-service).
 const statusBadge: Record<string, { label: string; className: string }> = {

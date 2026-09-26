@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { FaqCategory } from "@/lib/mock/faq";
+import type { FaqCategory } from "@/lib/constants/faq";
 
 export function FaqAccordion({ category }: { category: FaqCategory }) {
   const [openIndex, setOpenIndex] = useState<number | null>(0);

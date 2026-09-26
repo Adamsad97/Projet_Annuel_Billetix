@@ -1,4 +1,4 @@
-import { checkoutSteps, type CheckoutStepId } from "@/lib/mock/checkout";
+import { checkoutSteps, type CheckoutStepId } from "@/lib/constants/checkout";
 
 export function CheckoutStepper({
   current,

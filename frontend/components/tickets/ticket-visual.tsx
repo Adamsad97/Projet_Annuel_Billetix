@@ -1,6 +1,6 @@
 import { QrPlaceholder } from "@/components/tickets/qr-placeholder";
 import { TicketQrReveal } from "@/components/tickets/ticket-qr-reveal";
-import type { TicketDetail } from "@/lib/mock/ticket-detail";
+import type { TicketDetail } from "@/lib/constants/ticket-detail";
 
 export function TicketVisual({ ticket }: { ticket: TicketDetail }) {
   return (

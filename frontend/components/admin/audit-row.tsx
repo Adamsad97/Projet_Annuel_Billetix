@@ -1,6 +1,6 @@
 import type { ApiAuditLogEntry } from "@/lib/api/admin";
 import { auditActionLabels } from "@/lib/mappers/audit-mappers";
-import { entityTypeBadgeStyles, type AuditEntityType } from "@/lib/mock/admin-audit";
+import { entityTypeBadgeStyles, type AuditEntityType } from "@/lib/constants/admin-audit";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "medium" });
 

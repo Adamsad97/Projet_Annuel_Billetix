@@ -1,4 +1,4 @@
-import type { DashboardStat } from "@/lib/mock/dashboard";
+import type { DashboardStat } from "@/lib/constants/dashboard";
 
 export function StatCard({ stat }: { stat: DashboardStat }) {
   return (

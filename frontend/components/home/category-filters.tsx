@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { categoryFilters } from "@/lib/mock/events";
+import { categoryFilters } from "@/lib/constants/events";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 
 export function CategoryFilters() {

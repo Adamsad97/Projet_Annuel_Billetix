@@ -5,7 +5,7 @@
 
 import type { ApiCategory } from "@/lib/api/categories";
 import type { ApiOrganizerDashboard, ApiOrganizerEventSummary, ApiEventStatus } from "@/lib/api/organizer";
-import type { DashboardStat, OrganizerEvent } from "@/lib/mock/dashboard";
+import type { DashboardStat, OrganizerEvent } from "@/lib/constants/dashboard";
 
 const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });

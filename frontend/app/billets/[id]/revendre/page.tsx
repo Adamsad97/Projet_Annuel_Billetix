@@ -10,7 +10,7 @@ import { AuthHeader } from "@/components/layout/auth-header";
 import { ResellForm } from "@/components/tickets/resell-form";
 import { getTicket } from "@/lib/api/tickets";
 import { apiTicketToDetail } from "@/lib/mappers/profile-mappers";
-import type { TicketDetail } from "@/lib/mock/ticket-detail";
+import type { TicketDetail } from "@/lib/constants/ticket-detail";
 import { ApiError } from "@/lib/api/http-error";
 
 export default function ResellTicketPage({

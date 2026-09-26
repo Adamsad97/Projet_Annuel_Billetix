@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { requestResale } from "@/lib/api/tickets";
 import { ApiError } from "@/lib/api/http-error";
-import type { TicketDetail } from "@/lib/mock/ticket-detail";
+import type { TicketDetail } from "@/lib/constants/ticket-detail";
 
 export function ResellForm({ ticket }: { ticket: TicketDetail }) {
   const [price, setPrice] = useState(ticket.unitPriceTtc.toFixed(2));

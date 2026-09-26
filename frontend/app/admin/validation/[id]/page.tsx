@@ -21,7 +21,7 @@ import {
   type ApiPendingEvent,
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
-import { statusBadgeStyles } from "@/lib/mock/dashboard";
+import { statusBadgeStyles } from "@/lib/constants/dashboard";
 import { EventLocationMap } from "@/components/map/event-location-map";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });

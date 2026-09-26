@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { FaqAccordion } from "@/components/help/faq-accordion";
-import { faqCategories } from "@/lib/mock/faq";
+import { faqCategories } from "@/lib/constants/faq";
 
 export default function AidePage() {
   return (

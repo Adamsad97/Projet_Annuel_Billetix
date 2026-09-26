@@ -10,7 +10,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { ResaleCard } from "@/components/resale/resale-card";
 import { listResaleListings, type ApiResaleListing } from "@/lib/api/resale";
 import { ApiError } from "@/lib/api/http-error";
-import { resaleNote } from "@/lib/mock/resale";
+import { resaleNote } from "@/lib/constants/resale";
 
 export default function RevendePage() {
   const [listings, setListings] = useState<ApiResaleListing[] | null>(null);

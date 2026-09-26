@@ -74,7 +74,7 @@ export function verifyNonProfit(id: string, approved: boolean): Promise<ApiEvent
 
 // ─── Gestion globale des événements (tous statuts) ─────────────────────────
 // Bug corrigé : cette page n'a jamais été reliée au backend, elle affichait
-// des données 100% fictives (lib/mock/admin-events.ts) — aucun événement
+// des données 100% fictives (lib/constants/admin-events.ts) — aucun événement
 // réel, publié ou non, n'y apparaissait jamais.
 
 export interface ApiAdminEvent extends ApiEvent {
@@ -475,4 +475,32 @@ export function listPlatformSettings(): Promise<ApiPlatformSetting[]> {
 
 export function updatePlatformSetting(key: string, value: string): Promise<{ key: string; value: string; previous_value: string }> {
   return apiPatch(`/admin/config/${encodeURIComponent(key)}`, { value });
+}
+
+// ─── Litiges (payment-service) ──────────────────────────────────────────────
+
+export type ApiDisputeStatus = "OPEN" | "UNDER_REVIEW" | "WON" | "LOST" | "CLOSED";
+export type ApiDisputeReason =
+  | "FRAUDULENT"
+  | "DUPLICATE"
+  | "PRODUCT_NOT_RECEIVED"
+  | "PRODUCT_UNACCEPTABLE"
+  | "SUBSCRIPTION_CANCELED"
+  | "GENERAL";
+
+export interface ApiDispute {
+  id: string;
+  payment_id: string;
+  order_id: string;
+  buyer_id: string;
+  status: ApiDisputeStatus;
+  reason: ApiDisputeReason;
+  description: string | null;
+  resolved_at: string | null;
+  resolution_notes: string | null;
+  created_at: string;
+}
+
+export function listDisputes(): Promise<ApiDispute[]> {
+  return apiGet<ApiDispute[]>("/admin/disputes");
 }

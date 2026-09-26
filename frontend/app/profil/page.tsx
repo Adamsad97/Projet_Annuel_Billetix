@@ -14,7 +14,7 @@ import { SecurityPanel } from "@/components/profile/security-panel";
 import { getMyOrdersSynced, type ApiOrder } from "@/lib/api/orders";
 import { getMyTickets, getTicketsByOrder } from "@/lib/api/tickets";
 import { apiOrderToProfileOrder, apiTicketToProfileTicket } from "@/lib/mappers/profile-mappers";
-import type { ProfileOrder, ProfileTicket } from "@/lib/mock/profile";
+import type { ProfileOrder, ProfileTicket } from "@/lib/constants/profile";
 import { getAccessToken, getStoredUser } from "@/lib/auth/session";
 import { TwoFactorPromo } from "@/components/profile/two-factor-promo";
 import { effectiveRole, isAdminRole } from "@/lib/auth/preview";

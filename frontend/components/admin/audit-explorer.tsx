@@ -15,7 +15,7 @@ import { describeDevice, formatIp } from "@/lib/format/device";
 import { searchAuditLogs, type ApiAuditLogEntry } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
 import { auditActionFilters, auditActionLabels, describeAuditLog } from "@/lib/mappers/audit-mappers";
-import { entityTypeFilters } from "@/lib/mock/admin-audit";
+import { entityTypeFilters } from "@/lib/constants/admin-audit";
 
 const PAGE_SIZE = 30;
 const dateTimeFull = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeStyle: "medium" });

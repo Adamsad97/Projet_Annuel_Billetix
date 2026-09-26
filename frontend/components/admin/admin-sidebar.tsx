@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { adminNavSections } from "@/lib/mock/admin";
+import { adminNavSections } from "@/lib/constants/admin";
 
 export function AdminSidebar({ active = "/admin" }: { active?: string }) {
   return (

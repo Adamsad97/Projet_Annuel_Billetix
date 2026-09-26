@@ -2,7 +2,7 @@ import Link from "next/link";
 import {
   statusBadgeStyles,
   type OrganizerEvent,
-} from "@/lib/mock/dashboard";
+} from "@/lib/constants/dashboard";
 
 export function OrganizerEventRow({ event }: { event: OrganizerEvent }) {
   const badge = statusBadgeStyles[event.status];

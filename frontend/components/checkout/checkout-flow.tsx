@@ -12,7 +12,7 @@ import { getCart, cartTotal, clearCart, type Cart } from "@/lib/checkout/cart";
 import { createPaymentIntent } from "@/lib/api/payments";
 import { ApiError } from "@/lib/api/http-error";
 import { getStripe } from "@/lib/stripe/client";
-import { paymentMethods } from "@/lib/mock/checkout";
+import { paymentMethods } from "@/lib/constants/checkout";
 
 const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 

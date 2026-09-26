@@ -16,7 +16,7 @@ import { downloadInvoice, getOrder, resendTickets, type ApiOrder, type ApiOrderI
 import { getTicketsByOrder, type ApiTicket } from "@/lib/api/tickets";
 import { createPaymentIntent } from "@/lib/api/payments";
 import { getStripe } from "@/lib/stripe/client";
-import { orderStatusBadge } from "@/lib/mock/profile";
+import { orderStatusBadge } from "@/lib/constants/profile";
 import { apiOrderItemsToLines, orderStatusFor, paymentMethodLabel } from "@/lib/mappers/profile-mappers";
 import { ApiError } from "@/lib/api/http-error";
 

@@ -12,7 +12,7 @@ import { ResaleManagePanel } from "@/components/tickets/resale-manage-panel";
 import { getTicket } from "@/lib/api/tickets";
 import { downloadInvoice, getOrder } from "@/lib/api/orders";
 import { apiTicketToDetail } from "@/lib/mappers/profile-mappers";
-import type { TicketDetail } from "@/lib/mock/ticket-detail";
+import type { TicketDetail } from "@/lib/constants/ticket-detail";
 import { ApiError } from "@/lib/api/http-error";
 import { TwoFactorPromo } from "@/components/profile/two-factor-promo";
 

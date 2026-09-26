@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import type { TicketOption } from "@/lib/mock/event-details";
+import type { TicketOption } from "@/lib/constants/event-details";
 import { reserveStock } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/http-error";
 import { saveCart } from "@/lib/checkout/cart";

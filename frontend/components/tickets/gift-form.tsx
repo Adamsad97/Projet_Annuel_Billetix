@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { giftTicket } from "@/lib/api/tickets";
 import { ApiError } from "@/lib/api/http-error";
-import type { TicketDetail } from "@/lib/mock/ticket-detail";
+import type { TicketDetail } from "@/lib/constants/ticket-detail";
 
 interface Draft {
   recipientEmail: string;

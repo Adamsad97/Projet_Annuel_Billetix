@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ticketStatusBadge, type ProfileTicket } from "@/lib/mock/profile";
+import { ticketStatusBadge, type ProfileTicket } from "@/lib/constants/profile";
 
 export function TicketRow({ ticket }: { ticket: ProfileTicket }) {
   const badge = ticketStatusBadge[ticket.status];

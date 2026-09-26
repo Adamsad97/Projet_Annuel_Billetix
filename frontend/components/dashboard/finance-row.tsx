@@ -1,4 +1,4 @@
-import { payoutStatusBadge } from "@/lib/mock/dashboard-finances";
+import { payoutStatusBadge } from "@/lib/constants/dashboard-finances";
 import type { ApiPayout } from "@/lib/api/organizer";
 
 const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });

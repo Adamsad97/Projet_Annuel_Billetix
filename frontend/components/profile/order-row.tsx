@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { orderStatusBadge, type ProfileOrder } from "@/lib/mock/profile";
+import { orderStatusBadge, type ProfileOrder } from "@/lib/constants/profile";
 
 export function OrderRow({ order }: { order: ProfileOrder }) {
   const badge = orderStatusBadge[order.status];

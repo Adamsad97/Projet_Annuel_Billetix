@@ -1,6 +1,6 @@
 import type { ApiEvent, ApiTicketCategory } from "@/lib/api/events";
-import { apiCategoryMeta, type MockEvent } from "@/lib/mock/events";
-import type { EventDetail, TicketOption } from "@/lib/mock/event-details";
+import { apiCategoryMeta, type MockEvent } from "@/lib/constants/events";
+import type { EventDetail, TicketOption } from "@/lib/constants/event-details";
 
 const dayFormatter = new Intl.DateTimeFormat("fr-FR", { day: "2-digit" });
 const monthFormatter = new Intl.DateTimeFormat("fr-FR", { month: "short" });

@@ -13,7 +13,7 @@ import { AuthHeader } from "@/components/layout/auth-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { AttendeeRow } from "@/components/dashboard/attendee-row";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
-import { statusBadgeStyles } from "@/lib/mock/dashboard";
+import { statusBadgeStyles } from "@/lib/constants/dashboard";
 import { apiTicketToAttendee } from "@/lib/mappers/event-detail-mappers";
 import {
   cancelEvent,

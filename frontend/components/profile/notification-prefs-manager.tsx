@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { ToggleSwitch } from "@/components/profile/toggle-switch";
-import { notificationPrefGroups } from "@/lib/mock/notification-prefs";
+import { notificationPrefGroups } from "@/lib/constants/notification-prefs";
 import { getNotificationPrefs, updateNotificationPrefs } from "@/lib/api/notification-prefs";
 import { ApiError } from "@/lib/api/http-error";
 

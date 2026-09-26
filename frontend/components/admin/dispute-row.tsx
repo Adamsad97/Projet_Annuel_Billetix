@@ -1,36 +1,23 @@
-import Link from "next/link";
-import { disputeStatusBadge, type AdminDispute } from "@/lib/mock/admin-disputes";
+import type { ApiDispute } from "@/lib/api/admin";
+import { disputeReasonLabels, disputeStatusBadge } from "@/lib/constants/admin-disputes";
 
-export function DisputeRow({ dispute }: { dispute: AdminDispute }) {
+const dateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
+
+export function DisputeRow({ dispute }: { dispute: ApiDispute }) {
   const badge = disputeStatusBadge[dispute.status];
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 last:border-b-0">
-      <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-bold text-ink-1">
-            {dispute.orderRef} · {dispute.event}
-          </p>
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
-          >
-            {badge.label}
-          </span>
-        </div>
-        <p className="mt-0.5 text-xs text-ink-5">
-          {dispute.buyer} · {dispute.reason} · {dispute.openedLabel}
-        </p>
+    <div className="flex flex-col gap-1 border-b border-hairline-1 px-5 py-4 last:border-b-0">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-sm font-bold text-ink-1">{disputeReasonLabels[dispute.reason] ?? dispute.reason}</p>
+        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge?.className ?? ""}`}>
+          {badge?.label ?? dispute.status}
+        </span>
       </div>
-
-      <div className="flex shrink-0 items-center gap-3">
-        <span className="text-sm font-bold text-ink-1">{dispute.amountLabel}</span>
-        <Link
-          href={`/admin/litiges/${dispute.id}`}
-          className="rounded-lg bg-hairline-1 px-3.5 py-2 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
-        >
-          ● Traiter
-        </Link>
-      </div>
+      <p className="text-xs text-ink-5">
+        Commande {dispute.order_id.slice(0, 8).toUpperCase()} · ouvert le {dateFormatter.format(new Date(dispute.created_at))}
+      </p>
+      {dispute.description ? <p className="text-sm text-ink-4">{dispute.description}</p> : null}
     </div>
   );
 }

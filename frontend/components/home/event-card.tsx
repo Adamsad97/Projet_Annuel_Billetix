@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { categoryPillStyles, type MockEvent } from "@/lib/mock/events";
+import { categoryPillStyles, type MockEvent } from "@/lib/constants/events";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 
 export function EventCard({ event }: { event: MockEvent }) {

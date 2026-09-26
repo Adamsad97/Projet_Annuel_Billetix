@@ -4,8 +4,8 @@
 
 import type { ApiOrder, ApiOrderItem, ApiPaymentMethod } from "@/lib/api/orders";
 import type { ApiTicket, ApiTicketStatus } from "@/lib/api/tickets";
-import type { ProfileOrder, ProfileTicket, TicketStatus, OrderStatus } from "@/lib/mock/profile";
-import type { TicketDetail } from "@/lib/mock/ticket-detail";
+import type { ProfileOrder, ProfileTicket, TicketStatus, OrderStatus } from "@/lib/constants/profile";
+import type { TicketDetail } from "@/lib/constants/ticket-detail";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
   day: "numeric",

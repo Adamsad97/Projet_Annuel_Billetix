@@ -11,7 +11,7 @@ import { ResoldTicketRow } from "@/components/profile/resold-ticket-row";
 import { WithdrawnTicketRow } from "@/components/profile/withdrawn-ticket-row";
 import { getMyTickets, type ApiGivenTicket, type ApiResoldTicket, type ApiWithdrawnTicket } from "@/lib/api/tickets";
 import { apiTicketToProfileTicket } from "@/lib/mappers/profile-mappers";
-import type { ProfileTicket, TicketStatus } from "@/lib/mock/profile";
+import type { ProfileTicket, TicketStatus } from "@/lib/constants/profile";
 
 const filters = [
   { id: "all", label: "Tous" },

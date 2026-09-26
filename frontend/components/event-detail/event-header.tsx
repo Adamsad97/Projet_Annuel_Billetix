@@ -1,5 +1,5 @@
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
-import type { EventDetail } from "@/lib/mock/event-details";
+import type { EventDetail } from "@/lib/constants/event-details";
 
 /**
  * En-tête de la page événement : catégorie, titre et lieu à gauche,

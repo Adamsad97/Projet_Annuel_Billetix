@@ -6,7 +6,7 @@ import { OrderRow } from "@/components/profile/order-row";
 import { getMyOrdersSynced, type ApiOrder } from "@/lib/api/orders";
 import { getTicketsByOrder } from "@/lib/api/tickets";
 import { apiOrderToProfileOrder } from "@/lib/mappers/profile-mappers";
-import type { ProfileOrder, OrderStatus } from "@/lib/mock/profile";
+import type { ProfileOrder, OrderStatus } from "@/lib/constants/profile";
 
 const filters: { id: string; label: string }[] = [
   { id: "all", label: "Tous" },

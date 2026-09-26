@@ -6,7 +6,7 @@ import { SearchInput } from "@/components/admin/search-input";
 import { getEventCategories, listPublishedEvents } from "@/lib/api/events";
 import { apiEventToCard } from "@/lib/mappers/event-mappers";
 import { ApiError } from "@/lib/api/http-error";
-import type { MockEvent } from "@/lib/mock/events";
+import type { MockEvent } from "@/lib/constants/events";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 
 const categories: { id: string; label: string; emoji?: string; apiCode?: string }[] = [
