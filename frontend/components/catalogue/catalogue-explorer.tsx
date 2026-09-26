@@ -3,22 +3,22 @@
 import { useEffect, useState } from "react";
 import { EventCard } from "@/components/home/event-card";
 import { SearchInput } from "@/components/admin/search-input";
+import { listCategories } from "@/lib/api/categories";
 import { getEventCategories, listPublishedEvents } from "@/lib/api/events";
 import { apiEventToCard } from "@/lib/mappers/event-mappers";
 import { ApiError } from "@/lib/api/http-error";
 import type { MockEvent } from "@/lib/constants/events";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 
-const categories: { id: string; label: string; emoji?: string; apiCode?: string }[] = [
-  { id: "all", label: "Tous" },
-  { id: "Concert", label: "Concert", emoji: "🎵", apiCode: "CONCERT" },
-  { id: "Festival", label: "Festival", emoji: "🎪", apiCode: "FESTIVAL" },
-  { id: "Théâtre", label: "Théâtre", emoji: "🎭", apiCode: "THEATRE" },
-  { id: "Sport", label: "Sport", emoji: "⚽", apiCode: "SPORT" },
-  { id: "Conférence", label: "Conférence", emoji: "💡", apiCode: "CONFERENCE" },
-  { id: "Danse", label: "Danse", emoji: "💃", apiCode: "DANSE" },
-  { id: "gratuit", label: "Gratuit", emoji: "🎫" },
-];
+// Filtres = catégories actives du référentiel géré par l'admin
+// (GET /events/categories), précédées de « Tous ».
+interface CategoryFilter {
+  id: string;
+  label: string;
+  emoji?: string | null;
+}
+
+const ALL: CategoryFilter = { id: "all", label: "Tous" };
 
 // Bug corrigé : event-service exposait déjà un filtre de distance
 // (Haversine, params lat/lng/radius_km) jamais branché sur le catalogue —
@@ -30,6 +30,24 @@ const DEFAULT_RADIUS_KM = 25;
 export function CatalogueExplorer() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const [categories, setCategories] = useState<CategoryFilter[]>([ALL]);
+
+  useEffect(() => {
+    listCategories()
+      .then((list) =>
+        setCategories([
+          ALL,
+          ...[...list]
+            .sort((a, b) => a.display_order - b.display_order)
+            .map((c) => ({ id: c.code, label: c.label, emoji: c.emoji })),
+        ]),
+      )
+      .catch(() => undefined);
+    // Filtre transmis depuis la page d'accueil (?categorie=CODE).
+    const fromUrl = new URLSearchParams(window.location.search).get("categorie");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- paramètre d'URL lu côté client
+    if (fromUrl) setCategory(fromUrl);
+  }, []);
   const [events, setEvents] = useState<MockEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,7 +83,7 @@ export function CatalogueExplorer() {
 
   useEffect(() => {
     let cancelled = false;
-    const selected = categories.find((c) => c.id === category);
+    const categoryCode = category === ALL.id ? undefined : category;
 
     // Attend une pause de frappe avant d'interroger le vrai backend.
     const timeout = setTimeout(async () => {
@@ -74,7 +92,7 @@ export function CatalogueExplorer() {
       try {
         const { data } = await listPublishedEvents({
           q: search.trim() || undefined,
-          category: selected?.apiCode,
+          category: categoryCode,
           ...(nearMe
             ? { lat: nearMe.lat, lng: nearMe.lng, radius_km: radiusKm }
             : {}),
@@ -89,12 +107,7 @@ export function CatalogueExplorer() {
 
         if (cancelled) return;
 
-        const filtered =
-          category === "gratuit"
-            ? withCategories.filter((e) => e.free)
-            : withCategories;
-
-        setEvents(filtered);
+        setEvents(withCategories);
       } catch (err) {
         if (cancelled) return;
         setError(
