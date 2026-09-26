@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { PasswordInput } from "@/components/ui/password-input";
 import { isAuthSession, loginUser, resendVerificationEmail } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/http-error";
 import { saveSession } from "@/lib/auth/session";
@@ -22,13 +23,21 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1
 // (BuyerOnlyGate) — un admin voyait donc un flash de la page d'accueil
 // (le temps du fetch serveur des événements) avant d'être renvoyé au
 // back-office. Redirige directement vers la bonne destination selon le rôle.
-function postLoginPath(role: string): string {
+function postLoginPath(role: string, next?: string): string {
+  // Bug corrigé : ?next= (posé par les pages réservées et le bouton
+  // « Réserver ») était ignoré — retour systématique à l'accueil. Seuls les
+  // chemins internes sont suivis (jamais "//domaine" : redirection ouverte).
+  if (next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/connexion")) {
+    return next;
+  }
   return role === "ADMIN" || role === "SUPER_ADMIN" ? "/admin" : "/";
 }
 
-export function LoginForm() {
+export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; next?: string } = {}) {
   const router = useRouter();
-  const [rememberMe, setRememberMe] = useState(true);
+  // Décoché par défaut : sur un ordinateur partagé ou prêté, la session ne
+  // doit pas survivre à la fermeture du navigateur sans choix explicite.
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Bug corrigé : /auth/resend-verification-email existait déjà côté
@@ -64,7 +73,7 @@ export function LoginForm() {
       const result = await loginUser({ email, password });
       if (isAuthSession(result)) {
         saveSession(result, rememberMe);
-        router.push(postLoginPath(result.user.role));
+        router.push(postLoginPath(result.user.role, next));
       } else {
         setPendingCredentials({ email, password, method: result.two_factor_method });
       }
@@ -108,7 +117,7 @@ export function LoginForm() {
       });
       if (isAuthSession(result)) {
         saveSession(result, rememberMe);
-        router.push(postLoginPath(result.user.role));
+        router.push(postLoginPath(result.user.role, next));
       } else {
         setError("Code 2FA invalide.");
       }
@@ -123,10 +132,10 @@ export function LoginForm() {
 
   if (pendingCredentials) {
     return (
-      <div className="w-full max-w-md rounded-2xl border border-white/5 bg-[#12101c] p-8">
+      <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-white">Code de vérification</h1>
-          <p className="mt-1 text-sm text-violet-200/70">
+          <h1 className="text-2xl font-bold text-ink-1">Code de vérification</h1>
+          <p className="mt-1 text-sm text-accent/70">
             Entre le code affiché dans ton application d&apos;authentification
             ({pendingCredentials.method}).
           </p>
@@ -147,12 +156,12 @@ export function LoginForm() {
             value={twoFactorCode}
             onChange={(event) => setTwoFactorCode(event.target.value)}
             placeholder="Code à 6 chiffres"
-            className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-center text-lg tracking-[0.3em] text-white placeholder:tracking-normal placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-center text-lg tracking-[0.3em] text-ink-1 placeholder:tracking-normal placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
           />
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Vérification…" : "Confirmer"}
           </button>
@@ -163,7 +172,7 @@ export function LoginForm() {
               setTwoFactorCode("");
               setError(null);
             }}
-            className="text-sm text-gray-500 hover:text-gray-300"
+            className="text-sm text-ink-5 hover:text-ink-3"
           >
             ← Revenir à la connexion
           </button>
@@ -173,12 +182,12 @@ export function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-white/5 bg-[#12101c] p-8">
+    <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8">
       <div className="mb-6 text-center">
-        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-white">
+        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">
           Bienvenue <span>👋</span>
         </h1>
-        <p className="mt-1 text-sm text-violet-200/70">
+        <p className="mt-1 text-sm text-accent/70">
           Connectez-vous à votre compte BilleTiX
         </p>
       </div>
@@ -189,14 +198,14 @@ export function LoginForm() {
             Facebook, une requête XHR ne le permettrait pas. */}
         <a
           href={`${API_URL}/auth/google`}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] py-3 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-hairline-2 bg-hairline-1 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
         >
           <span className="font-bold">G</span>
           Continuer avec Google
         </a>
         <a
           href={`${API_URL}/auth/facebook`}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] py-3 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-hairline-2 bg-hairline-1 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
         >
           <span className="font-bold">f</span>
           Continuer avec Facebook
@@ -204,10 +213,16 @@ export function LoginForm() {
       </div>
 
       <div className="my-6 flex items-center gap-3">
-        <div className="h-px flex-1 bg-white/10" />
-        <span className="text-xs text-gray-500">ou avec votre email</span>
-        <div className="h-px flex-1 bg-white/10" />
+        <div className="h-px flex-1 bg-hairline-2" />
+        <span className="text-xs text-ink-5">ou avec votre email</span>
+        <div className="h-px flex-1 bg-hairline-2" />
       </div>
+
+      {sessionMessage && !error ? (
+        <div role="status" className="mb-4 rounded-xl bg-warning/10 px-4 py-3 text-sm text-warning ring-1 ring-inset ring-warning/30">
+          {sessionMessage}
+        </div>
+      ) : null}
 
       {error ? (
         <div className="mb-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-inset ring-red-500/30">
@@ -223,7 +238,7 @@ export function LoginForm() {
                   type="button"
                   onClick={handleResendVerification}
                   disabled={resendStatus === "sending"}
-                  className="font-medium text-violet-300 underline transition-colors hover:text-violet-200 disabled:opacity-60"
+                  className="font-medium text-accent underline transition-colors hover:text-accent disabled:opacity-60"
                 >
                   {resendStatus === "sending" ? "Envoi en cours…" : "Renvoyer l'email de vérification"}
                 </button>
@@ -235,7 +250,7 @@ export function LoginForm() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-violet-200/80">
+          <span className="text-sm font-medium text-accent/80">
             Adresse email
           </span>
           <input
@@ -243,36 +258,36 @@ export function LoginForm() {
             name="email"
             required
             placeholder="jean.dupont@email.com"
-            className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
           />
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-violet-200/80">
+          <span className="text-sm font-medium text-accent/80">
             Mot de passe
           </span>
-          <input
-            type="password"
+          <PasswordInput
             name="password"
             required
+            autoComplete="current-password"
             placeholder="••••••••"
-            className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
           />
         </label>
 
         <div className="flex items-center justify-between text-sm">
-          <label className="flex items-center gap-2 text-gray-400">
+          <label className="flex items-center gap-2 text-ink-4">
             <input
               type="checkbox"
               checked={rememberMe}
               onChange={(event) => setRememberMe(event.target.checked)}
-              className="h-4 w-4 rounded border-white/20 bg-white/[0.02] accent-violet-600"
+              className="h-4 w-4 rounded border-hairline-4 bg-hairline-1 accent-blue-600"
             />
             Se souvenir de moi
           </label>
           <Link
             href="/mot-de-passe-oublie"
-            className="font-medium text-violet-400 transition-colors hover:text-violet-300"
+            className="font-medium text-link transition-colors hover:text-link-hover"
           >
             Mot de passe oublié ?
           </Link>
@@ -281,17 +296,17 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-1 w-full rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-1 w-full rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Connexion…" : "Se connecter →"}
         </button>
       </form>
 
-      <p className="mt-5 text-center text-sm text-gray-500">
+      <p className="mt-5 text-center text-sm text-ink-5">
         Pas encore de compte ?{" "}
         <Link
           href="/inscription"
-          className="font-medium text-violet-400 transition-colors hover:text-violet-300"
+          className="font-medium text-link transition-colors hover:text-link-hover"
         >
           S&apos;inscrire gratuitement
         </Link>

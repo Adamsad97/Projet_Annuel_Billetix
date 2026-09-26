@@ -17,6 +17,8 @@ import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
+import { ageInYears } from "./age";
+import { getPasswordViolations, PasswordPersonalInfo } from "./password-policy";
 import { TwoFactorService } from "./two-factor.service";
 
 const BCRYPT_ROUNDS = 12;
@@ -29,12 +31,29 @@ const OAUTH_EXCHANGE_TTL = 60;
 // (contrairement à l'échange de tokens, immédiat côté serveur après la
 // redirection).
 const OAUTH_2FA_PENDING_TTL = 300;
+// Le temps de saisir sa date de naissance à la première connexion
+// Google/Facebook — au-delà, il suffit de relancer la connexion.
+const OAUTH_BIRTH_DATE_PENDING_TTL = 15 * 60;
 
 // Deux formes possibles selon que le compte a la 2FA activée ou non — voir
 // AuthService.oauthLogin().
 type OAuthExchangePayload =
   | { access_token: string; refresh_token: string }
-  | { requires_2fa: true; two_factor_method: string; pending_token: string };
+  | { requires_2fa: true; two_factor_method: string; pending_token: string }
+  | { requires_birth_date: true; pending_token: string; first_name: string };
+
+type OAuthProfile = {
+  provider: OAuthProvider;
+  oauth_id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+};
+
+// Contenu d'un pending_token "date de naissance" : soit un compte existant
+// à compléter (créé avant la règle d'âge), soit un profil Google/Facebook
+// dont le compte n'est PAS encore créé.
+type OAuthBirthDatePending = { user_id: string } | { profile: OAuthProfile };
 
 @Injectable()
 export class AuthService {
@@ -49,6 +68,55 @@ export class AuthService {
     private readonly platformConfig: PlatformConfigCache,
   ) {}
 
+  /**
+   * Règles d'inscription exposées au frontend (affichage en temps réel) —
+   * toutes deux réglables par l'admin via platform_settings.
+   */
+  async getRegistrationPolicy(): Promise<{ password_min_length: number; minimum_age: number }> {
+    const { password_min_length, minimum_signup_age } = await this.platformConfig.get();
+    return { password_min_length, minimum_age: minimum_signup_age };
+  }
+
+  /**
+   * Âge minimum (platform_settings) — inscription email/mot de passe comme
+   * première connexion Google/Facebook.
+   */
+  private async assertAllowedBirthDate(birthDate: string): Promise<void> {
+    const age = ageInYears(birthDate);
+    if (Number.isNaN(age) || age < 0) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "La date de naissance doit être une date passée valide",
+      });
+    }
+    const { minimum_signup_age } = await this.platformConfig.get();
+    if (age < minimum_signup_age) {
+      throw new RpcException({
+        statusCode: 403,
+        message: `L'inscription sur BilletiX est réservée aux personnes d'au moins ${minimum_signup_age} ans.`,
+      });
+    }
+  }
+
+  /**
+   * Seule source de vérité de la politique de mot de passe — les DTO ne
+   * vérifient que le type, la longueur minimale étant paramétrable
+   * (platform_settings) et donc inconnue au moment de la validation.
+   */
+  private async assertPasswordPolicy(
+    password: string,
+    personalInfo: PasswordPersonalInfo,
+  ): Promise<void> {
+    const { password_min_length } = await this.platformConfig.get();
+    const violations = getPasswordViolations(password, password_min_length, personalInfo);
+    if (violations.length > 0) {
+      throw new RpcException({
+        statusCode: 400,
+        message: violations.map((v) => `Mot de passe : ${v.toLowerCase()}`),
+      });
+    }
+  }
+
   async register(dto: RegisterDto) {
     const existing = await this.userRepo.findOne({
       where: { email: dto.email },
@@ -60,12 +128,17 @@ export class AuthService {
       });
     }
 
+    await this.assertAllowedBirthDate(dto.birth_date);
+
+    await this.assertPasswordPolicy(dto.password, dto);
+
     const password_hash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
     const user = this.userRepo.create({
       email: dto.email,
       password_hash,
       first_name: dto.first_name,
       last_name: dto.last_name,
+      birth_date: dto.birth_date,
       phone: dto.phone ?? null,
       role: dto.role ?? UserRole.BUYER,
     });
@@ -219,8 +292,17 @@ export class AuthService {
     });
   }
 
+  /** Durée d'inactivité avant expiration, exposée au frontend (platform_settings). */
+  async getSessionPolicy(): Promise<{ idle_timeout_minutes: number; max_duration_hours: number }> {
+    const { session_idle_timeout_minutes, session_max_duration_hours } = await this.platformConfig.get();
+    return {
+      idle_timeout_minutes: session_idle_timeout_minutes,
+      max_duration_hours: session_max_duration_hours,
+    };
+  }
+
   async refresh(dto: RefreshTokenDto) {
-    let payload: { sub: string; jti: string; exp: number };
+    let payload: { sub: string; jti: string; exp: number; iat: number; auth_time?: number };
     try {
       payload = this.jwtService.verify(dto.refresh_token, {
         secret: this.config.get<string>("JWT_REFRESH_SECRET"),
@@ -237,6 +319,36 @@ export class AuthService {
       throw new RpcException({
         statusCode: 401,
         message: "Refresh token révoqué",
+      });
+    }
+
+    // Expiration pour inactivité, vérifiée côté serveur (pas seulement par
+    // le minuteur du frontend, contournable). Le refresh token est renouvelé
+    // à chaque rafraîchissement (rotation) : son âge = temps écoulé depuis
+    // la dernière activité authentifiée. Le frontend rafraîchit de lui-même
+    // tant que l'utilisateur est actif (au plus tard à mi-délai).
+    const { session_idle_timeout_minutes, session_max_duration_hours } = await this.platformConfig.get();
+    const now = Math.floor(Date.now() / 1000);
+    // Heure de la connexion d'origine, recopiée à chaque rotation (jetons
+    // émis avant ce champ : repli sur leur propre date d'émission).
+    const authTime = payload.auth_time ?? payload.iat;
+
+    // Durée maximale absolue : sans elle, une session utilisée en continu
+    // (ordinateur prêté ou laissé ouvert) ne s'arrêtait jamais, chaque
+    // rotation redonnant un refresh token neuf.
+    if (now - authTime > session_max_duration_hours * 3600) {
+      await this.revokeRefreshJti(payload.jti, payload.exp);
+      throw new RpcException({
+        statusCode: 401,
+        message: "Durée maximale de session atteinte — reconnectez-vous.",
+      });
+    }
+
+    if (now - payload.iat > session_idle_timeout_minutes * 60) {
+      await this.revokeRefreshJti(payload.jti, payload.exp);
+      throw new RpcException({
+        statusCode: 401,
+        message: "Session expirée après une période d'inactivité — reconnectez-vous.",
       });
     }
 
@@ -257,7 +369,14 @@ export class AuthService {
       await this.redis.set(`blacklist:${payload.jti}`, "1", "EX", ttl);
     }
 
-    return this.generateTokens(user);
+    return this.generateTokens(user, authTime);
+  }
+
+  private async revokeRefreshJti(jti: string, exp: number): Promise<void> {
+    const remaining = exp - Math.floor(Date.now() / 1000);
+    if (remaining > 0) {
+      await this.redis.set(`blacklist:${jti}`, "1", "EX", remaining);
+    }
   }
 
   async logout(dto: RefreshTokenDto) {
@@ -282,13 +401,7 @@ export class AuthService {
     return { success: true };
   }
 
-  async oauthLogin(data: {
-    provider: OAuthProvider;
-    oauth_id: string;
-    email: string;
-    first_name: string;
-    last_name: string;
-  }) {
+  async oauthLogin(data: OAuthProfile) {
     if (!data.email) {
       // Sans email, la recherche par email ci-dessous ferait correspondre
       // n'importe quel autre compte sans email (collision sur chaîne vide),
@@ -316,17 +429,11 @@ export class AuthService {
         user.oauth_id = data.oauth_id;
         await this.userRepo.save(user);
       } else {
-        user = this.userRepo.create({
-          email: data.email,
-          first_name: data.first_name,
-          last_name: data.last_name,
-          oauth_provider: data.provider,
-          oauth_id: data.oauth_id,
-          is_email_verified: true,
-          email_verified_at: new Date(),
-          role: UserRole.BUYER,
-        });
-        await this.userRepo.save(user);
+        // Inscription réservée aux personnes ayant l'âge minimum : Google et
+        // Facebook ne fournissent pas la date de naissance, le compte n'est
+        // donc créé qu'une fois celle-ci saisie et vérifiée
+        // (completeOAuthBirthDate) — un mineur n'obtient jamais de compte.
+        return this.requireOAuthBirthDate({ profile: data }, data.first_name);
       }
     }
 
@@ -336,6 +443,94 @@ export class AuthService {
         message: "Compte suspendu ou désactivé",
       });
     }
+
+    // Compte créé avant la règle d'âge : même étape avant tout accès.
+    if (!user.birth_date) {
+      return this.requireOAuthBirthDate({ user_id: user.id }, user.first_name);
+    }
+
+    return this.finishOAuthLogin(user);
+  }
+
+  private async requireOAuthBirthDate(pending: OAuthBirthDatePending, firstName: string) {
+    const pendingToken = randomBytes(32).toString("hex");
+    await this.redis.set(
+      `oauth_birth_date_pending:${pendingToken}`,
+      JSON.stringify(pending),
+      "EX",
+      OAUTH_BIRTH_DATE_PENDING_TTL,
+    );
+    return {
+      requires_birth_date: true as const,
+      pending_token: pendingToken,
+      first_name: firstName,
+    };
+  }
+
+  /**
+   * Second temps d'une connexion Google/Facebook sans date de naissance
+   * connue : contrôle d'âge, puis création (ou complétion) du compte et
+   * suite normale de la connexion (2FA comprise).
+   */
+  async completeOAuthBirthDate(pendingToken: string, birthDate: string) {
+    const key = `oauth_birth_date_pending:${pendingToken}`;
+    const raw = await this.redis.get(key);
+    if (!raw) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "Session de connexion expirée — reconnectez-vous.",
+      });
+    }
+
+    await this.assertAllowedBirthDate(birthDate);
+    await this.redis.del(key); // usage unique, une fois l'âge validé
+
+    const pending = JSON.parse(raw) as OAuthBirthDatePending;
+    let user: User | null;
+
+    if ("user_id" in pending) {
+      user = await this.userRepo.findOne({ where: { id: pending.user_id } });
+      if (!user) {
+        throw new RpcException({ statusCode: 404, message: "Utilisateur introuvable" });
+      }
+      user.birth_date = birthDate;
+      await this.userRepo.save(user);
+    } else {
+      const { profile } = pending;
+      // Le même email a pu être inscrit entre-temps (jusqu'à 15 min) : on
+      // relie alors le compte existant plutôt que d'en créer un doublon.
+      user = await this.userRepo.findOne({ where: { email: profile.email } });
+      if (user) {
+        user.oauth_provider = profile.provider;
+        user.oauth_id = profile.oauth_id;
+        user.birth_date ??= birthDate;
+      } else {
+        user = this.userRepo.create({
+          email: profile.email,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          birth_date: birthDate,
+          oauth_provider: profile.provider,
+          oauth_id: profile.oauth_id,
+          is_email_verified: true,
+          email_verified_at: new Date(),
+          role: UserRole.BUYER,
+        });
+      }
+      await this.userRepo.save(user);
+    }
+
+    if (!user.is_active || user.is_suspended) {
+      throw new RpcException({
+        statusCode: 403,
+        message: "Compte suspendu ou désactivé",
+      });
+    }
+
+    return this.finishOAuthLogin(user);
+  }
+
+  private async finishOAuthLogin(user: User) {
 
     // Bug corrigé (faille de sécurité) : login() (email/mot de passe) exige
     // le code 2FA avant de délivrer les tokens — oauthLogin() les délivrait
@@ -516,6 +711,8 @@ export class AuthService {
       });
     }
 
+    await this.assertPasswordPolicy(dto.new_password, user);
+
     user.password_hash = await bcrypt.hash(dto.new_password, BCRYPT_ROUNDS);
     await this.userRepo.save(user);
     await this.redis.del(`reset_password:${dto.token}`);
@@ -563,6 +760,8 @@ export class AuthService {
       throw new RpcException({ statusCode: 400, message: "Mot de passe actuel incorrect" });
     }
 
+    await this.assertPasswordPolicy(dto.new_password, user);
+
     user.password_hash = await bcrypt.hash(dto.new_password, BCRYPT_ROUNDS);
     await this.userRepo.save(user);
 
@@ -590,6 +789,19 @@ export class AuthService {
         message: "Utilisateur introuvable",
       });
     return this.sanitize(user);
+  }
+
+  /**
+   * Compte associé à un email (casse ignorée), ou null — ex. bénéficiaire
+   * d'un billet offert. Réservé aux appels internes : l'api-gateway ne
+   * renvoie jamais ce résultat tel quel (pas d'énumération des comptes).
+   */
+  async findByEmail(email: string) {
+    const user = await this.userRepo
+      .createQueryBuilder("u")
+      .where("LOWER(u.email) = LOWER(:email)", { email: email.trim() })
+      .getOne();
+    return user ? this.sanitize(user) : null;
   }
 
   /** Résolution par lot (ex. newsletter) — évite un aller-retour par utilisateur. */
@@ -892,16 +1104,24 @@ export class AuthService {
 
   // --- Helpers ---
 
-  private generateTokens(user: User): {
+  /**
+   * @param authTime heure (secondes epoch) de la connexion d'origine —
+   *   « maintenant » pour une nouvelle connexion, recopiée telle quelle lors
+   *   d'un refresh (durée maximale de session, cf. refresh()).
+   */
+  private generateTokens(
+    user: User,
+    authTime: number = Math.floor(Date.now() / 1000),
+  ): {
     access_token: string;
     refresh_token: string;
   } {
     const jti = randomUUID();
 
-    const access_token = this.signAccess(user);
+    const access_token = this.signAccess(user, authTime);
 
     const refresh_token = this.jwtService.sign(
-      { sub: user.id, jti },
+      { sub: user.id, jti, auth_time: authTime },
       {
         secret: this.config.get<string>("JWT_REFRESH_SECRET"),
         expiresIn: this.config.get<string>("JWT_REFRESH_EXPIRES_IN") ?? "30d",
@@ -911,9 +1131,14 @@ export class AuthService {
     return { access_token, refresh_token };
   }
 
-  private signAccess(user: User): string {
+  /**
+   * auth_time (heure de la connexion d'origine) figure aussi dans le jeton
+   * d'accès : l'api-gateway exige une connexion récente pour les actions
+   * sensibles et irréversibles (ex. offrir un billet).
+   */
+  private signAccess(user: User, authTime: number): string {
     return this.jwtService.sign(
-      { sub: user.id, email: user.email, role: user.role },
+      { sub: user.id, email: user.email, role: user.role, auth_time: authTime },
       {
         secret: this.config.get<string>("JWT_ACCESS_SECRET"),
         expiresIn: this.config.get<string>("JWT_ACCESS_EXPIRES_IN") ?? "15m",

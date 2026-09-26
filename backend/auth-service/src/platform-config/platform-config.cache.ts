@@ -12,6 +12,10 @@ import { firstValueFrom } from 'rxjs';
 export interface AuthPlatformConfig {
   account_lockout_threshold: number;
   account_lockout_duration_minutes: number;
+  password_min_length: number;
+  minimum_signup_age: number;
+  session_idle_timeout_minutes: number;
+  session_max_duration_hours: number;
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -19,6 +23,10 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const FALLBACK: AuthPlatformConfig = {
   account_lockout_threshold: 5,
   account_lockout_duration_minutes: 15,
+  password_min_length: 12,
+  minimum_signup_age: 18,
+  session_idle_timeout_minutes: 30,
+  session_max_duration_hours: 12,
 };
 
 @Injectable()

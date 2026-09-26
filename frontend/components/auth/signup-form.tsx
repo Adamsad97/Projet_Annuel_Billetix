@@ -2,8 +2,17 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { PasswordRequirements } from "@/components/auth/password-requirements";
+import { PasswordInput } from "@/components/ui/password-input";
 import { registerUser } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/http-error";
+import {
+  containsPersonalInfo,
+  evaluatePassword,
+  PERSONAL_INFO_ERROR,
+} from "@/lib/auth/password-policy";
+import { ageInYears, underageMessage } from "@/lib/auth/age";
+import { useRegistrationPolicy } from "@/lib/auth/use-registration-policy";
 
 // Même mécanisme que login-form.tsx : oauthLogin() (auth-service) crée le
 // compte s'il n'existe pas déjà — inscription et connexion partagent le
@@ -33,18 +42,39 @@ export function SignupForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  // Contrôlés (et non lus via FormData) pour vérifier les règles du mot de
+  // passe à chaque frappe (prénom et nom, eux, seulement à l'envoi).
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const { passwordMinLength: minLength, minimumAge } = useRegistrationPolicy();
+  // Affiché dès la saisie de la date (pas seulement à l'envoi) : inutile de
+  // laisser un mineur remplir tout le formulaire pour rien.
+  const underage = birthDate !== "" && ageInYears(birthDate) < minimumAge;
+  const passwordRules = evaluatePassword(password, minLength);
+  const passwordValid = passwordRules.every((rule) => rule.ok);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
 
     const form = new FormData(event.currentTarget);
-    const firstName = String(form.get("firstName") ?? "").trim();
-    const lastName = String(form.get("lastName") ?? "").trim();
     const email = String(form.get("email") ?? "").trim();
-    const password = String(form.get("password") ?? "");
-    const confirmPassword = String(form.get("confirmPassword") ?? "");
 
+    if (underage) {
+      setError(underageMessage(minimumAge));
+      return;
+    }
+    if (!passwordValid) {
+      setError("Le mot de passe ne respecte pas toutes les règles indiquées.");
+      return;
+    }
+    if (containsPersonalInfo(password, { firstName, lastName, birthDate })) {
+      setError(PERSONAL_INFO_ERROR);
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Les mots de passe ne correspondent pas.");
       return;
@@ -61,8 +91,9 @@ export function SignupForm() {
       await registerUser({
         email,
         password,
-        first_name: firstName,
-        last_name: lastName,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        birth_date: birthDate,
         role: accountType === "organizer" ? "ORGANIZER" : "BUYER",
       });
       setSuccess(true);
@@ -79,18 +110,18 @@ export function SignupForm() {
 
   if (success) {
     return (
-      <div className="w-full max-w-md rounded-2xl border border-white/5 bg-[#12101c] p-8 text-center">
+      <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">
           ✓
         </div>
-        <h1 className="text-xl font-bold text-white">Compte créé !</h1>
-        <p className="mt-2 text-sm text-violet-200/70">
+        <h1 className="text-xl font-bold text-ink-1">Compte créé !</h1>
+        <p className="mt-2 text-sm text-accent/70">
           Clique sur le lien reçu par email pour activer ton compte, puis
           connecte-toi — l&apos;accès n&apos;est possible qu&apos;une fois l&apos;adresse vérifiée.
         </p>
         <Link
           href="/connexion"
-          className="mt-5 inline-block rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90"
+          className="mt-5 inline-block rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
         >
           Aller à la connexion →
         </Link>
@@ -99,17 +130,17 @@ export function SignupForm() {
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-white/5 bg-[#12101c] p-8">
+    <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8">
       <div className="mb-6 text-center">
-        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-white">
+        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">
           Créer un compte <span>✨</span>
         </h1>
-        <p className="mt-1 text-sm text-violet-200/70">
+        <p className="mt-1 text-sm text-accent/70">
           Rejoignez des milliers d&apos;utilisateurs BilleTiX
         </p>
       </div>
 
-      <p className="mb-2 text-sm text-gray-400">Je veux…</p>
+      <p className="mb-2 text-sm text-ink-4">Je veux…</p>
       <div className="mb-5 grid grid-cols-2 gap-3">
         {accountTypes.map((type) => {
           const isActive = type.id === accountType;
@@ -120,21 +151,21 @@ export function SignupForm() {
               onClick={() => setAccountType(type.id)}
               className={
                 isActive
-                  ? "flex flex-col items-center gap-1.5 rounded-xl border border-violet-500 bg-violet-500/10 px-3 py-4 text-center"
-                  : "flex flex-col items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-4 text-center transition-colors hover:border-white/20"
+                  ? "flex flex-col items-center gap-1.5 rounded-xl border border-blue-500 bg-blue-500/10 px-3 py-4 text-center"
+                  : "flex flex-col items-center gap-1.5 rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-4 text-center transition-colors hover:border-hairline-4"
               }
             >
               <span className="text-xl">{type.icon}</span>
               <span
                 className={
                   isActive
-                    ? "text-sm font-semibold text-violet-300"
-                    : "text-sm font-semibold text-gray-200"
+                    ? "text-sm font-semibold text-accent"
+                    : "text-sm font-semibold text-ink-2"
                 }
               >
                 {type.label}
               </span>
-              <span className="text-xs text-gray-500">{type.description}</span>
+              <span className="text-xs text-ink-5">{type.description}</span>
             </button>
           );
         })}
@@ -143,14 +174,14 @@ export function SignupForm() {
       <div className="flex flex-col gap-3">
         <a
           href={`${API_URL}/auth/google`}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] py-3 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-hairline-2 bg-hairline-1 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
         >
           <span className="font-bold">G</span>
           S&apos;inscrire avec Google
         </a>
         <a
           href={`${API_URL}/auth/facebook`}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] py-3 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-hairline-2 bg-hairline-1 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
         >
           <span className="font-bold">f</span>
           S&apos;inscrire avec Facebook
@@ -158,9 +189,9 @@ export function SignupForm() {
       </div>
 
       <div className="my-6 flex items-center gap-3">
-        <div className="h-px flex-1 bg-white/10" />
-        <span className="text-xs text-gray-500">ou</span>
-        <div className="h-px flex-1 bg-white/10" />
+        <div className="h-px flex-1 bg-hairline-2" />
+        <span className="text-xs text-ink-5">ou</span>
+        <div className="h-px flex-1 bg-hairline-2" />
       </div>
 
       {error ? (
@@ -172,33 +203,64 @@ export function SignupForm() {
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">
+            <span className="text-sm font-medium text-accent/80">
               Prénom
             </span>
             <input
               type="text"
               name="firstName"
               required
+              value={firstName}
+              onChange={(event) => setFirstName(event.target.value)}
               placeholder="Jean"
-              className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+              className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">
+            <span className="text-sm font-medium text-accent/80">
               Nom
             </span>
             <input
               type="text"
               name="lastName"
               required
+              value={lastName}
+              onChange={(event) => setLastName(event.target.value)}
               placeholder="Dupont"
-              className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+              className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
             />
           </label>
         </div>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-violet-200/80">
+          <span className="text-sm font-medium text-accent/80">
+            Date de naissance
+          </span>
+          <input
+            type="date"
+            name="birthDate"
+            required
+            max={new Date().toISOString().slice(0, 10)}
+            value={birthDate}
+            onChange={(event) => setBirthDate(event.target.value)}
+            aria-invalid={underage}
+            aria-describedby={underage ? "underage-message" : undefined}
+            className={`rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none ${underage ? "border-danger" : ""}`}
+          />
+          {underage ? (
+            <p
+              id="underage-message"
+              role="alert"
+              className="flex items-start gap-2 rounded-xl bg-danger/10 px-3 py-2.5 text-sm font-medium text-danger ring-1 ring-inset ring-danger/30"
+            >
+              <span aria-hidden="true">⛔</span>
+              {underageMessage(minimumAge)}
+            </p>
+          ) : null}
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-accent/80">
             Email
           </span>
           <input
@@ -206,52 +268,60 @@ export function SignupForm() {
             name="email"
             required
             placeholder="jean@email.com"
-            className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
           />
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-violet-200/80">
+          <span className="text-sm font-medium text-accent/80">
             Mot de passe
           </span>
-          <input
-            type="password"
+          <PasswordInput
             name="password"
             required
-            minLength={8}
-            placeholder="8 caractères minimum"
-            className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+            autoComplete="new-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder={`${minLength} caractères minimum`}
+            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
           />
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-violet-200/80">
+          <span className="text-sm font-medium text-accent/80">
             Confirmer le mot de passe
           </span>
-          <input
-            type="password"
+          <PasswordInput
             name="confirmPassword"
             required
-            minLength={8}
-            placeholder="••••••••"
-            className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            placeholder="••••••••••••"
+            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
           />
         </label>
+
+        <PasswordRequirements
+          rules={passwordRules}
+          password={password}
+          confirmPassword={confirmPassword}
+        />
 
         <button
           type="submit"
-          disabled={loading}
-          className="mt-1 w-full rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={loading || underage || !passwordValid || password !== confirmPassword}
+          className="mt-1 w-full rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Création du compte…" : "Créer mon compte →"}
         </button>
       </form>
 
-      <p className="mt-5 text-center text-sm text-gray-500">
+      <p className="mt-5 text-center text-sm text-ink-5">
         Déjà inscrit ?{" "}
         <Link
           href="/connexion"
-          className="font-medium text-violet-400 transition-colors hover:text-violet-300"
+          className="font-medium text-link transition-colors hover:text-link-hover"
         >
           Se connecter
         </Link>

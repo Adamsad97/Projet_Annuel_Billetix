@@ -1,18 +1,40 @@
 import { AuthHeader } from "@/components/layout/auth-header";
 import { LoginForm } from "@/components/auth/login-form";
+import { ForceReauth } from "@/components/auth/force-reauth";
 
-export default function ConnexionPage() {
+// Motif d'une déconnexion automatique (cf. SessionManager), affiché au-dessus
+// du formulaire.
+const SESSION_MESSAGES: Record<string, string> = {
+  inactivite: "Tu as été déconnecté automatiquement après une période d'inactivité. Reconnecte-toi pour continuer.",
+  duree_max: "Par sécurité, une session a une durée limitée, même en restant actif. Reconnecte-toi pour continuer.",
+  expiree: "Ta session a expiré. Reconnecte-toi pour continuer.",
+};
+
+// Arrivée depuis un lien d'email vers les billets ou une commande.
+const REAUTH_MESSAGE =
+  "Pour protéger tes billets, une connexion est demandée à chaque accès depuis un email.";
+
+export default async function ConnexionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ session?: string; next?: string; reauth?: string }>;
+}) {
+  const { session, next, reauth } = await searchParams;
+  const forceReauth = reauth === "1";
+  const sessionMessage = forceReauth
+    ? REAUTH_MESSAGE
+    : session
+      ? SESSION_MESSAGES[session]
+      : undefined;
+
   return (
-    <div className="flex flex-1 flex-col bg-[#07060c]">
+    <div className="flex flex-1 flex-col bg-page">
       <AuthHeader />
 
       <main className="relative flex flex-1 items-center justify-center overflow-hidden px-6 py-16">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 h-[28rem] w-[48rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-700/20 blur-3xl"
-        />
         <div className="relative">
-          <LoginForm />
+          {forceReauth ? <ForceReauth /> : null}
+          <LoginForm sessionMessage={sessionMessage} next={next} />
         </div>
       </main>
     </div>

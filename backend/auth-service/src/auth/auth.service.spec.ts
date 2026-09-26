@@ -42,10 +42,12 @@ describe("AuthService", () => {
   };
   let jwtService: { sign: jest.Mock; verify: jest.Mock };
   let redis: { get: jest.Mock; set: jest.Mock; del: jest.Mock };
+  let platformConfig: { get: jest.Mock };
 
   const baseUser: Partial<User> = {
     id: "user-1",
     email: "jean@example.com",
+    birth_date: "1990-01-15",
     password_hash: null,
     is_active: true,
     is_suspended: false,
@@ -84,6 +86,14 @@ describe("AuthService", () => {
       verify: jest.fn(),
     };
     redis = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
+    platformConfig = {
+      get: jest.fn().mockResolvedValue({
+        password_min_length: 12,
+        minimum_signup_age: 18,
+        session_idle_timeout_minutes: 30,
+        session_max_duration_hours: 12,
+      }),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -111,7 +121,7 @@ describe("AuthService", () => {
         },
         {
           provide: PlatformConfigCache,
-          useValue: { get: jest.fn().mockResolvedValue({}) },
+          useValue: platformConfig,
         },
         { provide: TwoFactorService, useValue: twoFactorService },
       ],
@@ -136,6 +146,7 @@ describe("AuthService", () => {
         password: "MotDePasse123!",
         first_name: "Nouveau",
         last_name: "Compte",
+        birth_date: "1998-05-12",
       } as any);
 
       expect(result).not.toHaveProperty("access_token");
@@ -322,6 +333,75 @@ describe("AuthService", () => {
     });
   });
 
+  describe("âge minimum via Google/Facebook — date de naissance exigée", () => {
+    const googleProfile = {
+      provider: OAuthProvider.GOOGLE,
+      oauth_id: "g-new",
+      email: "nouveau.google@example.com",
+      first_name: "Lina",
+      last_name: "Nouvelle",
+    };
+    const yearsAgo = (years: number) => {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() - years);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    };
+
+    it("ne crée aucun compte à la première connexion : date de naissance demandée d'abord", async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      const result = await service.oauthLogin(googleProfile);
+
+      expect(result).toEqual({
+        requires_birth_date: true,
+        pending_token: expect.any(String),
+        first_name: "Lina",
+      });
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(jwtService.sign).not.toHaveBeenCalled();
+    });
+
+    it("demande aussi la date à un compte existant qui n'en a pas", async () => {
+      repo.findOne.mockResolvedValue({ ...baseUser, birth_date: null });
+
+      const result = await service.oauthLogin({ ...googleProfile, email: baseUser.email! });
+
+      expect(result).toEqual(expect.objectContaining({ requires_birth_date: true }));
+      expect(jwtService.sign).not.toHaveBeenCalled();
+    });
+
+    it("refuse un mineur : aucun compte créé, aucun token", async () => {
+      redis.get.mockResolvedValue(JSON.stringify({ profile: googleProfile }));
+
+      await expect(
+        service.completeOAuthBirthDate("tok", yearsAgo(16)),
+      ).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(jwtService.sign).not.toHaveBeenCalled();
+    });
+
+    it("crée le compte avec sa date de naissance puis connecte une personne majeure", async () => {
+      redis.get.mockResolvedValue(JSON.stringify({ profile: googleProfile }));
+      repo.findOne.mockResolvedValue(null);
+      repo.create.mockImplementation((data) => ({ id: "new-user", is_active: true, ...data }));
+      repo.save.mockImplementation((user) => Promise.resolve(user));
+
+      const result = await service.completeOAuthBirthDate("tok", "1995-03-20");
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ email: googleProfile.email, birth_date: "1995-03-20" }),
+      );
+      expect(result).toHaveProperty("access_token");
+      expect(redis.del).toHaveBeenCalledWith("oauth_birth_date_pending:tok");
+    });
+
+    it("rejette un pending_token inconnu ou expiré", async () => {
+      redis.get.mockResolvedValue(null);
+      await expect(service.completeOAuthBirthDate("expire", "1995-03-20")).rejects.toThrow(RpcException);
+    });
+  });
+
   describe("verifyOauth2fa — second temps du login OAuth quand la 2FA est activée", () => {
     it("rejette si le pending_token est expiré ou inconnu", async () => {
       redis.get.mockResolvedValue(null);
@@ -472,6 +552,79 @@ describe("AuthService", () => {
     });
   });
 
+  describe("refresh — expiration pour inactivité (platform_settings)", () => {
+    const refreshIssuedMinutesAgo = (minutes: number) => {
+      const now = Math.floor(Date.now() / 1000);
+      jwtService.verify.mockReturnValue({ sub: "user-1", jti: "jti-idle", iat: now - minutes * 60, exp: now + 3600 });
+      redis.get.mockResolvedValue(null);
+      repo.findOne.mockResolvedValue({ ...baseUser });
+    };
+
+    it("renouvelle une session active (dernier rafraîchissement récent)", async () => {
+      refreshIssuedMinutesAgo(10);
+      await expect(service.refresh({ refresh_token: "rt" })).resolves.toHaveProperty("access_token");
+    });
+
+    it("refuse et révoque une session inactive depuis plus que le délai", async () => {
+      refreshIssuedMinutesAgo(31);
+      await expect(service.refresh({ refresh_token: "rt" })).rejects.toThrow(RpcException);
+      expect(redis.set).toHaveBeenCalledWith("blacklist:jti-idle", "1", "EX", expect.any(Number));
+    });
+
+    it("jamais une valeur figée dans le code : suit session_idle_timeout_minutes", async () => {
+      platformConfig.get.mockResolvedValue({ session_idle_timeout_minutes: 5 });
+      refreshIssuedMinutesAgo(10);
+      await expect(service.refresh({ refresh_token: "rt" })).rejects.toThrow(RpcException);
+    });
+
+    it("expose les durées configurées au frontend", async () => {
+      platformConfig.get.mockResolvedValue({ session_idle_timeout_minutes: 45, session_max_duration_hours: 8 });
+      await expect(service.getSessionPolicy()).resolves.toEqual({
+        idle_timeout_minutes: 45,
+        max_duration_hours: 8,
+      });
+    });
+
+    it("refuse une session active mais connectée depuis plus que la durée maximale", async () => {
+      const now = Math.floor(Date.now() / 1000);
+      // Rafraîchie il y a 1 min (active), mais connectée il y a 13 h.
+      jwtService.verify.mockReturnValue({ sub: "user-1", jti: "jti-old", iat: now - 60, auth_time: now - 13 * 3600, exp: now + 3600 });
+      redis.get.mockResolvedValue(null);
+      repo.findOne.mockResolvedValue({ ...baseUser });
+
+      await expect(service.refresh({ refresh_token: "rt" })).rejects.toThrow(RpcException);
+      expect(redis.set).toHaveBeenCalledWith("blacklist:jti-old", "1", "EX", expect.any(Number));
+    });
+
+    it("conserve l'heure de connexion d'origine à chaque rotation", async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const authTime = now - 2 * 3600;
+      jwtService.verify.mockReturnValue({ sub: "user-1", jti: "jti-2", iat: now - 60, auth_time: authTime, exp: now + 3600 });
+      redis.get.mockResolvedValue(null);
+      repo.findOne.mockResolvedValue({ ...baseUser });
+
+      await service.refresh({ refresh_token: "rt" });
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({ auth_time: authTime }),
+        expect.anything(),
+      );
+    });
+
+    it("recopie l'heure de connexion d'origine dans le jeton d'accès (actions sensibles)", async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const authTime = now - 2 * 3600;
+      jwtService.verify.mockReturnValue({ sub: "user-1", jti: "jti-3", iat: now - 60, auth_time: authTime, exp: now + 3600 });
+      redis.get.mockResolvedValue(null);
+      repo.findOne.mockResolvedValue({ ...baseUser });
+
+      await service.refresh({ refresh_token: "rt" });
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({ role: baseUser.role, auth_time: authTime }),
+        expect.anything(),
+      );
+    });
+  });
+
   describe("logout — révocation", () => {
     it("ne blackliste rien pour un token forgé (signature non vérifiée jamais faite confiance)", async () => {
       jwtService.verify.mockImplementation(() => {
@@ -533,13 +686,13 @@ describe("AuthService", () => {
 
       const result = await service.changePassword("user-1", {
         current_password: "ancien-mdp",
-        new_password: "nouveau-mdp-123",
+        new_password: "Nouveau-Mdp-2026",
       });
 
       expect(result).toEqual({ success: true });
       expect(repo.save).toHaveBeenCalled();
       const saved = repo.save.mock.calls[0][0];
-      expect(await bcrypt.compare("nouveau-mdp-123", saved.password_hash)).toBe(true);
+      expect(await bcrypt.compare("Nouveau-Mdp-2026", saved.password_hash)).toBe(true);
     });
 
     it("rejette si l'ancien mot de passe est incorrect", async () => {
@@ -549,7 +702,7 @@ describe("AuthService", () => {
       await expect(
         service.changePassword("user-1", {
           current_password: "mauvais-mdp",
-          new_password: "nouveau-mdp-123",
+          new_password: "Nouveau-Mdp-2026",
         }),
       ).rejects.toThrow(RpcException);
       expect(repo.save).not.toHaveBeenCalled();
@@ -561,10 +714,167 @@ describe("AuthService", () => {
       await expect(
         service.changePassword("user-1", {
           current_password: "peu-importe",
-          new_password: "nouveau-mdp-123",
+          new_password: "Nouveau-Mdp-2026",
         }),
       ).rejects.toThrow(RpcException);
       expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("rejette un nouveau mot de passe contenant le nom du titulaire", async () => {
+      const oldHash = await bcrypt.hash("ancien-mdp", 4);
+      queryBuilder.getOne.mockResolvedValue({
+        ...baseUser,
+        first_name: "Jean",
+        last_name: "Dupont",
+        password_hash: oldHash,
+      });
+
+      await expect(
+        service.changePassword("user-1", {
+          current_password: "ancien-mdp",
+          new_password: "Mon-DUPONT-2026!",
+        }),
+      ).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("politique de mot de passe — longueur issue de platform_settings", () => {
+    const registerWith = (password: string) =>
+      service.register({
+        email: "nouveau@example.com",
+        password,
+        first_name: "Nouveau",
+        last_name: "Compte",
+        birth_date: "1998-05-12",
+      } as any);
+
+    beforeEach(() => {
+      repo.findOne.mockResolvedValue(null);
+      repo.create.mockImplementation((data) => ({ id: "new-user", ...data }));
+      repo.save.mockImplementation((user) => Promise.resolve(user));
+    });
+
+    it("rejette un mot de passe sans majuscule, chiffre ni caractère spécial", async () => {
+      await expect(registerWith("motdepasselong")).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("jamais une valeur figée dans le code : suit password_min_length", async () => {
+      // 14 caractères, toutes classes présentes : accepté à 12…
+      await expect(registerWith("MotDePasse123!")).resolves.toBeDefined();
+
+      // …refusé dès que l'admin relève le minimum à 16.
+      platformConfig.get.mockResolvedValue({ password_min_length: 16, minimum_signup_age: 18 });
+      repo.save.mockClear();
+      await expect(registerWith("MotDePasse123!")).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    const yearsAgo = (years: number) => {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() - years);
+      // Composantes locales (pas toISOString, en UTC) : même jour que ageInYears().
+      const pad = (n: number) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    };
+    const registerBornOn = (birth_date: string) =>
+      service.register({
+        email: "age@example.com",
+        password: "MotDePasse123!",
+        first_name: "Nouveau",
+        last_name: "Compte",
+        birth_date,
+      } as any);
+
+    it("refuse l'inscription d'un mineur, sans rien enregistrer", async () => {
+      await expect(registerBornOn(yearsAgo(17))).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("accepte une personne qui a exactement l'âge minimum", async () => {
+      await expect(registerBornOn(yearsAgo(18))).resolves.toBeDefined();
+    });
+
+    it("jamais une valeur figée dans le code : suit minimum_signup_age", async () => {
+      platformConfig.get.mockResolvedValue({ password_min_length: 12, minimum_signup_age: 21 });
+      await expect(registerBornOn(yearsAgo(19))).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("rejette une date de naissance dans le futur", async () => {
+      await expect(
+        service.register({
+          email: "futur@example.com",
+          password: "MotDePasse123!",
+          first_name: "Nouveau",
+          last_name: "Compte",
+          birth_date: "2999-01-01",
+        } as any),
+      ).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("rejette au changement un mot de passe contenant l'année de naissance", async () => {
+      const oldHash = await bcrypt.hash("ancien-mdp", 4);
+      queryBuilder.getOne.mockResolvedValue({
+        ...baseUser,
+        first_name: "Jean",
+        last_name: "Dupont",
+        birth_date: "1998-05-12",
+        password_hash: oldHash,
+      });
+
+      await expect(
+        service.changePassword("user-1", {
+          current_password: "ancien-mdp",
+          new_password: "Soleil-Levant-1998",
+        }),
+      ).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("expose les règles d'inscription configurées au frontend", async () => {
+      platformConfig.get.mockResolvedValue({ password_min_length: 14, minimum_signup_age: 21 });
+      await expect(service.getRegistrationPolicy()).resolves.toEqual({
+        password_min_length: 14,
+        minimum_age: 21,
+      });
+    });
+
+    it("rejette à la réinitialisation un mot de passe contenant le prénom", async () => {
+      redis.get.mockResolvedValue("user-1");
+      repo.findOne.mockResolvedValue({ ...baseUser, first_name: "Éloïse", last_name: "Martin" });
+
+      await expect(
+        service.resetPassword({ token: "tok", new_password: "Eloise-2026-Secret!" }),
+      ).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(redis.del).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("findByEmail", () => {
+    it("retrouve un compte sans tenir compte de la casse, sans le mot de passe", async () => {
+      const qb = {
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({ ...baseUser, password_hash: "secret-hash" }),
+      };
+      repo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+
+      const result = await service.findByEmail("  Marie@Example.com ");
+
+      expect(qb.where).toHaveBeenCalledWith("LOWER(u.email) = LOWER(:email)", { email: "Marie@Example.com" });
+      expect(result).not.toHaveProperty("password_hash");
+    });
+
+    it("renvoie null pour un email sans compte", async () => {
+      repo.createQueryBuilder = jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(service.findByEmail("inconnu@example.com")).resolves.toBeNull();
     });
   });
 

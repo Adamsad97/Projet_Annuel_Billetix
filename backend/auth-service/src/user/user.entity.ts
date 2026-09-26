@@ -44,6 +44,11 @@ export class User {
   @Column()
   last_name: string;
 
+  // Format "YYYY-MM-DD" (type SQL date, sans heure ni fuseau). Nullable :
+  // les comptes créés via Google/Facebook ne la fournissent pas.
+  @Column({ type: "date", nullable: true })
+  birth_date: string | null;
+
   @Column({ nullable: true })
   phone: string | null;
 

@@ -18,6 +18,8 @@ export interface AuthUser {
   email: string;
   first_name: string;
   last_name: string;
+  /** "YYYY-MM-DD" — null pour les comptes Google/Facebook. */
+  birth_date?: string | null;
   phone: string | null;
   role: UserRole;
   is_email_verified: boolean;
@@ -35,6 +37,8 @@ export interface RegisterPayload {
   password: string;
   first_name: string;
   last_name: string;
+  /** "YYYY-MM-DD" — obligatoire : inscription refusée sous l'âge minimum. */
+  birth_date: string;
   role: "BUYER" | "ORGANIZER";
 }
 
@@ -144,8 +148,23 @@ export interface RefreshResult {
   refresh_token: string;
 }
 
+/** Révoque le refresh token côté serveur (déconnexion). */
+export function revokeRefreshToken(refreshToken: string): Promise<{ success: boolean }> {
+  return postJson("/auth/logout", { refresh_token: refreshToken });
+}
+
 export function refreshTokens(refreshToken: string): Promise<RefreshResult> {
   return postJson<RefreshResult>("/auth/refresh", { refresh_token: refreshToken });
+}
+
+/** Durées de session : inactivité et durée maximale (platform_settings). */
+export function getSessionPolicy(): Promise<{ idle_timeout_minutes: number; max_duration_hours: number }> {
+  return getJson("/auth/session-policy");
+}
+
+/** Règles d'inscription en vigueur (paramétrables par l'admin, platform_settings). */
+export function getRegistrationPolicy(): Promise<{ password_min_length: number; minimum_age: number }> {
+  return getJson("/auth/registration-policy");
 }
 
 export function resetPassword(token: string, newPassword: string): Promise<{ success?: boolean }> {
@@ -155,11 +174,23 @@ export function resetPassword(token: string, newPassword: string): Promise<{ suc
 // ─── OAuth Google/Facebook ───────────────────────────────────────────────
 // Le callback backend redirige vers /auth/callback?code=... (jamais de
 // token en clair dans l'URL) — cette page échange le code une fois, puis
-// enchaîne sur verifyOAuth2fa si le compte a la 2FA activée.
+// enchaîne sur la date de naissance (première connexion : inscription
+// réservée aux personnes ayant l'âge minimum) et/ou sur verifyOAuth2fa si
+// le compte a la 2FA activée.
 
-export type OAuthExchangeResult =
-  | AuthSession
-  | { requires_2fa: true; two_factor_method: string; pending_token: string };
+export interface OAuthPending2fa {
+  requires_2fa: true;
+  two_factor_method: string;
+  pending_token: string;
+}
+
+export interface OAuthPendingBirthDate {
+  requires_birth_date: true;
+  pending_token: string;
+  first_name: string;
+}
+
+export type OAuthExchangeResult = AuthSession | OAuthPending2fa | OAuthPendingBirthDate;
 
 export function exchangeOAuthCode(code: string): Promise<OAuthExchangeResult> {
   return postJson<OAuthExchangeResult>("/auth/oauth/exchange", { code });
@@ -169,10 +200,22 @@ export function verifyOAuth2fa(pendingToken: string, code: string): Promise<Auth
   return postJson<AuthSession>("/auth/oauth/verify-2fa", { pending_token: pendingToken, code });
 }
 
-export function isOAuthPending2fa(
-  result: OAuthExchangeResult,
-): result is { requires_2fa: true; two_factor_method: string; pending_token: string } {
+export function completeOAuthBirthDate(
+  pendingToken: string,
+  birthDate: string,
+): Promise<AuthSession | OAuthPending2fa> {
+  return postJson("/auth/oauth/complete-birth-date", {
+    pending_token: pendingToken,
+    birth_date: birthDate,
+  });
+}
+
+export function isOAuthPending2fa(result: OAuthExchangeResult): result is OAuthPending2fa {
   return "requires_2fa" in result;
+}
+
+export function isOAuthPendingBirthDate(result: OAuthExchangeResult): result is OAuthPendingBirthDate {
+  return "requires_birth_date" in result;
 }
 
 export function verifyEmail(token: string): Promise<{ success?: boolean }> {

@@ -1,11 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
+  IsDateString,
   IsEmail,
   IsEnum,
   IsOptional,
   IsPhoneNumber,
   IsString,
-  MinLength,
 } from "class-validator";
 
 enum RegistrableRole {
@@ -18,9 +18,8 @@ export class RegisterDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ example: "MonMotDePasse123!" })
+  @ApiProperty({ example: "MonMotDePasse123!", description: "Longueur minimale paramétrable (GET /auth/registration-policy), au moins une majuscule, une minuscule, un chiffre et un caractère spécial, sans le prénom ni le nom — vérifié par auth-service" })
   @IsString()
-  @MinLength(8)
   password: string;
 
   @ApiProperty({ example: "Jean" })
@@ -30,6 +29,16 @@ export class RegisterDto {
   @ApiProperty({ example: "Dupont" })
   @IsString()
   last_name: string;
+
+  @ApiProperty({
+    example: "1998-05-12",
+    description: "Date de naissance (YYYY-MM-DD) — inscription refusée sous l'âge minimum (GET /auth/registration-policy)",
+  })
+  @IsDateString(
+    { strict: true },
+    { message: "La date de naissance est obligatoire (format AAAA-MM-JJ)" },
+  )
+  birth_date: string;
 
   @ApiPropertyOptional({ example: "+33612345678" })
   @IsPhoneNumber()

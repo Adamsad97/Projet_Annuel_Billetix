@@ -31,6 +31,7 @@ import {
 } from "../common/decorators/current-user.decorator";
 import { Public } from "../common/decorators/public.decorator";
 import { ChangePasswordDto } from "./dto/change-password.dto";
+import { CompleteOAuthBirthDateDto } from "./dto/complete-oauth-birth-date.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
@@ -61,6 +62,26 @@ export class AuthController {
   }
 
   @Public()
+  @Get("session-policy")
+  @ApiOperation({
+    summary: "Durées de session : inactivité et durée maximale (paramétrables par l'admin)",
+  })
+  @ApiResponse({ status: 200, description: "{ idle_timeout_minutes: number, max_duration_hours: number }" })
+  getSessionPolicy() {
+    return firstValueFrom(this.authClient.send("auth.session_policy", {}));
+  }
+
+  @Public()
+  @Get("registration-policy")
+  @ApiOperation({
+    summary: "Règles d'inscription en vigueur : longueur minimale du mot de passe et âge minimum (paramétrables par l'admin)",
+  })
+  @ApiResponse({ status: 200, description: "{ password_min_length: number, minimum_age: number }" })
+  getRegistrationPolicy() {
+    return firstValueFrom(this.authClient.send("auth.registration_policy", {}));
+  }
+
+  @Public()
   @Post("login")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
@@ -86,9 +107,13 @@ export class AuthController {
     return firstValueFrom(this.authClient.send("auth.refresh", dto));
   }
 
+  // Public : ne fait que révoquer le refresh token fourni (signature
+  // vérifiée par auth-service — le détenir prouve la titularité). Exiger un
+  // access token rendait la révocation impossible justement après une
+  // inactivité (access token de 15 min déjà expiré).
+  @Public()
   @Post("logout")
   @HttpCode(HttpStatus.OK)
-  @ApiBearerAuth()
   @ApiOperation({ summary: "Déconnexion (révocation du refresh token)" })
   logout(@Body() dto: RefreshTokenDto) {
     return firstValueFrom(this.authClient.send("auth.logout", dto));
@@ -247,6 +272,23 @@ export class AuthController {
   exchangeOAuthCode(@Body() dto: { code: string }) {
     return firstValueFrom(
       this.authClient.send("auth.exchange_oauth_code", { code: dto.code }),
+    );
+  }
+
+  // Première connexion Google/Facebook (ou compte antérieur à la règle
+  // d'âge) : date de naissance exigée avant toute création de compte ou
+  // délivrance de tokens — un mineur n'obtient jamais de compte.
+  @Public()
+  @Post("oauth/complete-birth-date")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @ApiOperation({
+    summary: "Fournir sa date de naissance après une connexion OAuth qui l'exige (âge minimum vérifié)",
+  })
+  @ApiResponse({ status: 403, description: "Âge minimum non atteint — aucun compte créé" })
+  completeOAuthBirthDate(@Body() dto: CompleteOAuthBirthDateDto) {
+    return firstValueFrom(
+      this.authClient.send("auth.oauth_complete_birth_date", dto),
     );
   }
 

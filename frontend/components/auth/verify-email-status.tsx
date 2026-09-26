@@ -36,26 +36,26 @@ export function VerifyEmailStatus({ token }: { token: string | null }) {
 
   if (status === "loading") {
     return (
-      <div className="relative w-full max-w-md rounded-2xl border border-white/5 bg-[#12101c] p-8 text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-violet-500/15 text-2xl">
+      <div className="relative w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-500/15 text-2xl">
           ⏳
         </div>
-        <h1 className="text-xl font-bold text-white">Vérification en cours…</h1>
+        <h1 className="text-xl font-bold text-ink-1">Vérification en cours…</h1>
       </div>
     );
   }
 
   if (status === "error") {
     return (
-      <div className="relative w-full max-w-md rounded-2xl border border-white/5 bg-[#12101c] p-8 text-center">
+      <div className="relative w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-500/15 text-2xl">
           ✕
         </div>
-        <h1 className="text-2xl font-bold text-white">Vérification impossible</h1>
-        <p className="mt-2 text-sm text-violet-200/70">{message}</p>
-        <p className="mt-4 text-xs text-gray-500">
+        <h1 className="text-2xl font-bold text-ink-1">Vérification impossible</h1>
+        <p className="mt-2 text-sm text-accent/70">{message}</p>
+        <p className="mt-4 text-xs text-ink-5">
           Lien expiré ?{" "}
-          <Link href="/contact" className="font-medium text-violet-400 hover:text-violet-300">
+          <Link href="/contact" className="font-medium text-link hover:text-link-hover">
             Contacte-nous
           </Link>
         </p>
@@ -64,19 +64,19 @@ export function VerifyEmailStatus({ token }: { token: string | null }) {
   }
 
   return (
-    <div className="relative w-full max-w-md rounded-2xl border border-white/5 bg-[#12101c] p-8 text-center">
+    <div className="relative w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-3xl">
         ✓
       </div>
-      <h1 className="text-2xl font-bold text-white">Adresse email vérifiée</h1>
-      <p className="mt-2 text-sm text-violet-200/70">
+      <h1 className="text-2xl font-bold text-ink-1">Adresse email vérifiée</h1>
+      <p className="mt-2 text-sm text-accent/70">
         Ton compte BilletiX est maintenant actif. Tu peux te connecter et
         profiter de tous les événements.
       </p>
 
       <Link
         href="/connexion"
-        className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90"
+        className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
       >
         Se connecter
       </Link>

@@ -1,10 +1,10 @@
 import {
+  IsDateString,
   IsEmail,
   IsEnum,
   IsOptional,
   IsPhoneNumber,
   IsString,
-  MinLength,
 } from "class-validator";
 import { UserRole } from "../../user/user.entity";
 
@@ -17,8 +17,9 @@ export class RegisterDto {
   @IsEmail()
   email: string;
 
+  // Longueur et complexité : AuthService.assertPasswordPolicy()
+  // (minimum paramétrable via platform_settings).
   @IsString()
-  @MinLength(8)
   password: string;
 
   @IsString()
@@ -26,6 +27,14 @@ export class RegisterDto {
 
   @IsString()
   last_name: string;
+
+  // "YYYY-MM-DD" ; obligatoire : l'inscription est réservée aux personnes
+  // ayant l'âge minimum (platform_settings), vérifié par AuthService.register().
+  @IsDateString(
+    { strict: true },
+    { message: "La date de naissance est obligatoire (format AAAA-MM-JJ)" },
+  )
+  birth_date: string;
 
   @IsPhoneNumber()
   @IsOptional()

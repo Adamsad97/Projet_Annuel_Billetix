@@ -31,29 +31,29 @@ export function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <div className="w-full max-w-md rounded-2xl border border-white/5 bg-[#12101c] p-8 text-center">
+      <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">
           ✓
         </div>
-        <h1 className="text-2xl font-bold text-white">Email envoyé</h1>
-        <p className="mt-2 text-sm text-violet-200/70">
-          Si un compte existe pour <span className="text-white">{email}</span>
+        <h1 className="text-2xl font-bold text-ink-1">Email envoyé</h1>
+        <p className="mt-2 text-sm text-accent/70">
+          Si un compte existe pour <span className="text-ink-1">{email}</span>
           , un lien de réinitialisation vient de lui être envoyé.
         </p>
 
         <Link
           href="/connexion"
-          className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90"
+          className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
         >
           Retour à la connexion
         </Link>
 
-        <p className="mt-4 text-sm text-gray-500">
+        <p className="mt-4 text-sm text-ink-5">
           Rien reçu ?{" "}
           <button
             type="button"
             onClick={() => setSent(false)}
-            className="font-medium text-violet-400 transition-colors hover:text-violet-300"
+            className="font-medium text-link transition-colors hover:text-link-hover"
           >
             Renvoyer le lien
           </button>
@@ -63,12 +63,12 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-white/5 bg-[#12101c] p-8">
+    <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8">
       <div className="mb-6 text-center">
-        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-white">
+        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">
           Mot de passe oublié <span>🔑</span>
         </h1>
-        <p className="mt-1 text-sm text-violet-200/70">
+        <p className="mt-1 text-sm text-accent/70">
           Entrez votre email pour recevoir un lien de réinitialisation
         </p>
       </div>
@@ -81,7 +81,7 @@ export function ForgotPasswordForm() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-violet-200/80">
+          <span className="text-sm font-medium text-accent/80">
             Adresse email
           </span>
           <input
@@ -90,23 +90,23 @@ export function ForgotPasswordForm() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="jean.dupont@email.com"
-            className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
           />
         </label>
 
         <button
           type="submit"
           disabled={loading}
-          className="mt-1 w-full rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-1 w-full rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Envoi…" : "Envoyer le lien →"}
         </button>
       </form>
 
-      <p className="mt-5 text-center text-sm text-gray-500">
+      <p className="mt-5 text-center text-sm text-ink-5">
         <Link
           href="/connexion"
-          className="font-medium text-violet-400 transition-colors hover:text-violet-300"
+          className="font-medium text-link transition-colors hover:text-link-hover"
         >
           ← Retour à la connexion
         </Link>

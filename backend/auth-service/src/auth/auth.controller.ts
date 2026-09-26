@@ -23,6 +23,16 @@ export class AuthController {
     return this.authService.register(dto);
   }
 
+  @MessagePattern("auth.session_policy")
+  getSessionPolicy() {
+    return this.authService.getSessionPolicy();
+  }
+
+  @MessagePattern("auth.registration_policy")
+  getRegistrationPolicy() {
+    return this.authService.getRegistrationPolicy();
+  }
+
   @MessagePattern("auth.login")
   login(@Payload() dto: LoginDto) {
     return this.authService.login(dto);
@@ -94,6 +104,11 @@ export class AuthController {
     return this.authService.exchangeOAuthCode(data.code);
   }
 
+  @MessagePattern("auth.oauth_complete_birth_date")
+  completeOAuthBirthDate(@Payload() data: { pending_token: string; birth_date: string }) {
+    return this.authService.completeOAuthBirthDate(data.pending_token, data.birth_date);
+  }
+
   @MessagePattern("auth.oauth_verify_2fa")
   verifyOauth2fa(@Payload() data: { pending_token: string; code: string }) {
     return this.authService.verifyOauth2fa(data.pending_token, data.code);
@@ -142,6 +157,11 @@ export class AuthController {
   @MessagePattern("auth.get_user")
   getUser(@Payload() data: { id: string }) {
     return this.authService.getUserById(data.id);
+  }
+
+  @MessagePattern("auth.find_by_email")
+  findByEmail(@Payload() data: { email: string }) {
+    return this.authService.findByEmail(data.email);
   }
 
   @MessagePattern("auth.get_users_by_ids")
