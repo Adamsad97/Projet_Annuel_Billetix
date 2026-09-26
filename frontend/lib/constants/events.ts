@@ -24,18 +24,6 @@ export interface MockEvent {
   free?: boolean;
 }
 
-// icon "location" : icône SVG partagée (LocationPinIcon) plutôt qu'un emoji.
-export const categoryFilters: { label: string; emoji?: string; icon?: "location" }[] = [
-  { label: "Tous" },
-  { label: "Concert", emoji: "🎵" },
-  { label: "Festival", emoji: "🎪" },
-  { label: "Théâtre", emoji: "🎭" },
-  { label: "Sport", emoji: "⚽" },
-  { label: "Conférence", emoji: "💡" },
-  { label: "Gratuit", emoji: "🎫" },
-  { label: "Près de moi", icon: "location" },
-];
-
 // Bug corrigé (demande produit) : "Concert" et "Danse" utilisaient du
 // violet/fuchsia — retiré de toute la palette (texte, boutons, bandeaux).
 // Recoloré en bleu (cohérent avec la nouvelle couleur de marque) et cyan
