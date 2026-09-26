@@ -2,8 +2,8 @@
 // et le format d'erreur uniforme de l'api-gateway.
 
 import { getApiBaseUrl } from "./base-url";
-import { ApiError, extractErrorMessage } from "./http-error";
-import { getAccessToken, getRefreshToken, updateTokens, clearSession } from "@/lib/auth/session";
+import { ApiError, extractErrorCode, extractErrorMessage } from "./http-error";
+import { endSession, getAccessToken, getRefreshToken, updateTokens } from "@/lib/auth/session";
 import { refreshTokens } from "./auth";
 
 const API_URL = getApiBaseUrl();
@@ -30,7 +30,10 @@ export async function refreshAccessToken(): Promise<string | null> {
         updateTokens(result.access_token, result.refresh_token);
         return result.access_token;
       } catch {
-        clearSession();
+        // Refresh refusé (expiré, révoqué, inactivité) : vraie déconnexion,
+        // plus seulement un nettoyage silencieux qui laissait l'interface
+        // afficher un compte connecté (cf. SessionManager).
+        endSession("expiree");
         return null;
       }
     })();
@@ -78,11 +81,16 @@ async function request<T>(
   }
 
   if (!response.ok) {
+    // Bug corrigé : « Ta session a expiré » s'affichait aussi quand il n'y
+    // avait jamais eu de session (visiteur non connecté).
     throw new ApiError(
       response.status,
       response.status === 401
-        ? "Ta session a expiré — reconnecte-toi pour continuer."
+        ? token
+          ? "Ta session a expiré — reconnecte-toi pour continuer."
+          : "Tu dois être connecté pour accéder à cette page."
         : extractErrorMessage(data, "Une erreur est survenue, réessaie."),
+      extractErrorCode(data),
     );
   }
 
@@ -96,3 +104,43 @@ export const apiDelete = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: "DELETE", body });
 export const apiPatch = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: "PATCH", body });
+
+/**
+ * Télécharge un fichier privé (billet, facture) : requête authentifiée
+ * (Bearer, rafraîchissement de session compris), puis enregistrement local.
+ * Les PDF ne sont plus accessibles par un lien direct (buckets privés).
+ */
+export async function apiDownload(path: string, filename: string, isRetry = false): Promise<void> {
+  const token = getAccessToken();
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch {
+    throw new ApiError(0, "Impossible de contacter le serveur — vérifie ta connexion ou réessaie plus tard.");
+  }
+
+  if (response.status === 401 && !isRetry && token) {
+    const newToken = await refreshAccessToken();
+    if (newToken) return apiDownload(path, filename, true);
+  }
+  if (!response.ok) {
+    let data: unknown = null;
+    try {
+      data = await response.json();
+    } catch {
+      // Réponse sans corps JSON.
+    }
+    throw new ApiError(response.status, extractErrorMessage(data, "Téléchargement impossible, réessaie."));
+  }
+
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
