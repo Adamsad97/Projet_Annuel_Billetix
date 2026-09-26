@@ -13,13 +13,18 @@ export class RequestTransferRevertDto {
   reason: string;
 }
 
-/** Annulation par un admin (demande par téléphone ou depuis la plateforme). */
+/**
+ * Annulation par un admin (demande par téléphone ou depuis la plateforme).
+ * Accepter une demande ne demande aucune saisie : le motif est facultatif
+ * (celui de la demande en ligne de l'expéditeur est conservé).
+ */
 export class RevertTransferDto {
-  @ApiProperty({ example: "Appel de l'acheteur le 26/09 : erreur de destinataire." })
+  @ApiProperty({ required: false, example: "Erreur de destinataire" })
+  @IsOptional()
   @Transform(trim)
   @IsString()
-  @Length(5, 1000, { message: "Motif de l'annulation requis (5 à 1000 caractères)" })
-  reason: string;
+  @Length(0, 1000, { message: "Motif trop long (1000 caractères maximum)" })
+  reason?: string;
 
   @ApiProperty({ enum: ["PHONE", "PLATFORM"] })
   @IsIn(["PHONE", "PLATFORM"], { message: "Origine de la demande invalide" })

@@ -379,7 +379,7 @@ export function listTransferRevertRequests(params: { status?: string; page?: num
 /** Annule un transfert : billet rendu à l'expéditeur. */
 export function revertTicketTransfer(
   transferId: string,
-  data: { reason: string; source: "PHONE" | "PLATFORM"; request_id?: string },
+  data: { reason?: string; source: "PHONE" | "PLATFORM"; request_id?: string },
 ): Promise<{ success: true }> {
   return apiPost(`/admin/tickets/transfers/${transferId}/revert`, data);
 }

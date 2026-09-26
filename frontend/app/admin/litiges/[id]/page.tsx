@@ -54,12 +54,9 @@ export default async function AdminDisputeDetailPage({
       {isOpen ? (
         <div className="mt-6 rounded-2xl border border-hairline-1 bg-card p-5">
           <h2 className="mb-3 text-sm font-semibold text-ink-2">Résolution</h2>
-          <textarea
-            rows={3}
-            placeholder="Note de résolution, échanges avec l'acheteur/organisateur…"
-            className="w-full resize-none rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
-          />
-          <div className="mt-4 flex flex-wrap gap-2">
+          {/* Rembourser / Marquer résolu : aucune saisie. Le motif ne sera
+              demandé qu'au rejet (communiqué à l'acheteur), une fois câblé. */}
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               className="rounded-lg bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30 transition-colors hover:bg-emerald-500/25"

@@ -21,6 +21,7 @@ describe('TicketTransferService — offrir un billet', () => {
   };
   let platformConfig: { get: jest.Mock };
   let transferRow: Record<string, unknown>;
+  let pendingRequest: Record<string, unknown> | null;
   let requestRepo: { findOne: jest.Mock; save: jest.Mock; create: jest.Mock };
 
   const input: GiftTicketInput = {
@@ -52,6 +53,7 @@ describe('TicketTransferService — offrir un billet', () => {
       status: TicketStatus.SENT,
     };
     previousTransfers = 0;
+    pendingRequest = null;
     transferRow = {
       id: 'tr-1',
       ticket_id: 'ticket-1',
@@ -68,7 +70,9 @@ describe('TicketTransferService — offrir un billet', () => {
       create: jest.fn((row) => row),
     };
     manager = {
-      findOne: jest.fn((entity) => Promise.resolve(entity === TicketTransfer ? transferRow : ticket)),
+      findOne: jest.fn((entity) =>
+        Promise.resolve(entity === TicketTransfer ? transferRow : entity === TransferRevertRequest ? pendingRequest : ticket),
+      ),
       count: jest.fn(() => Promise.resolve(previousTransfers)),
       create: jest.fn((_entity, data) => data),
       save: jest.fn((row) => Promise.resolve(row)),
@@ -208,6 +212,40 @@ describe('TicketTransferService — offrir un billet', () => {
       await expect(service.revert(revertInput)).rejects.toMatchObject({ error: { statusCode: 409 } });
       ticket.status = TicketStatus.FOR_RESALE;
       await expect(service.revert(revertInput)).rejects.toMatchObject({ error: { message: expect.stringContaining('revente') } });
+    });
+
+    it('accepter une demande en ligne ne demande aucun motif : celui de la demande est conservé', async () => {
+      pendingRequest = { id: 'req-1', reason: 'Erreur de destinataire', status: RevertRequestStatus.PENDING };
+      const { transfer } = await service.revert({
+        transfer_id: 'tr-1',
+        admin_id: 'admin-1',
+        admin_email: 'admin@billetix.local',
+        source: TransferRevertSource.PLATFORM,
+        request_id: 'req-1',
+      });
+
+      expect(transfer).toMatchObject({ status: TicketTransferStatus.REVERTED, revert_reason: 'Erreur de destinataire' });
+      expect(manager.update).toHaveBeenCalledWith(
+        TransferRevertRequest,
+        expect.anything(),
+        expect.objectContaining({ status: RevertRequestStatus.APPROVED, decision_reason: null }),
+      );
+    });
+
+    it('annulation sur appel sans motif : tracée (admin, date, source) sans saisie', async () => {
+      const { transfer } = await service.revert({
+        transfer_id: 'tr-1',
+        admin_id: 'admin-1',
+        admin_email: 'admin@billetix.local',
+        source: TransferRevertSource.PHONE,
+      });
+
+      expect(transfer).toMatchObject({
+        reverted_by: 'admin-1',
+        revert_source: TransferRevertSource.PHONE,
+        revert_reason: null,
+      });
+      expect(transfer.reverted_at).toBeInstanceOf(Date);
     });
 
     it('refuse une fois l’événement commencé', async () => {

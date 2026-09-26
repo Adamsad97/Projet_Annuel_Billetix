@@ -26,7 +26,9 @@ export interface RevertTransferInput {
   transfer_id: string;
   admin_id: string;
   admin_email: string;
-  reason: string;
+  // Facultatif : accepter une demande ne demande aucune saisie. Sans motif,
+  // on garde celui de la demande en ligne de l'expéditeur, s'il y en a une.
+  reason?: string | null;
   source: TransferRevertSource;
   // Demande de l'expéditeur traitée par cette annulation (source PLATFORM).
   request_id?: string;
@@ -232,11 +234,16 @@ export class TicketTransferService {
         holder_last_name: transfer.from_holder_last_name,
       });
 
+      const adminReason = input.reason?.trim() || null;
+      const pendingRequest = await manager.findOne(TransferRevertRequest, {
+        where: { transfer_id: transfer.id, status: RevertRequestStatus.PENDING },
+      });
+
       transfer.status = TicketTransferStatus.REVERTED;
       transfer.reverted_at = new Date();
       transfer.reverted_by = input.admin_id;
       transfer.reverted_by_email = input.admin_email;
-      transfer.revert_reason = input.reason.trim();
+      transfer.revert_reason = adminReason ?? pendingRequest?.reason ?? null;
       transfer.revert_source = input.source;
       const reverted = await manager.save(transfer);
 
@@ -248,7 +255,7 @@ export class TicketTransferService {
           status: RevertRequestStatus.APPROVED,
           decided_by: input.admin_id,
           decided_by_email: input.admin_email,
-          decision_reason: input.reason.trim(),
+          decision_reason: adminReason,
           decided_at: new Date(),
         },
       );

@@ -46,6 +46,7 @@ interface RevertedTransfer {
   to_email: string;
   to_holder_first_name: string;
   to_holder_last_name: string;
+  revert_reason?: string | null;
 }
 
 @ApiTags("admin")
@@ -134,7 +135,7 @@ export class AdminController {
       }),
     );
 
-    this.audit(user, req, "TICKET_TRANSFER_REVERTED", "TICKET", ticket.id, dto.reason, {
+    this.audit(user, req, "TICKET_TRANSFER_REVERTED", "TICKET", ticket.id, transfer.revert_reason ?? undefined, {
       reference: ticket.reference,
       transfer_id: transfer.id,
       source: dto.source,

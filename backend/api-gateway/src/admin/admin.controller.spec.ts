@@ -140,8 +140,8 @@ describe("AdminController — annulation d'un transfert de billet", () => {
     );
   });
 
-  it("annule sur appel : billet rendu, audit et emails", async () => {
-    await controller.revertTicketTransfer(admin, "tr-1", { reason: "Appel de l'acheteur", source: "PHONE" }, req);
+  it("annule sur appel sans aucune saisie : billet rendu, audit et emails", async () => {
+    await controller.revertTicketTransfer(admin, "tr-1", { source: "PHONE" }, req);
 
     expect(ticketClient.send).toHaveBeenCalledWith(
       "ticket.revert_transfer",
@@ -151,7 +151,6 @@ describe("AdminController — annulation d'un transfert de billet", () => {
       "admin.log_action",
       expect.objectContaining({
         action: "TICKET_TRANSFER_REVERTED",
-        reason: "Appel de l'acheteur",
         metadata: expect.objectContaining({ source: "PHONE", holder_before: "Paul Martin", holder_after: "Jean Dupont" }),
       }),
     );

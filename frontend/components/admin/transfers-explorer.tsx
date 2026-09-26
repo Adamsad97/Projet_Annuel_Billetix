@@ -104,16 +104,12 @@ export function TransfersExplorer() {
         `${transfer.to_email} le perdra et son QR code ne sera plus valable. Les deux seront prévenus par email.`,
       confirmLabel: request ? "Accepter et rendre le billet" : "Annuler le transfert",
       danger: true,
-      showReason: true,
-      reasonRequired: true,
-      reasonPlaceholder: request
-        ? "Motif (ex. demande justifiée : erreur de destinataire)…"
-        : "Motif et contexte de l'appel (date, vérification d'identité…)",
-      onConfirm: (reason) =>
+      // Accepter une demande (en ligne ou par téléphone) ne demande aucune
+      // saisie : l'admin, la date et l'origine sont tracés automatiquement.
+      onConfirm: () =>
         run(
           () =>
             revertTicketTransfer(transfer.id, {
-              reason: reason ?? "",
               source: request ? "PLATFORM" : "PHONE",
               request_id: request?.id,
             }),
