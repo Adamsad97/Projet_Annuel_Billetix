@@ -228,7 +228,9 @@ export class EventController {
   }
 
   @Get("me/events")
-  @Roles("ORGANIZER")
+  // ADMIN : lecture seule pour le mode aperçu du back-office (il ne voit
+  // que ses propres données de ce rôle, c'est-à-dire aucune).
+  @Roles("ORGANIZER", "ADMIN")
   @ApiOperation({ summary: "Mes événements (ORGANIZER)" })
   myEvents(@CurrentUser() user: JwtPayload) {
     return firstValueFrom(
@@ -239,7 +241,9 @@ export class EventController {
   }
 
   @Get("me/dashboard")
-  @Roles("ORGANIZER")
+  // ADMIN : lecture seule pour le mode aperçu du back-office (il ne voit
+  // que ses propres données de ce rôle, c'est-à-dire aucune).
+  @Roles("ORGANIZER", "ADMIN")
   @ApiOperation({
     summary:
       "Tableau de bord organisateur — vue globale (tous événements confondus)",

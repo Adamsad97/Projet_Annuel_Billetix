@@ -361,7 +361,8 @@ export class TicketController {
   // ce handler, renvoyant 401 "Token manquant" (getById n'est pas @Public).
   // Revente réservée aux acheteurs connectés (demande produit) : plus de
   // consultation anonyme des annonces, ni via le site ni via l'API.
-  @Roles("BUYER")
+  // ADMIN : consultation en mode aperçu du back-office (achat toujours bloqué).
+  @Roles("BUYER", "ADMIN")
   @Get("resale")
   @ApiOperation({ summary: "Toutes les annonces de revente actives, tous événements confondus (acheteur connecté)" })
   async listAllResale() {
@@ -633,7 +634,8 @@ export class TicketController {
     return firstValueFrom(this.ticketClient.send("ticket.cancel", { id }));
   }
 
-  @Roles("BUYER")
+  // ADMIN : consultation en mode aperçu du back-office (achat toujours bloqué).
+  @Roles("BUYER", "ADMIN")
   @Get("resale/event/:eventId")
   @ApiOperation({ summary: "Billets en revente pour un événement (acheteur connecté)" })
   listResaleByEvent(@Param("eventId") eventId: string) {
@@ -644,7 +646,8 @@ export class TicketController {
     );
   }
 
-  @Roles("BUYER")
+  // ADMIN : consultation en mode aperçu du back-office (achat toujours bloqué).
+  @Roles("BUYER", "ADMIN")
   @Get("resale/:resaleId")
   @ApiOperation({ summary: "Détail d'une offre de revente (acheteur connecté)" })
   async getResale(@Param("resaleId") resaleId: string) {
@@ -738,6 +741,12 @@ export class TicketController {
       payment_method: string;
     },
   ) {
+    // Même règle que la réservation classique (order.controller.ts) : un
+    // compte administrateur n'achète jamais, revente comprise — y compris
+    // depuis le mode aperçu du back-office.
+    if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
+      throw new ForbiddenException("Un compte administrateur ne peut pas acheter de billets.");
+    }
     // Créer la commande pour le nouvel acheteur — order-service relit
     // lui-même l'offre de revente (prix, catégorie, événement) et le taux de
     // commission ; le prix n'est jamais accepté depuis ce endpoint.

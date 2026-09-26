@@ -12,6 +12,8 @@ const USER_KEY = "billetix_user";
 // maintient la session de tous, une fin de session les déconnecte tous.
 const LAST_ACTIVITY_KEY = "billetix_last_activity";
 const END_REASON_KEY = "billetix_session_end_reason";
+// Mode aperçu du back-office (cf. lib/auth/preview.ts), propre à l'onglet.
+export const PREVIEW_ROLE_KEY = "billetix_preview_role";
 
 /** Pourquoi la session s'est terminée (message affiché à la connexion). */
 export type SessionEndReason = "manuelle" | "inactivite" | "duree_max" | "expiree";
@@ -99,6 +101,7 @@ export function clearSession(): void {
     store.removeItem(REFRESH_TOKEN_KEY);
     store.removeItem(USER_KEY);
   }
+  window.sessionStorage.removeItem(PREVIEW_ROLE_KEY);
 }
 
 export function getAccessToken(): string | null {

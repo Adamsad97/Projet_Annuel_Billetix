@@ -3,6 +3,7 @@
 // systématiquement le corps de la requête).
 
 import { getApiBaseUrl } from "./base-url";
+import { isPreviewActive, PREVIEW_READ_ONLY_MESSAGE } from "@/lib/auth/preview";
 import { getAccessToken } from "@/lib/auth/session";
 import { ApiError, extractErrorMessage } from "./http-error";
 import { refreshAccessToken } from "./client";
@@ -17,6 +18,7 @@ const API_URL = getApiBaseUrl();
 // silence comme partout ailleurs dans l'app.
 async function uploadFile(path: string, file: File, isRetry = false): Promise<{ url: string }> {
   const token = getAccessToken();
+  if (isPreviewActive()) throw new ApiError(403, PREVIEW_READ_ONLY_MESSAGE, "PREVIEW_READ_ONLY");
   const formData = new FormData();
   formData.append("file", file);
 

@@ -7,6 +7,7 @@ import type { TicketOption } from "@/lib/mock/event-details";
 import { reserveStock } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/http-error";
 import { saveCart } from "@/lib/checkout/cart";
+import { isPreviewActive, PREVIEW_READ_ONLY_MESSAGE } from "@/lib/auth/preview";
 import { getAccessToken, getStoredUser } from "@/lib/auth/session";
 import { CountdownDigits } from "@/components/event-detail/sales-countdown";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
@@ -64,16 +65,19 @@ export function TicketSelector({
     null,
   );
 
+  // Admin en aperçu acheteur : le formulaire s'affiche comme pour un
+  // client, mais la réservation est désactivée (cf. lib/auth/preview.ts).
+  const [previewMode, setPreviewMode] = useState(false);
+
   useEffect(() => {
     const user = getStoredUser();
-    if (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPreviewMode(isPreviewActive());
+    if ((user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") && !isPreviewActive()) {
       setBlockReason("admin");
     } else if (user?.id === organizerId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBlockReason("own_event");
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBlockReason(null);
     }
   }, [organizerId]);
@@ -140,6 +144,10 @@ export function TicketSelector({
       .map((t) => ({ ticket_category_id: t.id, quantity: quantities[t.id] }));
 
     if (items.length === 0) return;
+    if (previewMode) {
+      setError(`${PREVIEW_READ_ONLY_MESSAGE} Un compte administrateur ne peut pas réserver.`);
+      return;
+    }
 
     setLoading(true);
     try {

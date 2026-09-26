@@ -529,3 +529,26 @@ describe("TicketController — offrir un billet", () => {
     expect(result).toMatchObject({ success: true, transfer: { to_email: "marie@example.com" } });
   });
 });
+
+describe("TicketController — achat en revente", () => {
+  it("refuse l'achat à un compte administrateur, avant toute commande", async () => {
+    const orderClient = { send: jest.fn() };
+    const controller = new TicketController(
+      {} as any,
+      orderClient as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as TicketsGateway,
+    );
+    for (const role of ["ADMIN", "SUPER_ADMIN"]) {
+      await expect(
+        controller.purchaseResale({ sub: "admin-1", role } as JwtPayload, "resale-1", {} as any),
+      ).rejects.toThrow("Un compte administrateur ne peut pas acheter de billets.");
+    }
+    expect(orderClient.send).not.toHaveBeenCalled();
+  });
+});

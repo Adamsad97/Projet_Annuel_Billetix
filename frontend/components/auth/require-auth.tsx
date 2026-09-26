@@ -12,6 +12,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import type { UserRole } from "@/lib/api/auth";
 import { getAccessToken, getStoredUser, SESSION_ENDED_EVENT } from "@/lib/auth/session";
+import { effectiveRole, isAdminRole, PREVIEW_CHANGED_EVENT } from "@/lib/auth/preview";
 
 /** Espace de chaque rôle — destination si on arrive sur une section d'un autre rôle. */
 export function homePathForRole(role: UserRole): string {
@@ -42,9 +43,12 @@ export function RequireAuth({ roles, children }: { roles?: UserRole[]; children:
         router.replace(`/connexion?next=${encodeURIComponent(next)}`);
         return;
       }
-      if (roles && !roles.includes(user.role)) {
+      // Mode aperçu : les pages d'un rôle s'ouvrent pour l'admin qui le
+      // prévisualise ; le back-office reste jugé sur le vrai rôle.
+      const role = roles?.some(isAdminRole) ? user.role : (effectiveRole(user) ?? user.role);
+      if (roles && !roles.includes(role)) {
         setAllowed(false);
-        router.replace(homePathForRole(user.role));
+        router.replace(homePathForRole(role));
         return;
       }
       setAllowed(true);
@@ -54,7 +58,11 @@ export function RequireAuth({ roles, children }: { roles?: UserRole[]; children:
     // contenu (SessionManager se charge de la redirection avec le motif).
     const onEnded = () => setAllowed(false);
     window.addEventListener(SESSION_ENDED_EVENT, onEnded);
-    return () => window.removeEventListener(SESSION_ENDED_EVENT, onEnded);
+    window.addEventListener(PREVIEW_CHANGED_EVENT, check);
+    return () => {
+      window.removeEventListener(SESSION_ENDED_EVENT, onEnded);
+      window.removeEventListener(PREVIEW_CHANGED_EVENT, check);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 

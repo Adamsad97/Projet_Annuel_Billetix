@@ -3,6 +3,7 @@
 
 import { getApiBaseUrl } from "./base-url";
 import { ApiError, extractErrorCode, extractErrorMessage } from "./http-error";
+import { isPreviewActive, PREVIEW_READ_ONLY_MESSAGE } from "@/lib/auth/preview";
 import { endSession, getAccessToken, getRefreshToken, updateTokens } from "@/lib/auth/session";
 import { refreshTokens } from "./auth";
 
@@ -50,6 +51,11 @@ async function request<T>(
   options: { method?: string; body?: unknown } = {},
   isRetry = false,
 ): Promise<T> {
+  // Mode aperçu du back-office : consultation uniquement, aucune
+  // modification ne part vers le serveur.
+  if ((options.method ?? "GET") !== "GET" && isPreviewActive()) {
+    throw new ApiError(403, PREVIEW_READ_ONLY_MESSAGE, "PREVIEW_READ_ONLY");
+  }
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = getAccessToken();
   if (token) headers.Authorization = `Bearer ${token}`;

@@ -1,11 +1,11 @@
 import { Navbar } from "@/components/layout/navbar";
-import { BuyerOnlyGate } from "@/components/layout/buyer-only-gate";
+import { CatalogueGate } from "@/components/auth/catalogue-gate";
 import { CatalogueExplorer } from "@/components/catalogue/catalogue-explorer";
 import { SiteFooter } from "@/components/layout/site-footer";
 
 export default function CataloguePage() {
   return (
-    <BuyerOnlyGate>
+    <CatalogueGate>
       <div className="flex flex-1 flex-col bg-page">
         <Navbar active="/catalogue" />
 
@@ -22,6 +22,6 @@ export default function CataloguePage() {
 
         <SiteFooter />
       </div>
-    </BuyerOnlyGate>
+    </CatalogueGate>
   );
 }

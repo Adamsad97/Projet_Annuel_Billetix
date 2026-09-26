@@ -11,6 +11,8 @@ import { getStoredUser } from "@/lib/auth/session";
 import type { AuthUser } from "@/lib/api/auth";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Logo } from "@/components/layout/logo";
+import { PreviewSwitcher } from "@/components/admin/preview-switcher";
+import { isAdminRole, isPreviewActive } from "@/lib/auth/preview";
 
 export function AuthHeader() {
   const router = useRouter();
@@ -28,12 +30,9 @@ export function AuthHeader() {
     router.push("/");
   }
 
-  // Bug corrigé : le logo pointait vers "/" pour tout le monde, y compris
-  // dans le back-office. Pour un ADMIN/SUPER_ADMIN, "/" rebondit maintenant
-  // aussitôt vers "/admin" (BuyerOnlyGate) — le clic semblait ne rien faire.
-  // Le logo redevient "/admin" pour eux, "/" pour les autres rôles.
-  const homeHref =
-    user?.role === "ADMIN" || user?.role === "SUPER_ADMIN" ? "/admin" : "/";
+  // Le logo mène à l'accueil pour tous les rôles (le back-office reste
+  // accessible par le lien « Back-office » de la barre de navigation).
+  const homeHref = "/";
 
   return (
     <header className="border-b border-hairline-2 bg-header/90 backdrop-blur">
@@ -44,6 +43,11 @@ export function AuthHeader() {
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
+          {isAdminRole(user?.role) && !isPreviewActive() ? (
+            <span className="hidden md:inline-flex">
+              <PreviewSwitcher />
+            </span>
+          ) : null}
           {user === undefined ? null : user ? (
             <>
               <span className="hidden text-sm font-medium text-ink-3 sm:block">

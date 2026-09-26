@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme/theme-provider";
 import { SessionManager } from "@/components/auth/session-manager";
+import { PreviewBanner } from "@/components/admin/preview-banner";
 
 // Bug corrigé : sans ce script exécuté avant tout rendu, un visiteur ayant
 // choisi le mode clair verrait un flash sombre (thème par défaut) au
@@ -43,6 +44,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
+          <PreviewBanner />
           {children}
           <SessionManager />
         </ThemeProvider>
