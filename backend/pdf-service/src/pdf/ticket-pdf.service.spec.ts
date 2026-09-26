@@ -35,7 +35,6 @@ describe('TicketPdfService', () => {
       holder_first_name: 'Jean',
       holder_last_name: 'Dupont',
       buyer_email: 'jean@test.com',
-      qr_code_url: 'data:image/png;base64,abc',
     };
 
     it("inclut l'affiche de l'événement quand event_poster_url est fourni", () => {
@@ -43,6 +42,12 @@ describe('TicketPdfService', () => {
 
       expect(html).toContain('class="poster-image"');
       expect(html).toContain('https://minio.local/posters/event-1.jpg');
+    });
+
+    it("ne contient aucun QR code : le PDF n'est pas un titre d'accès", () => {
+      const html = buildHtml(baseData);
+      expect(html).not.toMatch(/data:image/);
+      expect(html).toContain("Ce document ne permet pas d'entrer");
     });
 
     it("n'affiche aucune image quand event_poster_url est absent (pas de <img> cassée)", () => {

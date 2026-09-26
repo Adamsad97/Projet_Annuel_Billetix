@@ -93,12 +93,12 @@ export class Ticket {
 
   // ─── QR code ──────────────────────────────────────────────────────────────────
 
-  // Token unique signé HMAC-SHA256 — embarqué dans le QR code
+  // Jeton interne du billet (aléatoire, change à chaque revente ou
+  // transfert) — ne
+  // quitte jamais le serveur : le QR affiché ne contient qu'un code
+  // éphémère (cf. QrDisplayCode).
   @Column({ unique: true })
   qr_code_token: string;
-
-  @Column({ type: 'text', nullable: true })
-  qr_code_url: string | null;
 
   @Column({ nullable: true })
   pdf_url: string | null;
@@ -131,4 +131,13 @@ export class Ticket {
 
   @UpdateDateColumn()
   updated_at: Date;
+
+  /**
+   * Sérialisation des réponses RPC (JSON) : le jeton interne ne quitte
+   * jamais le ticket-service — ni vers l'acheteur, ni vers l'organisateur.
+   */
+  toJSON(): Omit<Ticket, 'qr_code_token' | 'toJSON'> {
+    const { qr_code_token: _token, ...publicFields } = this as Ticket;
+    return publicFields;
+  }
 }

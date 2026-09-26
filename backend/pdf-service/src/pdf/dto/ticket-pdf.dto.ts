@@ -50,7 +50,4 @@ export class TicketPdfDto {
 
   @IsEmail()
   buyer_email: string;
-
-  @IsString()
-  qr_code_url: string;
 }

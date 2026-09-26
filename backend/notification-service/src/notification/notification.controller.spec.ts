@@ -18,6 +18,79 @@ describe('NotificationController', () => {
     } as unknown as RmqContext;
   });
 
+  it('billet offert : prévient le bénéficiaire et confirme à l’expéditeur, sans QR ni PDF', async () => {
+    await controller.onTicketTransferred(
+      {
+        ticketReference: 'TKT-2026-000001',
+        eventName: 'Concert Test',
+        eventDate: '12 octobre 2026',
+        eventVenue: 'Zénith',
+        categoryName: 'Standard',
+        senderEmail: 'jean@example.com',
+        senderFirstName: 'Jean',
+        senderLastName: 'Dupont',
+        recipientEmail: 'marie@example.com',
+        recipientFirstName: 'Marie',
+        holderFirstName: 'Paul',
+        holderLastName: 'Martin',
+        transferredAt: '26/09/2026 à 14:03',
+      },
+      rmqContext,
+    );
+
+    expect(mail.send).toHaveBeenCalledTimes(2);
+    const [received, sent] = mail.send.mock.calls.map(([options]) => options);
+    expect(received).toMatchObject({ to: 'marie@example.com', template: 'ticket-gift-received' });
+    expect(received.context.ticketsUrl).toContain('reauth=1');
+    expect(sent).toMatchObject({ to: 'jean@example.com', template: 'ticket-gift-sent' });
+    expect(received.attachments).toBeUndefined();
+  });
+
+  it('transfert annulé : billet restitué à l’expéditeur, retiré au bénéficiaire', async () => {
+    await controller.onTransferReverted(
+      {
+        ticketReference: 'TKT-2026-000001',
+        eventName: 'Concert Test',
+        eventDate: '12 octobre 2026',
+        senderEmail: 'jean@example.com',
+        senderFirstName: 'Jean',
+        recipientEmail: 'marie@example.com',
+        recipientFirstName: 'Marie',
+        holderFirstName: 'Jean',
+        holderLastName: 'Dupont',
+      },
+      rmqContext,
+    );
+
+    const [sender, recipient] = mail.send.mock.calls.map(([options]) => options);
+    expect(sender).toMatchObject({ to: 'jean@example.com', template: 'transfer-reverted-sender' });
+    expect(sender.context.ticketsUrl).toContain('reauth=1');
+    expect(recipient).toMatchObject({ to: 'marie@example.com', template: 'transfer-reverted-recipient' });
+  });
+
+  it('demande d’annulation refusée : motif transmis à l’expéditeur', async () => {
+    await controller.onTransferRevertRejected(
+      {
+        ticketReference: 'TKT-2026-000001',
+        eventName: 'Concert Test',
+        eventDate: '12 octobre 2026',
+        senderEmail: 'jean@example.com',
+        senderFirstName: 'Jean',
+        recipientEmail: 'marie@example.com',
+        decisionReason: 'Billet déjà remis en main propre',
+      },
+      rmqContext,
+    );
+
+    expect(mail.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'jean@example.com',
+        template: 'transfer-revert-rejected',
+        context: expect.objectContaining({ decisionReason: 'Billet déjà remis en main propre' }),
+      }),
+    );
+  });
+
   it('envoie l\'email de remboursement effectué avec le bon template et sujet', async () => {
     await controller.onRefundCompleted(
       {

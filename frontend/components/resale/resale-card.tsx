@@ -29,39 +29,39 @@ export function ResaleCard({ listing }: { listing: ApiResaleListing }) {
   }, [listing.original_buyer_id]);
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
-      <div className="flex h-24 items-center justify-center bg-gradient-to-br from-violet-700 via-purple-800 to-indigo-950">
+    <article className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+      <div className="flex h-24 items-center justify-center bg-slate-800">
         <span className="text-3xl opacity-90">🎫</span>
       </div>
 
       <div className="flex flex-col gap-3 p-4">
         <div>
-          <h3 className="font-bold text-white">{listing.event_name}</h3>
-          <p className="text-sm text-violet-300">{listing.category_name}</p>
-          <p className="mt-0.5 text-sm text-gray-500">
+          <h3 className="font-bold text-ink-1">{listing.event_name}</h3>
+          <p className="text-sm text-accent">{listing.category_name}</p>
+          <p className="mt-0.5 text-sm text-ink-5">
             {dateFormatter.format(new Date(listing.event_start_at))} · {listing.event_venue_name}
             {listing.event_city ? `, ${listing.event_city}` : ""}
           </p>
         </div>
 
-        <div className="flex items-center justify-between border-t border-white/5 pt-3">
+        <div className="flex items-center justify-between border-t border-hairline-1 pt-3">
           <div>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-ink-5">
               {isOwnListing ? "Ton annonce" : `Vendu par ${sellerInitials(listing.holder_first_name, listing.holder_last_name)}`}
             </p>
-            <p className="font-bold text-white">{currency.format(Number(listing.resale_price))}</p>
+            <p className="font-bold text-ink-1">{currency.format(Number(listing.resale_price))}</p>
           </div>
           {isOwnListing ? (
             <Link
               href={`/billets/${listing.ticket_id}`}
-              className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:border-white/30 hover:text-white"
+              className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-3 transition-colors hover:border-hairline-5 hover:text-ink-1"
             >
               Gérer
             </Link>
           ) : (
             <Link
               href={`/revente/${listing.id}`}
-              className="rounded-full bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
             >
               Acheter
             </Link>

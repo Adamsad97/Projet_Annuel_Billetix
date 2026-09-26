@@ -1,8 +1,8 @@
 import { Test } from '@nestjs/testing';
-import { RpcException } from '@nestjs/microservices';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
+import { QrDisplayCode } from './qr-display-code.entity';
 import { QrTokenHistory } from './qr-token-history.entity';
 import { Ticket, TicketStatus } from './ticket.entity';
 import { TicketService } from './ticket.service';
@@ -24,6 +24,10 @@ describe('TicketService', () => {
     getRawMany: jest.Mock;
   };
   let dataSource: { query: jest.Mock };
+  let platformConfig: { get: jest.Mock };
+  // Table qr_display_codes simulée en mémoire.
+  let displayCodes: QrDisplayCode[];
+  let displayCodeRepo: { findOne: jest.Mock; save: jest.Mock; create: jest.Mock };
 
   beforeEach(async () => {
     queryBuilder = {
@@ -44,13 +48,40 @@ describe('TicketService', () => {
       update: jest.fn().mockResolvedValue(undefined),
     };
     dataSource = { query: jest.fn() };
+    platformConfig = {
+      get: jest.fn().mockResolvedValue({
+        ticket_qr_rotation_seconds: 5,
+        ticket_qr_rotation_tolerance_steps: 1,
+      }),
+    };
+    displayCodes = [];
+    displayCodeRepo = {
+      findOne: jest.fn(({ where }: { where: Record<string, unknown> }) =>
+        Promise.resolve(
+          displayCodes.find((row) =>
+            Object.entries(where).every(([key, value]) => {
+              const current = row[key as keyof QrDisplayCode];
+              return value instanceof Date
+                ? current instanceof Date && current.getTime() === value.getTime()
+                : current === value;
+            }),
+          ) ?? null,
+        ),
+      ),
+      create: jest.fn((row: QrDisplayCode) => row),
+      save: jest.fn((row: QrDisplayCode) => {
+        displayCodes.push(row);
+        return Promise.resolve(row);
+      }),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
         TicketService,
         { provide: getRepositoryToken(Ticket), useValue: repo },
         { provide: getRepositoryToken(QrTokenHistory), useValue: qrHistoryRepo },
-        { provide: PlatformConfigCache, useValue: { get: jest.fn() } },
+        { provide: getRepositoryToken(QrDisplayCode), useValue: displayCodeRepo },
+        { provide: PlatformConfigCache, useValue: platformConfig },
         { provide: DataSource, useValue: dataSource },
       ],
     }).compile();
@@ -58,99 +89,146 @@ describe('TicketService', () => {
     service = module.get(TicketService);
   });
 
-  describe('resolveTicketId / verifyQr — jeton opaque (aucune information exploitable dans le QR)', () => {
-    it("resolveTicketId retrouve l'ID du billet à partir du jeton via qr_token_history", async () => {
-      qrHistoryRepo.findOne.mockResolvedValue({
-        token: 'jeton-opaque-abc',
-        ticket_id: 'ticket-123',
-        is_current: true,
-      });
+  afterEach(() => jest.restoreAllMocks());
 
-      const ticketId = await service.resolveTicketId('jeton-opaque-abc');
-      expect(ticketId).toBe('ticket-123');
-      expect(qrHistoryRepo.findOne).toHaveBeenCalledWith({ where: { token: 'jeton-opaque-abc' } });
+  const ticketRow = (overrides: Partial<Ticket> = {}) => ({
+    id: 'ticket-123',
+    event_id: 'event-1',
+    qr_code_token: 'jeton-courant',
+    status: TicketStatus.SENT,
+    ...overrides,
+  });
+
+  /** Fait afficher le QR à l'instant `now` et renvoie le texte qu'il contient. */
+  async function displayedQrText(now = Date.now()): Promise<string> {
+    jest.spyOn(Date, 'now').mockReturnValue(now);
+    await service.getDisplayQr('ticket-123');
+    jest.spyOn(Date, 'now').mockRestore();
+    return `BTX2.${displayCodes[displayCodes.length - 1].code}`;
+  }
+
+  describe('QR éphémère BTX2 — aucune donnée du billet dans le QR', () => {
+    beforeEach(() => {
+      repo.findOne.mockResolvedValue(ticketRow());
     });
 
-    it('resolveTicketId rejette (code INVALID) un jeton absent de qr_token_history (jamais émis, ou totalement inventé)', async () => {
-      qrHistoryRepo.findOne.mockResolvedValue(undefined);
+    it('le QR ne contient que BTX2 + un code aléatoire de 128 bits — ni jeton, ni identifiant', async () => {
+      const text = await displayedQrText();
+      expect(text).toMatch(/^BTX2\.[A-Za-z0-9_-]{22}$/);
+      expect(text).not.toContain('jeton-courant');
+      expect(text).not.toContain('ticket-123');
+      expect(displayCodes[0]).toMatchObject({ ticket_id: 'ticket-123', ticket_token: 'jeton-courant' });
+    });
 
-      await expect(service.resolveTicketId('n-importe-quoi')).rejects.toMatchObject({
+    it('renvoie une image et le délai avant le code suivant (période réglée par l’admin)', async () => {
+      const display = await service.getDisplayQr('ticket-123');
+      expect(display.qr_code_url).toMatch(/^data:image\/png;base64,/);
+      expect(display.refresh_in_seconds).toBeGreaterThan(0);
+      expect(display.refresh_in_seconds).toBeLessThanOrEqual(5);
+    });
+
+    it('même code pendant la période, nouveau code à la suivante', async () => {
+      const start = 1_800_000_000_000; // multiple de 5 s
+      const first = await displayedQrText(start + 1_000);
+      const again = await displayedQrText(start + 4_000);
+      const next = await displayedQrText(start + 5_000);
+      expect(again).toBe(first);
+      expect(next).not.toBe(first);
+    });
+
+    it('accepte le code de la période en cours', async () => {
+      const text = await displayedQrText();
+      const result = await service.verifyQr(text);
+      expect(result).toMatchObject({ valid: true, ticket: { id: 'ticket-123' } });
+    });
+
+    it("accepte le code jusqu'à une période après son expiration (tolérance 1), puis EXPIRED", async () => {
+      const start = 1_800_000_000_000;
+      const text = await displayedQrText(start);
+      await expect(service.verifyQr(text, new Date(start + 9_999))).resolves.toMatchObject({ valid: true });
+      await expect(service.verifyQr(text, new Date(start + 10_000))).rejects.toMatchObject({
+        error: { code: 'EXPIRED' },
+      });
+    });
+
+    it("refuse (EXPIRED) une capture d'écran ancienne", async () => {
+      const text = await displayedQrText(Date.now() - 5 * 60_000);
+      await expect(service.verifyQr(text)).rejects.toMatchObject({ error: { code: 'EXPIRED' } });
+    });
+
+    it("juge un scan hors ligne à l'heure du scan, pas à celle de la synchronisation", async () => {
+      const scannedAt = Date.now() - 2 * 3600_000;
+      const text = await displayedQrText(scannedAt);
+      await expect(service.verifyQr(text, new Date(scannedAt))).resolves.toMatchObject({ valid: true });
+      await expect(service.verifyQr(text)).rejects.toMatchObject({ error: { code: 'EXPIRED' } });
+    });
+
+    it('refuse (INVALID) un code inventé ou un texte quelconque', async () => {
+      await expect(service.verifyQr('BTX2.AAAAAAAAAAAAAAAAAAAAAA')).rejects.toMatchObject({
         error: { code: 'INVALID' },
       });
+      await expect(service.verifyQr('n-importe-quoi')).rejects.toMatchObject({ error: { code: 'INVALID' } });
     });
 
-    it('verifyQr rejette (code SUPERSEDED, pas INVALID) un jeton authentique dont le billet ne correspond plus (transféré depuis une revente)', async () => {
-      qrHistoryRepo.findOne.mockResolvedValue({
-        token: 'ancien-jeton',
-        ticket_id: 'ticket-123',
-        is_current: false,
-      });
-      repo.findOne.mockResolvedValue({
-        id: 'ticket-123',
-        event_id: 'event-1',
-        qr_code_token: 'nouveau-jeton-apres-revente',
-        status: TicketStatus.SENT,
-      });
-
-      // Distinct d'INVALID : le jeton existe bien dans l'historique (vrai
-      // billet, juste périmé) — permet à l'agent de contrôle de voir
-      // "billet revendu" plutôt qu'un rejet générique indistinguable d'un
-      // jeton totalement inventé.
-      await expect(service.verifyQr('ancien-jeton')).rejects.toMatchObject({
-        error: { code: 'SUPERSEDED' },
-      });
+    it("refuse (STATIC_REFUSED) un ancien QR fixe contenant le jeton du billet", async () => {
+      qrHistoryRepo.findOne.mockResolvedValue({ token: 'jeton-courant', ticket_id: 'ticket-123', is_current: true });
+      await expect(service.verifyQr('jeton-courant')).rejects.toMatchObject({ error: { code: 'STATIC_REFUSED' } });
     });
 
-    it("verifyQr rejette (code INVALID) un jeton connu de l'historique mais dont le billet n'existe pas (ou plus) en base", async () => {
-      qrHistoryRepo.findOne.mockResolvedValue({
-        token: 'jeton-orphelin',
-        ticket_id: 'ticket-inexistant',
-        is_current: true,
-      });
+    it('resolveTicketId retrouve le billet depuis le code affiché (journal des scans refusés)', async () => {
+      const text = await displayedQrText();
+      await expect(service.resolveTicketId(text)).resolves.toBe('ticket-123');
+    });
+
+    it('refuse (SUPERSEDED) un code affiché avant la revente du billet', async () => {
+      const text = await displayedQrText();
+      repo.findOne.mockResolvedValue(ticketRow({ qr_code_token: 'nouveau-jeton-apres-revente' }));
+      await expect(service.verifyQr(text)).rejects.toMatchObject({ error: { code: 'SUPERSEDED' } });
+    });
+
+    it('après une revente, le nouveau porteur obtient un nouveau code dans la même période', async () => {
+      const now = 1_800_000_000_000;
+      const before = await displayedQrText(now);
+      repo.findOne.mockResolvedValue(ticketRow({ qr_code_token: 'nouveau-jeton-apres-revente' }));
+      const after = await displayedQrText(now + 1_000);
+      expect(after).not.toBe(before);
+      await expect(service.verifyQr(after, new Date(now + 1_000))).resolves.toMatchObject({ valid: true });
+    });
+
+    it('refuse (ALREADY_USED) un billet déjà scanné', async () => {
+      const text = await displayedQrText();
+      repo.findOne.mockResolvedValue(ticketRow({ status: TicketStatus.USED }));
+      await expect(service.verifyQr(text)).rejects.toMatchObject({ error: { code: 'ALREADY_USED' } });
+    });
+
+    it("refuse (INVALID) un code dont le billet n'existe plus", async () => {
+      const text = await displayedQrText();
       repo.findOne.mockResolvedValue(undefined);
-
-      await expect(service.verifyQr('jeton-orphelin')).rejects.toMatchObject({
-        error: { code: 'INVALID' },
-      });
+      await expect(service.verifyQr(text)).rejects.toMatchObject({ error: { code: 'INVALID' } });
     });
 
-    it('verifyQr accepte un jeton valide et à jour', async () => {
-      qrHistoryRepo.findOne.mockResolvedValue({
-        token: 'jeton-courant',
-        ticket_id: 'ticket-123',
-        is_current: true,
-      });
-      repo.findOne.mockResolvedValue({
-        id: 'ticket-123',
-        event_id: 'event-1',
-        qr_code_token: 'jeton-courant',
-        status: TicketStatus.SENT,
-      });
-
-      const result = await service.verifyQr('jeton-courant');
-      expect(result.valid).toBe(true);
-      expect(result.ticket.id).toBe('ticket-123');
-    });
-
-    it('verifyQr rejette (code ALREADY_USED) un billet déjà scanné', async () => {
-      qrHistoryRepo.findOne.mockResolvedValue({
-        token: 'jeton-courant',
-        ticket_id: 'ticket-123',
-        is_current: true,
-      });
-      repo.findOne.mockResolvedValue({
-        id: 'ticket-123',
-        event_id: 'event-1',
-        qr_code_token: 'jeton-courant',
-        status: TicketStatus.USED,
-      });
-
-      await expect(service.verifyQr('jeton-courant')).rejects.toMatchObject({
-        error: { code: 'ALREADY_USED' },
+    it('suit la période configurée (jamais une valeur figée)', async () => {
+      platformConfig.get.mockResolvedValue({ ticket_qr_rotation_seconds: 3600, ticket_qr_rotation_tolerance_steps: 0 });
+      const hourStart = 1_800_000_000_000 - (1_800_000_000_000 % 3_600_000);
+      const text = await displayedQrText(hourStart + 60_000);
+      await expect(service.verifyQr(text, new Date(hourStart + 3_000_000))).resolves.toMatchObject({ valid: true });
+      await expect(service.verifyQr(text, new Date(hourStart + 3_600_000))).rejects.toMatchObject({
+        error: { code: 'EXPIRED' },
       });
     });
+  });
 
-    it('generate() produit un jeton opaque enregistré dans qr_token_history, que verifyQr accepte immédiatement (round-trip réel)', async () => {
+  describe('Ticket — sérialisation des réponses RPC', () => {
+    it('ne transmet jamais le jeton interne hors du ticket-service', () => {
+      const ticket = Object.assign(new Ticket(), ticketRow({ reference: 'TKT-1' }));
+      const sent = JSON.parse(JSON.stringify(ticket));
+      expect(sent).not.toHaveProperty('qr_code_token');
+      expect(sent).toMatchObject({ id: 'ticket-123', reference: 'TKT-1' });
+    });
+  });
+
+  describe('generate / transferToNewBuyer', () => {
+    it('generate() produit un jeton interne opaque, et le code affiché pour ce billet passe au contrôle (round-trip réel)', async () => {
       let savedTicket: { id: string; qr_code_token: string; status: TicketStatus } | undefined;
       let savedHistory: { token: string; ticket_id: string; is_current: boolean } | undefined;
       repo.createQueryBuilder = jest.fn(); // pas utilisé ici
@@ -195,9 +273,9 @@ describe('TicketService', () => {
       expect(ticket.qr_code_token).toMatch(/^[A-Za-z0-9_-]+$/);
       expect(savedHistory).toMatchObject({ token: ticket.qr_code_token, ticket_id: ticket.id, is_current: true });
 
+      // Le jeton reste interne : c'est le code affiché qui passe au contrôle.
       repo.findOne.mockResolvedValue(savedTicket);
-      qrHistoryRepo.findOne.mockResolvedValue(savedHistory);
-      const verified = await service.verifyQr(ticket.qr_code_token);
+      const verified = await service.verifyQr(await displayedQrText());
       expect(verified.valid).toBe(true);
     });
 
@@ -264,28 +342,6 @@ describe('TicketService', () => {
         expect.objectContaining({ ticket_id: 'ticket-123', is_current: true }),
       );
       expect(updated.qr_code_token).not.toBe('ancien-jeton');
-    });
-
-    it("le QR encode le jeton en octets compressés (pas en texte lisible), et decodeQrPayload le reconstruit à l'identique", async () => {
-      const token = 'jeton-opaque-de-test-1234567890';
-
-      // Le contenu réel encodé dans l'image ne doit jamais être le texte
-      // brut du jeton — sinon n'importe quel lecteur QR générique
-      // (appareil photo, etc.) l'afficherait en clair.
-      const qrDataUrl = await (
-        service as unknown as { generateQrImage(t: string): Promise<string> }
-      ).generateQrImage(token);
-      expect(qrDataUrl).toMatch(/^data:image\/png;base64,/);
-
-      // decodeQrPayload() est l'inverse exact : ce que l'appli de contrôle
-      // lira dans le QR redonne le jeton d'origine, octet pour octet.
-      const zlib = await import('zlib');
-      const compressed = zlib.deflateRawSync(Buffer.from(token, 'utf8'));
-      expect(service.decodeQrPayload(compressed)).toBe(token);
-    });
-
-    it('decodeQrPayload rejette (code INVALID) des octets qui ne sont pas un flux compressé valide', () => {
-      expect(() => service.decodeQrPayload(Buffer.from('n-importe-quoi'))).toThrow(RpcException);
     });
   });
 

@@ -221,10 +221,22 @@ export interface AuditLogFilters {
   entity_id?: string;
   performed_by?: string;
   action?: string;
+  // Recherche libre (email, référence de billet, IP, détails…).
+  q?: string;
   from?: string;
   to?: string;
   limit?: number;
   offset?: number;
+}
+
+/** Journal paginé : entrées de la page + nombre total de résultats. */
+export function searchAuditLogs(filters: AuditLogFilters = {}): Promise<{ logs: ApiAuditLogEntry[]; total: number }> {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== "") search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return apiGet(`/admin/audit-logs${qs ? `?${qs}` : ""}`);
 }
 
 export async function getAuditLogs(filters: AuditLogFilters = {}): Promise<ApiAuditLogEntry[]> {
@@ -304,4 +316,141 @@ export function processPayout(id: string): Promise<ApiPayout> {
 
 export function approveEarlyPayout(id: string): Promise<ApiPayout> {
   return apiPost(`/admin/payouts/${id}/approve-early`);
+}
+
+// ─── Billets offerts (transferts entre comptes) ─────────────────────────────
+
+export interface ApiTicketTransfer {
+  id: string;
+  ticket_id: string;
+  ticket_reference: string;
+  event_id: string;
+  event_name: string;
+  event_start_at: string;
+  ticket_category_name: string;
+  from_user_id: string;
+  from_email: string;
+  from_first_name: string;
+  from_last_name: string;
+  from_holder_first_name: string;
+  from_holder_last_name: string;
+  to_user_id: string;
+  to_email: string;
+  to_holder_first_name: string;
+  to_holder_last_name: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+  status: "ACTIVE" | "REVERTED";
+  reverted_at: string | null;
+  reverted_by_email: string | null;
+  revert_reason: string | null;
+  revert_source: "PHONE" | "PLATFORM" | null;
+  // Demande de l'expéditeur en attente (liste admin uniquement).
+  pending_revert_request?: ApiTransferRevertRequest | null;
+}
+
+export interface ApiTransferRevertRequest {
+  id: string;
+  transfer_id: string;
+  ticket_id: string;
+  requested_by: string;
+  reason: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  decided_by_email: string | null;
+  decision_reason: string | null;
+  decided_at: string | null;
+  created_at: string;
+}
+
+/** Demandes d'annulation (avec le transfert concerné). */
+export function listTransferRevertRequests(params: { status?: string; page?: number; limit?: number }): Promise<{
+  data: Array<ApiTransferRevertRequest & { transfer: ApiTicketTransfer | null }>;
+  total: number;
+}> {
+  const search = new URLSearchParams();
+  if (params.status) search.set("status", params.status);
+  if (params.page) search.set("page", String(params.page));
+  if (params.limit) search.set("limit", String(params.limit));
+  const query = search.toString();
+  return apiGet(`/admin/tickets/transfer-revert-requests${query ? `?${query}` : ""}`);
+}
+
+/** Annule un transfert : billet rendu à l'expéditeur. */
+export function revertTicketTransfer(
+  transferId: string,
+  data: { reason: string; source: "PHONE" | "PLATFORM"; request_id?: string },
+): Promise<{ success: true }> {
+  return apiPost(`/admin/tickets/transfers/${transferId}/revert`, data);
+}
+
+/** Refuse la demande d'annulation de l'expéditeur. */
+export function rejectTransferRevert(requestId: string, reason: string): Promise<{ success: true }> {
+  return apiPost(`/admin/tickets/transfer-revert-requests/${requestId}/reject`, { reason });
+}
+
+export function listTicketTransfers(params: { q?: string; page?: number; limit?: number }): Promise<{
+  data: ApiTicketTransfer[];
+  total: number;
+  page: number;
+  limit: number;
+}> {
+  const search = new URLSearchParams();
+  if (params.q) search.set("q", params.q);
+  if (params.page) search.set("page", String(params.page));
+  if (params.limit) search.set("limit", String(params.limit));
+  const query = search.toString();
+  return apiGet(`/admin/tickets/transfers${query ? `?${query}` : ""}`);
+}
+
+/** Chaîne complète des titulaires d'un billet. */
+export function getTicketTransfers(ticketId: string): Promise<ApiTicketTransfer[]> {
+  return apiGet(`/admin/tickets/${ticketId}/transfers`);
+}
+
+/** Billets offerts et reçus par un compte (fiche utilisateur). */
+export function getUserTransfers(userId: string): Promise<ApiTicketTransfer[]> {
+  return apiGet(`/admin/users/${userId}/transfers`);
+}
+
+// ─── Reventes ───────────────────────────────────────────────────────────────
+
+export type ApiResaleStatus = "LISTED" | "RESERVED" | "SOLD" | "EXPIRED" | "WITHDRAWN";
+
+export interface ApiAdminResale {
+  id: string;
+  ticket_id: string;
+  original_order_id: string;
+  original_buyer_id: string;
+  new_buyer_id: string | null;
+  new_order_id: string | null;
+  resale_price: string | number;
+  status: ApiResaleStatus;
+  event_start_at: string;
+  listed_at: string;
+  sold_at: string | null;
+  reservation_expires_at: string | null;
+  ticket_reference: string | null;
+  event_name: string | null;
+  ticket_category_name: string | null;
+  face_value: number | null;
+  seller: { email: string; first_name: string; last_name: string } | null;
+  buyer: { email: string; first_name: string; last_name: string } | null;
+}
+
+export function listResales(params: { status?: string; q?: string; page?: number; limit?: number }): Promise<{
+  data: ApiAdminResale[];
+  total: number;
+}> {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") search.set(key, String(value));
+  }
+  const query = search.toString();
+  return apiGet(`/admin/resales${query ? `?${query}` : ""}`);
+}
+
+/** Reventes d'un compte (vendeur ou acheteur) — fiche utilisateur. */
+export function getUserResales(userId: string): Promise<ApiAdminResale[]> {
+  return apiGet(`/admin/users/${userId}/resales`);
 }

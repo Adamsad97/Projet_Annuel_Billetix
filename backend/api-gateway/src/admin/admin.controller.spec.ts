@@ -30,6 +30,7 @@ describe("AdminController — newsletter", () => {
       {} as any, // paymentClient
       authClient as any,
       notifClient as any,
+      {} as any, // pdfClient
     );
   });
 
@@ -96,6 +97,131 @@ describe("AdminController — newsletter", () => {
           metadata: { recipients_count: 2 },
         }),
       );
+    });
+  });
+});
+
+describe("AdminController — annulation d'un transfert de billet", () => {
+  const admin = { sub: "admin-1", email: "admin@billetix.local", role: "SUPER_ADMIN" } as any;
+  const req = { headers: {}, ip: "127.0.0.1" } as any;
+  const transfer = {
+    id: "tr-1",
+    ticket_id: "t1",
+    ticket_reference: "TKT-1",
+    event_name: "Concert",
+    event_start_at: "2026-12-01T20:00:00.000Z",
+    from_email: "jean@example.com",
+    from_first_name: "Jean",
+    from_holder_first_name: "Jean",
+    from_holder_last_name: "Dupont",
+    to_email: "marie@example.com",
+    to_holder_first_name: "Paul",
+    to_holder_last_name: "Martin",
+  };
+  const ticket = { id: "t1", reference: "TKT-1", unit_price_ttc: "50.00", holder_first_name: "Jean", holder_last_name: "Dupont" };
+
+  let adminClient: { send: jest.Mock };
+  let ticketClient: { send: jest.Mock };
+  let notifClient: { emit: jest.Mock };
+  let pdfClient: { emit: jest.Mock };
+  let controller: AdminController;
+
+  beforeEach(() => {
+    adminClient = { send: jest.fn().mockReturnValue({ subscribe: jest.fn() }) };
+    ticketClient = { send: jest.fn((pattern: string) => of(pattern === "ticket.revert_transfer" ? { ticket, transfer } : { request: { id: "req-1" }, transfer })) };
+    notifClient = { emit: jest.fn() };
+    pdfClient = { emit: jest.fn() };
+    controller = new AdminController(
+      adminClient as any,
+      {} as any,
+      {} as any,
+      ticketClient as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      notifClient as any,
+      pdfClient as any,
+    );
+  });
+
+  it("annule sur appel : billet rendu, PDF régénéré, audit et emails", async () => {
+    await controller.revertTicketTransfer(admin, "tr-1", { reason: "Appel de l'acheteur", source: "PHONE" }, req);
+
+    expect(ticketClient.send).toHaveBeenCalledWith(
+      "ticket.revert_transfer",
+      expect.objectContaining({ transfer_id: "tr-1", admin_id: "admin-1", source: "PHONE" }),
+    );
+    expect(pdfClient.emit).toHaveBeenCalledWith("pdf.generate_ticket", expect.objectContaining({ holder_first_name: "Jean", unit_price_ttc: 50 }));
+    expect(adminClient.send).toHaveBeenCalledWith(
+      "admin.log_action",
+      expect.objectContaining({
+        action: "TICKET_TRANSFER_REVERTED",
+        reason: "Appel de l'acheteur",
+        metadata: expect.objectContaining({ source: "PHONE", holder_before: "Paul Martin", holder_after: "Jean Dupont" }),
+      }),
+    );
+    expect(notifClient.emit).toHaveBeenCalledWith(
+      "notification.transfer_reverted",
+      expect.objectContaining({ senderEmail: "jean@example.com", recipientEmail: "marie@example.com" }),
+    );
+  });
+
+  it("refuse une demande : motif journalisé et transmis à l'expéditeur", async () => {
+    await controller.rejectTransferRevert(admin, "req-1", { reason: "Billet déjà remis" }, req);
+
+    expect(adminClient.send).toHaveBeenCalledWith(
+      "admin.log_action",
+      expect.objectContaining({ action: "TICKET_TRANSFER_REVERT_REJECTED", reason: "Billet déjà remis" }),
+    );
+    expect(notifClient.emit).toHaveBeenCalledWith(
+      "notification.transfer_revert_rejected",
+      expect.objectContaining({ decisionReason: "Billet déjà remis" }),
+    );
+    expect(pdfClient.emit).not.toHaveBeenCalled();
+  });
+});
+
+describe("AdminController — reventes", () => {
+  it("recherche par nom ou email partiel : inclut les comptes correspondants (vendeur ou acheteur)", async () => {
+    const ticketClient = {
+      send: jest.fn(() =>
+        of({ data: [{ id: "r1", original_buyer_id: "u1", new_buyer_id: "u2", status: "SOLD" }], total: 1, page: 1, limit: 20 }),
+      ),
+    };
+    const authClient = {
+      send: jest.fn((pattern: string) =>
+        of(
+          pattern === "auth.list_users"
+            ? { data: [{ id: "u1" }] }
+            : [
+                { id: "u1", email: "vendeur@example.com", first_name: "Jean", last_name: "Dupont" },
+                { id: "u2", email: "acheteur@example.com", first_name: "Marie", last_name: "Martin" },
+              ],
+        ),
+      ),
+    };
+    const controller = new AdminController(
+      {} as any,
+      {} as any,
+      {} as any,
+      ticketClient as any,
+      {} as any,
+      {} as any,
+      authClient as any,
+      {} as any,
+      {} as any,
+    );
+
+    const result = await controller.listResales("SOLD", " vendeur ");
+
+    expect(authClient.send).toHaveBeenCalledWith("auth.list_users", { q: "vendeur", limit: 100 });
+    expect(ticketClient.send).toHaveBeenCalledWith(
+      "ticket.list_resales_admin",
+      expect.objectContaining({ status: "SOLD", q: "vendeur", user_ids: ["u1"] }),
+    );
+    expect(result.data[0]).toMatchObject({
+      seller: { email: "vendeur@example.com" },
+      buyer: { email: "acheteur@example.com" },
     });
   });
 });

@@ -19,6 +19,9 @@ export interface GetLogsDto {
   entity_id?: string;
   performed_by?: string;
   action?: AuditAction;
+  // Recherche libre : email de l'auteur, entité, motif, détails (référence
+  // de billet, email du bénéficiaire…), action.
+  q?: string;
   from?: string;
   to?: string;
   limit?: number;
@@ -49,6 +52,13 @@ export class AuditLogService {
     }
     if (filters.action) {
       queryBuilder.andWhere('log.action = :action', { action: filters.action });
+    }
+    if (filters.q?.trim()) {
+      queryBuilder.andWhere(
+        `(log.performed_by_email ILIKE :q OR log.entity_id ILIKE :q OR log.reason ILIKE :q
+          OR log.metadata::text ILIKE :q OR log.action::text ILIKE :q OR log.ip_address ILIKE :q)`,
+        { q: `%${filters.q.trim()}%` },
+      );
     }
     if (filters.from) {
       queryBuilder.andWhere('log.created_at >= :from', { from: new Date(filters.from) });

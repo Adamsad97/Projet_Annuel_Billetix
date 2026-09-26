@@ -21,14 +21,14 @@ export function Panel({
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
+    <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
         aria-expanded={expanded}
-        className="flex w-full items-center justify-between border-b border-white/5 px-5 py-4 text-left transition-colors hover:bg-white/[0.02]"
+        className="flex w-full items-center justify-between border-b border-hairline-1 px-5 py-4 text-left transition-colors hover:bg-hairline-1"
       >
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-200">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-2">
           <span>{icon}</span>
           {title}
         </h2>
@@ -39,7 +39,7 @@ export function Panel({
             <span onClick={(event) => event.stopPropagation()}>{action}</span>
           ) : null}
           <span
-            className={`text-gray-500 transition-transform ${expanded ? "rotate-180" : ""}`}
+            className={`text-ink-5 transition-transform ${expanded ? "rotate-180" : ""}`}
             aria-hidden="true"
           >
             ▾

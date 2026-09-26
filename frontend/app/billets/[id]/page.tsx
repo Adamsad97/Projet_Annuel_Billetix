@@ -9,10 +9,11 @@ import Link from "next/link";
 import { AuthHeader } from "@/components/layout/auth-header";
 import { TicketVisual } from "@/components/tickets/ticket-visual";
 import { ResaleManagePanel } from "@/components/tickets/resale-manage-panel";
-import { getTicket } from "@/lib/api/tickets";
+import { downloadTicketPdf, getTicket } from "@/lib/api/tickets";
 import { apiTicketToDetail } from "@/lib/mappers/profile-mappers";
 import type { TicketDetail } from "@/lib/mock/ticket-detail";
 import { ApiError } from "@/lib/api/http-error";
+import { TwoFactorPromo } from "@/components/profile/two-factor-promo";
 
 export default function TicketDetailPage({
   params,
@@ -20,6 +21,8 @@ export default function TicketDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [ticket, setTicket] = useState<TicketDetail | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,73 +59,113 @@ export default function TicketDetailPage({
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-[#07060c]">
+    <div className="flex flex-1 flex-col bg-page">
       <AuthHeader />
 
       <main className="mx-auto w-full max-w-md flex-1 px-6 py-10">
         <Link
           href="/profil/billets"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
         >
           ← Mes billets
         </Link>
 
         {ticket === undefined ? (
-          <p className="text-center text-sm text-gray-500">Chargement…</p>
+          <p className="text-center text-sm text-ink-5">Chargement…</p>
         ) : error ? (
           <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-6 text-center text-sm text-red-300">
             {error}
           </div>
         ) : ticket === null ? (
-          <div className="rounded-2xl border border-white/5 bg-[#12101c] p-8 text-center">
+          <div className="rounded-2xl border border-hairline-1 bg-card p-8 text-center">
             <div className="mb-3 text-4xl">🎫</div>
-            <h1 className="text-lg font-bold text-white">Page introuvable</h1>
-            <p className="mt-2 text-sm text-gray-500">
+            <h1 className="text-lg font-bold text-ink-1">Page introuvable</h1>
+            <p className="mt-2 text-sm text-ink-5">
               Ce billet n&apos;existe pas, ou la page que tu cherches a changé d&apos;adresse.
             </p>
           </div>
         ) : (
           <>
+            <TwoFactorPromo className="mb-6" />
+            {ticket.receivedFrom ? (
+              <p className="mb-4 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm text-ink-2">
+                🎁 Billet offert par <strong>{ticket.receivedFrom.name}</strong> ({ticket.receivedFrom.email}) le{" "}
+                {ticket.receivedFrom.dateLabel}.
+              </p>
+            ) : null}
+            {ticket.resalePurchase ? (
+              <p className="mb-4 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm text-ink-2">
+                🔄 Billet acheté en revente le {ticket.resalePurchase.dateLabel} pour {ticket.resalePurchase.priceLabel}.
+              </p>
+            ) : null}
             <TicketVisual ticket={ticket} />
 
             <div className="mt-6 flex flex-col gap-3">
               {ticket.pdfUrl ? (
-                <a
-                  href={ticket.pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full rounded-full border border-white/15 py-3 text-center text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+                // Bucket privé : plus de lien direct vers le PDF, téléchargement
+                // authentifié (titulaire uniquement, vérifié par l'API).
+                <button
+                  type="button"
+                  disabled={downloading}
+                  onClick={async () => {
+                    setDownloading(true);
+                    setDownloadError(null);
+                    try {
+                      await downloadTicketPdf(ticket.id, ticket.reference);
+                    } catch (err) {
+                      setDownloadError(err instanceof ApiError ? err.message : "Téléchargement impossible, réessaie.");
+                    } finally {
+                      setDownloading(false);
+                    }
+                  }}
+                  className="w-full rounded-full border border-hairline-3 py-3 text-center text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-60"
                 >
-                  ⬇️ Télécharger le PDF
-                </a>
+                  {downloading ? "Téléchargement…" : "⬇️ Télécharger le PDF"}
+                </button>
               ) : (
                 <button
                   type="button"
                   disabled
                   title="Le PDF est encore en cours de génération, réessaie dans quelques instants"
-                  className="w-full cursor-not-allowed rounded-full border border-white/10 py-3 text-sm font-medium text-gray-500"
+                  className="w-full cursor-not-allowed rounded-full border border-hairline-2 py-3 text-sm font-medium text-ink-5"
                 >
                   ⬇️ PDF en cours de génération…
                 </button>
               )}
+              {downloadError ? (
+                <p className="rounded-xl bg-danger/10 px-4 py-2.5 text-center text-sm text-danger ring-1 ring-inset ring-danger/30">
+                  {downloadError}
+                </p>
+              ) : null}
 
               {ticket.status === "valid" ? (
-                <Link
-                  href={`/billets/${id}/revendre`}
-                  className="w-full rounded-full bg-white/5 py-3 text-center text-sm font-medium text-gray-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10"
-                >
-                  🔄 Revendre ce billet
-                </Link>
+                <>
+                  <Link
+                    href={`/billets/${id}/offrir`}
+                    className="w-full rounded-full bg-hairline-1 py-3 text-center text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
+                  >
+                    🎁 Offrir ce billet
+                  </Link>
+                  <Link
+                    href={`/billets/${id}/revendre`}
+                    className="w-full rounded-full bg-hairline-1 py-3 text-center text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
+                  >
+                    🔄 Revendre ce billet
+                  </Link>
+                </>
               ) : ticket.status === "for_resale" ? (
                 <ResaleManagePanel ticketId={id} onWithdrawn={reloadTicket} />
               ) : null}
 
-              <Link
-                href={`/profil/commandes/${ticket.orderId}`}
-                className="w-full rounded-full py-3 text-center text-sm font-medium text-gray-400 transition-colors hover:text-gray-200"
-              >
-                📦 Voir la commande associée
-              </Link>
+              {/* Billet reçu : la commande d'origine appartient à l'expéditeur. */}
+              {ticket.receivedFrom ? null : (
+                <Link
+                  href={`/profil/commandes/${ticket.orderId}`}
+                  className="w-full rounded-full py-3 text-center text-sm font-medium text-ink-4 transition-colors hover:text-ink-2"
+                >
+                  📦 Voir la commande associée
+                </Link>
+              )}
             </div>
           </>
         )}

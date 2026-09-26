@@ -5,7 +5,7 @@ import { useState } from "react";
 import { profileUser } from "@/lib/mock/profile";
 
 const fieldClassName =
-  "rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none";
+  "rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none";
 
 export function EditProfileForm() {
   const router = useRouter();
@@ -18,15 +18,15 @@ export function EditProfileForm() {
         event.preventDefault();
         setSaved(true);
       }}
-      className="rounded-2xl border border-white/5 bg-[#12101c] p-6"
+      className="rounded-2xl border border-hairline-1 bg-card p-6"
     >
       <div className="mb-6 flex items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 via-violet-500 to-amber-400 text-lg font-bold text-white">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">
           {profileUser.initials}
         </div>
         <button
           type="button"
-          className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+          className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
         >
           Changer la photo
         </button>
@@ -34,36 +34,36 @@ export function EditProfileForm() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-violet-200/80">Prénom</span>
+          <span className="text-sm font-medium text-accent/80">Prénom</span>
           <input type="text" defaultValue={firstName} className={fieldClassName} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-violet-200/80">Nom</span>
+          <span className="text-sm font-medium text-accent/80">Nom</span>
           <input type="text" defaultValue={lastName} className={fieldClassName} />
         </label>
       </div>
 
       <label className="mt-4 flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-violet-200/80">Email</span>
+        <span className="text-sm font-medium text-accent/80">Email</span>
         <input type="email" defaultValue={profileUser.email} className={fieldClassName} />
       </label>
 
       <label className="mt-4 flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-violet-200/80">Téléphone</span>
+        <span className="text-sm font-medium text-accent/80">Téléphone</span>
         <input type="tel" placeholder="06 12 34 56 78" className={fieldClassName} />
       </label>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
         <button
           type="submit"
-          className="flex-1 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90"
+          className="flex-1 rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
         >
           {saved ? "✓ Enregistré" : "Enregistrer"}
         </button>
         <button
           type="button"
           onClick={() => router.push("/profil")}
-          className="flex-1 rounded-full border border-white/15 py-3 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+          className="flex-1 rounded-full border border-hairline-3 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
         >
           Annuler
         </button>

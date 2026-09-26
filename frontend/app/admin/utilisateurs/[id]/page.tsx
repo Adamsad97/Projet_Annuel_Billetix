@@ -20,6 +20,8 @@ import {
   changeUserRole,
   getAdminUser,
   getUserOrders,
+  getUserResales,
+  getUserTransfers,
   rejectOrganizerKyc,
   resendOrderTicketsAsSupport,
   resetUserTwoFactor,
@@ -28,11 +30,14 @@ import {
   unsuspendUser,
   type ApiAdminUser,
   type ApiOrganizerProfile,
+  type ApiAdminResale,
+  type ApiTicketTransfer,
   type ApiUserRole,
 } from "@/lib/api/admin";
 import { requestPasswordReset } from "@/lib/api/auth";
 import type { ApiOrder } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/http-error";
+import { resaleStatusBadge } from "@/lib/mappers/resale-mappers";
 
 const orderStatusLabel: Record<ApiOrder["status"], string> = {
   PENDING_PAYMENT: "En attente de paiement",
@@ -43,11 +48,11 @@ const orderStatusLabel: Record<ApiOrder["status"], string> = {
 };
 
 const roleStyles: Record<ApiUserRole, string> = {
-  BUYER: "bg-violet-500/15 text-violet-300 ring-1 ring-inset ring-violet-500/30",
+  BUYER: "bg-teal-500/15 text-teal-300 ring-1 ring-inset ring-teal-500/30",
   ORGANIZER: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
   ADMIN: "bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30",
   AGENT: "bg-teal-500/15 text-teal-300 ring-1 ring-inset ring-teal-500/30",
-  SUPER_ADMIN: "bg-fuchsia-500/15 text-fuchsia-300 ring-1 ring-inset ring-fuchsia-500/30",
+  SUPER_ADMIN: "bg-indigo-500/15 text-indigo-300 ring-1 ring-inset ring-indigo-500/30",
 };
 
 const roleLabels: Record<ApiUserRole, string> = {
@@ -61,7 +66,7 @@ const roleLabels: Record<ApiUserRole, string> = {
 const kycStatusBadge: Record<string, { label: string; className: string }> = {
   VERIFIED: { label: "✓ Identité vérifiée", className: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30" },
   SUBMITTED: { label: "⏳ Document soumis, à vérifier", className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30" },
-  PENDING: { label: "Aucun document soumis", className: "bg-white/5 text-gray-400 ring-1 ring-inset ring-white/10" },
+  PENDING: { label: "Aucun document soumis", className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
   REJECTED: { label: "✕ Document rejeté", className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
 };
 
@@ -78,6 +83,8 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
   // navbar.tsx) pour éviter un hydration mismatch : getStoredUser() lit le
   // localStorage, absent côté serveur.
   const [me, setMe] = useState<AuthUser | null>(null);
+  const [transfers, setTransfers] = useState<ApiTicketTransfer[] | null>(null);
+  const [resales, setResales] = useState<ApiAdminResale[] | null>(null);
   const [user, setUser] = useState<ApiAdminUser | null | undefined>(undefined);
   const [organizerProfile, setOrganizerProfile] = useState<ApiOrganizerProfile | null>(null);
   const [orders, setOrders] = useState<ApiOrder[] | null>(null);
@@ -103,6 +110,12 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     getUserOrders(id)
       .then(setOrders)
       .catch(() => setOrders([]));
+    getUserTransfers(id)
+      .then(setTransfers)
+      .catch(() => setTransfers([]));
+    getUserResales(id)
+      .then(setResales)
+      .catch(() => setResales([]));
   }
 
   useEffect(load, [id]);
@@ -324,7 +337,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
     <AdminShell active="/admin/utilisateurs">
       <Link
         href="/admin/utilisateurs"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
+        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
       >
         ← Utilisateurs
       </Link>
@@ -334,24 +347,24 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
       ) : null}
 
       {user === undefined ? (
-        <p className="text-center text-sm text-gray-500">Chargement…</p>
+        <p className="text-center text-sm text-ink-5">Chargement…</p>
       ) : user === null ? (
-        <div className="rounded-2xl border border-white/5 bg-[#12101c] p-8 text-center">
+        <div className="rounded-2xl border border-hairline-1 bg-card p-8 text-center">
           <div className="mb-3 text-4xl">👤</div>
-          <h1 className="text-lg font-bold text-white">Utilisateur introuvable</h1>
+          <h1 className="text-lg font-bold text-ink-1">Utilisateur introuvable</h1>
         </div>
       ) : (
         <>
           <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 via-violet-500 to-amber-400 text-lg font-bold text-white">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">
                 {`${user.first_name[0] ?? ""}${user.last_name[0] ?? ""}`.toUpperCase()}
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">
+                <h1 className="text-xl font-bold text-ink-1">
                   {user.first_name} {user.last_name}
                 </h1>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-ink-5">
                   {user.email} · Membre depuis {dateFormatter.format(new Date(user.created_at))}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -364,17 +377,17 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                     </span>
                   ) : null}
                   {!user.is_email_verified ? (
-                    <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-medium text-gray-400 ring-1 ring-inset ring-white/10">
+                    <span className="rounded-full bg-hairline-1 px-2.5 py-0.5 text-xs font-medium text-ink-4 ring-1 ring-inset ring-hairline-2">
                       Email non vérifié
                     </span>
                   ) : null}
                   {user.locked_until && new Date(user.locked_until) > new Date() ? (
                     <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
-                      🔒 Verrouillé jusqu'au {dateFormatter.format(new Date(user.locked_until))}
+                      🔒 Verrouillé jusqu&apos;au {dateFormatter.format(new Date(user.locked_until))}
                     </span>
                   ) : null}
                   {user.two_factor_enabled ? (
-                    <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-medium text-gray-400 ring-1 ring-inset ring-white/10">
+                    <span className="rounded-full bg-hairline-1 px-2.5 py-0.5 text-xs font-medium text-ink-4 ring-1 ring-inset ring-hairline-2">
                       2FA activée
                     </span>
                   ) : null}
@@ -388,7 +401,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                   disabled={busy}
                   value={user.role}
                   onChange={(e) => handleChangeRole(e.target.value as ApiUserRole)}
-                  className="rounded-full border border-white/15 bg-[#12101c] px-4 py-2 text-sm font-medium text-gray-200 focus:border-violet-500 focus:outline-none disabled:opacity-50"
+                  className="rounded-full border border-hairline-3 bg-card px-4 py-2 text-sm font-medium text-ink-2 focus:border-blue-500 focus:outline-none disabled:opacity-50"
                 >
                   <option value="BUYER">Acheteur</option>
                   <option value="ORGANIZER">Organisateur</option>
@@ -419,7 +432,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                   type="button"
                   disabled={busy || resetSent}
                   onClick={handleResetPassword}
-                  className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white disabled:opacity-50"
+                  className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-50"
                 >
                   {resetSent ? "✓ Lien envoyé" : "Réinitialiser le mot de passe"}
                 </button>
@@ -430,7 +443,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                   type="button"
                   disabled={busy}
                   onClick={handleActivate}
-                  className="rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-gray-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10 disabled:opacity-50"
+                  className="rounded-full bg-hairline-1 px-4 py-2 text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2 disabled:opacity-50"
                 >
                   Activer le compte
                 </button>
@@ -441,7 +454,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                   type="button"
                   disabled={busy}
                   onClick={handleUnlock}
-                  className="rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-gray-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10 disabled:opacity-50"
+                  className="rounded-full bg-hairline-1 px-4 py-2 text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2 disabled:opacity-50"
                 >
                   Débloquer
                 </button>
@@ -452,7 +465,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                   type="button"
                   disabled={busy}
                   onClick={handleResetTwoFactor}
-                  className="rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-gray-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10 disabled:opacity-50"
+                  className="rounded-full bg-hairline-1 px-4 py-2 text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2 disabled:opacity-50"
                 >
                   Réinitialiser la 2FA
                 </button>
@@ -483,9 +496,9 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
           </div>
 
           {user.role === "ORGANIZER" ? (
-            <div className="mb-6 rounded-2xl border border-white/5 bg-[#12101c] p-5">
+            <div className="mb-6 rounded-2xl border border-hairline-1 bg-card p-5">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold text-gray-200">
+                <h2 className="text-sm font-semibold text-ink-2">
                   Vérification d&apos;identité (KYC){organizerProfile ? ` — ${organizerProfile.display_name}` : ""}
                 </h2>
                 <span
@@ -498,7 +511,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
               </div>
 
               {!organizerProfile ? (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-ink-5">
                   Ce compte n&apos;a pas encore créé de profil organisateur (rôle changé manuellement, formulaire jamais rempli).
                 </p>
               ) : (
@@ -509,7 +522,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                   {organizerProfile.kyc_document_url ? (
                     <DocumentGrid documents={[{ id: "kyc-doc", label: "Document d'identité", url: organizerProfile.kyc_document_url }]} />
                   ) : (
-                    <p className="text-sm text-gray-500">Aucun document soumis pour le moment.</p>
+                    <p className="text-sm text-ink-5">Aucun document soumis pour le moment.</p>
                   )}
 
                   {organizerProfile.kyc_status === "SUBMITTED" ? (
@@ -537,12 +550,81 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-white/5 bg-[#12101c] p-5">
-            <h2 className="mb-4 text-sm font-semibold text-gray-200">Commandes</h2>
+          <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+            <h2 className="mb-4 text-sm font-semibold text-ink-2">Billets offerts et reçus</h2>
+            {transfers === null ? (
+              <p className="text-sm text-ink-5">Chargement…</p>
+            ) : transfers.length === 0 ? (
+              <p className="text-sm text-ink-5">Aucun billet offert ni reçu par ce compte.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {transfers.map((transfer) => {
+                  const given = transfer.from_user_id === id;
+                  return (
+                    <div key={transfer.id} className="rounded-xl bg-hairline-1 px-4 py-3">
+                      <p className="text-sm font-medium text-ink-1">
+                        {given ? "🎁 Offert" : "📥 Reçu"} · {transfer.ticket_reference} · {transfer.event_name}
+                        {transfer.status === "REVERTED" ? (
+                          <span className="ml-2 text-xs font-medium text-success">Annulé — billet rendu à l&apos;expéditeur</span>
+                        ) : null}
+                      </p>
+                      <p className="text-xs text-ink-5">
+                        {given ? `À ${transfer.to_email}` : `De ${transfer.from_first_name} ${transfer.from_last_name} (${transfer.from_email})`}
+                        {" · "}titulaire : {transfer.from_holder_first_name} {transfer.from_holder_last_name} →{" "}
+                        {transfer.to_holder_first_name} {transfer.to_holder_last_name}
+                      </p>
+                      <p className="text-xs text-ink-6">
+                        {new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(transfer.created_at))}
+                        {transfer.ip_address ? ` · IP ${transfer.ip_address}` : ""}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+            <h2 className="mb-4 text-sm font-semibold text-ink-2">Reventes</h2>
+            {resales === null ? (
+              <p className="text-sm text-ink-5">Chargement…</p>
+            ) : resales.length === 0 ? (
+              <p className="text-sm text-ink-5">Aucune revente pour ce compte.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {resales.map((resale) => {
+                  const selling = resale.original_buyer_id === id;
+                  const badge = resaleStatusBadge[resale.status];
+                  const other = selling ? resale.buyer : resale.seller;
+                  return (
+                    <div key={resale.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-hairline-1 px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-ink-1">
+                          {selling ? "🔄 Vendeur" : "🛒 Acheteur"} · {resale.ticket_reference ?? "—"} · {resale.event_name ?? "—"}
+                        </p>
+                        <p className="text-xs text-ink-5">
+                          {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(resale.resale_price))}
+                          {" · "}mis en vente le{" "}
+                          {new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(resale.listed_at))}
+                          {other ? ` · ${selling ? "acheté par" : "vendu par"} ${other.email}` : ""}
+                        </p>
+                      </div>
+                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${badge.className}`}>
+                        {badge.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+            <h2 className="mb-4 text-sm font-semibold text-ink-2">Commandes</h2>
             {orders === null ? (
-              <p className="text-sm text-gray-500">Chargement…</p>
+              <p className="text-sm text-ink-5">Chargement…</p>
             ) : orders.length === 0 ? (
-              <p className="text-sm text-gray-500">Aucune commande passée par ce compte.</p>
+              <p className="text-sm text-ink-5">Aucune commande passée par ce compte.</p>
             ) : (
               <div className="flex flex-col gap-2">
                 {orders.map((order) => {
@@ -550,13 +632,13 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                   return (
                     <div
                       key={order.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/[0.02] px-4 py-3"
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-hairline-1 px-4 py-3"
                     >
                       <div>
-                        <p className="text-sm font-medium text-white">
+                        <p className="text-sm font-medium text-ink-1">
                           {order.reference} · {order.event_name ?? "—"}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-ink-5">
                           {orderStatusLabel[order.status]} · {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(order.total_amount_ttc))}
                         </p>
                       </div>
@@ -565,7 +647,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                           type="button"
                           disabled={busy}
                           onClick={() => handleResendTickets(order)}
-                          className="shrink-0 rounded-lg bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10 disabled:opacity-50"
+                          className="shrink-0 rounded-lg bg-hairline-1 px-3 py-1.5 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2 disabled:opacity-50"
                         >
                           {resentOrderId === order.id ? "✓ Renvoyés" : "📧 Renvoyer les billets"}
                         </button>

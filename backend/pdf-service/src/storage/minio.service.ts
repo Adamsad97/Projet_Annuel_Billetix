@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   CreateBucketCommand,
   HeadBucketCommand,
-  PutBucketPolicyCommand,
+  DeleteBucketPolicyCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -32,34 +32,46 @@ export class MinioService implements OnModuleInit {
       },
       forcePathStyle: true,
     });
+
+    // Rend privés billets et factures dès le démarrage, y compris des
+    // buckets créés publics avant le correctif — sans attendre le prochain
+    // PDF généré. Échec non bloquant (MinIO pas encore prêt) : retenté au
+    // premier upload.
+    const invoicesBucket = this.config.get<string>('MINIO_BUCKET_INVOICES', 'invoices');
+    for (const bucket of [this.bucket, invoicesBucket]) {
+      this.ensureBucket(bucket).catch((error) =>
+        this.logger.warn(`Bucket ${bucket} non vérifié au démarrage : ${error?.message}`),
+      );
+    }
   }
 
+  // Buckets déjà vérifiés privés par ce processus (évite un appel MinIO à
+  // chaque PDF généré).
+  private readonly privateBuckets = new Set<string>();
+
+  /**
+   * Bug corrigé (faille de sécurité) : billets et factures étaient en
+   * lecture publique, à une adresse prévisible (ticket-TKT-2026-XXXXXX.pdf,
+   * ~16 millions de combinaisons) — un script pouvait télécharger des
+   * billets et des factures (données
+   * personnelles) sans aucune connexion. Buckets désormais privés : le PDF
+   * n'est servi que par l'api-gateway, au titulaire authentifié. La
+   * politique publique des buckets créés avant ce correctif est retirée.
+   */
   async ensureBucket(bucket: string = this.bucket): Promise<void> {
+    if (this.privateBuckets.has(bucket)) return;
     try {
       await this.client.send(new HeadBucketCommand({ Bucket: bucket }));
     } catch {
       await this.client.send(new CreateBucketCommand({ Bucket: bucket }));
-      // Lecture publique — les billets/factures sont référencés par URL directe
-      // (pas de mécanisme d'URL signée côté gateway), donc l'objet doit être
-      // accessible sans credentials pour que le lien envoyé au client fonctionne.
-      await this.client.send(
-        new PutBucketPolicyCommand({
-          Bucket: bucket,
-          Policy: JSON.stringify({
-            Version: '2012-10-17',
-            Statement: [
-              {
-                Effect: 'Allow',
-                Principal: '*',
-                Action: ['s3:GetObject'],
-                Resource: [`arn:aws:s3:::${bucket}/*`],
-              },
-            ],
-          }),
-        }),
-      );
-      this.logger.log(`Bucket créé (lecture publique) : ${bucket}`);
+      this.logger.log(`Bucket créé (privé) : ${bucket}`);
     }
+    try {
+      await this.client.send(new DeleteBucketPolicyCommand({ Bucket: bucket }));
+    } catch {
+      // Aucune politique à retirer : le bucket est déjà privé.
+    }
+    this.privateBuckets.add(bucket);
   }
 
   async uploadPdf(
@@ -77,12 +89,9 @@ export class MinioService implements OnModuleInit {
       }),
     );
 
-    // Bug corrigé : l'URL renvoyée au client (email, frontend) utilisait le
-    // nom d'hôte interne au réseau Docker (MINIO_ENDPOINT=minio), injoignable
-    // depuis le navigateur de l'utilisateur — d'où un lien de téléchargement
-    // mort. MINIO_PUBLIC_ENDPOINT est l'hôte réellement joignable de
-    // l'extérieur (localhost en dev) ; le port hôte est le même que
-    // MINIO_PORT côté docker-compose (mapping "${MINIO_PORT}:9000").
+    // Adresse stockée en base comme simple localisateur (bucket + clé) :
+    // le bucket étant privé, elle n'est plus lisible directement — l'api-
+    // gateway la résout pour servir le fichier au titulaire authentifié.
     const publicEndpoint = this.config.get<string>('MINIO_PUBLIC_ENDPOINT', 'localhost');
     const port = this.config.get<string>('MINIO_PORT', '9000');
     const useSSL = this.config.get<string>('MINIO_USE_SSL', 'false') === 'true';

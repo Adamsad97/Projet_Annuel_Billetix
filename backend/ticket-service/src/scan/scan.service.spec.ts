@@ -82,7 +82,7 @@ describe('ScanService', () => {
 
   it("signale un billet revendu (SUPERSEDED, pas INVALID) — ancien QR après transfert", async () => {
     ticketService.verifyQr.mockRejectedValue({
-      error: { code: 'SUPERSEDED', message: "Ce billet a été revendu — ce QR code n'est plus valide" },
+      error: { code: 'SUPERSEDED', message: "Ce billet a changé de titulaire (revente ou transfert) — ce QR code n'est plus valide" },
     });
 
     const result = await service.scan(baseDto);

@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { PlatformSetting } from './platform-config.entity';
 
 export interface PlatformConfig {
@@ -42,7 +42,23 @@ export interface PlatformConfig {
   account_lockout_threshold: number;
   account_lockout_duration_minutes: number;
   pdf_generation_max_retry_attempts: number;
+  password_min_length: number;
+  minimum_signup_age: number;
+  session_idle_timeout_minutes: number;
+  session_max_duration_hours: number;
+  ticket_qr_display_seconds: number;
+  ticket_transfer_max_per_ticket: number;
+  ticket_transfer_cutoff_hours: number;
+  sensitive_action_reauth_minutes: number;
+  ticket_qr_rotation_seconds: number;
+  ticket_qr_rotation_tolerance_steps: number;
 }
+
+// Réglages retirés du produit : supprimés au démarrage pour ne plus
+// apparaître dans l'administration.
+//  - ticket_qr_rotation_enabled : le QR est toujours éphémère (BTX2), il
+//    n'existe plus de QR fixe à autoriser.
+const OBSOLETE_KEYS = ['ticket_qr_rotation_enabled'];
 
 const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'tva_rate',                       value: '0.20',          type: 'number',  description: 'Taux de TVA applicable (ex: 0.20 = 20%)' },
@@ -82,6 +98,16 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'account_lockout_threshold',      value: '5',             type: 'number',  description: 'Nombre d\'échecs de connexion consécutifs (mot de passe ou code 2FA) avant verrouillage temporaire du compte' },
   { key: 'account_lockout_duration_minutes', value: '15',          type: 'number',  description: 'Durée du verrouillage temporaire d\'un compte après trop d\'échecs de connexion (minutes)' },
   { key: 'pdf_generation_max_retry_attempts', value: '5',          type: 'number',  description: 'Nombre de tentatives de génération PDF (billet/facture) avant abandon définitif et alerte admin' },
+  { key: 'ticket_qr_rotation_seconds',     value: '5',             type: 'number',  description: 'Période de renouvellement du QR code dynamique (secondes)' },
+  { key: 'ticket_qr_rotation_tolerance_steps', value: '1',         type: 'number',  description: 'Nombre de périodes précédentes/suivantes encore acceptées au scan (décalage d\'horloge, lenteur du contrôle)' },
+  { key: 'ticket_qr_display_seconds',      value: '60',            type: 'number',  description: 'Durée d\'affichage du QR code d\'un billet dans l\'espace acheteur avant masquage automatique (secondes)' },
+  { key: 'ticket_transfer_max_per_ticket', value: '1',             type: 'number',  description: 'Nombre maximum de fois qu\'un même billet peut être offert à un autre compte (0 = transferts désactivés)' },
+  { key: 'ticket_transfer_cutoff_hours',   value: '2',             type: 'number',  description: 'Fermeture des transferts de billets avant le début de l\'événement (heures)' },
+  { key: 'sensitive_action_reauth_minutes', value: '5',           type: 'number',  description: 'Connexion récente exigée pour une action irréversible, ex. offrir un billet (minutes depuis la dernière saisie des identifiants)' },
+  { key: 'session_max_duration_hours',     value: '12',            type: 'number',  description: 'Durée maximale d\'une session depuis la connexion (heures) : reconnexion obligatoire ensuite, même en restant actif' },
+  { key: 'session_idle_timeout_minutes',   value: '30',            type: 'number',  description: 'Durée d\'inactivité (minutes) au-delà de laquelle la session expire : déconnexion automatique, et le serveur refuse de la renouveler' },
+  { key: 'minimum_signup_age',             value: '18',            type: 'number',  description: 'Âge minimum pour créer un compte (années révolues, vérifié sur la date de naissance à l\'inscription)' },
+  { key: 'password_min_length',            value: '12',            type: 'number',  description: 'Longueur minimale d\'un mot de passe (inscription, réinitialisation, changement) — en plus des règles majuscule/minuscule/chiffre/caractère spécial' },
 ];
 
 @Injectable()
@@ -92,6 +118,7 @@ export class PlatformConfigService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
+    await this.repo.delete({ key: In(OBSOLETE_KEYS) });
     for (const setting of DEFAULTS) {
       const exists = await this.repo.findOne({ where: { key: setting.key } });
       if (!exists) {
@@ -143,6 +170,16 @@ export class PlatformConfigService implements OnModuleInit {
       account_lockout_threshold:      parseInt(map.account_lockout_threshold ?? '5'),
       account_lockout_duration_minutes: parseInt(map.account_lockout_duration_minutes ?? '15'),
       pdf_generation_max_retry_attempts: parseInt(map.pdf_generation_max_retry_attempts ?? '5'),
+      password_min_length:            parseInt(map.password_min_length ?? '12'),
+      minimum_signup_age:             parseInt(map.minimum_signup_age ?? '18'),
+      session_idle_timeout_minutes:   parseInt(map.session_idle_timeout_minutes ?? '30'),
+      session_max_duration_hours:     parseInt(map.session_max_duration_hours ?? '12'),
+      ticket_qr_display_seconds:      parseInt(map.ticket_qr_display_seconds ?? '60'),
+      ticket_transfer_max_per_ticket: parseInt(map.ticket_transfer_max_per_ticket ?? '1'),
+      ticket_transfer_cutoff_hours:   parseInt(map.ticket_transfer_cutoff_hours ?? '2'),
+      sensitive_action_reauth_minutes: parseInt(map.sensitive_action_reauth_minutes ?? '5'),
+      ticket_qr_rotation_seconds:     parseInt(map.ticket_qr_rotation_seconds ?? '5'),
+      ticket_qr_rotation_tolerance_steps: parseInt(map.ticket_qr_rotation_tolerance_steps ?? '1'),
     };
   }
 

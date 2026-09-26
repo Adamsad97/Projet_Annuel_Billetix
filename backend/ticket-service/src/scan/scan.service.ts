@@ -63,7 +63,7 @@ export class ScanService {
       // forcément le billet réellement présenté.
       ticketId = await this.ticketService.resolveTicketId(dto.qr_token);
 
-      const { ticket } = await this.ticketService.verifyQr(dto.qr_token);
+      const { ticket } = await this.ticketService.verifyQr(dto.qr_token, scannedAt);
 
       if (ticket.event_id !== dto.event_id) {
         result = ScanResult.WRONG_EVENT;
@@ -79,6 +79,10 @@ export class ScanService {
         result = ScanResult.CANCELLED;
       } else if (code === 'SUPERSEDED') {
         result = ScanResult.SUPERSEDED;
+      } else if (code === 'EXPIRED') {
+        result = ScanResult.EXPIRED;
+      } else if (code === 'STATIC_REFUSED') {
+        result = ScanResult.STATIC_REFUSED;
       } else {
         result = ScanResult.INVALID;
       }

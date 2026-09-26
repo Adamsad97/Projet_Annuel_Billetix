@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,20 +9,103 @@ import {
   HttpStatus,
   Inject,
   Logger,
+  NotFoundException,
   Param,
   Post,
+  Query,
+  Req,
+  Res,
 } from "@nestjs/common";
+import { Request, Response } from "express";
+import { clientIp, logAccess } from "../common/access-log";
 import { ClientProxy } from "@nestjs/microservices";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { firstValueFrom } from "rxjs";
-import { Public } from "../common/decorators/public.decorator";
 import {
   CurrentUser,
   JwtPayload,
 } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
 import { TicketsGateway } from "../events/tickets.gateway";
+import { UploadService } from "../upload/upload.service";
+import { emitTicketPdf, formatEventDate, TicketPdfSource } from "../common/ticket-pdf";
+import { GiftTicketDto } from "./dto/gift-ticket.dto";
+import { RequestTransferRevertDto } from "./dto/transfer-revert.dto";
 import { ScanResult } from "./scan-result.enum";
+
+
+/** En-têtes d'un PDF privé : téléchargement, jamais mis en cache. */
+function sendPrivatePdf(res: Response, pdf: Buffer, filename: string): void {
+  res.set({
+    "Content-Type": "application/pdf",
+    "Content-Disposition": `attachment; filename="${filename}"`,
+    "Cache-Control": "no-store, private",
+  });
+  res.send(pdf);
+}
+
+/** Ligne de tickets.ticket_transfers (ticket-service). */
+interface TicketTransferRecord {
+  id: string;
+  ticket_id: string;
+  ticket_reference: string;
+  event_name: string;
+  event_start_at: string;
+  ticket_category_name: string;
+  from_user_id: string;
+  from_email: string;
+  from_first_name: string;
+  from_last_name: string;
+  from_holder_first_name: string;
+  from_holder_last_name: string;
+  to_user_id: string;
+  to_email: string;
+  to_holder_first_name: string;
+  to_holder_last_name: string;
+  created_at: string;
+  status: "ACTIVE" | "REVERTED";
+  reverted_at: string | null;
+}
+
+/** Annonce de revente enrichie des infos du billet (ticket-service). */
+interface ResaleRecord {
+  id: string;
+  ticket_id: string;
+  original_order_id: string;
+  original_buyer_id: string;
+  new_buyer_id: string | null;
+  resale_price: string | number;
+  status: "LISTED" | "RESERVED" | "SOLD" | "EXPIRED" | "WITHDRAWN";
+  event_start_at: string;
+  listed_at: string;
+  sold_at: string | null;
+  ticket_reference: string | null;
+  event_name: string | null;
+  ticket_category_name: string | null;
+}
+
+/** Demande d'annulation d'un transfert (tickets.transfer_revert_requests). */
+interface TransferRevertRequestRecord {
+  id: string;
+  transfer_id: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  decision_reason: string | null;
+  created_at: string;
+}
+
+/** Compte renvoyé par l'auth-service (sans mot de passe). */
+interface AccountSummary {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  is_email_verified: boolean;
+  is_active?: boolean;
+  is_suspended?: boolean;
+}
+
+type TransferredTicket = TicketPdfSource;
 
 @ApiTags("tickets")
 @ApiBearerAuth()
@@ -40,6 +124,7 @@ export class TicketController {
     @Inject("PDF_SERVICE") private readonly pdfClient: ClientProxy,
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
     private readonly ticketsGateway: TicketsGateway,
+    private readonly uploads: UploadService,
   ) {}
 
   /**
@@ -95,23 +180,277 @@ export class TicketController {
     if (order.buyer_id !== user.sub) {
       throw new ForbiddenException("Cette commande ne vous appartient pas");
     }
-    return firstValueFrom(
-      this.ticketClient.send("ticket.get_by_order", { order_id: orderId }),
+    const [tickets, resold] = await Promise.all([
+      firstValueFrom(
+        this.ticketClient.send<Array<{ buyer_id: string } & Record<string, unknown>>>("ticket.get_by_order", {
+          order_id: orderId,
+        }),
+      ),
+      firstValueFrom(this.ticketClient.send<ResaleRecord[]>("ticket.resales_sold_from_order", { order_id: orderId })),
+    ]);
+    // Billet offert depuis : reste listé dans la commande d'origine, marqué
+    // comme transféré (plus accessible à l'acheteur, cf. GET /tickets/mine).
+    // Billet revendu : rattaché à la commande de l'acheteur après la vente,
+    // on en garde une trace (sans accès au billet) dans la commande d'origine.
+    return [
+      ...tickets.map((ticket) => ({ ...ticket, transferred: ticket.buyer_id !== user.sub })),
+      ...resold.map((resale) => ({
+        id: resale.ticket_id,
+        reference: resale.ticket_reference,
+        event_name: resale.event_name,
+        ticket_category_name: resale.ticket_category_name,
+        resold: true,
+        resale_price: Number(resale.resale_price),
+        sold_at: resale.sold_at,
+      })),
+    ];
+  }
+
+  /**
+   * Billets du compte connecté : ceux dont il est titulaire (achetés,
+   * reçus, rachetés en revente) et l'historique des billets qu'il a offerts
+   * ou reçus. Déclarée avant @Get(":id") (sinon « mine » serait pris pour
+   * un identifiant).
+   */
+  @Get("mine")
+  @ApiOperation({ summary: "Mes billets et l'historique de mes transferts" })
+  async getMine(@CurrentUser() user: JwtPayload) {
+    const [tickets, transfers, requests, myResales, bought] = await Promise.all([
+      firstValueFrom(this.ticketClient.send<Array<{ id: string } & Record<string, unknown>>>("ticket.get_by_buyer", { buyer_id: user.sub })),
+      firstValueFrom(this.ticketClient.send<TicketTransferRecord[]>("ticket.transfers_by_user", { user_id: user.sub })),
+      firstValueFrom(
+        this.ticketClient.send<TransferRevertRequestRecord[]>("ticket.transfer_revert_requests_by_user", { user_id: user.sub }),
+      ),
+      firstValueFrom(this.ticketClient.send<ResaleRecord[]>("ticket.resales_by_seller", { user_id: user.sub })),
+      firstValueFrom(this.ticketClient.send<ResaleRecord[]>("ticket.resales_bought_by", { user_id: user.sub })),
+    ]);
+    const boughtByTicket = new Map<string, ResaleRecord>();
+    for (const resale of bought) {
+      if (!boughtByTicket.has(resale.ticket_id)) boughtByTicket.set(resale.ticket_id, resale);
+    }
+    const receivedByTicket = new Map<string, TicketTransferRecord>();
+    for (const transfer of transfers) {
+      // Le plus récent d'abord : on garde la dernière réception (encore active) du billet.
+      if (transfer.to_user_id === user.sub && transfer.status !== "REVERTED" && !receivedByTicket.has(transfer.ticket_id)) {
+        receivedByTicket.set(transfer.ticket_id, transfer);
+      }
+    }
+    // Demande d'annulation la plus récente de chaque transfert (liste triée, plus récente d'abord).
+    const latestRequest = new Map<string, TransferRevertRequestRecord>();
+    for (const request of requests) {
+      if (!latestRequest.has(request.transfer_id)) latestRequest.set(request.transfer_id, request);
+    }
+    return {
+      tickets: tickets.map((ticket) => {
+        const received = receivedByTicket.get(ticket.id);
+        const purchase = boughtByTicket.get(ticket.id);
+        return {
+          ...ticket,
+          resale_purchase: purchase ? { price: Number(purchase.resale_price), at: purchase.sold_at } : null,
+          received_from: received
+            ? {
+                first_name: received.from_first_name,
+                last_name: received.from_last_name,
+                email: received.from_email,
+                at: received.created_at,
+              }
+            : null,
+        };
+      }),
+      // Billets offerts : trace figée, sans accès au billet lui-même.
+      given: transfers
+        .filter((transfer) => transfer.from_user_id === user.sub)
+        .map((transfer) => ({
+          id: transfer.id,
+          ticket_reference: transfer.ticket_reference,
+          event_name: transfer.event_name,
+          event_start_at: transfer.event_start_at,
+          ticket_category_name: transfer.ticket_category_name,
+          to_email: transfer.to_email,
+          to_holder_first_name: transfer.to_holder_first_name,
+          to_holder_last_name: transfer.to_holder_last_name,
+          at: transfer.created_at,
+          status: transfer.status,
+          reverted_at: transfer.reverted_at,
+          revert_request: latestRequest.has(transfer.id)
+            ? {
+                status: latestRequest.get(transfer.id)!.status,
+                decision_reason: latestRequest.get(transfer.id)!.decision_reason,
+                at: latestRequest.get(transfer.id)!.created_at,
+              }
+            : null,
+        })),
+      // Billets revendus : trace pour le vendeur (le billet n'est plus à lui).
+      resold: myResales
+        .filter((resale) => resale.status === "SOLD")
+        .map((resale) => ({
+          id: resale.id,
+          ticket_reference: resale.ticket_reference,
+          event_name: resale.event_name,
+          event_start_at: resale.event_start_at,
+          ticket_category_name: resale.ticket_category_name,
+          resale_price: Number(resale.resale_price),
+          listed_at: resale.listed_at,
+          sold_at: resale.sold_at,
+        })),
+      // Billets reçus puis rendus à l'expéditeur (transfert annulé) : trace.
+      withdrawn: transfers
+        .filter((transfer) => transfer.to_user_id === user.sub && transfer.status === "REVERTED")
+        .map((transfer) => ({
+          id: transfer.id,
+          ticket_reference: transfer.ticket_reference,
+          event_name: transfer.event_name,
+          event_start_at: transfer.event_start_at,
+          ticket_category_name: transfer.ticket_category_name,
+          from_first_name: transfer.from_first_name,
+          from_last_name: transfer.from_last_name,
+          received_at: transfer.created_at,
+          reverted_at: transfer.reverted_at,
+        })),
+    };
+  }
+
+  /**
+   * L'expéditeur demande l'annulation d'un transfert (erreur de
+   * destinataire, litige…) : la demande est traitée par un admin, qui rend
+   * le billet ou refuse. Il peut aussi appeler le support.
+   */
+  @Post("transfers/:transferId/revert-request")
+  @ApiOperation({ summary: "Demander l'annulation d'un billet offert" })
+  async requestTransferRevert(
+    @CurrentUser() user: JwtPayload,
+    @Param("transferId") transferId: string,
+    @Body() dto: RequestTransferRevertDto,
+    @Req() req: Request,
+  ) {
+    const request = await firstValueFrom(
+      this.ticketClient.send<TransferRevertRequestRecord & { ticket_id: string }>("ticket.request_transfer_revert", {
+        transfer_id: transferId,
+        user_id: user.sub,
+        reason: dto.reason,
+      }),
     );
+    const [transfers, sender] = await Promise.all([
+      firstValueFrom(this.ticketClient.send<TicketTransferRecord[]>("ticket.transfers_by_ticket", { ticket_id: request.ticket_id })),
+      firstValueFrom(this.authClient.send<AccountSummary>("auth.get_user", { id: user.sub })),
+    ]);
+    const transfer = transfers.find((item) => item.id === transferId);
+
+    logAccess(
+      this.adminClient,
+      user,
+      req,
+      "TICKET_TRANSFER_REVERT_REQUESTED",
+      { type: "TICKET", id: request.ticket_id, reference: transfer?.ticket_reference },
+      { transfer_id: transferId, request_id: request.id, to_email: transfer?.to_email ?? null, reason: dto.reason },
+    );
+    if (transfer) {
+      this.notifClient.emit("notification.transfer_revert_requested", {
+        ticketReference: transfer.ticket_reference,
+        eventName: transfer.event_name,
+        eventDate: formatEventDate(transfer.event_start_at),
+        senderEmail: sender.email,
+        senderFirstName: sender.first_name,
+        recipientEmail: transfer.to_email,
+      });
+    }
+    return { success: true, request: { id: request.id, status: request.status, at: request.created_at } };
   }
 
   // Bug corrigé : déclarée après @Get(":id") (ordre d'enregistrement des
   // routes Nest/Express), "/tickets/resale" était donc intercepté par la
   // route générique @Get(":id") — avec id="resale" — avant même d'atteindre
   // ce handler, renvoyant 401 "Token manquant" (getById n'est pas @Public).
-  @Public()
+  // Revente réservée aux acheteurs connectés (demande produit) : plus de
+  // consultation anonyme des annonces, ni via le site ni via l'API.
+  @Roles("BUYER")
   @Get("resale")
-  @ApiOperation({ summary: "Toutes les annonces de revente actives, tous événements confondus (public)" })
+  @ApiOperation({ summary: "Toutes les annonces de revente actives, tous événements confondus (acheteur connecté)" })
   async listAllResale() {
     const listings = (await firstValueFrom(
       this.ticketClient.send("ticket.list_all_resale", {}),
     )) as Array<{ event_id: string; ticket_category_id: string }>;
     return this.enrichResaleListings(listings);
+  }
+
+  /**
+   * PDF du billet, servi uniquement à son titulaire authentifié (bucket
+   * MinIO privé — cf. pdf-service MinioService.ensureBucket()).
+   */
+  @Get(":id/pdf")
+  @ApiOperation({ summary: "Télécharger le PDF d'un billet (le sien uniquement)" })
+  async downloadPdf(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const ticket = await firstValueFrom(
+      this.ticketClient.send<{ buyer_id: string; pdf_url: string | null; reference: string }>(
+        "ticket.get",
+        { id },
+      ),
+    );
+    if (ticket.buyer_id !== user.sub) {
+      throw new ForbiddenException("Ce billet ne vous appartient pas");
+    }
+    if (!ticket.pdf_url) {
+      throw new NotFoundException("Le PDF du billet est encore en cours de génération.");
+    }
+    sendPrivatePdf(res, await this.uploads.readStoredFile(ticket.pdf_url), `billet-${ticket.reference}.pdf`);
+    logAccess(this.adminClient, user, req, "TICKET_PDF_DOWNLOADED", { type: "TICKET", id, reference: ticket.reference });
+  }
+
+  /**
+   * QR code du billet, fourni uniquement sur demande explicite du titulaire
+   * (bouton « Afficher mon QR code ») et seulement tant que le billet est
+   * utilisable — jamais dans les réponses de liste/détail. Durée
+   * d'affichage avant masquage : platform_settings.
+   */
+  @Get(":id/qr")
+  @ApiOperation({ summary: "QR code d'un billet valide (le sien uniquement, sur demande)" })
+  async getQr(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Query("refresh") refresh?: string,
+  ) {
+    const ticket = await firstValueFrom(
+      this.ticketClient.send<{ buyer_id: string; status: string; reference: string }>(
+        "ticket.get",
+        { id },
+      ),
+    );
+    if (ticket.buyer_id !== user.sub) {
+      throw new ForbiddenException("Ce billet ne vous appartient pas");
+    }
+    if (!["GENERATED", "SENT"].includes(ticket.status)) {
+      throw new ForbiddenException("Ce billet n'est pas utilisable : aucun QR code à afficher.");
+    }
+    const config = await firstValueFrom(
+      this.adminClient.send<{ ticket_qr_display_seconds: number }>("admin.get_platform_config", {}),
+    ).catch(() => ({ ticket_qr_display_seconds: 60 }));
+
+    // QR éphémère (code aléatoire renouvelé chaque période, sans donnée du billet).
+    const display = await firstValueFrom(
+      this.ticketClient.send<{ qr_code_url: string; refresh_in_seconds: number }>(
+        "ticket.get_display_qr",
+        { id },
+      ),
+    );
+
+    res.set("Cache-Control", "no-store, private");
+    // Renouvellement automatique pendant l'affichage (refresh=1) : un seul
+    // accès journalisé par affichage, pas un par période.
+    if (refresh !== "1") {
+      logAccess(this.adminClient, user, req, "TICKET_QR_VIEWED", { type: "TICKET", id, reference: ticket.reference });
+    }
+    return {
+      qr_code_url: display.qr_code_url,
+      display_seconds: config.ticket_qr_display_seconds,
+      refresh_in_seconds: display.refresh_in_seconds,
+    };
   }
 
   /**
@@ -123,18 +462,158 @@ export class TicketController {
    * lien déjà en sa possession (email, PDF, historique de navigateur).
    */
   @Get(":id")
-  @ApiOperation({ summary: "Détail d'un billet (le sien uniquement)" })
+  @ApiOperation({ summary: "Détail d'un billet (le sien uniquement, sans QR code)" })
   async getById(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
     const ticket = await firstValueFrom(
-      this.ticketClient.send<{ buyer_id: string }>("ticket.get", { id }),
+      this.ticketClient.send<{ buyer_id: string } & Record<string, unknown>>("ticket.get", { id }),
     );
     if (ticket.buyer_id !== user.sub) {
       throw new ForbiddenException("Ce billet ne vous appartient pas");
     }
-    return ticket;
+    // Billet reçu en cadeau ou acheté en revente : d'où il vient.
+    const [transfers, bought] = await Promise.all([
+      firstValueFrom(this.ticketClient.send<TicketTransferRecord[]>("ticket.transfers_by_ticket", { ticket_id: id })),
+      firstValueFrom(this.ticketClient.send<ResaleRecord[]>("ticket.resales_bought_by", { user_id: user.sub })),
+    ]);
+    const received = [...transfers]
+      .reverse()
+      .find((transfer) => transfer.to_user_id === user.sub && transfer.status !== "REVERTED");
+    const purchase = bought.find((resale) => resale.ticket_id === id);
+    return {
+      ...ticket,
+      resale_purchase: purchase ? { price: Number(purchase.resale_price), at: purchase.sold_at } : null,
+      received_from: received
+        ? {
+            first_name: received.from_first_name,
+            last_name: received.from_last_name,
+            email: received.from_email,
+            at: received.created_at,
+          }
+        : null,
+    };
   }
 
   // ─── Revente ────────────────────────────────────────────────────────────────
+
+  /**
+   * Offrir son billet à un autre compte BilleTix : transfert gratuit,
+   * immédiat et irréversible. Exige une connexion récente (identifiants
+   * ressaisis), un compte bénéficiaire actif et vérifié. Trace : historique
+   * du billet (ticket-service), journal d'audit, email aux deux parties.
+   */
+  @Post(":id/gift")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Offrir son billet à un autre compte (irréversible)" })
+  async gift(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: GiftTicketDto,
+    @Req() req: Request,
+  ) {
+    const config = await firstValueFrom(
+      this.adminClient.send<{ sensitive_action_reauth_minutes: number }>("admin.get_platform_config", {}),
+    ).catch(() => ({ sensitive_action_reauth_minutes: 5 }));
+    const authTime = user.auth_time ?? user.iat ?? 0;
+    if (Date.now() / 1000 - authTime > config.sensitive_action_reauth_minutes * 60) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: "REAUTH_REQUIRED",
+        message: "Pour offrir un billet, confirme d'abord ton identité en te reconnectant.",
+      });
+    }
+
+    const [sender, recipient] = await Promise.all([
+      firstValueFrom(this.authClient.send<AccountSummary>("auth.get_user", { id: user.sub })),
+      firstValueFrom(this.authClient.send<AccountSummary | null>("auth.find_by_email", { email: dto.recipient_email })),
+    ]);
+    if (recipient?.id === user.sub) {
+      throw new BadRequestException("Tu ne peux pas t'offrir ton propre billet.");
+    }
+    const recipientEligible =
+      recipient &&
+      recipient.is_email_verified &&
+      recipient.is_active !== false &&
+      !recipient.is_suspended &&
+      !["ADMIN", "SUPER_ADMIN"].includes(recipient.role);
+    if (!recipientEligible) {
+      throw new BadRequestException(
+        "Aucun compte BilleTix actif et vérifié n'est associé à cet email. " +
+          "Demande à la personne de créer son compte (et de valider son email), puis réessaie.",
+      );
+    }
+
+    const { ticket, transfer } = await firstValueFrom(
+      this.ticketClient.send<{ ticket: TransferredTicket; transfer: TicketTransferRecord }>("ticket.gift", {
+        ticket_id: id,
+        from_user_id: user.sub,
+        from_first_name: sender.first_name,
+        from_last_name: sender.last_name,
+        to_user_id: recipient.id,
+        to_email: recipient.email,
+        to_holder_first_name: dto.holder_first_name,
+        to_holder_last_name: dto.holder_last_name,
+        ip_address: clientIp(req),
+        user_agent: req.headers["user-agent"] ?? null,
+      }),
+    );
+
+    logAccess(
+      this.adminClient,
+      user,
+      req,
+      "TICKET_TRANSFERRED",
+      { type: "TICKET", id, reference: ticket.reference },
+      {
+        transfer_id: transfer.id,
+        from_email: transfer.from_email,
+        to_user_id: transfer.to_user_id,
+        to_email: transfer.to_email,
+        holder_before: `${transfer.from_holder_first_name} ${transfer.from_holder_last_name}`,
+        holder_after: `${transfer.to_holder_first_name} ${transfer.to_holder_last_name}`,
+        event_name: transfer.event_name,
+      },
+    );
+
+    // PDF au nom du nouveau titulaire (l'ancien a été invalidé).
+    this.regenerateTicketPdf(ticket);
+
+    this.notifClient.emit("notification.ticket_transferred", {
+      ticketReference: ticket.reference,
+      eventName: ticket.event_name,
+      eventDate: new Date(ticket.event_start_at).toLocaleDateString("fr-FR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+      eventVenue: ticket.event_venue_name,
+      categoryName: ticket.ticket_category_name,
+      senderEmail: sender.email,
+      senderFirstName: sender.first_name,
+      senderLastName: sender.last_name,
+      recipientEmail: recipient.email,
+      recipientFirstName: recipient.first_name,
+      holderFirstName: transfer.to_holder_first_name,
+      holderLastName: transfer.to_holder_last_name,
+      transferredAt: new Date(transfer.created_at).toLocaleString("fr-FR", {
+        dateStyle: "long",
+        timeStyle: "short",
+        timeZone: "Europe/Paris",
+      }),
+    });
+
+    return {
+      success: true,
+      transfer: {
+        id: transfer.id,
+        ticket_reference: transfer.ticket_reference,
+        to_email: transfer.to_email,
+        to_holder_first_name: transfer.to_holder_first_name,
+        to_holder_last_name: transfer.to_holder_last_name,
+        at: transfer.created_at,
+      },
+    };
+  }
 
   @Post(":id/request-resale")
   @HttpCode(HttpStatus.CREATED)
@@ -186,9 +665,9 @@ export class TicketController {
     return firstValueFrom(this.ticketClient.send("ticket.cancel", { id }));
   }
 
-  @Public()
+  @Roles("BUYER")
   @Get("resale/event/:eventId")
-  @ApiOperation({ summary: "Billets en revente pour un événement (public)" })
+  @ApiOperation({ summary: "Billets en revente pour un événement (acheteur connecté)" })
   listResaleByEvent(@Param("eventId") eventId: string) {
     return firstValueFrom(
       this.ticketClient.send("ticket.list_resale_by_event", {
@@ -197,9 +676,9 @@ export class TicketController {
     );
   }
 
-  @Public()
+  @Roles("BUYER")
   @Get("resale/:resaleId")
-  @ApiOperation({ summary: "Détail d'une offre de revente (public)" })
+  @ApiOperation({ summary: "Détail d'une offre de revente (acheteur connecté)" })
   async getResale(@Param("resaleId") resaleId: string) {
     const listing = await firstValueFrom(
       this.ticketClient.send("ticket.get_resale", { id: resaleId }),
@@ -396,60 +875,13 @@ export class TicketController {
 
   private async notifyBuyerResalePurchase(ticketId: string): Promise<void> {
     const ticket = await firstValueFrom(
-      this.ticketClient.send<{
-        id: string;
-        reference: string;
-        order_id: string;
-        event_name: string;
-        event_start_at: string;
-        event_venue_name: string;
-        event_venue_address: string;
-        event_city: string;
-        event_poster_url?: string;
-        artist_name: string;
-        ticket_category_name: string;
-        unit_price_ttc: number;
-        seat_info?: string;
-        holder_first_name: string;
-        holder_last_name: string;
-        buyer_email: string;
-        qr_code_url: string;
-      }>("ticket.get", { id: ticketId }),
+      this.ticketClient.send<TransferredTicket>("ticket.get", { id: ticketId }),
     );
 
-    this.pdfClient.emit("pdf.generate_ticket", {
-      ticket_id: ticket.id,
-      reference: ticket.reference,
-      order_id: ticket.order_id,
-      event_name: ticket.event_name,
-      event_start_at: ticket.event_start_at,
-      event_venue_name: ticket.event_venue_name,
-      event_venue_address: ticket.event_venue_address,
-      event_city: ticket.event_city,
-      event_poster_url: ticket.event_poster_url,
-      artist_name: ticket.artist_name,
-      ticket_category_name: ticket.ticket_category_name,
-      unit_price_ttc: Number(ticket.unit_price_ttc),
-      seat_info: ticket.seat_info,
-      holder_first_name: ticket.holder_first_name,
-      holder_last_name: ticket.holder_last_name,
-      buyer_email: ticket.buyer_email,
-      qr_code_url: ticket.qr_code_url,
-    });
+    this.regenerateTicketPdf(ticket);
 
-    const platformConfig = await firstValueFrom(
-      this.adminClient.send<{
-        ticket_pdf_wait_max_attempts: number;
-        ticket_pdf_wait_delay_seconds: number;
-      }>("admin.get_platform_config", {}),
-    ).catch(() => ({ ticket_pdf_wait_max_attempts: 5, ticket_pdf_wait_delay_seconds: 2 }));
-
-    const pdfUrl = await this.waitForTicketPdf(
-      ticket.id,
-      platformConfig.ticket_pdf_wait_max_attempts,
-      platformConfig.ticket_pdf_wait_delay_seconds * 1000,
-    );
-
+    // Le PDF régénéré au nom du nouveau titulaire sert au téléchargement dans
+    // l'application : l'email ne contient plus ni billet ni QR code.
     this.notifClient.emit("notification.ticket_ready", {
       email: ticket.buyer_email,
       firstName: ticket.holder_first_name,
@@ -465,31 +897,17 @@ export class TicketController {
         {
           ticketNumber: ticket.reference,
           categoryName: ticket.ticket_category_name,
-          qrCodeUrl: ticket.qr_code_url,
           seatInfo: ticket.seat_info,
-          pdfUrl,
         },
       ],
     });
   }
 
-  private async waitForTicketPdf(
-    ticketId: string,
-    maxAttempts: number,
-    delayMs: number,
-  ): Promise<string | null> {
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const ticket = await firstValueFrom(
-        this.ticketClient.send("ticket.get", { id: ticketId }),
-      ).catch(() => null);
-
-      if (ticket?.pdf_url) return ticket.pdf_url;
-      if (attempt < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
-    return null;
+  /** (Re)génère le PDF d'un billet au nom de son titulaire actuel. */
+  private regenerateTicketPdf(ticket: TransferredTicket): void {
+    emitTicketPdf(this.pdfClient, ticket);
   }
+
 
   private async notifyResaleSold(resale: {
     id: string;

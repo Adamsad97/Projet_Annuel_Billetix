@@ -59,7 +59,7 @@ export function ResaleManagePanel({
 
   if (listing === undefined) {
     return (
-      <div className="w-full rounded-full border border-white/10 py-3 text-center text-sm text-gray-500">
+      <div className="w-full rounded-full border border-hairline-2 py-3 text-center text-sm text-ink-5">
         Chargement de l&apos;annonce…
       </div>
     );
@@ -75,8 +75,8 @@ export function ResaleManagePanel({
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
       <div className="flex items-center justify-between text-sm">
-        <span className="text-gray-400">Mis en vente à</span>
-        <span className="font-bold text-white">{currency.format(Number(listing.resale_price))}</span>
+        <span className="text-ink-4">Mis en vente à</span>
+        <span className="font-bold text-ink-1">{currency.format(Number(listing.resale_price))}</span>
       </div>
 
       {error ? (
@@ -87,7 +87,7 @@ export function ResaleManagePanel({
         type="button"
         onClick={handleWithdraw}
         disabled={withdrawing}
-        className="w-full rounded-full border border-white/15 py-3 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-full border border-hairline-3 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {withdrawing ? "Retrait…" : "↩️ Retirer de la vente"}
       </button>

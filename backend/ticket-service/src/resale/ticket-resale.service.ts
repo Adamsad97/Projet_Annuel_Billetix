@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
+import { Ticket } from '../ticket/ticket.entity';
 import { TicketService } from '../ticket/ticket.service';
 import { ResaleStatus, TicketResale } from './ticket-resale.entity';
 
@@ -200,6 +201,92 @@ export class TicketResaleService {
     await this.repo.save(resale);
 
     return { resale, originalOrderId: resale.original_order_id };
+  }
+
+  // ─── Historique (vendeur, acheteur, administration) ──────────────────────
+
+  /**
+   * Ajoute aux annonces les infos lisibles du billet (référence, événement,
+   * catégorie, titulaire actuel) : l'annonce ne stocke que des identifiants.
+   */
+  private async withTicketInfo(resales: TicketResale[]) {
+    const tickets = resales.length
+      ? await this.dataSource.getRepository(Ticket).findBy({ id: In([...new Set(resales.map((r) => r.ticket_id))]) })
+      : [];
+    const byId = new Map(tickets.map((ticket) => [ticket.id, ticket]));
+    return resales.map((resale) => {
+      const ticket = byId.get(resale.ticket_id);
+      return {
+        ...resale,
+        ticket_reference: ticket?.reference ?? null,
+        event_name: ticket?.event_name ?? null,
+        ticket_category_name: ticket?.ticket_category_name ?? null,
+        face_value: ticket ? Number(ticket.unit_price_ttc) : null,
+      };
+    });
+  }
+
+  /** Annonces d'un vendeur, tous statuts (en vente, vendues, retirées, expirées). */
+  async listBySeller(userId: string) {
+    const resales = await this.repo.find({ where: { original_buyer_id: userId }, order: { listed_at: 'DESC' } });
+    return this.withTicketInfo(resales);
+  }
+
+  /** Billets achetés en revente par un utilisateur. */
+  async listBoughtBy(userId: string) {
+    const resales = await this.repo.find({
+      where: { new_buyer_id: userId, status: ResaleStatus.SOLD },
+      order: { sold_at: 'DESC' },
+    });
+    return this.withTicketInfo(resales);
+  }
+
+  /** Billets revendus depuis une commande (ils n'y sont plus rattachés après la vente). */
+  async listSoldFromOrder(orderId: string) {
+    const resales = await this.repo.find({
+      where: { original_order_id: orderId, status: ResaleStatus.SOLD },
+      order: { sold_at: 'DESC' },
+    });
+    return this.withTicketInfo(resales);
+  }
+
+  /** Reventes où l'utilisateur est vendeur ou acheteur (fiche utilisateur admin). */
+  async listByUser(userId: string) {
+    const resales = await this.repo.find({
+      where: [{ original_buyer_id: userId }, { new_buyer_id: userId }],
+      order: { listed_at: 'DESC' },
+    });
+    return this.withTicketInfo(resales);
+  }
+
+  /**
+   * Vue administration : toutes les annonces, filtrables par statut et par
+   * recherche libre : référence de billet, événement, ou compte vendeur /
+   * acheteur (user_ids : comptes dont le nom ou l'email correspond à la
+   * recherche, résolus par l'api-gateway auprès de l'auth-service).
+   */
+  async listForAdmin(filters: {
+    status?: ResaleStatus;
+    q?: string;
+    user_ids?: string[];
+    page?: number;
+    limit?: number;
+  }) {
+    const limit = Math.min(Math.max(filters.limit ?? 20, 1), 100);
+    const page = Math.max(filters.page ?? 1, 1);
+    const qb = this.repo.createQueryBuilder('r').orderBy('r.listed_at', 'DESC');
+    if (filters.status) qb.andWhere('r.status = :status', { status: filters.status });
+    if (filters.q?.trim()) {
+      const userIds = filters.user_ids ?? [];
+      qb.andWhere(
+        `(r.ticket_id IN (SELECT t.id::text FROM tickets.tickets t
+            WHERE LOWER(t.reference) LIKE :q OR LOWER(t.event_name) LIKE :q)
+          ${userIds.length ? 'OR r.original_buyer_id IN (:...userIds) OR r.new_buyer_id IN (:...userIds)' : ''})`,
+        { q: `%${filters.q.trim().toLowerCase()}%`, userIds },
+      );
+    }
+    const [resales, total] = await qb.skip((page - 1) * limit).take(limit).getManyAndCount();
+    return { data: await this.withTicketInfo(resales), total, page, limit };
   }
 
   async withdraw(data: { resale_id: string; buyer_id: string }): Promise<TicketResale> {

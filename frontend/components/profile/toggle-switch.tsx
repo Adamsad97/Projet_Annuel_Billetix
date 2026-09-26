@@ -21,8 +21,8 @@ export function ToggleSwitch({
       onClick={() => onChange(!checked)}
       className={
         checked
-          ? "relative h-6 w-11 shrink-0 rounded-full bg-violet-600 transition-colors disabled:opacity-40"
-          : "relative h-6 w-11 shrink-0 rounded-full bg-white/10 transition-colors disabled:opacity-40"
+          ? "relative h-6 w-11 shrink-0 rounded-full bg-blue-600 transition-colors disabled:opacity-40"
+          : "relative h-6 w-11 shrink-0 rounded-full bg-hairline-2 transition-colors disabled:opacity-40"
       }
     >
       <span

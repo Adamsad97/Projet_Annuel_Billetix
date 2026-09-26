@@ -56,7 +56,7 @@ export function NotificationPrefsManager() {
   }
 
   if (!values) {
-    return <p className="text-center text-sm text-gray-500">Chargement…</p>;
+    return <p className="text-center text-sm text-ink-5">Chargement…</p>;
   }
 
   return (
@@ -68,16 +68,16 @@ export function NotificationPrefsManager() {
       ) : null}
 
       {notificationPrefGroups.map((group) => (
-        <div key={group.title} className="rounded-2xl border border-white/5 bg-[#12101c] p-5">
-          <h2 className="mb-3 text-sm font-semibold text-gray-200">{group.title}</h2>
-          <div className="flex flex-col divide-y divide-white/5">
+        <div key={group.title} className="rounded-2xl border border-hairline-1 bg-card p-5">
+          <h2 className="mb-3 text-sm font-semibold text-ink-2">{group.title}</h2>
+          <div className="flex flex-col divide-y divide-hairline-1">
             {group.prefs.map((pref) => (
               <div key={pref.id} className="flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0">
                 <div>
-                  <p className="text-sm font-medium text-white">{pref.label}</p>
-                  <p className="text-xs text-gray-500">{pref.description}</p>
+                  <p className="text-sm font-medium text-ink-1">{pref.label}</p>
+                  <p className="text-xs text-ink-5">{pref.description}</p>
                   {pref.locked ? (
-                    <p className="mt-0.5 text-xs text-gray-600">
+                    <p className="mt-0.5 text-xs text-ink-6">
                       🔒 Notification essentielle, non désactivable
                     </p>
                   ) : null}

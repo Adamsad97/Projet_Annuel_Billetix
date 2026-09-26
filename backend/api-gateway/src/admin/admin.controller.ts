@@ -22,6 +22,31 @@ import {
 } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
 import { CreateEventDto } from "../event/dto/create-event.dto";
+import { emitTicketPdf, formatEventDate, TicketPdfSource } from "../common/ticket-pdf";
+import { RejectTransferRevertDto, RevertTransferDto } from "../ticket/dto/transfer-revert.dto";
+
+/** Annonce de revente renvoyée par le ticket-service. */
+interface AdminResale {
+  original_buyer_id: string;
+  new_buyer_id: string | null;
+  [key: string]: unknown;
+}
+
+/** Transfert renvoyé par le ticket-service (champs utiles à l'audit et aux emails). */
+interface RevertedTransfer {
+  id: string;
+  ticket_id: string;
+  ticket_reference: string;
+  event_name: string;
+  event_start_at: string;
+  from_email: string;
+  from_first_name: string;
+  from_holder_first_name: string;
+  from_holder_last_name: string;
+  to_email: string;
+  to_holder_first_name: string;
+  to_holder_last_name: string;
+}
 
 @ApiTags("admin")
 @ApiBearerAuth()
@@ -37,12 +62,216 @@ export class AdminController {
     @Inject("PAYMENT_SERVICE") private readonly paymentClient: ClientProxy,
     @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
+    @Inject("PDF_SERVICE") private readonly pdfClient: ClientProxy,
   ) {}
 
   private ip(req: Request): string {
     return (
       (req.headers["x-forwarded-for"] as string)?.split(",")[0] ?? req.ip ?? ""
     );
+  }
+
+  /**
+   * Transferts de billets (billets offerts) : qui, à qui, quand, depuis
+   * quelle IP — filtrables par référence, email ou événement.
+   */
+  @Get("tickets/transfers")
+  @ApiOperation({ summary: "Historique des billets offerts (tous les comptes)" })
+  listTicketTransfers(
+    @Query("q") q?: string,
+    @Query("event_id") eventId?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+  ) {
+    return firstValueFrom(
+      this.ticketClient.send("ticket.list_transfers", {
+        q: q || undefined,
+        event_id: eventId || undefined,
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      }),
+    );
+  }
+
+  /** Demandes d'annulation de transfert faites par les expéditeurs (file de traitement). */
+  @Get("tickets/transfer-revert-requests")
+  @ApiOperation({ summary: "Demandes d'annulation de transfert" })
+  listTransferRevertRequests(
+    @Query("status") status?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+  ) {
+    return firstValueFrom(
+      this.ticketClient.send("ticket.list_transfer_revert_requests", {
+        status: status || undefined,
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      }),
+    );
+  }
+
+  /**
+   * Annule un transfert : le billet revient à l'expéditeur (au nom de son
+   * titulaire d'origine, nouveau QR), le bénéficiaire le perd. Sur demande
+   * de l'expéditeur, par téléphone ou depuis la plateforme.
+   */
+  @Post("tickets/transfers/:id/revert")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Annuler un transfert de billet (billet rendu à l'expéditeur)" })
+  async revertTicketTransfer(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: RevertTransferDto,
+    @Req() req: Request,
+  ) {
+    const { ticket, transfer } = await firstValueFrom(
+      this.ticketClient.send<{ ticket: TicketPdfSource; transfer: RevertedTransfer }>("ticket.revert_transfer", {
+        transfer_id: id,
+        admin_id: user.sub,
+        admin_email: user.email,
+        reason: dto.reason,
+        source: dto.source,
+        request_id: dto.request_id,
+      }),
+    );
+
+    this.audit(user, req, "TICKET_TRANSFER_REVERTED", "TICKET", ticket.id, dto.reason, {
+      reference: ticket.reference,
+      transfer_id: transfer.id,
+      source: dto.source,
+      request_id: dto.request_id ?? null,
+      from_email: transfer.from_email,
+      to_email: transfer.to_email,
+      holder_before: `${transfer.to_holder_first_name} ${transfer.to_holder_last_name}`,
+      holder_after: `${transfer.from_holder_first_name} ${transfer.from_holder_last_name}`,
+      event_name: transfer.event_name,
+    });
+
+    // PDF au nom du titulaire d'origine (celui du bénéficiaire a été invalidé).
+    emitTicketPdf(this.pdfClient, ticket);
+    this.notifClient.emit("notification.transfer_reverted", {
+      ticketReference: transfer.ticket_reference,
+      eventName: transfer.event_name,
+      eventDate: formatEventDate(transfer.event_start_at),
+      senderEmail: transfer.from_email,
+      senderFirstName: transfer.from_first_name,
+      recipientEmail: transfer.to_email,
+      holderFirstName: transfer.from_holder_first_name,
+      holderLastName: transfer.from_holder_last_name,
+    });
+
+    return { success: true, transfer };
+  }
+
+  /** Refuse la demande d'annulation de l'expéditeur : le transfert reste acquis. */
+  @Post("tickets/transfer-revert-requests/:id/reject")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Refuser une demande d'annulation de transfert" })
+  async rejectTransferRevert(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: RejectTransferRevertDto,
+    @Req() req: Request,
+  ) {
+    const { request, transfer } = await firstValueFrom(
+      this.ticketClient.send<{ request: { id: string }; transfer: RevertedTransfer }>("ticket.reject_transfer_revert", {
+        request_id: id,
+        admin_id: user.sub,
+        admin_email: user.email,
+        reason: dto.reason,
+      }),
+    );
+
+    this.audit(user, req, "TICKET_TRANSFER_REVERT_REJECTED", "TICKET", transfer.ticket_id, dto.reason, {
+      reference: transfer.ticket_reference,
+      transfer_id: transfer.id,
+      request_id: request.id,
+      from_email: transfer.from_email,
+      to_email: transfer.to_email,
+      event_name: transfer.event_name,
+    });
+    this.notifClient.emit("notification.transfer_revert_rejected", {
+      ticketReference: transfer.ticket_reference,
+      eventName: transfer.event_name,
+      eventDate: formatEventDate(transfer.event_start_at),
+      senderEmail: transfer.from_email,
+      senderFirstName: transfer.from_first_name,
+      recipientEmail: transfer.to_email,
+      decisionReason: dto.reason,
+    });
+
+    return { success: true, request };
+  }
+
+  /**
+   * Reventes (toutes annonces) : vendeur, acheteur, prix, dates, statut.
+   * Recherche libre : référence de billet, événement, ou nom / email (même
+   * partiel) du vendeur ou de l'acheteur.
+   */
+  @Get("resales")
+  @ApiOperation({ summary: "Historique des reventes de billets" })
+  async listResales(
+    @Query("status") status?: string,
+    @Query("q") q?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+  ) {
+    const query = q?.trim() || undefined;
+    // Comptes dont le nom ou l'email correspond : l'annonce ne stocke que
+    // leurs identifiants (vendeur / acheteur).
+    const matchingAccounts = query
+      ? await firstValueFrom(
+          this.authClient.send<{ data: Array<{ id: string }> }>("auth.list_users", { q: query, limit: 100 }),
+        ).catch(() => ({ data: [] }))
+      : { data: [] };
+    const result = await firstValueFrom(
+      this.ticketClient.send<{ data: AdminResale[]; total: number; page: number; limit: number }>("ticket.list_resales_admin", {
+        status: status || undefined,
+        q: query,
+        user_ids: matchingAccounts.data.map((account) => account.id),
+        page: page ? Number(page) : undefined,
+        limit: limit ? Number(limit) : undefined,
+      }),
+    );
+    return { ...result, data: await this.withAccounts(result.data) };
+  }
+
+  /** Reventes où ce compte est vendeur ou acheteur. */
+  @Get("users/:id/resales")
+  @ApiOperation({ summary: "Reventes d'un compte (vendeur ou acheteur)" })
+  async getUserResales(@Param("id") id: string) {
+    const resales = await firstValueFrom(this.ticketClient.send<AdminResale[]>("ticket.resales_by_user", { user_id: id }));
+    return this.withAccounts(resales);
+  }
+
+  /** Ajoute nom et email du vendeur et de l'acheteur (auth-service). */
+  private async withAccounts(resales: AdminResale[]) {
+    const ids = [...new Set(resales.flatMap((resale) => [resale.original_buyer_id, resale.new_buyer_id]).filter(Boolean))] as string[];
+    const accounts = ids.length
+      ? await firstValueFrom(
+          this.authClient.send<Array<{ id: string; email: string; first_name: string; last_name: string }>>(
+            "auth.get_users_by_ids",
+            { ids },
+          ),
+        ).catch(() => [])
+      : [];
+    const byId = new Map(accounts.map((account) => [account.id, account]));
+    const summary = (userId: string | null) => {
+      const account = userId ? byId.get(userId) : undefined;
+      return account ? { email: account.email, first_name: account.first_name, last_name: account.last_name } : null;
+    };
+    return resales.map((resale) => ({
+      ...resale,
+      seller: summary(resale.original_buyer_id),
+      buyer: summary(resale.new_buyer_id),
+    }));
+  }
+
+  /** Chaîne complète des titulaires d'un billet. */
+  @Get("tickets/:id/transfers")
+  @ApiOperation({ summary: "Historique des titulaires d'un billet" })
+  getTicketTransfers(@Param("id") id: string) {
+    return firstValueFrom(this.ticketClient.send("ticket.transfers_by_ticket", { ticket_id: id }));
   }
 
   private notifyOrganizer(
@@ -212,6 +441,7 @@ export class AdminController {
     @Query("to") to?: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
+    @Query("q") q?: string,
   ) {
     return firstValueFrom(
       this.adminClient.send("admin.get_logs", {
@@ -219,6 +449,7 @@ export class AdminController {
         entity_id,
         performed_by,
         action,
+        q: q || undefined,
         from,
         to,
         limit: limit ? parseInt(limit) : undefined,
@@ -283,6 +514,12 @@ export class AdminController {
 
   /** Commandes d'un acheteur — alimente le renvoi de billets support depuis
    * la fiche compte (POST /admin/orders/:id/resend-tickets ci-dessous). */
+  @Get("users/:id/transfers")
+  @ApiOperation({ summary: "Billets offerts et reçus par ce compte" })
+  getUserTransfers(@Param("id") id: string) {
+    return firstValueFrom(this.ticketClient.send("ticket.transfers_by_user", { user_id: id }));
+  }
+
   @Get("users/:id/orders")
   @ApiOperation({ summary: "Commandes passées par cet acheteur" })
   getUserOrders(@Param("id") id: string) {
@@ -1147,7 +1384,6 @@ export class AdminController {
     )) as Array<{
       reference: string;
       ticket_category_name: string;
-      qr_code_url: string | null;
       seat_info: string | null;
       pdf_url: string | null;
     }>;
@@ -1166,9 +1402,7 @@ export class AdminController {
       tickets: tickets.map((ticket) => ({
         ticketNumber: ticket.reference,
         categoryName: ticket.ticket_category_name,
-        qrCodeUrl: ticket.qr_code_url,
         seatInfo: ticket.seat_info,
-        pdfUrl: ticket.pdf_url,
       })),
     });
 

@@ -91,7 +91,7 @@ export function TwoFactorManager() {
   }
 
   if (step === "loading") {
-    return <p className="text-center text-sm text-gray-500">Chargement…</p>;
+    return <p className="text-center text-sm text-ink-5">Chargement…</p>;
   }
 
   if (step === "load-error") {
@@ -104,11 +104,11 @@ export function TwoFactorManager() {
 
   if (step === "on") {
     return (
-      <div className="rounded-2xl border border-white/5 bg-[#12101c] p-6">
+      <div className="rounded-2xl border border-hairline-1 bg-card p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-white">Authentification 2FA</h1>
-            <p className="mt-1 text-sm text-gray-500">Via application TOTP (Google Authenticator)</p>
+            <h1 className="text-lg font-bold text-ink-1">Authentification 2FA</h1>
+            <p className="mt-1 text-sm text-ink-5">Via application TOTP (Google Authenticator)</p>
           </div>
           <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30">
             Activé
@@ -131,9 +131,9 @@ export function TwoFactorManager() {
 
   if (step === "disabling") {
     return (
-      <div className="rounded-2xl border border-white/5 bg-[#12101c] p-6">
-        <h1 className="text-lg font-bold text-white">Désactiver la 2FA</h1>
-        <p className="mt-1 text-sm text-gray-500">
+      <div className="rounded-2xl border border-hairline-1 bg-card p-6">
+        <h1 className="text-lg font-bold text-ink-1">Désactiver la 2FA</h1>
+        <p className="mt-1 text-sm text-ink-5">
           Saisis un code de ton application TOTP (ou un code de secours) pour confirmer.
         </p>
 
@@ -144,7 +144,7 @@ export function TwoFactorManager() {
             value={code}
             onChange={(event) => setCode(event.target.value)}
             placeholder="Code à 6 chiffres ou code de secours"
-            className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-center text-lg tracking-[0.2em] text-white placeholder:text-sm placeholder:tracking-normal placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-center text-lg tracking-[0.2em] text-ink-1 placeholder:text-sm placeholder:tracking-normal placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
           />
           {error ? <p className="text-center text-xs text-red-300">{error}</p> : null}
           <div className="flex gap-3">
@@ -155,7 +155,7 @@ export function TwoFactorManager() {
                 setError(null);
                 setStep("on");
               }}
-              className="flex-1 rounded-full bg-white/5 py-3 text-sm font-medium text-gray-200 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10"
+              className="flex-1 rounded-full bg-hairline-1 py-3 text-sm font-medium text-ink-2 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
             >
               Annuler
             </button>
@@ -174,16 +174,16 @@ export function TwoFactorManager() {
 
   if (step === "backup-codes") {
     return (
-      <div className="rounded-2xl border border-white/5 bg-[#12101c] p-6">
+      <div className="rounded-2xl border border-hairline-1 bg-card p-6">
         <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">
           ✓
         </div>
-        <h1 className="text-center text-lg font-bold text-white">2FA activée</h1>
+        <h1 className="text-center text-lg font-bold text-ink-1">2FA activée</h1>
         <p className="mt-1 text-center text-sm text-amber-300">
           ⚠️ Note ces codes de secours maintenant — ils ne seront plus jamais réaffichés.
         </p>
 
-        <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-4 font-mono text-sm text-white">
+        <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl border border-hairline-2 bg-hairline-1 p-4 font-mono text-sm text-ink-1">
           {backupCodes.map((backupCode) => (
             <span key={backupCode}>{backupCode}</span>
           ))}
@@ -192,7 +192,7 @@ export function TwoFactorManager() {
         <button
           type="button"
           onClick={() => setStep("on")}
-          className="mt-5 w-full rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90"
+          className="mt-5 w-full rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
         >
           J&apos;ai noté mes codes
         </button>
@@ -202,9 +202,9 @@ export function TwoFactorManager() {
 
   if (step === "setup" && setupData) {
     return (
-      <div className="rounded-2xl border border-white/5 bg-[#12101c] p-6">
-        <h1 className="text-lg font-bold text-white">Activer la 2FA</h1>
-        <p className="mt-1 text-sm text-gray-500">
+      <div className="rounded-2xl border border-hairline-1 bg-card p-6">
+        <h1 className="text-lg font-bold text-ink-1">Activer la 2FA</h1>
+        <p className="mt-1 text-sm text-ink-5">
           Scanne ce code avec Google Authenticator ou une app TOTP équivalente.
         </p>
 
@@ -213,7 +213,7 @@ export function TwoFactorManager() {
           <img src={setupData.qrCodeDataUrl} alt="QR code 2FA" className="w-full rounded-lg" />
         </div>
 
-        <p className="mb-4 text-center font-mono text-xs text-gray-500">
+        <p className="mb-4 text-center font-mono text-xs text-ink-5">
           Clé manuelle : {setupData.secret}
         </p>
 
@@ -225,13 +225,13 @@ export function TwoFactorManager() {
             value={code}
             onChange={(event) => setCode(event.target.value)}
             placeholder="Code à 6 chiffres"
-            className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-center text-lg tracking-[0.3em] text-white placeholder:tracking-normal placeholder:text-gray-600 focus:border-violet-500 focus:outline-none"
+            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-center text-lg tracking-[0.3em] text-ink-1 placeholder:tracking-normal placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
           />
           {error ? <p className="text-center text-xs text-red-300">{error}</p> : null}
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? "Vérification…" : "Confirmer et activer"}
           </button>
@@ -242,12 +242,12 @@ export function TwoFactorManager() {
 
   // step === "off"
   return (
-    <div className="rounded-2xl border border-white/5 bg-[#12101c] p-6 text-center">
+    <div className="rounded-2xl border border-hairline-1 bg-card p-6 text-center">
       <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-amber-500/15 text-2xl">
         ⚠️
       </div>
-      <h1 className="text-lg font-bold text-white">2FA désactivée</h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <h1 className="text-lg font-bold text-ink-1">2FA désactivée</h1>
+      <p className="mt-1 text-sm text-ink-5">
         Ton compte est moins protégé sans authentification à deux facteurs.
       </p>
       {error ? <p className="mt-3 text-xs text-red-300">{error}</p> : null}
@@ -255,7 +255,7 @@ export function TwoFactorManager() {
         type="button"
         onClick={handleStartSetup}
         disabled={submitting}
-        className="mt-4 w-full rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-4 w-full rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting ? "Chargement…" : "Activer la 2FA"}
       </button>

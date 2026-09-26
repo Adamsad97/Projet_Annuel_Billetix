@@ -1,7 +1,6 @@
-import { Controller, Logger } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
-import * as http from 'http';
 import { MailAttachment, MailService } from '../mail/mail.service';
 import { AccountActivatedDto } from './dto/account-activated.dto';
 import { AccountSuspendedDto } from './dto/account-suspended.dto';
@@ -33,15 +32,16 @@ import { OrderConfirmedDto } from './dto/order-confirmed.dto';
 import { PasswordResetDto } from './dto/password-reset.dto';
 import { PaymentConfirmedDto } from './dto/payment-confirmed.dto';
 import { PaymentFailedDto } from './dto/payment-failed.dto';
+import { PurchaseInvoiceDto } from './dto/purchase-invoice.dto';
 import { TicketReadyDto } from './dto/ticket-ready.dto';
 import { TicketScannedDto } from './dto/ticket-scanned.dto';
+import { TicketTransferredDto } from './dto/ticket-transferred.dto';
+import { TransferRevertedDto, TransferRevertRejectedDto, TransferRevertRequestedDto } from './dto/transfer-revert.dto';
 import { WelcomeDto } from './dto/welcome.dto';
 
 @Controller()
 export class NotificationController {
   private readonly appUrl: string;
-  private readonly minioInternalHost: string;
-  private readonly logger = new Logger(NotificationController.name);
 
   constructor(
     private readonly mail: MailService,
@@ -54,56 +54,22 @@ export class NotificationController {
     // reset mot de passe, etc.) pointaient vers le gateway et renvoyaient
     // un 404 une fois cliqués.
     this.appUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
-
-    // ticket.pdf_url/invoice_url sont désormais l'hôte PUBLIC de MinIO
-    // (MINIO_PUBLIC_ENDPOINT, ex. localhost:9000 — joignable depuis le
-    // navigateur, cf. bug corrigé côté pdf-service/upload.service). Mais ce
-    // téléchargement-ci a lieu depuis CE conteneur, pour lequel "localhost"
-    // se désigne lui-même et ne joint jamais MinIO — d'où le PDF absent des
-    // pièces jointes. On réécrit vers l'hôte interne au réseau Docker avant
-    // de récupérer le fichier, sans toucher à l'URL publique stockée.
-    const minioEndpoint = this.config.get<string>('MINIO_ENDPOINT', 'minio');
-    const minioPort = this.config.get<string>('MINIO_PORT', '9000');
-    this.minioInternalHost = `${minioEndpoint}:${minioPort}`;
   }
 
-  private toInternalUrl(url: string): string {
-    try {
-      const parsed = new URL(url);
-      parsed.host = this.minioInternalHost;
-      return parsed.toString();
-    } catch {
-      return url;
-    }
+  /**
+   * Lien d'email vers une page sensible : passe par la connexion avec
+   * reauth=1 — toute session déjà ouverte dans le navigateur est fermée et
+   * l'utilisateur doit s'authentifier à chaque clic (demande produit, cf.
+   * app/connexion), puis il est renvoyé vers `path`.
+   */
+  private reauthUrl(path: string): string {
+    return `${this.appUrl}/connexion?reauth=1&next=${encodeURIComponent(path)}`;
   }
 
   private ack(rmqContext: RmqContext) {
     rmqContext.getChannelRef().ack(rmqContext.getMessage());
   }
 
-  // Les PDF (billets/factures) sont sur MinIO en lecture publique — un
-  // échec de téléchargement ne doit jamais empêcher l'envoi de l'email,
-  // juste faire retomber sur le lien classique (dégradation silencieuse).
-  private fetchPdf(url: string): Promise<Buffer | null> {
-    return new Promise((resolve) => {
-      http
-        .get(url, (res) => {
-          if (res.statusCode !== 200) {
-            this.logger.warn(`PDF inaccessible (${res.statusCode}) : ${url}`);
-            res.resume();
-            resolve(null);
-            return;
-          }
-          const chunks: Buffer[] = [];
-          res.on('data', (chunk) => chunks.push(chunk));
-          res.on('end', () => resolve(Buffer.concat(chunks)));
-        })
-        .on('error', (error) => {
-          this.logger.warn(`Échec téléchargement PDF ${url} : ${error.message}`);
-          resolve(null);
-        });
-    });
-  }
 
   @EventPattern('notification.welcome')
   async onWelcome(@Payload() data: WelcomeDto, @Ctx() rmqContext: RmqContext) {
@@ -186,50 +152,118 @@ export class NotificationController {
     this.ack(rmqContext);
   }
 
+  /**
+   * Bug corrigé (sécurité, demande produit) : l'email joignait les billets
+   * en PDF et affichait leurs QR codes — un email transféré, un compte
+   * email compromis ou un appareil partagé suffisait à entrer à la place du
+   * titulaire. Désormais : aucun billet ni QR code dans l'email, seulement
+   * un bouton vers l'application, qui exige une connexion à chaque clic.
+   */
   @EventPattern('notification.ticket_ready')
   async onTicketReady(@Payload() data: TicketReadyDto, @Ctx() rmqContext: RmqContext) {
-    const attachments: MailAttachment[] = [];
-
-    // Bug corrigé : le QR code (data URI base64 généré par ticket-service)
-    // était injecté tel quel dans <img src="..."> du template — la plupart
-    // des webmails (Gmail compris) bloquent les images en data: URI dans un
-    // email HTML par sécurité, laissant une icône d'image cassée. On
-    // l'attache maintenant en pièce jointe intégrée (cid), seule méthode
-    // fiable pour une image inline dans un email.
-    const ticketsForTemplate = data.tickets.map((ticket, index) => {
-      const match = ticket.qrCodeUrl?.match(/^data:(image\/\w+);base64,(.+)$/);
-      if (!match) return ticket;
-      const [, contentType, base64Data] = match;
-      const cid = `qr-${index}-${Date.now()}@billetix`;
-      attachments.push({
-        filename: `qr-${ticket.ticketNumber || index + 1}.png`,
-        content: Buffer.from(base64Data, 'base64'),
-        contentType,
-        cid,
-      });
-      return { ...ticket, qrCodeUrl: `cid:${cid}` };
+    await this.mail.send({
+      to: data.email,
+      subject: `Vos billets pour ${data.eventName} sont disponibles — BilletiX`,
+      template: 'ticket-ready',
+      context: {
+        firstName: data.firstName,
+        eventName: data.eventName,
+        eventDate: data.eventDate,
+        eventVenue: data.eventVenue,
+        ticketCount: data.tickets.length,
+        plural: data.tickets.length > 1,
+        ticketsUrl: this.reauthUrl('/profil/billets'),
+      },
     });
+    this.ack(rmqContext);
+  }
 
-    for (const [index, ticket] of data.tickets.entries()) {
-      if (!ticket.pdfUrl) continue;
-      const pdf = await this.fetchPdf(this.toInternalUrl(ticket.pdfUrl));
-      if (pdf) {
-        attachments.push({
-          filename: `billet-${ticket.ticketNumber || index + 1}.pdf`,
-          content: pdf,
-          contentType: 'application/pdf',
-        });
-      }
-    }
+  /**
+   * Billet offert (transfert immédiat) : le bénéficiaire est prévenu, et
+   * l'expéditeur reçoit une confirmation — qui sert aussi d'alerte si le
+   * transfert n'est pas de son fait (compte compromis).
+   */
+  @EventPattern('notification.ticket_transferred')
+  async onTicketTransferred(@Payload() data: TicketTransferredDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.recipientEmail,
+      subject: `${data.senderFirstName} vous a offert un billet pour ${data.eventName} — BilletiX`,
+      template: 'ticket-gift-received',
+      context: { ...data, ticketsUrl: this.reauthUrl('/profil/billets') },
+    });
+    await this.mail.send({
+      to: data.senderEmail,
+      subject: `Billet ${data.ticketReference} transféré — BilletiX`,
+      template: 'ticket-gift-sent',
+      context: { ...data, historyUrl: this.reauthUrl('/profil/billets') },
+    });
+    this.ack(rmqContext);
+  }
+
+  /** Transfert annulé par un admin : l'expéditeur récupère le billet, le bénéficiaire le perd. */
+  @EventPattern('notification.transfer_reverted')
+  async onTransferReverted(@Payload() data: TransferRevertedDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.senderEmail,
+      subject: `Votre billet ${data.ticketReference} vous a été restitué — BilletiX`,
+      template: 'transfer-reverted-sender',
+      context: { ...data, ticketsUrl: this.reauthUrl('/profil/billets') },
+    });
+    await this.mail.send({
+      to: data.recipientEmail,
+      subject: `Billet ${data.ticketReference} retiré de votre compte — BilletiX`,
+      template: 'transfer-reverted-recipient',
+      context: { ...data },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.transfer_revert_requested')
+  async onTransferRevertRequested(@Payload() data: TransferRevertRequestedDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.senderEmail,
+      subject: `Demande d'annulation du transfert ${data.ticketReference} reçue — BilletiX`,
+      template: 'transfer-revert-requested',
+      context: { ...data },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.transfer_revert_rejected')
+  async onTransferRevertRejected(@Payload() data: TransferRevertRejectedDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.senderEmail,
+      subject: `Demande d'annulation du transfert ${data.ticketReference} refusée — BilletiX`,
+      template: 'transfer-revert-rejected',
+      context: { ...data },
+    });
+    this.ack(rmqContext);
+  }
+
+  /** Facture d'achat : détail complet de la commande + facture PDF jointe. */
+  @EventPattern('notification.purchase_invoice')
+  async onPurchaseInvoice(@Payload() data: PurchaseInvoiceDto, @Ctx() rmqContext: RmqContext) {
+    // Facture transmise par l'api-gateway (bucket MinIO privé : plus aucun
+    // lien public à télécharger ici).
+    const attachments: MailAttachment[] = data.invoicePdfBase64
+      ? [
+          {
+            filename: `facture-${data.orderReference}.pdf`,
+            content: Buffer.from(data.invoicePdfBase64, 'base64'),
+            contentType: 'application/pdf',
+          },
+        ]
+      : [];
 
     await this.mail.send({
       to: data.email,
-      subject: `Vos billets pour ${data.eventName} — BilletiX`,
-      template: 'ticket-ready',
+      subject: `Votre facture — commande ${data.orderReference} — BilletiX`,
+      template: 'purchase-invoice',
       context: {
         ...data,
-        tickets: ticketsForTemplate,
-        ticketsUrl: `${this.appUrl}/profil/billets`,
+        invoicePdfBase64: undefined,
+        hasInvoice: attachments.length > 0,
+        orderUrl: this.reauthUrl(`/profil/commandes/${data.orderId}`),
       },
       attachments,
     });

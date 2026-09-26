@@ -11,11 +11,12 @@ import { Panel } from "@/components/profile/panel";
 import { TicketRow } from "@/components/profile/ticket-row";
 import { OrderRow } from "@/components/profile/order-row";
 import { SecurityPanel } from "@/components/profile/security-panel";
-import { getMyOrders, type ApiOrder } from "@/lib/api/orders";
-import { getTicketsByOrder } from "@/lib/api/tickets";
+import { getMyOrdersSynced, type ApiOrder } from "@/lib/api/orders";
+import { getMyTickets, getTicketsByOrder } from "@/lib/api/tickets";
 import { apiOrderToProfileOrder, apiTicketToProfileTicket } from "@/lib/mappers/profile-mappers";
 import type { ProfileOrder, ProfileTicket } from "@/lib/mock/profile";
 import { getAccessToken, getStoredUser } from "@/lib/auth/session";
+import { TwoFactorPromo } from "@/components/profile/two-factor-promo";
 
 // Nombre de commandes récentes prises en compte pour les deux panneaux
 // (au-delà, "Tout voir →" mènera aux listes complètes une fois câblées).
@@ -46,14 +47,15 @@ export default function ProfilPage() {
 
     async function load() {
       try {
-        const apiOrders: ApiOrder[] = await getMyOrders();
+        const apiOrders: ApiOrder[] = await getMyOrdersSynced();
         const recent = [...apiOrders]
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .slice(0, RECENT_ORDERS_LIMIT);
 
-        const ticketsByOrder = await Promise.all(
-          recent.map((order) => getTicketsByOrder(order.id).catch(() => [])),
-        );
+        const [ticketsByOrder, mine] = await Promise.all([
+          Promise.all(recent.map((order) => getTicketsByOrder(order.id).catch(() => []))),
+          getMyTickets(),
+        ]);
 
         if (cancelled) return;
 
@@ -62,7 +64,7 @@ export default function ProfilPage() {
             apiOrderToProfileOrder(order, ticketsByOrder[index].length),
           ),
         );
-        setTickets(ticketsByOrder.flat().map(apiTicketToProfileTicket).slice(0, 5));
+        setTickets(mine.tickets.map(apiTicketToProfileTicket).slice(0, 5));
       } catch {
         if (!cancelled) {
           setError("Impossible de charger tes commandes et billets pour le moment.");
@@ -77,18 +79,19 @@ export default function ProfilPage() {
   }, []);
 
   return (
-    <div className="flex flex-1 flex-col bg-[#07060c]">
+    <div className="flex flex-1 flex-col bg-page">
       <AuthHeader />
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
         <Link
           href="/"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
         >
           ← Accueil
         </Link>
 
         <ProfileHeader />
+        <TwoFactorPromo className="mb-8" />
 
         <div className="flex flex-col gap-6">
           {error ? (
@@ -105,16 +108,16 @@ export default function ProfilPage() {
                 action={
                   <Link
                     href="/profil/billets"
-                    className="text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
+                    className="text-sm font-medium text-link transition-colors hover:text-link-hover"
                   >
                     Tout voir →
                   </Link>
                 }
               >
                 {tickets === null ? (
-                  <p className="px-5 py-4 text-sm text-gray-500">Chargement…</p>
+                  <p className="px-5 py-4 text-sm text-ink-5">Chargement…</p>
                 ) : tickets.length === 0 ? (
-                  <p className="px-5 py-4 text-sm text-gray-500">Aucun billet pour l&apos;instant.</p>
+                  <p className="px-5 py-4 text-sm text-ink-5">Aucun billet pour l&apos;instant.</p>
                 ) : (
                   tickets.map((ticket) => <TicketRow key={ticket.id} ticket={ticket} />)
                 )}
@@ -126,16 +129,16 @@ export default function ProfilPage() {
                 action={
                   <Link
                     href="/profil/commandes"
-                    className="text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
+                    className="text-sm font-medium text-link transition-colors hover:text-link-hover"
                   >
                     Tout voir →
                   </Link>
                 }
               >
                 {orders === null ? (
-                  <p className="px-5 py-4 text-sm text-gray-500">Chargement…</p>
+                  <p className="px-5 py-4 text-sm text-ink-5">Chargement…</p>
                 ) : orders.length === 0 ? (
-                  <p className="px-5 py-4 text-sm text-gray-500">Aucune commande pour l&apos;instant.</p>
+                  <p className="px-5 py-4 text-sm text-ink-5">Aucune commande pour l&apos;instant.</p>
                 ) : (
                   orders.map((order) => <OrderRow key={order.reference} order={order} />)
                 )}
@@ -147,12 +150,12 @@ export default function ProfilPage() {
 
           <Link
             href="/profil/notifications"
-            className="flex items-center justify-between rounded-2xl border border-white/5 bg-[#12101c] px-5 py-4 transition-colors hover:bg-white/[0.03]"
+            className="flex items-center justify-between rounded-2xl border border-hairline-1 bg-card px-5 py-4 transition-colors hover:bg-hairline-1"
           >
-            <span className="flex items-center gap-2 text-sm font-semibold text-gray-200">
+            <span className="flex items-center gap-2 text-sm font-semibold text-ink-2">
               🔔 Préférences de notification
             </span>
-            <span className="text-sm text-violet-400">Gérer →</span>
+            <span className="text-sm text-link">Gérer →</span>
           </Link>
         </div>
       </main>

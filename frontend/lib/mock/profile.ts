@@ -24,6 +24,10 @@ export interface ProfileTicket {
   emoji: string;
   iconBg: string;
   status: TicketStatus;
+  // Billet reçu en cadeau : « Reçu de Jean D. »
+  receivedFromLabel?: string;
+  // Billet acheté en revente : « Acheté en revente le 26 septembre 2026 »
+  resalePurchaseLabel?: string;
 }
 
 export const profileTickets: ProfileTicket[] = [
@@ -33,7 +37,7 @@ export const profileTickets: ProfileTicket[] = [
     dateLabel: "15 août 2026",
     venue: "La Défense Arena",
     emoji: "🎧",
-    iconBg: "bg-violet-500/15",
+    iconBg: "bg-blue-500/15",
     status: "valid",
   },
   {
@@ -123,7 +127,7 @@ export const ticketStatusBadge: Record<
   },
   used: {
     label: "Utilisé",
-    className: "bg-white/5 text-gray-400 ring-1 ring-inset ring-white/10",
+    className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",
   },
   for_resale: {
     label: "En revente",
@@ -146,7 +150,7 @@ export const orderStatusBadge: Record<
   },
   used: {
     label: "Utilisé",
-    className: "bg-white/5 text-gray-400 ring-1 ring-inset ring-white/10",
+    className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",
   },
   pending: {
     label: "Paiement en attente",
@@ -158,7 +162,7 @@ export const orderStatusBadge: Record<
   },
   refunded: {
     label: "Remboursée",
-    className: "bg-white/5 text-gray-400 ring-1 ring-inset ring-white/10",
+    className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",
   },
 };
 

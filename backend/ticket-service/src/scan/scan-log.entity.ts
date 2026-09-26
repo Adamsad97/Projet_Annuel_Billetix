@@ -1,6 +1,12 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 export enum ScanResult {
+  // QR dynamique authentique mais périmé (capture d'écran, code d'une
+  // autre période) — le porteur doit afficher le code en direct.
+  EXPIRED = 'EXPIRED',
+  // Ancien QR fixe (PDF, capture d'avant le QR dynamique) : seul le code
+  // éphémère affiché en direct dans l'application est accepté.
+  STATIC_REFUSED = 'STATIC_REFUSED',
   SUCCESS = 'SUCCESS',
   ALREADY_USED = 'ALREADY_USED',
   INVALID = 'INVALID',
@@ -15,6 +21,8 @@ export enum ScanResult {
   // le vendeur présente son ancien email après avoir revendu son billet
   // (transferToNewBuyer régénère le token). Distinct d'INVALID pour que
   // l'agent voie "billet revendu" plutôt qu'un rejet générique opaque.
+  // Même résultat après un transfert (billet offert) : l'ancien titulaire
+  // ne peut plus entrer avec.
   SUPERSEDED = 'SUPERSEDED',
 }
 

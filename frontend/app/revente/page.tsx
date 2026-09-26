@@ -1,25 +1,45 @@
-// Bug corrigé : page 100% maquette (annonces factices, bouton "Acheter"
-// sans action) — câblée sur ticket-service (marketplace globale, toutes
-// annonces LISTED confondues).
+"use client";
 
+// Marketplace de revente (ticket-service, toutes annonces LISTED
+// confondues). Réservée aux acheteurs connectés (demande produit) : annonces
+// chargées avec la session, côté client — l'API refuse la lecture anonyme,
+// et app/revente/layout.tsx protège la section.
+
+import { useEffect, useState } from "react";
 import { Navbar } from "@/components/layout/navbar";
-import { BuyerOnlyGate } from "@/components/layout/buyer-only-gate";
 import { ResaleCard } from "@/components/resale/resale-card";
-import { listResaleListings } from "@/lib/api/resale";
+import { listResaleListings, type ApiResaleListing } from "@/lib/api/resale";
+import { ApiError } from "@/lib/api/http-error";
 import { resaleNote } from "@/lib/mock/resale";
 
-export default async function RevendePage() {
-  const listings = await listResaleListings().catch(() => []);
+export default function RevendePage() {
+  const [listings, setListings] = useState<ApiResaleListing[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    listResaleListings()
+      .then((data) => {
+        if (!cancelled) setListings(data);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof ApiError ? err.message : "Impossible de charger les annonces.");
+        setListings([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
-    <BuyerOnlyGate>
-      <div className="flex flex-1 flex-col bg-[#07060c]">
-        <Navbar />
+    <div className="flex flex-1 flex-col bg-page">
+      <Navbar active="/revente" />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
         <div className="mb-2">
-          <h1 className="text-2xl font-bold text-white">Revente de billets</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-ink-1">Revente de billets</h1>
+          <p className="mt-1 text-sm text-ink-5">
             Achetez des billets revendus par d&apos;autres utilisateurs, au prix d&apos;origine.
           </p>
         </div>
@@ -28,8 +48,18 @@ export default async function RevendePage() {
           🛡️ {resaleNote}
         </p>
 
-        {listings.length === 0 ? (
-          <p className="rounded-2xl border border-white/5 bg-[#12101c] px-5 py-10 text-center text-sm text-gray-500">
+        {error ? (
+          <p className="mb-6 rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger ring-1 ring-inset ring-danger/30">
+            {error}
+          </p>
+        ) : null}
+
+        {listings === null ? (
+          <p className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
+            Chargement des annonces…
+          </p>
+        ) : listings.length === 0 ? (
+          <p className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
             Aucun billet en revente pour le moment.
           </p>
         ) : (
@@ -40,7 +70,6 @@ export default async function RevendePage() {
           </div>
         )}
       </main>
-      </div>
-    </BuyerOnlyGate>
+    </div>
   );
 }

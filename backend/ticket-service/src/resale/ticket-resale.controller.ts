@@ -1,5 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
+import { ResaleStatus } from './ticket-resale.entity';
 import { TicketResaleService } from './ticket-resale.service';
 
 @Controller()
@@ -56,6 +57,31 @@ export class TicketResaleController {
     new_holder_last_name: string;
   }) {
     return this.resaleService.completeResale(data);
+  }
+
+  @MessagePattern('ticket.resales_by_seller')
+  listBySeller(@Payload() data: { user_id: string }) {
+    return this.resaleService.listBySeller(data.user_id);
+  }
+
+  @MessagePattern('ticket.resales_bought_by')
+  listBoughtBy(@Payload() data: { user_id: string }) {
+    return this.resaleService.listBoughtBy(data.user_id);
+  }
+
+  @MessagePattern('ticket.resales_sold_from_order')
+  listSoldFromOrder(@Payload() data: { order_id: string }) {
+    return this.resaleService.listSoldFromOrder(data.order_id);
+  }
+
+  @MessagePattern('ticket.resales_by_user')
+  listByUser(@Payload() data: { user_id: string }) {
+    return this.resaleService.listByUser(data.user_id);
+  }
+
+  @MessagePattern('ticket.list_resales_admin')
+  listForAdmin(@Payload() data: { status?: ResaleStatus; q?: string; user_ids?: string[]; page?: number; limit?: number }) {
+    return this.resaleService.listForAdmin(data ?? {});
   }
 
   @MessagePattern('ticket.withdraw_resale')

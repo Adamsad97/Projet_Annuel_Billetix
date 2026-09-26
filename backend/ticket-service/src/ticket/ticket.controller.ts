@@ -12,9 +12,19 @@ export class TicketController {
     return this.ticketService.generate(dto);
   }
 
+  @MessagePattern('ticket.get_display_qr')
+  getDisplayQr(@Payload() data: { id: string }) {
+    return this.ticketService.getDisplayQr(data.id);
+  }
+
   @MessagePattern('ticket.get')
   getById(@Payload() data: { id: string }) {
     return this.ticketService.getById(data.id);
+  }
+
+  @MessagePattern('ticket.get_by_buyer')
+  getByBuyer(@Payload() data: { buyer_id: string }) {
+    return this.ticketService.getByBuyer(data.buyer_id);
   }
 
   @MessagePattern('ticket.get_by_order')

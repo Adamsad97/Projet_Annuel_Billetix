@@ -5,7 +5,7 @@ import { PlatformConfigService } from './platform-config.service';
 
 describe('PlatformConfigService', () => {
   let service: PlatformConfigService;
-  let repo: { findOne: jest.Mock; save: jest.Mock; create: jest.Mock; find: jest.Mock };
+  let repo: { findOne: jest.Mock; save: jest.Mock; create: jest.Mock; find: jest.Mock; delete: jest.Mock };
 
   beforeEach(async () => {
     repo = {
@@ -13,6 +13,7 @@ describe('PlatformConfigService', () => {
       save: jest.fn().mockImplementation((setting) => Promise.resolve(setting)),
       create: jest.fn().mockImplementation((setting) => setting),
       find: jest.fn(),
+      delete: jest.fn().mockResolvedValue({ affected: 0 }),
     };
 
     const module = await Test.createTestingModule({
@@ -42,6 +43,15 @@ describe('PlatformConfigService', () => {
       expect(repo.save).toHaveBeenCalledWith(
         expect.objectContaining({ key: 'fill_thresholds', value: '[25,50,75,100]' }),
       );
+    });
+
+    it("supprime les réglages retirés du produit (QR fixe : plus d'option « rotation activée »)", async () => {
+      repo.findOne.mockResolvedValue({ key: 'x', value: 'y' });
+
+      await service.onModuleInit();
+
+      const [criteria] = repo.delete.mock.calls[0];
+      expect(criteria.key.value).toContain('ticket_qr_rotation_enabled');
     });
   });
 

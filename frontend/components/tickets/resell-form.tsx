@@ -18,14 +18,14 @@ export function ResellForm({ ticket }: { ticket: TicketDetail }) {
         <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">
           ✓
         </div>
-        <h2 className="text-lg font-bold text-white">Billet mis en revente</h2>
-        <p className="mt-1 text-sm text-gray-400">
+        <h2 className="text-lg font-bold text-ink-1">Billet mis en revente</h2>
+        <p className="mt-1 text-sm text-ink-4">
           Il apparaît maintenant sur la marketplace, réservé 10 minutes à
           chaque acheteur intéressé.
         </p>
         <Link
           href="/revente"
-          className="mt-4 inline-flex rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-gray-200 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10"
+          className="mt-4 inline-flex rounded-full bg-hairline-1 px-4 py-2 text-sm font-medium text-ink-2 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
         >
           Voir la marketplace →
         </Link>
@@ -58,16 +58,16 @@ export function ResellForm({ ticket }: { ticket: TicketDetail }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-white/5 bg-[#12101c] p-6"
+      className="rounded-2xl border border-hairline-1 bg-card p-6"
     >
-      <h2 className="text-base font-bold text-white">Mettre ce billet en revente</h2>
-      <p className="mt-1 text-sm text-gray-500">
+      <h2 className="text-base font-bold text-ink-1">Mettre ce billet en revente</h2>
+      <p className="mt-1 text-sm text-ink-5">
         {ticket.eventName} — {ticket.categoryName}
       </p>
 
       <label className="mt-5 flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-violet-200/80">Prix de revente</span>
-        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+        <span className="text-sm font-medium text-accent/80">Prix de revente</span>
+        <div className="flex items-center gap-2 rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3">
           <input
             type="number"
             step="0.01"
@@ -76,12 +76,12 @@ export function ResellForm({ ticket }: { ticket: TicketDetail }) {
             required
             value={price}
             onChange={(event) => setPrice(event.target.value)}
-            className="w-full bg-transparent text-lg font-bold text-white focus:outline-none"
+            className="w-full bg-transparent text-lg font-bold text-ink-1 focus:outline-none"
           />
-          <span className="text-sm text-gray-500">€</span>
+          <span className="text-sm text-ink-5">€</span>
         </div>
       </label>
-      <p className="mt-2 text-xs text-gray-500">
+      <p className="mt-2 text-xs text-ink-5">
         🛡️ Prix plafonné à la valeur faciale ({ticket.unitPriceTtc.toFixed(2)} €) — la
         revente à profit n&apos;est pas autorisée sur BilletiX.
       </p>
@@ -95,7 +95,7 @@ export function ResellForm({ ticket }: { ticket: TicketDetail }) {
       <button
         type="submit"
         disabled={submitting}
-        className="mt-5 w-full rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+        className="mt-5 w-full rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {submitting ? "Mise en revente…" : "Confirmer la mise en revente"}
       </button>

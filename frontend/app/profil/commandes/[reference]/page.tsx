@@ -12,7 +12,7 @@ import Link from "next/link";
 import { Elements } from "@stripe/react-stripe-js";
 import { AuthHeader } from "@/components/layout/auth-header";
 import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
-import { getOrder, resendTickets, type ApiOrder, type ApiOrderItem } from "@/lib/api/orders";
+import { downloadInvoice, getOrder, resendTickets, type ApiOrder, type ApiOrderItem } from "@/lib/api/orders";
 import { getTicketsByOrder, type ApiTicket } from "@/lib/api/tickets";
 import { createPaymentIntent } from "@/lib/api/payments";
 import { getStripe } from "@/lib/stripe/client";
@@ -29,6 +29,8 @@ export default function OrderDetailPage({
   params: Promise<{ reference: string }>;
 }) {
   const { reference: orderId } = use(params);
+  const [invoiceDownloading, setInvoiceDownloading] = useState(false);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const [order, setOrder] = useState<ApiOrder | null | undefined>(undefined);
   const [items, setItems] = useState<ApiOrderItem[]>([]);
   const [tickets, setTickets] = useState<ApiTicket[]>([]);
@@ -136,28 +138,28 @@ export default function OrderDetailPage({
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-[#07060c]">
+    <div className="flex flex-1 flex-col bg-page">
       <AuthHeader />
 
       <main className="mx-auto w-full max-w-lg flex-1 px-6 py-10">
         <Link
           href="/profil"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-violet-400 transition-colors hover:text-violet-300"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
         >
           ← Profil
         </Link>
 
         {order === undefined ? (
-          <p className="text-center text-sm text-gray-500">Chargement…</p>
+          <p className="text-center text-sm text-ink-5">Chargement…</p>
         ) : error ? (
           <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-6 text-center text-sm text-red-300">
             {error}
           </div>
         ) : order === null ? (
-          <div className="rounded-2xl border border-white/5 bg-[#12101c] p-8 text-center">
+          <div className="rounded-2xl border border-hairline-1 bg-card p-8 text-center">
             <div className="mb-3 text-4xl">📦</div>
-            <h1 className="text-lg font-bold text-white">Page introuvable</h1>
-            <p className="mt-2 text-sm text-gray-500">
+            <h1 className="text-lg font-bold text-ink-1">Page introuvable</h1>
+            <p className="mt-2 text-sm text-ink-5">
               Cette commande n&apos;existe pas, ou a changé d&apos;adresse.
             </p>
           </div>
@@ -165,8 +167,8 @@ export default function OrderDetailPage({
           <>
             <div className="mb-6 flex items-center justify-between">
               <div>
-                <h1 className="text-xl font-bold text-white">{order.reference}</h1>
-                <p className="text-sm text-gray-500">
+                <h1 className="text-xl font-bold text-ink-1">{order.reference}</h1>
+                <p className="text-sm text-ink-5">
                   Passée le {dateFormatter.format(new Date(order.created_at))}
                 </p>
               </div>
@@ -177,21 +179,21 @@ export default function OrderDetailPage({
               ) : null}
             </div>
 
-            <div className="rounded-2xl border border-white/5 bg-[#12101c] p-5">
-              <h2 className="mb-3 text-sm font-semibold text-gray-200">Récapitulatif</h2>
+            <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+              <h2 className="mb-3 text-sm font-semibold text-ink-2">Récapitulatif</h2>
               {lines.map((line) => (
                 <div key={line.label} className="flex items-center justify-between py-1.5 text-sm">
-                  <span className="text-gray-400">{line.label}</span>
-                  <span className="text-gray-300">{currency.format(line.amount)}</span>
+                  <span className="text-ink-4">{line.label}</span>
+                  <span className="text-ink-3">{currency.format(line.amount)}</span>
                 </div>
               ))}
-              <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
-                <span className="font-bold text-white">Total</span>
-                <span className="font-bold text-white">
+              <div className="mt-3 flex items-center justify-between border-t border-hairline-2 pt-3">
+                <span className="font-bold text-ink-1">Total</span>
+                <span className="font-bold text-ink-1">
                   {currency.format(Number(order.total_amount_ttc))}
                 </span>
               </div>
-              <p className="mt-3 text-xs text-gray-500">
+              <p className="mt-3 text-xs text-ink-5">
                 💳 {paymentMethodLabel(order.payment_method)}
               </p>
             </div>
@@ -221,7 +223,7 @@ export default function OrderDetailPage({
                       type="button"
                       onClick={handleResume}
                       disabled={resumeLoading}
-                      className="w-full rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="w-full rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {resumeLoading ? "Préparation du paiement…" : "Reprendre le paiement →"}
                     </button>
@@ -230,29 +232,92 @@ export default function OrderDetailPage({
               </div>
             ) : null}
 
-            <h2 className="mb-3 mt-6 text-sm font-semibold text-gray-200">Billets inclus</h2>
-            <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
+            {order.invoice_url ? (
+              <div className="mt-6">
+                <button
+                  type="button"
+                  disabled={invoiceDownloading}
+                  onClick={async () => {
+                    setInvoiceDownloading(true);
+                    setInvoiceError(null);
+                    try {
+                      await downloadInvoice(order.id, order.reference);
+                    } catch (err) {
+                      setInvoiceError(err instanceof ApiError ? err.message : "Téléchargement impossible, réessaie.");
+                    } finally {
+                      setInvoiceDownloading(false);
+                    }
+                  }}
+                  className="w-full rounded-full border border-hairline-3 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-60"
+                >
+                  {invoiceDownloading ? "Téléchargement…" : "📄 Télécharger la facture (PDF)"}
+                </button>
+                {invoiceError ? (
+                  <p className="mt-2 text-center text-sm text-danger">{invoiceError}</p>
+                ) : null}
+              </div>
+            ) : null}
+
+            <h2 className="mb-3 mt-6 text-sm font-semibold text-ink-2">Billets inclus</h2>
+            <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
               {tickets.length === 0 && ticketsLoading ? (
-                <p className="px-5 py-4 text-sm text-gray-500">Chargement des billets…</p>
+                <p className="px-5 py-4 text-sm text-ink-5">Chargement des billets…</p>
               ) : tickets.length === 0 ? (
-                <p className="px-5 py-4 text-sm text-gray-500">Aucun billet pour cette commande.</p>
+                <p className="px-5 py-4 text-sm text-ink-5">Aucun billet pour cette commande.</p>
               ) : (
-                tickets.map((ticket) => (
+                tickets.map((ticket) =>
+                  ticket.resold ? (
+                    // Revendu : rattaché à la commande de l'acheteur, gardé ici en trace.
+                    <div
+                      key={`resold-${ticket.id}`}
+                      className="flex items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 last:border-b-0"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">🔄</span>
+                        <div>
+                          <p className="text-sm font-bold text-ink-1">{ticket.event_name}</p>
+                          <p className="text-xs text-ink-5">
+                            {ticket.reference} · revendu {currency.format(ticket.resale_price ?? 0)}
+                            {ticket.sold_at ? ` le ${dateFormatter.format(new Date(ticket.sold_at))}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-medium text-ink-5">Revendu</span>
+                    </div>
+                  ) : ticket.transferred ? (
+                    // Offert à un autre compte : plus accessible depuis ce compte.
+                    <div
+                      key={ticket.id}
+                      className="flex items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 last:border-b-0"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">🎁</span>
+                        <div>
+                          <p className="text-sm font-bold text-ink-1">{ticket.event_name}</p>
+                          <p className="text-xs text-ink-5">
+                            {ticket.reference} · offert à {ticket.holder_first_name} {ticket.holder_last_name}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-medium text-ink-5">Offert</span>
+                    </div>
+                  ) : (
                   <Link
                     key={ticket.id}
                     href={`/billets/${ticket.id}`}
-                    className="flex items-center justify-between gap-4 border-b border-white/5 px-5 py-4 transition-colors last:border-b-0 hover:bg-white/[0.03]"
+                    className="flex items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 transition-colors last:border-b-0 hover:bg-hairline-1"
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-lg">🎫</span>
                       <div>
-                        <p className="text-sm font-bold text-white">{ticket.event_name}</p>
-                        <p className="text-xs text-gray-500">{ticket.reference}</p>
+                        <p className="text-sm font-bold text-ink-1">{ticket.event_name}</p>
+                        <p className="text-xs text-ink-5">{ticket.reference}</p>
                       </div>
                     </div>
-                    <span className="text-sm text-violet-400">Voir →</span>
+                    <span className="text-sm text-link">Voir →</span>
                   </Link>
-                ))
+                  ),
+                )
               )}
             </div>
 
@@ -262,7 +327,7 @@ export default function OrderDetailPage({
                   type="button"
                   onClick={handleResend}
                   disabled={resendState === "loading" || resendState === "sent"}
-                  className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-full border border-hairline-3 px-5 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {resendState === "loading"
                     ? "Envoi en cours…"

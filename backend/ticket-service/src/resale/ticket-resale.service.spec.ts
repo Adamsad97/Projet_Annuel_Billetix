@@ -289,3 +289,45 @@ describe('TicketResaleService — réservation atomique (anti double-achat)', ()
     });
   });
 });
+
+describe('TicketResaleService — historique des reventes', () => {
+  let service: TicketResaleService;
+  let repo: { find: jest.Mock };
+  const tickets = [
+    { id: 't1', reference: 'TKT-1', event_name: 'Concert', ticket_category_name: 'Standard', unit_price_ttc: '50.00' },
+  ];
+
+  beforeEach(async () => {
+    repo = { find: jest.fn() };
+    const module = await Test.createTestingModule({
+      providers: [
+        TicketResaleService,
+        { provide: getRepositoryToken(TicketResale), useValue: repo },
+        { provide: TicketService, useValue: {} },
+        { provide: DataSource, useValue: { getRepository: () => ({ findBy: jest.fn().mockResolvedValue(tickets) }) } },
+        { provide: PlatformConfigCache, useValue: {} },
+      ],
+    }).compile();
+    service = module.get(TicketResaleService);
+  });
+
+  it('le vendeur garde la trace de ses annonces, avec les infos lisibles du billet', async () => {
+    repo.find.mockResolvedValue([
+      { id: 'r1', ticket_id: 't1', status: ResaleStatus.SOLD, resale_price: '45.00', sold_at: new Date() },
+    ]);
+
+    const result = await service.listBySeller('vendeur');
+
+    expect(repo.find).toHaveBeenCalledWith({ where: { original_buyer_id: 'vendeur' }, order: { listed_at: 'DESC' } });
+    expect(result[0]).toMatchObject({ ticket_reference: 'TKT-1', event_name: 'Concert', face_value: 50 });
+  });
+
+  it("retrouve les billets revendus depuis une commande (qui n'y sont plus rattachés)", async () => {
+    repo.find.mockResolvedValue([]);
+    await service.listSoldFromOrder('order-orig');
+    expect(repo.find).toHaveBeenCalledWith({
+      where: { original_order_id: 'order-orig', status: ResaleStatus.SOLD },
+      order: { sold_at: 'DESC' },
+    });
+  });
+});

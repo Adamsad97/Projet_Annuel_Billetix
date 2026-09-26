@@ -26,6 +26,10 @@ export interface PlatformConfig {
   event_validation_deadline_hours: number;
   event_archive_delay_days: number;
   resale_reservation_minutes: number;
+  ticket_qr_rotation_seconds: number;
+  ticket_qr_rotation_tolerance_steps: number;
+  ticket_transfer_max_per_ticket: number;
+  ticket_transfer_cutoff_hours: number;
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -50,6 +54,10 @@ const FALLBACK: PlatformConfig = {
   event_validation_deadline_hours: 48,
   event_archive_delay_days: 30,
   resale_reservation_minutes: 15,
+  ticket_qr_rotation_seconds: 5,
+  ticket_qr_rotation_tolerance_steps: 1,
+  ticket_transfer_max_per_ticket: 1,
+  ticket_transfer_cutoff_hours: 2,
 };
 
 @Injectable()

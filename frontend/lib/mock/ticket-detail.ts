@@ -19,13 +19,14 @@ export interface TicketDetail {
   status: TicketStatus;
   emoji: string;
   band: string;
-  // Présent uniquement pour un vrai billet (data URI généré par
-  // ticket-service) — sinon TicketVisual retombe sur le QR décoratif.
-  qrCodeUrl?: string;
   // URL du PDF réel (pdf-service) — absent tant qu'il n'est pas encore généré.
   pdfUrl?: string;
   // Valeur faciale brute et commande d'origine — nécessaires pour la remise
   // en revente (prix plafonné, cf. POST /tickets/:id/request-resale).
   unitPriceTtc: number;
   orderId: string;
+  // Billet reçu en cadeau (la commande d'origine n'appartient pas au titulaire).
+  receivedFrom?: { name: string; email: string; dateLabel: string };
+  // Billet acheté en revente (la commande d'origine appartient au vendeur).
+  resalePurchase?: { dateLabel: string; priceLabel: string };
 }

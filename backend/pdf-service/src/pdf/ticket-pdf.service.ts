@@ -27,9 +27,8 @@ export interface TicketPdfData {
   holder_first_name: string;
   holder_last_name: string;
   buyer_email: string;
-
-  // QR
-  qr_code_url: string; // data:image/png;base64,...
+  // Pas de QR code : le PDF n'est pas un titre d'accès. Seul le QR
+  // éphémère affiché en direct dans l'application est accepté au contrôle.
 }
 
 @Injectable()
@@ -148,28 +147,22 @@ export class TicketPdfService {
     .holder-name { font-size: 14px; font-weight: bold; color: #1a1a1a; }
     .holder-email { font-size: 10px; color: #6b7280; margin-top: 2px; }
 
-    /* QR code */
-    .qr-section {
+    /* Accès : QR uniquement dans l'application */
+    .access-notice {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      padding: 16px;
+      justify-content: center;
+      gap: 6px;
+      margin: 16px 24px;
+      padding: 14px 16px;
       flex: 1;
-    }
-    .qr-section img {
-      width: 130px;
-      height: 130px;
-      border: 6px solid #6c3de0;
+      border: 1px dashed #d1d5db;
       border-radius: 8px;
-    }
-    .qr-label {
-      font-size: 9px;
-      color: #9ca3af;
-      margin-top: 6px;
+      background: #f9fafb;
       text-align: center;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
     }
+    .access-title { font-size: 12px; font-weight: bold; color: #1a1a1a; }
+    .access-text { font-size: 10px; color: #6b7280; line-height: 1.5; }
 
     /* Prix & catégorie */
     .price-bar {
@@ -236,9 +229,13 @@ export class TicketPdfService {
     <div class="holder-email">${this.esc(ticketData.buyer_email)}</div>
   </div>
 
-  <div class="qr-section">
-    <img src="${ticketData.qr_code_url}" alt="QR Code"/>
-    <div class="qr-label">Présentez ce code à l'entrée • Usage unique</div>
+  <div class="access-notice">
+    <div class="access-title">Ce document ne permet pas d'entrer</div>
+    <div class="access-text">
+      Le jour de l'événement, ouvrez votre billet dans l'application BilleTix, rubrique « Mes billets »,
+      et affichez le QR code au contrôle. Il change toutes les quelques secondes&nbsp;: une copie ou une
+      capture d'écran ne sera pas acceptée.
+    </div>
   </div>
 
   <div class="price-bar">

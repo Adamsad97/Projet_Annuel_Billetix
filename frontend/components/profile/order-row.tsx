@@ -7,13 +7,13 @@ export function OrderRow({ order }: { order: ProfileOrder }) {
   return (
     <Link
       href={`/profil/commandes/${order.id ?? order.reference}`}
-      className="flex items-center justify-between gap-4 border-b border-white/5 px-5 py-4 transition-colors last:border-b-0 hover:bg-white/[0.03]"
+      className="flex items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 transition-colors last:border-b-0 hover:bg-hairline-1"
     >
       <div>
-        <p className="text-sm font-bold text-white">
+        <p className="text-sm font-bold text-ink-1">
           {order.reference} · {order.amountLabel}
         </p>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-ink-5">
           {order.dateLabel} · {order.ticketCountLabel}
         </p>
       </div>

@@ -3,12 +3,20 @@ import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes, randomUUID } from 'crypto';
 import * as QRCode from 'qrcode';
-import { deflateRawSync, inflateRawSync } from 'zlib';
 import { DataSource, Repository } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { GenerateTicketsDto } from './dto/generate-tickets.dto';
+import { QrDisplayCode } from './qr-display-code.entity';
 import { QrTokenHistory } from './qr-token-history.entity';
 import { Ticket, TicketStatus } from './ticket.entity';
+
+/** Préfixe du contenu des QR codes éphémères (format du texte scanné). */
+export const DISPLAY_CODE_PREFIX = 'BTX2';
+
+/** Jeton interne d'un billet : valeur aléatoire pure (cf. generateOpaqueToken). */
+export function newOpaqueToken(): string {
+  return randomBytes(32).toString('base64url');
+}
 
 @Injectable()
 export class TicketService {
@@ -16,9 +24,56 @@ export class TicketService {
     @InjectRepository(Ticket) private readonly repo: Repository<Ticket>,
     @InjectRepository(QrTokenHistory)
     private readonly qrHistoryRepo: Repository<QrTokenHistory>,
+    @InjectRepository(QrDisplayCode)
+    private readonly displayCodeRepo: Repository<QrDisplayCode>,
     private readonly platformConfig: PlatformConfigCache,
     private readonly dataSource: DataSource,
   ) {}
+
+  /**
+   * QR à afficher dans l'espace acheteur. Contenu : `BTX2.<code>`, où code
+   * est une valeur aléatoire de 128 bits propre à la période en cours —
+   * aucune donnée du billet (jeton, référence, porteur, événement) n'y
+   * figure. Un même code est servi pendant toute la période (plusieurs
+   * affichages simultanés, rafraîchissements), un nouveau à la suivante.
+   */
+  async getDisplayQr(id: string): Promise<{ qr_code_url: string; refresh_in_seconds: number }> {
+    const ticket = await this.getById(id);
+    const { ticket_qr_rotation_seconds: period } = await this.platformConfig.get();
+    const periodMs = period * 1000;
+    const now = Date.now();
+    const validFrom = new Date(Math.floor(now / periodMs) * periodMs);
+    const validUntil = new Date(validFrom.getTime() + periodMs);
+
+    let display = await this.displayCodeRepo.findOne({
+      where: { ticket_id: ticket.id, ticket_token: ticket.qr_code_token, valid_from: validFrom },
+    });
+    if (!display) {
+      display = await this.displayCodeRepo.save(
+        this.displayCodeRepo.create({
+          code: randomBytes(16).toString('base64url'),
+          ticket_id: ticket.id,
+          ticket_token: ticket.qr_code_token,
+          valid_from: validFrom,
+          valid_until: validUntil,
+        }),
+      );
+    }
+
+    return {
+      qr_code_url: await QRCode.toDataURL(`${DISPLAY_CODE_PREFIX}.${display.code}`, {
+        errorCorrectionLevel: 'M',
+        width: 300,
+      }),
+      refresh_in_seconds: Math.max(1, Math.ceil((validUntil.getTime() - now) / 1000)),
+    };
+  }
+
+  /** Code éphémère contenu dans un QR `BTX2.<code>`, null pour tout autre format. */
+  private parseDisplayCode(raw: string): string | null {
+    const match = new RegExp(`^${DISPLAY_CODE_PREFIX}\\.([A-Za-z0-9_-]{22})$`).exec(raw);
+    return match ? match[1] : null;
+  }
 
   async generate(dto: GenerateTicketsDto): Promise<Ticket[]> {
     const tickets: Ticket[] = [];
@@ -64,8 +119,6 @@ export class TicketService {
 
         const saved = await this.repo.save(ticket);
         await this.recordQrToken(saved.id, qrToken);
-        saved.qr_code_url = await this.generateQrImage(qrToken);
-        await this.repo.save(saved);
         tickets.push(saved);
       }
     }
@@ -77,6 +130,11 @@ export class TicketService {
     const ticket = await this.repo.findOne({ where: { id } });
     if (!ticket) throw new RpcException({ statusCode: 404, message: 'Billet introuvable' });
     return ticket;
+  }
+
+  /** Billets dont l'utilisateur est aujourd'hui titulaire (achetés, reçus ou rachetés). */
+  async getByBuyer(buyerId: string): Promise<Ticket[]> {
+    return this.repo.find({ where: { buyer_id: buyerId }, order: { event_start_at: 'ASC' } });
   }
 
   async getByOrder(orderId: string): Promise<Ticket[]> {
@@ -124,31 +182,56 @@ export class TicketService {
   }
 
   /**
-   * Retrouve l'ID du billet correspondant à un jeton QR scanné, via la
-   * table de correspondance (qr_token_history) plutôt qu'un recalcul
-   * cryptographique. Bug corrigé (CDC — confidentialité du QR) : l'ancien
-   * format signait ticketId/eventId/horodatage directement dans le jeton
-   * (juste encodé en base64, pas chiffré) — n'importe qui décodant le QR
-   * en récupérait le contenu en clair. Le jeton est désormais une valeur
-   * aléatoire pure, sans aucune information exploitable : il ne prend son
-   * sens qu'au travers de cette table côté serveur. Utilisé par verifyQr()
-   * et par ScanService pour connaître l'ID du billet même quand le scan
-   * échoue ensuite (déjà utilisé/annulé), sans dépendre d'un texte d'erreur.
+   * Retrouve l'ID du billet visé par un QR scanné — code éphémère
+   * (qr_display_codes) ou ancien QR fixe (jeton, qr_token_history), ce
+   * dernier étant ensuite refusé par verifyQr(). Utilisé par ScanService
+   * pour journaliser le bon billet même quand le scan échoue ensuite (déjà
+   * utilisé, expiré…), sans dépendre d'un texte d'erreur.
    */
-  async resolveTicketId(token: string): Promise<string> {
-    const entry = await this.qrHistoryRepo.findOne({ where: { token } });
-    if (!entry) {
-      throw new RpcException({
-        statusCode: 400,
-        code: 'INVALID',
-        message: 'QR code invalide',
-      });
+  async resolveTicketId(raw: string): Promise<string> {
+    const code = this.parseDisplayCode(raw);
+    const ticketId = code
+      ? (await this.displayCodeRepo.findOne({ where: { code } }))?.ticket_id
+      : (await this.qrHistoryRepo.findOne({ where: { token: raw } }))?.ticket_id;
+    if (!ticketId) {
+      throw new RpcException({ statusCode: 400, code: 'INVALID', message: 'QR code invalide' });
     }
-    return entry.ticket_id;
+    return ticketId;
   }
 
-  async verifyQr(token: string): Promise<{ valid: boolean; ticket: Ticket }> {
-    const ticketId = await this.resolveTicketId(token);
+  /**
+   * @param raw contenu du QR scanné (`BTX2.<code>`, texte envoyé tel quel
+   *            par l'application de contrôle)
+   * @param at  heure du scan — celle du scan hors ligne lors d'une
+   *            synchronisation, pour juger si le code était valable.
+   */
+  async verifyQr(raw: string, at: Date = new Date()): Promise<{ valid: boolean; ticket: Ticket }> {
+    const ticketId = await this.resolveTicketId(raw);
+    const code = this.parseDisplayCode(raw);
+    if (!code) {
+      // Jeton connu (resolveTicketId a réussi) mais présenté en QR fixe.
+      throw new RpcException({
+        statusCode: 409,
+        code: 'STATIC_REFUSED',
+        message: "QR fixe refusé (PDF ou capture) — le porteur doit afficher son billet en direct depuis l'application",
+      });
+    }
+
+    const display = await this.displayCodeRepo.findOne({ where: { code } });
+    const { ticket_qr_rotation_seconds: period, ticket_qr_rotation_tolerance_steps: tolerance } =
+      await this.platformConfig.get();
+    const toleranceMs = tolerance * period * 1000;
+    if (
+      !display ||
+      at.getTime() < display.valid_from.getTime() - toleranceMs ||
+      at.getTime() >= display.valid_until.getTime() + toleranceMs
+    ) {
+      throw new RpcException({
+        statusCode: 409,
+        code: 'EXPIRED',
+        message: "QR code expiré — le porteur doit afficher son billet en direct depuis l'application",
+      });
+    }
 
     const ticket = await this.repo.findOne({ where: { id: ticketId } });
     if (!ticket) {
@@ -159,18 +242,14 @@ export class TicketService {
       });
     }
 
-    // Bug corrigé (UX contrôle) : un jeton authentique (présent dans
-    // l'historique) mais différent de celui actuellement enregistré sur le
-    // billet (ex: billet revendu depuis — transferToNewBuyer en émet un
-    // nouveau et marque l'ancien is_current=false) était traité comme
-    // INVALID, indistinguable d'un code jamais émis pour l'agent au
-    // contrôle. Ce cas précis (billet réel, juste périmé) mérite son
-    // propre résultat.
-    if (ticket.qr_code_token !== token) {
+    // Code émis avant une revente (transferToNewBuyer a changé le jeton
+    // interne) : billet réel mais plus à ce porteur — résultat distinct
+    // d'un code inconnu pour l'agent au contrôle.
+    if (ticket.qr_code_token !== display.ticket_token) {
       throw new RpcException({
         statusCode: 409,
         code: 'SUPERSEDED',
-        message: 'Ce billet a été revendu — ce QR code n\'est plus valide',
+        message: 'Ce billet a changé de titulaire (revente ou transfert) — ce QR code n\'est plus valide',
       });
     }
 
@@ -284,7 +363,6 @@ export class TicketService {
     const newToken = this.generateOpaqueToken();
     await this.recordQrToken(ticket.id, newToken);
     ticket.qr_code_token = newToken;
-    ticket.qr_code_url = await this.generateQrImage(newToken);
     return this.repo.save(ticket);
   }
 
@@ -386,7 +464,7 @@ export class TicketService {
    * contenant à décoder.
    */
   private generateOpaqueToken(): string {
-    return randomBytes(32).toString('base64url');
+    return newOpaqueToken();
   }
 
   /** Enregistre un nouveau jeton comme jeton courant du billet dans
@@ -397,32 +475,4 @@ export class TicketService {
     );
   }
 
-  /**
-   * Compresse le jeton en octets bruts (zlib) avant de l'encoder dans le QR
-   * en mode "byte" plutôt qu'en texte lisible directement. But : qu'une
-   * appli de lecture QR générique (appareil photo, etc.) ne puisse pas
-   * afficher/copier le jeton facilement. Défense en profondeur seulement —
-   * la vraie protection contre la lecture est déjà que le jeton lui-même
-   * est une valeur opaque, sans aucune information exploitable même en
-   * clair (cf. generateOpaqueToken()). Réversible via decodeQrPayload(), à
-   * appeler côté /tickets/scan une fois l'appli de contrôle branchée sur ce
-   * format binaire.
-   */
-  private async generateQrImage(token: string): Promise<string> {
-    const compressed = deflateRawSync(Buffer.from(token, 'utf8'));
-    return QRCode.toDataURL([{ mode: 'byte', data: compressed }], {
-      errorCorrectionLevel: 'H',
-      width: 300,
-    });
-  }
-
-  /** Inverse de generateQrImage() : reconstruit le token texte à partir des
-   * octets bruts lus par le lecteur QR de l'appli de contrôle. */
-  decodeQrPayload(bytes: Buffer): string {
-    try {
-      return inflateRawSync(bytes).toString('utf8');
-    } catch {
-      throw new RpcException({ statusCode: 400, code: 'INVALID', message: 'QR code invalide' });
-    }
-  }
 }

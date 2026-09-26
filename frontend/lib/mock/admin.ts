@@ -39,6 +39,18 @@ export const adminNavSections: AdminNavSection[] = [
         label: "Événements",
         icon: "✏️",
       },
+      {
+        id: "transfers",
+        href: "/admin/transferts",
+        label: "Billets offerts",
+        icon: "🎁",
+      },
+      {
+        id: "resales",
+        href: "/admin/reventes",
+        label: "Reventes",
+        icon: "🔄",
+      },
     ],
   },
   {

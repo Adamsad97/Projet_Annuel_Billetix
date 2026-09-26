@@ -5,11 +5,12 @@ import { purchaseResale, type ApiResaleListing } from "@/lib/api/resale";
 import { ApiError } from "@/lib/api/http-error";
 import { getStoredUser } from "@/lib/auth/session";
 import type { AuthUser } from "@/lib/api/auth";
+import { BillingAddressFields } from "@/components/checkout/billing-address-fields";
 
 const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 
 const fieldClassName =
-  "rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-violet-500 focus:outline-none";
+  "rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none";
 
 export function ResaleBillingForm({
   listing,
@@ -60,18 +61,18 @@ export function ResaleBillingForm({
   }
 
   return (
-    <div className="rounded-2xl border border-white/5 bg-[#12101c] p-5">
-      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-200">
+    <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-ink-2">
         <span>👤</span>
         Coordonnées de facturation
       </h2>
 
-      <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+      <div className="mb-4 rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-400">
+          <span className="text-ink-4">
             {listing.event_name} — {listing.category_name}
           </span>
-          <span className="font-bold text-white">{currency.format(Number(listing.resale_price))}</span>
+          <span className="font-bold text-ink-1">{currency.format(Number(listing.resale_price))}</span>
         </div>
       </div>
 
@@ -84,7 +85,7 @@ export function ResaleBillingForm({
       <form key={user ? user.id : "anon"} onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Prénom</span>
+            <span className="text-sm font-medium text-accent/80">Prénom</span>
             <input
               type="text"
               name="firstName"
@@ -94,7 +95,7 @@ export function ResaleBillingForm({
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Nom</span>
+            <span className="text-sm font-medium text-accent/80">Nom</span>
             <input
               type="text"
               name="lastName"
@@ -106,7 +107,7 @@ export function ResaleBillingForm({
         </div>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-violet-200/80">Email</span>
+          <span className="text-sm font-medium text-accent/80">Email</span>
           <input
             type="email"
             name="email"
@@ -116,44 +117,12 @@ export function ResaleBillingForm({
           />
         </label>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-violet-200/80">Adresse</span>
-          <input type="text" name="address1" required placeholder="Numéro et rue" className={fieldClassName} />
-        </label>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-violet-200/80">
-            Complément d&apos;adresse (facultatif)
-          </span>
-          <input type="text" name="address2" className={fieldClassName} />
-        </label>
-
-        <div className="grid grid-cols-[1fr_140px] gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Ville</span>
-            <input type="text" name="city" required className={fieldClassName} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-violet-200/80">Code postal</span>
-            <input type="text" name="postalCode" required className={fieldClassName} />
-          </label>
-        </div>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-violet-200/80">Pays</span>
-          <select name="country" defaultValue="FR" className={fieldClassName}>
-            <option value="FR">France</option>
-            <option value="BE">Belgique</option>
-            <option value="CH">Suisse</option>
-            <option value="SN">Sénégal</option>
-            <option value="CI">Côte d&apos;Ivoire</option>
-          </select>
-        </label>
+        <BillingAddressFields fieldClassName={fieldClassName} />
 
         <button
           type="submit"
           disabled={loading}
-          className="mt-1 w-full rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-1 w-full rounded-full bg-blue-700 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Création de la commande…" : "Continuer vers le paiement →"}
         </button>

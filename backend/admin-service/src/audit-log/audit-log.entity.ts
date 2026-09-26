@@ -30,6 +30,18 @@ export enum AuditAction {
 
   // Billets
   TICKET_INVALIDATED   = 'TICKET_INVALIDATED',
+  // Accès du titulaire à son billet / sa facture (sécurité : traçabilité
+  // en cas de contestation — qui, quand, depuis quelle IP et quel appareil).
+  TICKET_QR_VIEWED       = 'TICKET_QR_VIEWED',
+  TICKET_PDF_DOWNLOADED  = 'TICKET_PDF_DOWNLOADED',
+  INVOICE_DOWNLOADED     = 'INVOICE_DOWNLOADED',
+  // Billet offert à un autre compte (détail complet : tickets.ticket_transfers).
+  TICKET_TRANSFERRED     = 'TICKET_TRANSFERRED',
+  // Annulation d'un transfert : demandée par l'expéditeur, puis acceptée
+  // (billet rendu) ou refusée par un admin.
+  TICKET_TRANSFER_REVERT_REQUESTED = 'TICKET_TRANSFER_REVERT_REQUESTED',
+  TICKET_TRANSFER_REVERTED         = 'TICKET_TRANSFER_REVERTED',
+  TICKET_TRANSFER_REVERT_REJECTED  = 'TICKET_TRANSFER_REVERT_REJECTED',
 
   // Paiements & reversements
   PAYOUT_BLOCKED       = 'PAYOUT_BLOCKED',

@@ -17,11 +17,11 @@ const roleLabels: Record<AuthUser["role"], string> = {
 };
 
 const roleStyles: Record<AuthUser["role"], string> = {
-  BUYER: "bg-violet-500/15 text-violet-300 ring-1 ring-inset ring-violet-500/30",
+  BUYER: "bg-teal-500/15 text-teal-300 ring-1 ring-inset ring-teal-500/30",
   ORGANIZER: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
   ADMIN: "bg-rose-500/15 text-rose-300 ring-1 ring-inset ring-rose-500/30",
   AGENT: "bg-teal-500/15 text-teal-300 ring-1 ring-inset ring-teal-500/30",
-  SUPER_ADMIN: "bg-fuchsia-500/15 text-fuchsia-300 ring-1 ring-inset ring-fuchsia-500/30",
+  SUPER_ADMIN: "bg-indigo-500/15 text-indigo-300 ring-1 ring-inset ring-indigo-500/30",
 };
 
 function initialsOf(user: AuthUser): string {
@@ -42,7 +42,7 @@ export function ProfileHeader() {
 
   if (!user) {
     return (
-      <p className="mb-8 text-sm text-gray-500">
+      <p className="mb-8 text-sm text-ink-5">
         Connecte-toi pour voir ton profil.
       </p>
     );
@@ -51,12 +51,12 @@ export function ProfileHeader() {
   return (
     <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
       <div className="flex items-center gap-5">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 via-violet-500 to-amber-400 text-xl font-bold text-white">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xl font-bold text-white">
           {initialsOf(user)}
         </div>
 
         <div>
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-ink-1">
             {user.first_name} {user.last_name}
           </h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -66,13 +66,13 @@ export function ProfileHeader() {
               {roleLabels[user.role]}
             </span>
           </div>
-          <p className="mt-1.5 text-sm text-gray-500">{user.email}</p>
+          <p className="mt-1.5 text-sm text-ink-5">{user.email}</p>
         </div>
       </div>
 
       <Link
         href="/profil/modifier"
-        className="flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+        className="flex items-center gap-2 rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
       >
         ✏️ Modifier
       </Link>

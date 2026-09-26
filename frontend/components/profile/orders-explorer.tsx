@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FilterPills } from "@/components/admin/filter-pills";
 import { OrderRow } from "@/components/profile/order-row";
-import { getMyOrders, type ApiOrder } from "@/lib/api/orders";
+import { getMyOrdersSynced, type ApiOrder } from "@/lib/api/orders";
 import { getTicketsByOrder } from "@/lib/api/tickets";
 import { apiOrderToProfileOrder } from "@/lib/mappers/profile-mappers";
 import type { ProfileOrder, OrderStatus } from "@/lib/mock/profile";
@@ -31,7 +31,7 @@ export function OrdersExplorer() {
 
     async function load() {
       try {
-        const apiOrders: ApiOrder[] = await getMyOrders();
+        const apiOrders: ApiOrder[] = await getMyOrdersSynced();
         const sorted = [...apiOrders].sort(
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
         );
@@ -60,11 +60,11 @@ export function OrdersExplorer() {
     <div className="flex flex-col gap-5">
       <FilterPills options={filters} active={status} onChange={setStatus} />
 
-      <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#12101c]">
+      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
         {orders === null ? (
-          <p className="px-5 py-4 text-sm text-gray-500">{error ?? "Chargement…"}</p>
+          <p className="px-5 py-4 text-sm text-ink-5">{error ?? "Chargement…"}</p>
         ) : filtered.length === 0 ? (
-          <p className="px-5 py-4 text-sm text-gray-500">Aucune commande dans cette catégorie.</p>
+          <p className="px-5 py-4 text-sm text-ink-5">Aucune commande dans cette catégorie.</p>
         ) : (
           filtered.map((order) => <OrderRow key={order.reference} order={order} />)
         )}

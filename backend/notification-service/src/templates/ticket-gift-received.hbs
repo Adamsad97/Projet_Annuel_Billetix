@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Un billet vous a été offert</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #6c3de0; padding: 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0; font-size: 28px; }
+    .body { padding: 32px; color: #333; line-height: 1.6; }
+    .event-box { background: #f3f0ff; border-radius: 6px; padding: 20px; margin: 20px 0; }
+    .event-name { font-size: 18px; font-weight: bold; color: #1a1a1a; }
+    .event-meta { color: #555; font-size: 14px; margin-top: 4px; }
+    .btn-wrap { text-align: center; }
+    .btn { display: inline-block; margin: 24px 0 8px; padding: 14px 32px; background: #6c3de0; color: #fff !important; text-decoration: none; border-radius: 6px; font-weight: bold; }
+    .security { background: #fff7ed; border-left: 4px solid #f97316; padding: 12px 16px; font-size: 13px; color: #7c2d12; margin: 20px 0 0; }
+    .footer { padding: 20px 32px; background: #f9f9f9; color: #999; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>BilletiX</h1></div>
+    <div class="body">
+      <h2>Un billet vous a été offert 🎁</h2>
+      <p>Bonjour {{recipientFirstName}},</p>
+      <p>{{senderFirstName}} {{senderLastName}} vous a transféré un billet. Il est déjà dans votre espace BilletiX.</p>
+
+      <div class="event-box">
+        <div class="event-name">{{eventName}}</div>
+        <div class="event-meta">{{eventDate}} — {{eventVenue}}</div>
+        <div class="event-meta">{{categoryName}} · billet {{ticketReference}}</div>
+        <div class="event-meta">Au nom de : <strong>{{holderFirstName}} {{holderLastName}}</strong></div>
+      </div>
+
+      <div class="btn-wrap">
+        <a href="{{ticketsUrl}}" class="btn">Voir mon billet</a>
+      </div>
+
+      <div class="security">
+        🔒 Le billet et son QR code ne sont jamais envoyés par email : ils ne sont consultables que
+        dans l'application, et une connexion vous sera demandée à chaque accès depuis ce lien.
+      </div>
+    </div>
+    <div class="footer">© {{year}} BilletiX — Tous droits réservés</div>
+  </div>
+</body>
+</html>

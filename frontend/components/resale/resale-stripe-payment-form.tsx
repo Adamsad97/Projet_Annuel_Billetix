@@ -53,8 +53,8 @@ export function ResaleStripePaymentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-2xl border border-white/5 bg-[#12101c] p-5">
-      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-200">
+    <form onSubmit={handleSubmit} className="rounded-2xl border border-hairline-1 bg-card p-5">
+      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-ink-2">
         <span>💳</span>
         Paiement par carte
       </h2>
@@ -70,12 +70,12 @@ export function ResaleStripePaymentForm({
       <button
         type="submit"
         disabled={!stripe || loading}
-        className="mt-6 w-full rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-6 w-full rounded-full bg-blue-700 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? "Traitement…" : `Payer ${amountLabel} →`}
       </button>
 
-      <p className="mt-3 text-center text-xs text-gray-500">
+      <p className="mt-3 text-center text-xs text-ink-5">
         🔒 Paiement sécurisé — Stripe TLS 1.3 — Conforme PCI-DSS
       </p>
     </form>

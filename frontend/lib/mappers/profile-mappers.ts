@@ -38,8 +38,14 @@ export function apiTicketToProfileTicket(ticket: ApiTicket): ProfileTicket {
     dateLabel: dateFormatter.format(new Date(ticket.event_start_at)),
     venue: `${ticket.event_venue_name}, ${ticket.event_city}`,
     emoji: "🎫",
-    iconBg: "bg-violet-500/15",
+    iconBg: "bg-blue-500/15",
     status: ticketStatusFor(ticket.status),
+    receivedFromLabel: ticket.received_from
+      ? `Reçu de ${ticket.received_from.first_name} ${ticket.received_from.last_name.charAt(0)}.`
+      : undefined,
+    resalePurchaseLabel: ticket.resale_purchase
+      ? `Acheté en revente${ticket.resale_purchase.at ? ` le ${dateFormatter.format(new Date(ticket.resale_purchase.at))}` : ""}`
+      : undefined,
   };
 }
 
@@ -78,11 +84,23 @@ export function apiTicketToDetail(ticket: ApiTicket): TicketDetail {
     // y compris le bouton "Revendre ce billet" sur un billet déjà en vente.
     status: ticketStatusFor(ticket.status),
     emoji: "🎫",
-    band: "from-violet-700 via-purple-800 to-indigo-950",
-    qrCodeUrl: ticket.qr_code_url ?? undefined,
+    band: "bg-slate-800",
     pdfUrl: ticket.pdf_url ?? undefined,
     unitPriceTtc: Number(ticket.unit_price_ttc),
     orderId: ticket.order_id,
+    receivedFrom: ticket.received_from
+      ? {
+          name: `${ticket.received_from.first_name} ${ticket.received_from.last_name}`,
+          email: ticket.received_from.email,
+          dateLabel: dateFormatter.format(new Date(ticket.received_from.at)),
+        }
+      : undefined,
+    resalePurchase: ticket.resale_purchase
+      ? {
+          dateLabel: ticket.resale_purchase.at ? dateFormatter.format(new Date(ticket.resale_purchase.at)) : "—",
+          priceLabel: currency.format(ticket.resale_purchase.price),
+        }
+      : undefined,
   };
 }
 

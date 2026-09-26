@@ -7,7 +7,7 @@ export function TicketRow({ ticket }: { ticket: ProfileTicket }) {
   return (
     <Link
       href={`/billets/${ticket.id}`}
-      className="flex items-center justify-between gap-4 border-b border-white/5 px-5 py-4 transition-colors last:border-b-0 hover:bg-white/[0.03]"
+      className="flex items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 transition-colors last:border-b-0 hover:bg-hairline-1"
     >
       <div className="flex items-center gap-3">
         <span
@@ -16,10 +16,16 @@ export function TicketRow({ ticket }: { ticket: ProfileTicket }) {
           {ticket.emoji}
         </span>
         <div>
-          <p className="text-sm font-bold text-white">{ticket.title}</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm font-bold text-ink-1">{ticket.title}</p>
+          <p className="text-xs text-ink-5">
             {ticket.dateLabel} · {ticket.venue}
           </p>
+          {ticket.receivedFromLabel ? (
+            <p className="mt-0.5 text-xs font-medium text-accent">🎁 {ticket.receivedFromLabel}</p>
+          ) : null}
+          {ticket.resalePurchaseLabel ? (
+            <p className="mt-0.5 text-xs font-medium text-accent">🔄 {ticket.resalePurchaseLabel}</p>
+          ) : null}
         </div>
       </div>
 

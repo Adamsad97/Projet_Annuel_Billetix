@@ -12,6 +12,10 @@ import { TicketResaleModule } from './resale/ticket-resale.module';
 import { ScanLog } from './scan/scan-log.entity';
 import { ScanModule } from './scan/scan.module';
 import { QrTokenHistory } from './ticket/qr-token-history.entity';
+import { QrDisplayCode } from './ticket/qr-display-code.entity';
+import { TicketTransfer } from './transfer/ticket-transfer.entity';
+import { TransferRevertRequest } from './transfer/transfer-revert-request.entity';
+import { TicketTransferModule } from './transfer/ticket-transfer.module';
 import { Ticket } from './ticket/ticket.entity';
 import { TicketModule } from './ticket/ticket.module';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
@@ -28,7 +32,7 @@ import { HealthModule } from './health/health.module';
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
         schema: 'tickets',
-        entities: [Ticket, QrTokenHistory, ScanLog, OfflineSyncLog, ControlAgent, TicketResale],
+        entities: [Ticket, QrTokenHistory, QrDisplayCode, TicketTransfer, TransferRevertRequest, ScanLog, OfflineSyncLog, ControlAgent, TicketResale],
         synchronize: config.get('NODE_ENV') !== 'production',
         migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
         migrationsRun: config.get('NODE_ENV') === 'production',
@@ -39,6 +43,7 @@ import { HealthModule } from './health/health.module';
     PlatformConfigModule,
     TicketModule,
     TicketResaleModule,
+    TicketTransferModule,
     ScanModule,
     OfflineSyncModule,
     ControlAgentModule,

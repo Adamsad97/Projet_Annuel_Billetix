@@ -33,21 +33,21 @@ export function ResaleCheckoutFlow({ listing }: { listing: ApiResaleListing }) {
   }
 
   if (isOwnListing === undefined) {
-    return <p className="text-center text-sm text-gray-500">Chargement…</p>;
+    return <p className="text-center text-sm text-ink-5">Chargement…</p>;
   }
 
   if (isOwnListing) {
     return (
-      <div className="mx-auto max-w-md rounded-2xl border border-white/5 bg-[#12101c] p-8 text-center">
+      <div className="mx-auto max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
         <div className="mb-3 text-4xl">🎫</div>
-        <h1 className="text-lg font-bold text-white">C&apos;est ta propre annonce</h1>
-        <p className="mt-2 text-sm text-gray-500">
+        <h1 className="text-lg font-bold text-ink-1">C&apos;est ta propre annonce</h1>
+        <p className="mt-2 text-sm text-ink-5">
           Tu ne peux pas racheter un billet que tu as toi-même mis en revente.
           Change d&apos;avis directement depuis le billet.
         </p>
         <Link
           href={`/billets/${listing.ticket_id}`}
-          className="mt-4 inline-flex rounded-full bg-white/5 px-4 py-2 text-sm font-medium text-gray-200 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10"
+          className="mt-4 inline-flex rounded-full bg-hairline-1 px-4 py-2 text-sm font-medium text-ink-2 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
         >
           Voir le billet →
         </Link>

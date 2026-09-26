@@ -1,11 +1,7 @@
 // Client pour les endpoints /tickets/resale de l'api-gateway
 // (backend/api-gateway/src/ticket/ticket.controller.ts). Câblage réel.
 
-import { getApiBaseUrl } from "./base-url";
 import { apiGet, apiPost } from "./client";
-import { ApiError, extractErrorMessage } from "./http-error";
-
-const API_URL = getApiBaseUrl();
 
 export interface ApiResaleListing {
   id: string;
@@ -27,33 +23,14 @@ export interface ApiResaleListing {
   category_name: string;
 }
 
-// Lecture publique (pas de token requis) — même pattern que listPublishedEvents
-// (lib/api/events.ts), safe à appeler depuis un composant serveur.
-async function getPublicJson<T>(path: string): Promise<T> {
-  let response: Response;
-  try {
-    response = await fetch(`${API_URL}${path}`);
-  } catch {
-    throw new ApiError(0, "Impossible de contacter le serveur — vérifie ta connexion ou réessaie plus tard.");
-  }
-  let data: unknown = null;
-  try {
-    data = await response.json();
-  } catch {
-    // Réponse sans corps JSON.
-  }
-  if (!response.ok) {
-    throw new ApiError(response.status, extractErrorMessage(data, "Une erreur est survenue, réessaie."));
-  }
-  return data as T;
-}
-
+// Revente réservée aux acheteurs connectés : lecture authentifiée (Bearer),
+// donc depuis un composant client uniquement.
 export function listResaleListings(): Promise<ApiResaleListing[]> {
-  return getPublicJson<ApiResaleListing[]>("/tickets/resale");
+  return apiGet<ApiResaleListing[]>("/tickets/resale");
 }
 
 export function getResaleListing(resaleId: string): Promise<ApiResaleListing> {
-  return getPublicJson<ApiResaleListing>(`/tickets/resale/${resaleId}`);
+  return apiGet<ApiResaleListing>(`/tickets/resale/${resaleId}`);
 }
 
 export interface PurchaseResaleDto {

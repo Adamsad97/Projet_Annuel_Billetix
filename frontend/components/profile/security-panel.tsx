@@ -29,10 +29,10 @@ export function SecurityPanel() {
 
   return (
     <Panel icon="🔒" title="Sécurité du compte" defaultExpanded>
-      <div className="flex items-center justify-between gap-4 border-b border-white/5 px-5 py-4">
+      <div className="flex items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4">
         <div>
-          <p className="text-sm font-bold text-white">Authentification 2FA</p>
-          <p className="text-xs text-gray-500">Via application TOTP (Google Authenticator)</p>
+          <p className="text-sm font-bold text-ink-1">Authentification 2FA</p>
+          <p className="text-xs text-ink-5">Via application TOTP (Google Authenticator)</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {enabled === null ? null : enabled ? (
@@ -40,13 +40,13 @@ export function SecurityPanel() {
               Activé
             </span>
           ) : (
-            <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs font-medium text-gray-400 ring-1 ring-inset ring-white/10">
+            <span className="rounded-full bg-hairline-1 px-2.5 py-1 text-xs font-medium text-ink-4 ring-1 ring-inset ring-hairline-2">
               Désactivé
             </span>
           )}
           <Link
             href="/profil/securite/2fa"
-            className="rounded-full border border-white/15 px-3.5 py-1.5 text-xs font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+            className="rounded-full border border-hairline-3 px-3.5 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
           >
             Gérer
           </Link>
