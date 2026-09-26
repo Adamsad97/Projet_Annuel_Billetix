@@ -11,13 +11,8 @@ class TicketReadyItemDto {
   @IsString()
   @IsOptional()
   seatInfo?: string;
-
-  @IsString()
-  qrCodeUrl: string;
-
-  @IsString()
-  @IsOptional()
-  pdfUrl?: string | null;
+  // Ni QR code ni PDF dans l'email (sécurité) : le billet se consulte dans
+  // l'application, après connexion.
 }
 
 export class TicketReadyDto {

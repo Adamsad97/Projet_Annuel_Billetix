@@ -1,7 +1,8 @@
 // Client pour les endpoints /orders de l'api-gateway
 // (backend/api-gateway/src/order/order.controller.ts). Câblage réel.
 
-import { apiDelete, apiGet, apiPost } from "./client";
+import { apiDelete, apiDownload, apiGet, apiPost } from "./client";
+import { syncOrderPayment } from "./payments";
 
 export type ApiPaymentMethod =
   | "STRIPE"
@@ -110,6 +111,34 @@ export function getMyOrders(): Promise<ApiOrder[]> {
   return apiGet<ApiOrder[]>("/orders/me");
 }
 
+// Délai laissé au traitement post-paiement (billets, facture) avant de
+// recharger la liste — réglage d'affichage.
+const FULFILLMENT_SETTLE_MS = 1500;
+
+/**
+ * Commandes de l'acheteur, après vérification auprès de Stripe de celles
+ * encore « en attente de paiement » (bug corrigé : si le webhook Stripe
+ * n'arrivait jamais, une commande payée restait bloquée, sans billets).
+ */
+export async function getMyOrdersSynced(): Promise<ApiOrder[]> {
+  const orders = await getMyOrders();
+  const pending = orders.filter((o) => o.status === "PENDING_PAYMENT" && o.payment_method === "STRIPE");
+  if (pending.length === 0) return orders;
+
+  const results = await Promise.all(
+    pending.map((o) => syncOrderPayment(o.id).catch(() => ({ status: "unknown" as const }))),
+  );
+  if (!results.some((r) => r.status === "paid" || r.status === "failed")) return orders;
+
+  await new Promise((resolve) => setTimeout(resolve, FULFILLMENT_SETTLE_MS));
+  return getMyOrders();
+}
+
 export function resendTickets(orderId: string): Promise<{ success: boolean }> {
   return apiPost<{ success: boolean }>(`/orders/${orderId}/resend-tickets`);
+}
+
+/** Facture PDF de la commande, servie uniquement à son titulaire connecté. */
+export function downloadInvoice(orderId: string, reference: string): Promise<void> {
+  return apiDownload(`/orders/${orderId}/invoice`, `facture-${reference}.pdf`);
 }

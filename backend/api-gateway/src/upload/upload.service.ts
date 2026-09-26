@@ -4,6 +4,7 @@ import {
   CreateBucketCommand,
   HeadBucketCommand,
   PutBucketPolicyCommand,
+  GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -40,6 +41,21 @@ export class UploadService implements OnModuleInit {
       },
       forcePathStyle: true,
     });
+  }
+
+  /**
+   * Lit un fichier privé (billet, facture) à partir de l'adresse stockée en
+   * base — adresse jamais servie telle quelle au navigateur : l'appelant
+   * vérifie d'abord que l'utilisateur en est le titulaire.
+   */
+  async readStoredFile(storedUrl: string): Promise<Buffer> {
+    const path = new URL(storedUrl).pathname.replace(/^\/+/, "");
+    const [bucket, ...keyParts] = path.split("/");
+    const result = await this.client.send(
+      new GetObjectCommand({ Bucket: bucket, Key: decodeURIComponent(keyParts.join("/")) }),
+    );
+    if (!result.Body) throw new Error(`Fichier vide : ${bucket}/${keyParts.join("/")}`);
+    return Buffer.from(await result.Body.transformToByteArray());
   }
 
   async upload(

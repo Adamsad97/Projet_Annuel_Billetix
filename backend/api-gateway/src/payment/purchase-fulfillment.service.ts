@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ClientProxy } from "@nestjs/microservices";
 import { firstValueFrom } from "rxjs";
 import { TicketsGateway } from "../events/tickets.gateway";
+import { UploadService } from "../upload/upload.service";
 
 /**
  * Orchestration post-achat (génération billets/PDF/facture, notifications,
@@ -9,6 +10,17 @@ import { TicketsGateway } from "../events/tickets.gateway";
  * et la confirmation immédiate d'une commande entièrement gratuite (aucun
  * paiement Stripe impliqué, cf. tunnel gratuit du CDC §4.1).
  */
+
+/** Libellés des moyens de paiement affichés sur la facture envoyée par email. */
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  STRIPE: "Carte bancaire",
+  APPLE_PAY: "Apple Pay",
+  GOOGLE_PAY: "Google Pay",
+  PAYPAL: "PayPal",
+  ORANGE_MONEY: "Orange Money",
+  WAVE: "Wave",
+};
+
 @Injectable()
 export class PurchaseFulfillmentService {
   private readonly logger = new Logger(PurchaseFulfillmentService.name);
@@ -23,6 +35,7 @@ export class PurchaseFulfillmentService {
     @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
     @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     private readonly ticketsGateway: TicketsGateway,
+    private readonly uploads: UploadService,
   ) {}
 
   async confirmAndFulfill(
@@ -212,7 +225,6 @@ export class PurchaseFulfillmentService {
     )) as Array<{
       id: string;
       reference: string;
-      qr_code_url: string;
       ticket_category_name: string;
       unit_price_ttc: number;
       seat_info?: string;
@@ -246,38 +258,12 @@ export class PurchaseFulfillmentService {
         holder_first_name: ticket.holder_first_name,
         holder_last_name: ticket.holder_last_name,
         buyer_email: order.buyer_email,
-        qr_code_url: ticket.qr_code_url,
       });
     }
 
-    this.notifClient.emit("notification.payment_confirmed", {
-      email: order.buyer_email,
-      firstName: order.buyer_first_name,
-      orderReference: order.reference,
-      eventName: order.event_name,
-      amount: Number(order.total_amount_ttc).toFixed(2),
-      paymentDate: new Date().toLocaleDateString("fr-FR", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }),
-      paymentMethod: order.payment_method,
-    });
-
-    const ticketListWithPdf = await Promise.all(
-      tickets.map(async (ticket) => ({
-        ticketNumber: ticket.reference,
-        categoryName: ticket.ticket_category_name,
-        qrCodeUrl: ticket.qr_code_url,
-        seatInfo: ticket.seat_info,
-        pdfUrl: await this.waitForTicketPdf(
-          ticket.id,
-          platformConfig.ticket_pdf_wait_max_attempts,
-          platformConfig.ticket_pdf_wait_delay_seconds * 1000,
-        ),
-      })),
-    );
-
+    // Sécurité (demande produit) : ni billet ni QR code par email. Un email
+    // d'accès (bouton vers l'application, connexion exigée à chaque clic) et,
+    // plus bas, la facture détaillée une fois générée.
     this.notifClient.emit("notification.ticket_ready", {
       email: order.buyer_email,
       firstName: order.buyer_first_name,
@@ -289,7 +275,11 @@ export class PurchaseFulfillmentService {
         year: "numeric",
       }),
       eventVenue: order.event_venue_name,
-      tickets: ticketListWithPdf,
+      tickets: tickets.map((ticket) => ({
+        ticketNumber: ticket.reference,
+        categoryName: ticket.ticket_category_name,
+        seatInfo: ticket.seat_info,
+      })),
     });
 
     this.pdfClient.emit("pdf.generate_invoice", {
@@ -326,9 +316,83 @@ export class PurchaseFulfillmentService {
       platform_address: platformConfig.platform_address,
     });
 
+    this.sendInvoiceEmail(order, items, orderId, platformConfig).catch((err) =>
+      this.logger.error(`Erreur email facture commande ${orderId}: ${err?.message}`),
+    );
+
     this.logger.log(
       `Post-achat traité : ${tickets.length} billet(s) générés pour commande ${orderId}`,
     );
+  }
+
+  /**
+   * Facture d'achat par email : tout le détail de la commande, et le PDF
+   * joint dès que pdf-service l'a généré (attente bornée par les réglages
+   * d'attente des PDF de platform_settings ; sans PDF à temps, l'email part
+   * quand même, la facture restant disponible dans l'espace client).
+   * Remplace les anciens emails « commande confirmée » et « paiement
+   * confirmé » (demande produit).
+   */
+  private async sendInvoiceEmail(
+    order: Record<string, any>,
+    items: Array<Record<string, any>>,
+    orderId: string,
+    platformConfig: { ticket_pdf_wait_max_attempts: number; ticket_pdf_wait_delay_seconds: number },
+  ): Promise<void> {
+    const invoiceUrl = await this.waitForInvoice(
+      orderId,
+      platformConfig.ticket_pdf_wait_max_attempts,
+      platformConfig.ticket_pdf_wait_delay_seconds * 1000,
+    );
+    // Bucket privé : la gateway lit la facture elle-même et la transmet à
+    // notification-service (jamais de lien public vers le PDF).
+    const invoicePdf = invoiceUrl
+      ? await this.uploads.readStoredFile(invoiceUrl).catch((err) => {
+          this.logger.warn(`Facture ${orderId} illisible pour l'email : ${err?.message}`);
+          return null;
+        })
+      : null;
+    const money = (value: unknown) => Number(value ?? 0).toFixed(2);
+    const totalTtc = Number(order.total_amount_ttc);
+    const billingAddress = [
+      order.billing_address_line1,
+      order.billing_address_line2,
+      [order.billing_postal_code, order.billing_city].filter(Boolean).join(" "),
+      order.billing_country,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    this.notifClient.emit("notification.purchase_invoice", {
+      email: order.buyer_email,
+      firstName: order.buyer_first_name ?? order.billing_first_name ?? "",
+      orderReference: order.reference,
+      eventName: order.event_name,
+      eventDate: new Date(order.event_start_at).toLocaleDateString("fr-FR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+      eventVenue: order.event_venue_name,
+      items: items.map((item) => ({
+        categoryName: item.ticket_category_name,
+        quantity: String(item.quantity),
+        unitPriceTtc: money(item.unit_price_ttc),
+        totalPriceTtc: money(item.total_price_ttc),
+      })),
+      totalHt: money(order.total_amount_ht),
+      totalVat: money(totalTtc - Number(order.total_amount_ht)),
+      totalTtc: money(totalTtc),
+      discount: Number(order.discount_amount) > 0 ? money(order.discount_amount) : undefined,
+      fees: Number(order.free_ticket_fees) > 0 ? money(order.free_ticket_fees) : undefined,
+      paymentMethod: totalTtc === 0 ? "Gratuit" : (PAYMENT_METHOD_LABELS[order.payment_method] ?? order.payment_method),
+      paidAt: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }),
+      billingName: `${order.billing_first_name ?? ""} ${order.billing_last_name ?? ""}`.trim(),
+      billingAddress,
+      orderId,
+      invoicePdfBase64: invoicePdf ? invoicePdf.toString("base64") : undefined,
+    });
   }
 
   /** Reversement organisateur — commun aux commandes normales et de revente
@@ -355,17 +419,17 @@ export class PurchaseFulfillmentService {
       .subscribe();
   }
 
-  private async waitForTicketPdf(
-    ticketId: string,
+  private async waitForInvoice(
+    orderId: string,
     maxAttempts: number,
     delayMs: number,
   ): Promise<string | null> {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const ticket = await firstValueFrom(
-        this.ticketClient.send("ticket.get", { id: ticketId }),
+      const result = await firstValueFrom(
+        this.orderClient.send<{ order: { invoice_url: string | null } }>("order.get", { id: orderId }),
       ).catch(() => null);
 
-      if (ticket?.pdf_url) return ticket.pdf_url;
+      if (result?.order?.invoice_url) return result.order.invoice_url;
       if (attempt < maxAttempts) {
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }

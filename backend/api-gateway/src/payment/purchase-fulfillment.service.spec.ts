@@ -61,6 +61,7 @@ describe("PurchaseFulfillmentService — commande de revente (bug webhook)", () 
       eventClient as any,
       authClient as any,
       ticketsGateway as any,
+      { readStoredFile: jest.fn().mockResolvedValue(Buffer.from("%PDF")) } as any,
     );
   });
 

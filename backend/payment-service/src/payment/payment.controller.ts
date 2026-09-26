@@ -119,6 +119,42 @@ export class PaymentController {
     };
   }
 
+  /**
+   * Bug corrigé : la confirmation d'un paiement Stripe reposait uniquement
+   * sur le webhook. S'il n'arrive pas (Stripe ne peut pas joindre un
+   * serveur local, panne réseau, webhook mal configuré), un paiement bien
+   * encaissé restait « en attente » : ni billets ni email. Vérification de
+   * secours : on demande à Stripe l'état réel du PaymentIntent, puis même
+   * traitement (idempotent) que le webhook.
+   */
+  @MessagePattern('payment.sync_stripe_status')
+  async syncStripeStatus(@Payload() data: { order_id: string }) {
+    const payment = await this.paymentService.findLatestStripeByOrder(data.order_id);
+    if (!payment?.provider_payment_id) {
+      return { status: 'unknown' as const };
+    }
+
+    const intent = await this.stripe.retrievePaymentIntent(payment.provider_payment_id);
+
+    if (intent.status === 'succeeded') {
+      const confirmed = await this.paymentService.confirmFromWebhook(intent.id);
+      return {
+        status: 'paid' as const,
+        order_id: confirmed.order_id,
+        payment_intent_id: confirmed.provider_payment_id,
+        already_processed: confirmed._wasAlreadyPaid,
+      };
+    }
+
+    if (intent.status === 'requires_payment_method' && intent.last_payment_error) {
+      const reason = intent.last_payment_error.message ?? 'Paiement refusé';
+      await this.paymentService.markFailed(intent.id, reason);
+      return { status: 'failed' as const, order_id: payment.order_id, failure_reason: reason };
+    }
+
+    return { status: 'pending' as const };
+  }
+
   @MessagePattern('payment.confirm_paypal_webhook')
   async confirmPaypalWebhook(
     @Payload() data: { payload: string; headers: Record<string, string> },

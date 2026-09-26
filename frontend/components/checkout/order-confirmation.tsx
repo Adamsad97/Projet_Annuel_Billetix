@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckoutStepper } from "@/components/checkout/checkout-stepper";
 import { getOrder, type ApiOrder, type ApiOrderItem } from "@/lib/api/orders";
+import { syncOrderPayment } from "@/lib/api/payments";
 import { ApiError } from "@/lib/api/http-error";
 
 const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
@@ -40,6 +41,11 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
         setLoading(false);
 
         if (result.order.status === "PENDING_PAYMENT" && attempt < MAX_ATTEMPTS) {
+          // Bug corrigé : on attendait uniquement le webhook Stripe — s'il
+          // n'arrive jamais (serveur injoignable par Stripe…), la commande
+          // restait en attente malgré un paiement encaissé. On demande au
+          // serveur de vérifier lui-même auprès de Stripe (idempotent).
+          await syncOrderPayment(orderId).catch(() => undefined);
           setTimeout(() => {
             if (!cancelled) load(attempt + 1);
           }, POLL_DELAY_MS);
@@ -66,59 +72,59 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
       </div>
 
       {loading ? (
-        <p className="text-center text-sm text-gray-500">Chargement de ta commande…</p>
+        <p className="text-center text-sm text-ink-5">Chargement de ta commande…</p>
       ) : loadError || !order ? (
         <p className="mx-auto max-w-lg rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-6 text-center text-sm text-red-300">
           {loadError}
         </p>
       ) : (
-        <div className="mx-auto flex max-w-lg flex-col items-center gap-5 rounded-2xl border border-white/5 bg-[#12101c] p-8 text-center">
+        <div className="mx-auto flex max-w-lg flex-col items-center gap-5 rounded-2xl border border-hairline-1 bg-card p-8 text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-3xl">
             ✓
           </div>
 
           <div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-ink-1">
               {order.status === "PENDING_PAYMENT" ? "Commande créée" : "Paiement confirmé !"}
             </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Commande <span className="text-white">{order.reference}</span>
+            <p className="mt-1 text-sm text-ink-5">
+              Commande <span className="text-ink-1">{order.reference}</span>
             </p>
           </div>
 
-          <div className="w-full rounded-xl border border-white/10 bg-white/[0.02] p-4 text-left">
+          <div className="w-full rounded-xl border border-hairline-2 bg-hairline-1 p-4 text-left">
             {items?.map((item) => (
               <div key={item.id} className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">
+                <span className="text-ink-4">
                   {item.quantity}× {item.ticket_category_name}
                 </span>
-                <span className="text-gray-300">
+                <span className="text-ink-3">
                   {currency.format(Number(item.total_price_ttc))}
                 </span>
               </div>
             ))}
-            <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
-              <span className="font-bold text-white">Total payé</span>
-              <span className="font-bold text-white">
+            <div className="mt-3 flex items-center justify-between border-t border-hairline-2 pt-3">
+              <span className="font-bold text-ink-1">Total payé</span>
+              <span className="font-bold text-ink-1">
                 {currency.format(Number(order.total_amount_ttc))}
               </span>
             </div>
           </div>
 
-          <p className="text-sm text-violet-300">
+          <p className="text-sm text-accent">
             📧 Tes billets (QR code à usage unique) arrivent par email sous 5 minutes.
           </p>
 
           <div className="flex w-full flex-col gap-3 sm:flex-row">
             <Link
               href="/profil/billets"
-              className="flex-1 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90"
+              className="flex-1 rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
             >
               Voir mes billets
             </Link>
             <Link
               href="/catalogue"
-              className="flex-1 rounded-full border border-white/15 py-3 text-sm font-medium text-gray-200 transition-colors hover:border-white/30 hover:text-white"
+              className="flex-1 rounded-full border border-hairline-3 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
             >
               Retour au catalogue
             </Link>

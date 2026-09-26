@@ -26,3 +26,14 @@ export interface ApiPayment {
 export function getPaymentByOrder(orderId: string): Promise<ApiPayment> {
   return apiGet<ApiPayment>(`/payments/order/${orderId}`);
 }
+
+/**
+ * Vérification de secours : le serveur interroge Stripe sur l'état réel du
+ * paiement de la commande et, s'il est encaissé, génère billets et email
+ * (même traitement que le webhook, sans double génération).
+ */
+export function syncOrderPayment(
+  orderId: string,
+): Promise<{ status: "paid" | "failed" | "pending" | "unknown" }> {
+  return apiPost(`/payments/orders/${orderId}/sync`);
+}

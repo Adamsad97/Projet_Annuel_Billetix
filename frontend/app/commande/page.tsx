@@ -3,7 +3,7 @@ import { CheckoutFlow } from "@/components/checkout/checkout-flow";
 
 export default function CheckoutPage() {
   return (
-    <div className="flex flex-1 flex-col bg-[#07060c]">
+    <div className="flex flex-1 flex-col bg-page">
       <Navbar active="/catalogue" />
 
       <main className="flex-1 px-6 py-10">

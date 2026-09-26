@@ -280,6 +280,14 @@ export class PaymentService {
     return payment;
   }
 
+  /** Dernier paiement Stripe d'une commande (une reprise de paiement en crée un nouveau). */
+  async findLatestStripeByOrder(orderId: string): Promise<Payment | null> {
+    return this.repo.findOne({
+      where: { order_id: orderId, provider: PaymentProvider.STRIPE },
+      order: { created_at: 'DESC' },
+    });
+  }
+
   async refund(orderId: string, amount_cents?: number): Promise<Payment> {
     // Verrou pessimiste sur la ligne du paiement — deux remboursements admin
     // quasi simultanés sur le même paiement ne doivent jamais tous les deux

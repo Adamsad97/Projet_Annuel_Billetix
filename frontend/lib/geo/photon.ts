@@ -5,7 +5,6 @@
 // explicitement l'autocomplétion (recherche à chaque frappe) sur son
 // instance publique limitée à 1 req/s — Photon est conçu pour cet usage.
 import { ApiError } from "@/lib/api/http-error";
-import { FRANCE_BBOX, FRANCE_CENTER } from "./france";
 
 export interface AddressSuggestion {
   label: string;
@@ -13,13 +12,10 @@ export interface AddressSuggestion {
   city: string;
   postalCode: string;
   country: string;
+  /** Code ISO 3166-1 alpha-2 en majuscules ("GN"), vide si inconnu. */
+  countryCode: string;
   lat: number;
   lng: number;
-}
-
-export interface GeoBias {
-  bbox: string; // "minLon,minLat,maxLon,maxLat"
-  center: [number, number]; // [lat, lon]
 }
 
 interface PhotonFeature {
@@ -32,7 +28,7 @@ interface PhotonFeature {
     district?: string;
     postcode?: string;
     country?: string;
-    extent?: [number, number, number, number]; // [minLon, maxLat, maxLon, minLat]
+    countrycode?: string;
   };
 }
 
@@ -48,75 +44,35 @@ function buildLabel(props: PhotonFeature["properties"]): string {
   return [showName ? props.name : null, addressLine, cityPart].filter(Boolean).join(", ");
 }
 
-// Bug corrigé : le biais était figé sur la France — inutilisable si un
-// organisateur crée un événement dans un autre pays (plateforme censée
-// rester accessible à l'international). Résout dynamiquement le pays
-// réellement saisi dans le formulaire ("Pays", texte libre) en zone
-// géographique de biais, via Photon lui-même (recherche du pays comme
-// entité administrative, filtrée par osm_tag=place:country).
-//
-// Mis en cache par nom de pays : ce champ change rarement pendant qu'on
-// tape une adresse, inutile de le re-résoudre à chaque frappe.
-const countryBiasCache = new Map<string, GeoBias | null>();
-
-export async function resolveCountryBias(country: string): Promise<GeoBias | null> {
-  const key = country.trim().toLowerCase();
-  if (!key || key === "france") {
-    // Cas par défaut du formulaire — pas d'appel réseau nécessaire, et
-    // évite le cas dégénéré où le contour OSM "France" (admin_level 2)
-    // engloberait aussi les territoires d'outre-mer, ce qui donnerait une
-    // bbox bien trop large pour un biais utile.
-    return { bbox: FRANCE_BBOX, center: FRANCE_CENTER };
-  }
-
-  if (countryBiasCache.has(key)) return countryBiasCache.get(key) ?? null;
-
-  try {
-    const search = new URLSearchParams({
-      q: country.trim(),
-      limit: "1",
-      osm_tag: "place:country",
-    });
-    const response = await fetch(`https://photon.komoot.io/api/?${search.toString()}`);
-    if (!response.ok) throw new Error();
-
-    const data = (await response.json()) as { features: PhotonFeature[] };
-    const extent = data.features[0]?.properties.extent;
-    const coords = data.features[0]?.geometry.coordinates;
-    if (!extent || !coords) {
-      countryBiasCache.set(key, null);
-      return null;
-    }
-
-    const [minLon, maxLat, maxLon, minLat] = extent;
-    const bias: GeoBias = {
-      bbox: `${minLon},${minLat},${maxLon},${maxLat}`,
-      center: [coords[1], coords[0]],
-    };
-    countryBiasCache.set(key, bias);
-    return bias;
-  } catch {
-    // Pays non reconnu (faute de frappe, saisie en cours…) — mieux vaut une
-    // recherche non biaisée qu'un mauvais biais.
-    countryBiasCache.set(key, null);
-    return null;
-  }
+// Bug corrigé (aucune proposition hors de France) : la recherche passait
+// une bbox à Photon, qui est un FILTRE strict et non un simple biais. Le
+// champ "Pays" valant "France" par défaut (et étant placé après l'adresse
+// dans le formulaire), une adresse à Conakry ne renvoyait rien. Pire, même
+// avec "Guinée" saisi, la résolution du pays via Photon renvoyait la Guinée
+// équatoriale — filtre sur le mauvais pays. Désormais : recherche mondiale,
+// et les résultats du pays saisi (comparé au nom renvoyé par Photon, en
+// français) passent simplement en tête.
+function normalizeCountry(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
 }
+
+// Plus large que le nombre affiché : laisse de la marge pour remonter les
+// résultats du pays saisi avant de tronquer.
+const FETCH_LIMIT = 15;
+const DISPLAY_LIMIT = 6;
 
 export async function searchAddress(
   query: string,
-  bias?: GeoBias | null,
+  preferredCountry?: string,
 ): Promise<AddressSuggestion[]> {
   const trimmed = query.trim();
   if (trimmed.length < 3) return [];
 
-  const search = new URLSearchParams({ q: trimmed, limit: "5", lang: "fr" });
-  if (bias) {
-    search.set("bbox", bias.bbox);
-    search.set("lat", String(bias.center[0]));
-    search.set("lon", String(bias.center[1]));
-    search.set("zoom", "6");
-  }
+  const search = new URLSearchParams({ q: trimmed, limit: String(FETCH_LIMIT), lang: "fr" });
 
   let response: Response;
   try {
@@ -130,14 +86,22 @@ export async function searchAddress(
   }
 
   const data = (await response.json()) as { features: PhotonFeature[] };
+  const preferred = preferredCountry ? normalizeCountry(preferredCountry) : "";
+  const inPreferred = (f: PhotonFeature) =>
+    preferred !== "" && normalizeCountry(f.properties.country ?? "") === preferred;
+
   return data.features
     .filter((f) => f.properties.street || f.properties.housenumber || f.properties.name)
+    // Tri stable : l'ordre de pertinence de Photon est conservé dans chaque groupe.
+    .sort((a, b) => Number(inPreferred(b)) - Number(inPreferred(a)))
+    .slice(0, DISPLAY_LIMIT)
     .map((f) => ({
       label: buildLabel(f.properties),
       addressLine1: buildAddressLine(f.properties) || trimmed,
       city: f.properties.city ?? f.properties.district ?? "",
       postalCode: f.properties.postcode ?? "",
       country: f.properties.country ?? "",
+      countryCode: (f.properties.countrycode ?? "").toUpperCase(),
       lat: f.geometry.coordinates[1],
       lng: f.geometry.coordinates[0],
     }));

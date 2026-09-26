@@ -17,7 +17,7 @@ import { PlatformConfigModule } from './platform-config/platform-config.module';
         const smtpUser = config.get<string>('SMTP_USER');
         return {
           transport: {
-            host: config.get<string>('SMTP_HOST', 'mailhog'),
+            host: config.get<string>('SMTP_HOST', 'mailpit'),
             port: parseInt(config.get<string>('SMTP_PORT', '1025')),
             secure: false,
             ...(smtpUser

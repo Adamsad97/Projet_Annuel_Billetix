@@ -23,10 +23,10 @@ export function CheckoutStepper({
               <div
                 className={
                   isDone
-                    ? "flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-sm font-bold text-white"
+                    ? "flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-sm font-bold text-ink-1"
                     : isCurrent
-                      ? "flex h-9 w-9 items-center justify-center rounded-full bg-violet-600 text-sm font-bold text-white ring-4 ring-violet-500/25"
-                      : "flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-gray-400"
+                      ? "flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white ring-4 ring-blue-500/25"
+                      : "flex h-9 w-9 items-center justify-center rounded-full bg-hairline-2 text-sm font-bold text-ink-4"
                 }
               >
                 {isDone ? "✓" : index + 1}
@@ -34,10 +34,10 @@ export function CheckoutStepper({
               <span
                 className={
                   isCurrent
-                    ? "text-xs font-medium text-violet-300"
+                    ? "text-xs font-medium text-accent"
                     : isDone
-                      ? "text-xs font-medium text-gray-300"
-                      : "text-xs font-medium text-gray-500"
+                      ? "text-xs font-medium text-ink-3"
+                      : "text-xs font-medium text-ink-5"
                 }
               >
                 {step.label}
@@ -49,7 +49,7 @@ export function CheckoutStepper({
                 className={
                   isDone
                     ? "mx-2 h-0.5 flex-1 bg-emerald-500"
-                    : "mx-2 h-0.5 flex-1 bg-white/10"
+                    : "mx-2 h-0.5 flex-1 bg-hairline-2"
                 }
               />
             ) : null}

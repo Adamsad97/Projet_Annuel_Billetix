@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Votre facture BilletiX</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #6c3de0; padding: 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0; font-size: 28px; }
+    .body { padding: 32px; color: #333; line-height: 1.6; }
+    .order-box { background: #f3f0ff; border-radius: 6px; padding: 20px; margin: 20px 0; }
+    .order-ref { font-size: 20px; font-weight: bold; color: #6c3de0; }
+    .muted { color: #888; font-size: 13px; }
+    h3 { font-size: 15px; color: #1a1a1a; margin: 24px 0 8px; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; }
+    th { text-align: left; padding: 8px; background: #e9e3ff; color: #4c1d95; font-size: 13px; }
+    td { padding: 10px 8px; border-bottom: 1px solid #eee; font-size: 14px; }
+    .num { text-align: right; white-space: nowrap; }
+    .totals td { border-bottom: none; padding: 4px 8px; }
+    .grand td { font-weight: bold; font-size: 16px; border-top: 2px solid #e9e3ff; padding-top: 10px; }
+    .details { font-size: 14px; }
+    .details td { border-bottom: none; padding: 3px 8px 3px 0; vertical-align: top; }
+    .details td:first-child { color: #888; width: 42%; }
+    .attach { background: #f0fdf4; border-left: 4px solid #22c55e; padding: 12px 16px; font-size: 13px; color: #166534; margin: 20px 0; }
+    .btn { display: inline-block; margin: 16px 0; padding: 12px 28px; background: #6c3de0; color: #fff !important; text-decoration: none; border-radius: 6px; font-weight: bold; }
+    .footer { padding: 20px 32px; background: #f9f9f9; color: #999; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>BilletiX</h1></div>
+    <div class="body">
+      <h2>Merci pour votre achat !</h2>
+      <p>Bonjour {{firstName}},</p>
+      <p>Votre paiement a bien été reçu. Voici le détail de votre commande et votre facture.</p>
+
+      <div class="order-box">
+        <div class="order-ref">Commande {{orderReference}}</div>
+        <div style="margin-top:8px; font-weight:bold;">{{eventName}}</div>
+        <div class="muted">{{eventDate}} — {{eventVenue}}</div>
+      </div>
+
+      <h3>Détail des billets</h3>
+      <table>
+        <thead>
+          <tr><th>Catégorie</th><th class="num">Qté</th><th class="num">Prix unitaire TTC</th><th class="num">Total TTC</th></tr>
+        </thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <td>{{this.categoryName}}</td>
+            <td class="num">{{this.quantity}}</td>
+            <td class="num">{{this.unitPriceTtc}} €</td>
+            <td class="num">{{this.totalPriceTtc}} €</td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+
+      <table class="totals">
+        <tr><td>Total HT</td><td class="num">{{totalHt}} €</td></tr>
+        <tr><td>TVA</td><td class="num">{{totalVat}} €</td></tr>
+        {{#if discount}}<tr><td>Remise</td><td class="num">− {{discount}} €</td></tr>{{/if}}
+        {{#if fees}}<tr><td>Frais de service</td><td class="num">{{fees}} €</td></tr>{{/if}}
+        <tr class="grand"><td>Total payé TTC</td><td class="num">{{totalTtc}} €</td></tr>
+      </table>
+
+      <h3>Paiement et facturation</h3>
+      <table class="details">
+        <tr><td>Date du paiement</td><td>{{paidAt}}</td></tr>
+        <tr><td>Moyen de paiement</td><td>{{paymentMethod}}</td></tr>
+        <tr><td>Facturé à</td><td>{{billingName}}<br />{{billingAddress}}</td></tr>
+      </table>
+
+      {{#if hasInvoice}}
+      <div class="attach">📎 Votre facture au format PDF est jointe à cet email.</div>
+      {{else}}
+      <div class="attach">Votre facture PDF sera disponible depuis votre espace, dans le détail de la commande.</div>
+      {{/if}}
+
+      <p>Vos billets vous sont présentés dans un email séparé : pour votre sécurité, ils ne sont
+      jamais envoyés en pièce jointe et ne se consultent que dans l'application.</p>
+      <a href="{{orderUrl}}" class="btn">Voir ma commande</a>
+    </div>
+    <div class="footer">© {{year}} BilletiX — Tous droits réservés</div>
+  </div>
+</body>
+</html>

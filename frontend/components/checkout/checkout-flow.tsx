@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Elements } from "@stripe/react-stripe-js";
 import { CheckoutStepper } from "@/components/checkout/checkout-stepper";
 import { BillingForm } from "@/components/checkout/billing-form";
+import { ReservationTimer } from "@/components/checkout/reservation-timer";
 import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
 import { getCart, cartTotal, clearCart, type Cart } from "@/lib/checkout/cart";
 import { createPaymentIntent } from "@/lib/api/payments";
@@ -25,6 +26,15 @@ export function CheckoutFlow() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [intentError, setIntentError] = useState<string | null>(null);
   const [intentLoading, setIntentLoading] = useState(false);
+  // Réservation des places expirée (décompte à zéro, ou refus 410 du
+  // serveur) : on remplace le formulaire plutôt que de laisser remplir
+  // une commande vouée à l'échec.
+  const [reservationExpired, setReservationExpired] = useState(false);
+
+  function handleReservationExpired() {
+    clearCart();
+    setReservationExpired(true);
+  }
 
   useEffect(() => {
     // sessionStorage n'existe pas côté serveur — lu ici (après montage)
@@ -75,18 +85,37 @@ export function CheckoutFlow() {
   }
 
   if (cart === undefined) {
-    return <p className="text-center text-sm text-gray-500">Chargement…</p>;
+    return <p className="text-center text-sm text-ink-5">Chargement…</p>;
+  }
+
+  if (reservationExpired && cart) {
+    return (
+      <div className="mx-auto max-w-md rounded-2xl border border-hairline-2 bg-card p-8 text-center">
+        <h2 className="text-lg font-bold text-ink-1">Ta réservation a expiré</h2>
+        <p className="mt-2 text-sm text-ink-4">
+          Les places sont bloquées pendant une durée limitée pour laisser leur chance aux autres
+          acheteurs. Elles ont été remises en vente — tu peux les réserver à nouveau si elles
+          sont encore disponibles.
+        </p>
+        <Link
+          href={`/evenements/${cart.eventId}`}
+          className="mt-5 inline-flex rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+        >
+          Réserver à nouveau
+        </Link>
+      </div>
+    );
   }
 
   if (!cart) {
     return (
-      <div className="mx-auto max-w-md rounded-2xl border border-white/5 bg-[#12101c] p-8 text-center">
-        <p className="text-sm text-gray-400">
+      <div className="mx-auto max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+        <p className="text-sm text-ink-4">
           Ton panier est vide ou ta réservation a expiré.
         </p>
         <Link
           href="/catalogue"
-          className="mt-4 inline-flex rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-900/40 transition-opacity hover:opacity-90"
+          className="mt-4 inline-flex rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
         >
           Retour au catalogue
         </Link>
@@ -100,11 +129,18 @@ export function CheckoutFlow() {
 
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
         {step === "billing" ? (
-          <BillingForm cart={cart} onOrderCreated={handleOrderCreated} />
+          <>
+            <ReservationTimer expiresAt={cart.expiresAt} onExpire={handleReservationExpired} />
+            <BillingForm
+              cart={cart}
+              onOrderCreated={handleOrderCreated}
+              onReservationExpired={handleReservationExpired}
+            />
+          </>
         ) : null}
 
         {intentLoading ? (
-          <p className="text-center text-sm text-gray-500">Initialisation du paiement…</p>
+          <p className="text-center text-sm text-ink-5">Initialisation du paiement…</p>
         ) : null}
 
         {intentError ? (
@@ -115,8 +151,8 @@ export function CheckoutFlow() {
 
         {step === "payment" && clientSecret && orderId ? (
           <>
-            <div className="rounded-2xl border border-white/5 bg-[#12101c] p-5">
-              <h2 className="mb-3 text-sm font-semibold text-gray-200">Moyen de paiement</h2>
+            <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+              <h2 className="mb-3 text-sm font-semibold text-ink-2">Moyen de paiement</h2>
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
                 {paymentMethods.map((method) => {
                   const isCard = method.id === "card";
@@ -126,14 +162,14 @@ export function CheckoutFlow() {
                       title={isCard ? undefined : "Pas encore câblé — carte bancaire uniquement pour l'instant"}
                       className={
                         isCard
-                          ? "flex flex-col items-center gap-1.5 rounded-xl border border-violet-500 bg-violet-500/10 py-3"
-                          : "flex flex-col items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.02] py-3 opacity-40"
+                          ? "flex flex-col items-center gap-1.5 rounded-xl border border-blue-500 bg-blue-500/10 py-3"
+                          : "flex flex-col items-center gap-1.5 rounded-xl border border-hairline-2 bg-hairline-1 py-3 opacity-40"
                       }
                     >
                       <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-sm font-bold ${method.glyphClassName}`}>
                         {method.glyph}
                       </span>
-                      <span className="text-[11px] font-medium text-gray-300">{method.label}</span>
+                      <span className="text-[11px] font-medium text-ink-3">{method.label}</span>
                     </div>
                   );
                 })}

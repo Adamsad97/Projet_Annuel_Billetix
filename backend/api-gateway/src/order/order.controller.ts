@@ -11,7 +11,11 @@ import {
   Logger,
   Param,
   Post,
+  Req,
+  Res,
 } from "@nestjs/common";
+import { Request, Response } from "express";
+import { logAccess } from "../common/access-log";
 import { ClientProxy } from "@nestjs/microservices";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
@@ -22,6 +26,7 @@ import {
 } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
 import { PurchaseFulfillmentService } from "../payment/purchase-fulfillment.service";
+import { UploadService } from "../upload/upload.service";
 
 @ApiTags("orders")
 @ApiBearerAuth()
@@ -35,8 +40,29 @@ export class OrderController {
     @Inject("USER_SERVICE") private readonly userClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     @Inject("TICKET_SERVICE") private readonly ticketClient: ClientProxy,
+    @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
     private readonly fulfillment: PurchaseFulfillmentService,
+    private readonly uploads: UploadService,
   ) {}
+
+  /**
+   * Bug corrigé (faille de contrôle d'accès) : le détail d'une commande et
+   * sa facture étaient renvoyés à n'importe quel compte connecté connaissant
+   * son identifiant — nom, adresse de facturation, montants d'un tiers.
+   */
+  private async getOwnedOrder<T extends { buyer_id: string }>(
+    id: string,
+    user: JwtPayload,
+  ): Promise<{ order: T; items: unknown[] }> {
+    const result = (await firstValueFrom(
+      this.orderClient.send("order.get", { id }),
+    )) as { order: T; items: unknown[] };
+    const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
+    if (result.order.buyer_id !== user.sub && !isAdmin) {
+      throw new ForbiddenException("Cette commande ne vous appartient pas");
+    }
+    return result;
+  }
 
   /**
    * Étape 1 du tunnel d'achat — réserve le stock atomiquement dans Redis (TTL 10 min).
@@ -175,33 +201,11 @@ export class OrderController {
           `Erreur confirmation commande gratuite ${result.order.id}: ${err?.message}`,
         ),
       );
-    } else if (result.order.buyer_email) {
-      // Bug corrigé : notification.order_confirmed existait (DTO + template)
-      // mais n'était jamais émise — aucun email n'accusait réception d'une
-      // commande payante avant la confirmation du paiement (le premier email
-      // reçu par l'acheteur était payment_confirmed, bien plus tard, sans
-      // jamais de trace écrite de la commande elle-même en cas d'abandon).
-      this.notifClient.emit("notification.order_confirmed", {
-        email: result.order.buyer_email,
-        firstName: result.order.buyer_first_name,
-        orderReference: result.order.reference,
-        eventName: event.title,
-        eventDate: new Date(event.start_date).toLocaleDateString("fr-FR", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        }),
-        eventVenue: event.venue_name,
-        items: result.items.map((item) => ({
-          categoryName: item.ticket_category_name,
-          quantity: item.quantity,
-          unitPrice: Number(item.unit_price_ttc).toFixed(2),
-          totalPrice: Number(item.total_price_ttc).toFixed(2),
-        })),
-        totalTtc: Number(result.order.total_amount_ttc).toFixed(2),
-      });
     }
+    // Commande payante : plus d'email « confirmation de commande » avant le
+    // paiement (demande produit) — l'acheteur reçoit, une fois le paiement
+    // reçu, la facture détaillée puis l'email d'accès à ses billets (cf.
+    // PurchaseFulfillmentService).
 
     return result;
   }
@@ -215,26 +219,37 @@ export class OrderController {
   }
 
   @Get(":id")
-  @ApiOperation({ summary: "Détail d'une commande" })
-  getById(@Param("id") id: string) {
-    return firstValueFrom(this.orderClient.send("order.get", { id }));
+  @ApiOperation({ summary: "Détail d'une commande (le titulaire, ou un admin)" })
+  getById(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.getOwnedOrder(id, user);
   }
 
+  /** Facture PDF, servie au titulaire (ou à un admin) — bucket MinIO privé. */
   @Get(":id/invoice")
-  @ApiOperation({
-    summary: "Télécharger la facture d'une commande (URL du PDF)",
-  })
-  async getInvoice(@Param("id") id: string) {
-    const { order } = (await firstValueFrom(
-      this.orderClient.send("order.get", { id }),
-    )) as { order: { invoice_url: string | null } };
+  @ApiOperation({ summary: "Télécharger la facture d'une commande (le titulaire, ou un admin)" })
+  async getInvoice(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const { order } = await this.getOwnedOrder<{
+      buyer_id: string;
+      invoice_url: string | null;
+      reference: string;
+    }>(id, user);
 
     if (!order.invoice_url) {
-      throw new BadRequestException(
-        "Facture pas encore disponible pour cette commande.",
-      );
+      throw new BadRequestException("Facture pas encore disponible pour cette commande.");
     }
-    return { invoice_url: order.invoice_url };
+    const pdf = await this.uploads.readStoredFile(order.invoice_url);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="facture-${order.reference}.pdf"`,
+      "Cache-Control": "no-store, private",
+    });
+    res.send(pdf);
+    logAccess(this.adminClient, user, req, "INVOICE_DOWNLOADED", { type: "ORDER", id, reference: order.reference });
   }
 
   /**
@@ -279,7 +294,6 @@ export class OrderController {
     )) as Array<{
       reference: string;
       ticket_category_name: string;
-      qr_code_url: string | null;
       seat_info: string | null;
       pdf_url: string | null;
     }>;
@@ -298,9 +312,7 @@ export class OrderController {
       tickets: tickets.map((ticket) => ({
         ticketNumber: ticket.reference,
         categoryName: ticket.ticket_category_name,
-        qrCodeUrl: ticket.qr_code_url,
         seatInfo: ticket.seat_info,
-        pdfUrl: ticket.pdf_url,
       })),
     });
 

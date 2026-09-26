@@ -83,6 +83,50 @@ export class PaymentController {
     );
   }
 
+  /**
+   * Vérification de secours quand le webhook Stripe n'arrive pas (serveur
+   * local injoignable par Stripe, panne…) : appelée par la page de
+   * confirmation tant que la commande est en attente. Même traitement que
+   * le webhook — idempotent, les billets ne sont jamais générés deux fois.
+   */
+  @Post("orders/:orderId/sync")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Vérifier auprès de Stripe l'état du paiement d'une commande (titulaire)" })
+  async syncOrderPayment(@CurrentUser() user: JwtPayload, @Param("orderId") orderId: string) {
+    const { order } = (await firstValueFrom(
+      this.orderClient.send("order.get", { id: orderId }),
+    )) as { order: { buyer_id: string } };
+    if (order.buyer_id !== user.sub) {
+      throw new ForbiddenException("Non autorisé");
+    }
+
+    const result = (await firstValueFrom(
+      this.paymentClient.send("payment.sync_stripe_status", { order_id: orderId }),
+    )) as {
+      status: "paid" | "failed" | "pending" | "unknown";
+      order_id?: string;
+      payment_intent_id?: string;
+      already_processed?: boolean;
+      failure_reason?: string;
+    };
+
+    if (result.status === "paid" && result.order_id && !result.already_processed) {
+      // Asynchrone, comme pour le webhook : la page suit ensuite l'état de la commande.
+      this.fulfillment
+        .confirmAndFulfill(result.order_id, result.payment_intent_id ?? "")
+        .catch((err) =>
+          this.logger.error(`Erreur post-paiement (sync) order ${result.order_id}: ${err?.message}`),
+        );
+    }
+    if (result.status === "failed" && result.order_id) {
+      this.notifyPaymentFailed(result.order_id, result.failure_reason ?? "Paiement refusé").catch(
+        (err) => this.logger.error(`Erreur notification échec paiement order ${result.order_id}: ${err?.message}`),
+      );
+    }
+
+    return { status: result.status };
+  }
+
   @Post("refund/:orderId")
   @HttpCode(HttpStatus.OK)
   @Roles("ADMIN")
