@@ -180,9 +180,17 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+      # Sans start_period, le 1er test n'arrive qu'après 30s — et tous les
+      # microservices attendent RabbitMQ.
+      start_period: 60s
+      start_interval: 2s
 
   minio:
-    image: minio/minio:latest
+    # minio/minio n'est plus publié sur Docker Hub/Quay : build Chainguard
+    # (même binaire). Tourne en uid 65532 par défaut, qui ne peut pas écrire
+    # dans un volume neuf (créé root) → forcé en root.
+    image: cgr.dev/chainguard/minio:latest
+    user: "0:0"
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -196,31 +204,50 @@ services:
     networks:
       - billetix-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      # Pas de curl dans l'image Chainguard, mais mc est fourni.
+      test: ["CMD", "mc", "ready", "local"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
+      start_interval: 2s
 
-  mailhog:
-    image: mailhog/mailhog:latest
+  # Capture SMTP de dev (successeur maintenu de MailHog, abandonné depuis
+  # 2020) : ~50 Mo contre ~570 Mo, mêmes ports 1025 (SMTP) / 8025 (UI).
+  mailpit:
+    image: axllent/mailpit:latest
     restart: unless-stopped
     ports:
-      - "${MAILHOG_SMTP_PORT:-1025}:1025"
-      - "${MAILHOG_UI_PORT:-8025}:8025"
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
     networks:
       - billetix-net
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+      start_interval: 2s
 
   # ──────────────────────────────────────────────────────────────────
   # SERVICES MÉTIER
   # ──────────────────────────────────────────────────────────────────
 
+  # NODE_ENV des microservices : "development" par défaut, car en
+  # "production" TypeORM passe de synchronize à migrationsRun, et les
+  # migrations sont en retard sur les entités (ex. non_profit_verified,
+  # first_sale_notified absents) → schéma incomplet. Le code tourne quand
+  # même compilé (target production, node dist/main), sans watch ni bind
+  # mount. Passer BACKEND_NODE_ENV=production seulement une fois les
+  # migrations rattrapées.
   api-gateway:
     build:
       context: ./backend/api-gateway
       target: production
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${BACKEND_NODE_ENV:-development}
       PORT: 4000
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
@@ -282,6 +309,9 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+      # Sondes rapprochées pendant le démarrage seulement : chaque service
+      # attend la santé du précédent, 15s d'écart par étage sinon.
+      start_interval: 2s
     networks:
       - billetix-net
 
@@ -291,7 +321,7 @@ services:
       target: production
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${BACKEND_NODE_ENV:-development}
       PORT: 3001
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@auth-db:5432/auth
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
@@ -332,6 +362,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+      start_interval: 2s
     networks:
       - billetix-net
 
@@ -341,7 +372,7 @@ services:
       target: production
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${BACKEND_NODE_ENV:-development}
       PORT: 3002
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@user-db:5432/users
       IBAN_ENCRYPTION_KEY: ${IBAN_ENCRYPTION_KEY}
@@ -370,6 +401,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+      start_interval: 2s
     networks:
       - billetix-net
 
@@ -379,7 +411,7 @@ services:
       target: production
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${BACKEND_NODE_ENV:-development}
       PORT: 3003
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@event-db:5432/events
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
@@ -416,6 +448,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+      start_interval: 2s
     networks:
       - billetix-net
 
@@ -425,7 +458,7 @@ services:
       target: production
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${BACKEND_NODE_ENV:-development}
       PORT: 3004
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@order-db:5432/orders
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
@@ -469,6 +502,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+      start_interval: 2s
     networks:
       - billetix-net
 
@@ -478,7 +512,7 @@ services:
       target: production
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${BACKEND_NODE_ENV:-development}
       PORT: 3005
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@ticket-db:5432/tickets
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
@@ -501,6 +535,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+      start_interval: 2s
     networks:
       - billetix-net
 
@@ -510,7 +545,7 @@ services:
       target: production
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${BACKEND_NODE_ENV:-development}
       PORT: 3006
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@payment-db:5432/payments
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
@@ -558,6 +593,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+      start_interval: 2s
     networks:
       - billetix-net
 
@@ -567,10 +603,10 @@ services:
       target: production
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${BACKEND_NODE_ENV:-development}
       PORT: 3007
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
-      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
@@ -582,11 +618,8 @@ services:
       # d'auth-service). Bug corrigé : APP_URL pointait vers le gateway,
       # tous les liens (vérification email, reset mdp...) renvoyaient 404.
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      # Pour retélécharger en interne (pièce jointe email) les PDF dont
-      # l'URL stockée est désormais l'hôte PUBLIC (MINIO_PUBLIC_ENDPOINT,
-      # injoignable depuis un conteneur) — voir NotificationController.toInternalUrl.
-      MINIO_ENDPOINT: minio
-      MINIO_PORT: 9000
+      # Plus d'accès MinIO ici : la facture jointe est lue par l'api-gateway
+      # (buckets billets/factures privés) et transmise dans le message.
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -596,6 +629,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+      start_interval: 2s
     networks:
       - billetix-net
 
@@ -605,7 +639,7 @@ services:
       target: production
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${BACKEND_NODE_ENV:-development}
       PORT: 3008
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       MINIO_ENDPOINT: minio
@@ -645,6 +679,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+      start_interval: 2s
     networks:
       - billetix-net
 
@@ -654,7 +689,7 @@ services:
       target: production
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${BACKEND_NODE_ENV:-development}
       PORT: 3009
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@admin-db:5432/admin_logs
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
@@ -669,6 +704,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+      start_interval: 2s
     networks:
       - billetix-net
 
@@ -676,6 +712,9 @@ services:
     build:
       context: ./frontend
       target: production
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
     restart: unless-stopped
     environment:
       NODE_ENV: production

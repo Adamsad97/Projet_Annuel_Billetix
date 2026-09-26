@@ -19,7 +19,7 @@ Ouvrir `.env` et renseigner au minimum les secrets cryptographiques (voir les co
 
 # Partie A — Avec Docker (recommandé)
 
-Toute l'infrastructure (7 bases PostgreSQL, Redis, RabbitMQ, MinIO, MailHog) ET les 10 microservices tournent en conteneurs. C'est le mode par défaut du projet.
+Toute l'infrastructure (7 bases PostgreSQL, Redis, RabbitMQ, MinIO, Mailpit) ET les 10 microservices tournent en conteneurs. C'est le mode par défaut du projet.
 
 ## A.1 Premier démarrage
 
@@ -34,7 +34,7 @@ Premier lancement : 5 à 10 minutes (téléchargement des images Docker + instal
 - Frontend : http://localhost:3000
 - Interface RabbitMQ : http://localhost:15672
 - Console MinIO : http://localhost:9001
-- MailHog (emails de dev) : http://localhost:8025
+- Mailpit (emails de dev) : http://localhost:8025
 
 ## A.2 Démarrer un service en particulier
 
@@ -104,7 +104,7 @@ Frontend seul :
 npm run dev:frontend
 ```
 
-Infrastructure seule (bases de données, Redis, RabbitMQ, MinIO, MailHog) :
+Infrastructure seule (bases de données, Redis, RabbitMQ, MinIO, Mailpit) :
 
 ```bash
 npm run infra
@@ -177,7 +177,7 @@ Les 10 microservices tournent directement avec Node (`npm run start:dev`), hors 
 npm run infra
 ```
 
-Démarre les 7 bases PostgreSQL, Redis, RabbitMQ, MinIO et MailHog en conteneurs, avec leurs ports exposés sur l'hôte (5432 à 5438 pour les bases, 6379, 5672/15672, 9000/9001, 1025/8025).
+Démarre les 7 bases PostgreSQL, Redis, RabbitMQ, MinIO et Mailpit en conteneurs, avec leurs ports exposés sur l'hôte (5432 à 5438 pour les bases, 6379, 5672/15672, 9000/9001, 1025/8025).
 
 ## B.2 Configurer les variables d'environnement du service
 
