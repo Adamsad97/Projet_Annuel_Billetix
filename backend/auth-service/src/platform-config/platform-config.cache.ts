@@ -15,6 +15,7 @@ export interface AuthPlatformConfig {
   password_min_length: number;
   minimum_signup_age: number;
   session_idle_timeout_minutes: number;
+  session_refresh_grace_seconds: number;
   session_max_duration_hours: number;
 }
 
@@ -26,6 +27,7 @@ const FALLBACK: AuthPlatformConfig = {
   password_min_length: 12,
   minimum_signup_age: 18,
   session_idle_timeout_minutes: 30,
+  session_refresh_grace_seconds: 30,
   session_max_duration_hours: 12,
 };
 

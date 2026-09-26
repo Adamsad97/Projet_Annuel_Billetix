@@ -30,11 +30,18 @@ export async function refreshAccessToken(): Promise<string | null> {
         const result = await refreshTokens(currentRefreshToken);
         updateTokens(result.access_token, result.refresh_token);
         return result.access_token;
-      } catch {
-        // Refresh refusé (expiré, révoqué, inactivité) : vraie déconnexion,
-        // plus seulement un nettoyage silencieux qui laissait l'interface
-        // afficher un compte connecté (cf. SessionManager).
-        endSession("expiree");
+      } catch (err) {
+        // Serveur injoignable ou en erreur (redémarrage, réseau) : la
+        // session n'est pas en cause — on la garde, seule la requête échoue.
+        // Bug corrigé : toute panne déconnectait avec « session expirée ».
+        if (!(err instanceof ApiError) || err.status === 0 || err.status >= 500) {
+          return null;
+        }
+        // Refus réel du serveur : vraie déconnexion, avec le bon motif —
+        // l'inactivité reste silencieuse (demande produit).
+        endSession(
+          err.code === "SESSION_IDLE" ? "inactivite" : err.code === "SESSION_MAX_DURATION" ? "duree_max" : "expiree",
+        );
         return null;
       }
     })();
@@ -92,9 +99,13 @@ async function request<T>(
     throw new ApiError(
       response.status,
       response.status === 401
-        ? token
-          ? "Votre session a expiré — veuillez vous reconnecter pour continuer."
-          : "Vous devez être connecté pour accéder à cette page."
+        ? !token
+          ? "Vous devez être connecté pour accéder à cette page."
+          : getAccessToken()
+            // Session toujours là : le renouvellement n'a pas pu joindre le
+            // serveur (redémarrage, réseau) — ce n'est pas une expiration.
+            ? "Le serveur est momentanément indisponible, veuillez réessayer."
+            : "Votre session a expiré — veuillez vous reconnecter pour continuer."
         : extractErrorMessage(data, "Une erreur est survenue, veuillez réessayer."),
       extractErrorCode(data),
     );

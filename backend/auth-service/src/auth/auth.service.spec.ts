@@ -524,11 +524,38 @@ describe("AuthService", () => {
       await expect(service.refresh({ refresh_token: "forge" })).rejects.toThrow(RpcException);
     });
 
-    it("rejette un refresh token révoqué (blacklisté)", async () => {
+    it("rejette un refresh token révoqué (blacklisté), avec un code explicite", async () => {
       jwtService.verify.mockReturnValue({ sub: "user-1", jti: "jti-1", exp: 9999999999 });
-      redis.get.mockResolvedValue("1");
+      redis.get.mockImplementation((key: string) => Promise.resolve(key.startsWith("blacklist:") ? "1" : null));
 
-      await expect(service.refresh({ refresh_token: "token" })).rejects.toThrow(RpcException);
+      await expect(service.refresh({ refresh_token: "token" })).rejects.toMatchObject({
+        error: { code: "REFRESH_REVOKED" },
+      });
+    });
+
+    it("plusieurs onglets : le même jeton présenté juste après sa rotation renvoie la même nouvelle session", async () => {
+      jwtService.verify.mockReturnValue({ sub: "user-1", jti: "jti-1", exp: 9999999999 });
+      const pair = { access_token: "access-2", refresh_token: "refresh-2" };
+      redis.get.mockImplementation((key: string) =>
+        Promise.resolve(key === "rotated:jti-1" ? JSON.stringify(pair) : key.startsWith("blacklist:") ? "1" : null),
+      );
+
+      await expect(service.refresh({ refresh_token: "token" })).resolves.toEqual(pair);
+    });
+
+    it("mémorise la nouvelle paire pendant le délai de grâce réglé par l'admin", async () => {
+      jwtService.verify.mockReturnValue({ sub: "user-1", jti: "jti-1", exp: 9999999999 });
+      redis.get.mockResolvedValue(null);
+      repo.findOne.mockResolvedValue({ ...baseUser, is_active: true, is_suspended: false });
+      platformConfig.get.mockResolvedValue({
+        session_idle_timeout_minutes: 30,
+        session_max_duration_hours: 12,
+        session_refresh_grace_seconds: 45,
+      });
+
+      const result = await service.refresh({ refresh_token: "token" });
+
+      expect(redis.set).toHaveBeenCalledWith("rotated:jti-1", JSON.stringify(result), "EX", 45);
     });
 
     it("révoque l'ancien refresh token et en émet un nouveau (rotation)", async () => {

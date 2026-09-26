@@ -45,6 +45,7 @@ export interface PlatformConfig {
   password_min_length: number;
   minimum_signup_age: number;
   session_idle_timeout_minutes: number;
+  session_refresh_grace_seconds: number;
   session_max_duration_hours: number;
   ticket_qr_display_seconds: number;
   ticket_transfer_max_per_ticket: number;
@@ -105,6 +106,7 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'ticket_transfer_cutoff_hours',   value: '2',             type: 'number',  description: 'Fermeture des transferts de billets avant le début de l\'événement (heures)' },
   { key: 'sensitive_action_reauth_minutes', value: '5',           type: 'number',  description: 'Connexion récente exigée pour une action irréversible, ex. offrir un billet (minutes depuis la dernière saisie des identifiants)' },
   { key: 'session_max_duration_hours',     value: '12',            type: 'number',  description: 'Durée maximale d\'une session depuis la connexion (heures) : reconnexion obligatoire ensuite, même en restant actif' },
+  { key: 'session_refresh_grace_seconds',  value: '30',            type: 'number',  description: 'Délai (secondes) pendant lequel un jeton de session tout juste renouvelé reste accepté (plusieurs onglets ouverts qui renouvellent en même temps)' },
   { key: 'session_idle_timeout_minutes',   value: '30',            type: 'number',  description: 'Durée d\'inactivité (minutes) au-delà de laquelle la session expire : déconnexion automatique, et le serveur refuse de la renouveler' },
   { key: 'minimum_signup_age',             value: '18',            type: 'number',  description: 'Âge minimum pour créer un compte (années révolues, vérifié sur la date de naissance à l\'inscription)' },
   { key: 'password_min_length',            value: '12',            type: 'number',  description: 'Longueur minimale d\'un mot de passe (inscription, réinitialisation, changement) — en plus des règles majuscule/minuscule/chiffre/caractère spécial' },
@@ -173,6 +175,7 @@ export class PlatformConfigService implements OnModuleInit {
       password_min_length:            parseInt(map.password_min_length ?? '12'),
       minimum_signup_age:             parseInt(map.minimum_signup_age ?? '18'),
       session_idle_timeout_minutes:   parseInt(map.session_idle_timeout_minutes ?? '30'),
+      session_refresh_grace_seconds:  parseInt(map.session_refresh_grace_seconds ?? '30'),
       session_max_duration_hours:     parseInt(map.session_max_duration_hours ?? '12'),
       ticket_qr_display_seconds:      parseInt(map.ticket_qr_display_seconds ?? '60'),
       ticket_transfer_max_per_ticket: parseInt(map.ticket_transfer_max_per_ticket ?? '1'),

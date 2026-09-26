@@ -2,7 +2,7 @@
 // Câblage réel — plus de données mock pour ces deux flux.
 
 import { getApiBaseUrl } from "./base-url";
-import { ApiError, extractErrorMessage } from "./http-error";
+import { ApiError, extractErrorCode, extractErrorMessage } from "./http-error";
 
 const API_URL = getApiBaseUrl();
 
@@ -85,6 +85,7 @@ async function getJson<T>(path: string): Promise<T> {
     throw new ApiError(
       response.status,
       extractErrorMessage(data, "Une erreur est survenue, veuillez réessayer."),
+      extractErrorCode(data),
     );
   }
 
@@ -117,6 +118,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
     throw new ApiError(
       response.status,
       extractErrorMessage(data, "Une erreur est survenue, veuillez réessayer."),
+      extractErrorCode(data),
     );
   }
 

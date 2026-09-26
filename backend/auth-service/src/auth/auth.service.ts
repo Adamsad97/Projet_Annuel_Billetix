@@ -310,14 +310,26 @@ export class AuthService {
     } catch {
       throw new RpcException({
         statusCode: 401,
+        code: "REFRESH_INVALID",
         message: "Refresh token invalide ou expiré",
       });
+    }
+
+    // Plusieurs onglets ouverts renouvellent parfois la session au même
+    // moment avec le même jeton : le premier le fait tourner, le second le
+    // présentait déjà révoqué et toute la session était fermée. Pendant un
+    // court délai (réglage admin), le même jeton renvoie la même nouvelle
+    // paire au lieu d'être refusé.
+    const rotated = await this.redis.get(`rotated:${payload.jti}`);
+    if (rotated) {
+      return JSON.parse(rotated) as ReturnType<AuthService["generateTokens"]>;
     }
 
     const blacklisted = await this.redis.get(`blacklist:${payload.jti}`);
     if (blacklisted) {
       throw new RpcException({
         statusCode: 401,
+        code: "REFRESH_REVOKED",
         message: "Refresh token révoqué",
       });
     }
@@ -327,7 +339,8 @@ export class AuthService {
     // à chaque rafraîchissement (rotation) : son âge = temps écoulé depuis
     // la dernière activité authentifiée. Le frontend rafraîchit de lui-même
     // tant que l'utilisateur est actif (au plus tard à mi-délai).
-    const { session_idle_timeout_minutes, session_max_duration_hours } = await this.platformConfig.get();
+    const { session_idle_timeout_minutes, session_max_duration_hours, session_refresh_grace_seconds } =
+      await this.platformConfig.get();
     const now = Math.floor(Date.now() / 1000);
     // Heure de la connexion d'origine, recopiée à chaque rotation (jetons
     // émis avant ce champ : repli sur leur propre date d'émission).
@@ -340,6 +353,7 @@ export class AuthService {
       await this.revokeRefreshJti(payload.jti, payload.exp);
       throw new RpcException({
         statusCode: 401,
+        code: "SESSION_MAX_DURATION",
         message: "Durée maximale de session atteinte — reconnectez-vous.",
       });
     }
@@ -348,6 +362,7 @@ export class AuthService {
       await this.revokeRefreshJti(payload.jti, payload.exp);
       throw new RpcException({
         statusCode: 401,
+        code: "SESSION_IDLE",
         message: "Session expirée après une période d'inactivité — reconnectez-vous.",
       });
     }
@@ -356,6 +371,7 @@ export class AuthService {
     if (!user || !user.is_active || user.is_suspended) {
       throw new RpcException({
         statusCode: 401,
+        code: "ACCOUNT_UNAVAILABLE",
         message: "Utilisateur introuvable ou suspendu",
       });
     }
@@ -369,7 +385,11 @@ export class AuthService {
       await this.redis.set(`blacklist:${payload.jti}`, "1", "EX", ttl);
     }
 
-    return this.generateTokens(user, authTime);
+    const tokens = this.generateTokens(user, authTime);
+    if (session_refresh_grace_seconds > 0) {
+      await this.redis.set(`rotated:${payload.jti}`, JSON.stringify(tokens), "EX", session_refresh_grace_seconds);
+    }
+    return tokens;
   }
 
   private async revokeRefreshJti(jti: string, exp: number): Promise<void> {

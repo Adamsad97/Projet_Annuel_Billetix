@@ -1,4 +1,4 @@
-import { NestFactory } from "@nestjs/core";
+import { HttpAdapterHost, NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { IoAdapter } from "@nestjs/platform-socket.io";
@@ -17,7 +17,7 @@ async function bootstrap() {
   app.enableShutdownHooks();
   app.useWebSocketAdapter(new IoAdapter(app));
   app.use(helmet());
-  app.useGlobalFilters(new RpcExceptionFilter());
+  app.useGlobalFilters(new RpcExceptionFilter(app.get(HttpAdapterHost).httpAdapter));
 
   app.enableCors({
     origin: process.env.FRONTEND_URL ?? "http://localhost",
