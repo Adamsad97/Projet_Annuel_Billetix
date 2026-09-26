@@ -191,6 +191,12 @@ export class PurchaseFulfillmentService {
     // seulement journalisée) et empêchait surtout la création du reversement
     // organisateur ci-dessus de s'exécuter (jamais atteinte à cause du throw).
     if (order.is_resale) {
+      // La facture est la preuve d'achat (plus de billet PDF) : l'acheteur
+      // en revente en reçoit une, comme pour un achat classique.
+      this.emitInvoice(order, items, orderId, platformConfig);
+      this.sendInvoiceEmail(order, items, orderId, platformConfig).catch((err) =>
+        this.logger.error(`Erreur email facture commande ${orderId}: ${err?.message}`),
+      );
       this.logger.log(
         `Post-paiement revente traité pour commande ${orderId} — billet déjà transféré via /resale/complete`,
       );
@@ -235,32 +241,6 @@ export class PurchaseFulfillmentService {
     // Signal temps réel — le dashboard organisateur ouvert sur cet événement se rafraîchit
     this.ticketsGateway.notifyDashboardUpdate(order.event_id, "sale");
 
-    for (const ticket of tickets) {
-      this.pdfClient.emit("pdf.generate_ticket", {
-        ticket_id: ticket.id,
-        reference: ticket.reference,
-        order_id: orderId,
-        event_name: order.event_name,
-        event_start_at: order.event_start_at,
-        event_venue_name: order.event_venue_name,
-        event_venue_address: order.event_venue_address,
-        event_city: order.event_city,
-        event_poster_url: order.event_poster_url,
-        artist_name: order.artist_name,
-        ticket_category_name: ticket.ticket_category_name,
-        // Colonne decimal Postgres -> TypeORM la renvoie en string ("0.00") ;
-        // le DTO pdf-service exige un number strict (@IsNumber()), qui
-        // rejette silencieusement la string sans lever d'exception visible
-        // (message RabbitMQ juste écarté) — bug corrigé : le PDF billet
-        // n'était donc jamais généré (pdf_url restait null indéfiniment).
-        unit_price_ttc: Number(ticket.unit_price_ttc),
-        seat_info: ticket.seat_info,
-        holder_first_name: ticket.holder_first_name,
-        holder_last_name: ticket.holder_last_name,
-        buyer_email: order.buyer_email,
-      });
-    }
-
     // Sécurité (demande produit) : ni billet ni QR code par email. Un email
     // d'accès (bouton vers l'application, connexion exigée à chaque clic) et,
     // plus bas, la facture détaillée une fois générée.
@@ -282,6 +262,33 @@ export class PurchaseFulfillmentService {
       })),
     });
 
+    this.emitInvoice(order, items, orderId, platformConfig);
+
+    this.sendInvoiceEmail(order, items, orderId, platformConfig).catch((err) =>
+      this.logger.error(`Erreur email facture commande ${orderId}: ${err?.message}`),
+    );
+
+    this.logger.log(
+      `Post-achat traité : ${tickets.length} billet(s) générés pour commande ${orderId}`,
+    );
+  }
+
+  /**
+   * Facture PDF de la commande (pdf-service) — seule pièce jointe et seul
+   * document téléchargeable : le billet n'existe que dans l'application.
+   */
+  private emitInvoice(
+    order: Record<string, any>,
+    items: Array<Record<string, any>>,
+    orderId: string,
+    platformConfig: {
+      tva_rate: number;
+      platform_legal_name: string;
+      platform_siret: string;
+      platform_vat_number: string;
+      platform_address: string;
+    },
+  ): void {
     this.pdfClient.emit("pdf.generate_invoice", {
       order_id: orderId,
       reference: order.reference,
@@ -295,9 +302,9 @@ export class PurchaseFulfillmentService {
       billing_city: order.billing_city,
       billing_postal_code: order.billing_postal_code,
       billing_country: order.billing_country,
-      // Mêmes colonnes decimal Postgres (string) que pour pdf.generate_ticket
-      // ci-dessus — sans ce cast, pdf-service rejetait le message et
-      // invoice_url restait null indéfiniment (facture jamais générée).
+      // Colonnes decimal Postgres renvoyées en string : sans ce cast,
+      // pdf-service rejetait le message et invoice_url restait null
+      // indéfiniment (facture jamais générée).
       items: items.map((item) => ({
         ticket_category_name: item.ticket_category_name,
         quantity: item.quantity,
@@ -315,14 +322,6 @@ export class PurchaseFulfillmentService {
       platform_vat_number: platformConfig.platform_vat_number,
       platform_address: platformConfig.platform_address,
     });
-
-    this.sendInvoiceEmail(order, items, orderId, platformConfig).catch((err) =>
-      this.logger.error(`Erreur email facture commande ${orderId}: ${err?.message}`),
-    );
-
-    this.logger.log(
-      `Post-achat traité : ${tickets.length} billet(s) générés pour commande ${orderId}`,
-    );
   }
 
   /**

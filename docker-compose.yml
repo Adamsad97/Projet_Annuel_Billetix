@@ -651,10 +651,7 @@ services:
       MINIO_USE_SSL: "false"
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
-      MINIO_BUCKET_TICKETS: ${MINIO_BUCKET_TICKETS:-tickets}
       MINIO_BUCKET_INVOICES: ${MINIO_BUCKET_INVOICES:-invoices}
-      TICKET_SERVICE_HOST: ticket-service
-      TICKET_SERVICE_PORT: 3005
       ORDER_SERVICE_HOST: order-service
       ORDER_SERVICE_PORT: 3004
       # Plafond de tentatives de génération PDF avant abandon + alerte admin
@@ -666,8 +663,6 @@ services:
       rabbitmq:
         condition: service_healthy
       minio:
-        condition: service_healthy
-      ticket-service:
         condition: service_healthy
       order-service:
         condition: service_healthy

@@ -9,7 +9,8 @@ import Link from "next/link";
 import { AuthHeader } from "@/components/layout/auth-header";
 import { TicketVisual } from "@/components/tickets/ticket-visual";
 import { ResaleManagePanel } from "@/components/tickets/resale-manage-panel";
-import { downloadTicketPdf, getTicket } from "@/lib/api/tickets";
+import { getTicket } from "@/lib/api/tickets";
+import { downloadInvoice, getOrder } from "@/lib/api/orders";
 import { apiTicketToDetail } from "@/lib/mappers/profile-mappers";
 import type { TicketDetail } from "@/lib/mock/ticket-detail";
 import { ApiError } from "@/lib/api/http-error";
@@ -101,9 +102,15 @@ export default function TicketDetailPage({
             <TicketVisual ticket={ticket} />
 
             <div className="mt-6 flex flex-col gap-3">
-              {ticket.pdfUrl ? (
-                // Bucket privé : plus de lien direct vers le PDF, téléchargement
-                // authentifié (titulaire uniquement, vérifié par l'API).
+              {/* Plus de billet PDF (le billet n'existe que dans l'application,
+                  QR éphémère) : la facture de la commande sert de preuve
+                  d'achat. Billet reçu en cadeau : la facture appartient à
+                  l'acheteur d'origine (ses coordonnées de facturation). */}
+              {ticket.receivedFrom ? (
+                <p className="rounded-xl bg-hairline-1 px-4 py-3 text-center text-sm text-ink-4">
+                  Billet reçu en cadeau : la facture reste celle de la personne qui l&apos;a acheté.
+                </p>
+              ) : (
                 <button
                   type="button"
                   disabled={downloading}
@@ -111,7 +118,8 @@ export default function TicketDetailPage({
                     setDownloading(true);
                     setDownloadError(null);
                     try {
-                      await downloadTicketPdf(ticket.id, ticket.reference);
+                      const { order } = await getOrder(ticket.orderId);
+                      await downloadInvoice(order.id, order.reference);
                     } catch (err) {
                       setDownloadError(err instanceof ApiError ? err.message : "Téléchargement impossible, réessaie.");
                     } finally {
@@ -120,16 +128,7 @@ export default function TicketDetailPage({
                   }}
                   className="w-full rounded-full border border-hairline-3 py-3 text-center text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-60"
                 >
-                  {downloading ? "Téléchargement…" : "⬇️ Télécharger le PDF"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  title="Le PDF est encore en cours de génération, réessaie dans quelques instants"
-                  className="w-full cursor-not-allowed rounded-full border border-hairline-2 py-3 text-sm font-medium text-ink-5"
-                >
-                  ⬇️ PDF en cours de génération…
+                  {downloading ? "Téléchargement…" : "⬇️ Télécharger la facture"}
                 </button>
               )}
               {downloadError ? (

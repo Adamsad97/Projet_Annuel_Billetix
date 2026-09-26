@@ -85,7 +85,6 @@ export function apiTicketToDetail(ticket: ApiTicket): TicketDetail {
     status: ticketStatusFor(ticket.status),
     emoji: "🎫",
     band: "bg-slate-800",
-    pdfUrl: ticket.pdf_url ?? undefined,
     unitPriceTtc: Number(ticket.unit_price_ttc),
     orderId: ticket.order_id,
     receivedFrom: ticket.received_from

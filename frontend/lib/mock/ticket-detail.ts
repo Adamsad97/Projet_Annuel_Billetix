@@ -19,8 +19,6 @@ export interface TicketDetail {
   status: TicketStatus;
   emoji: string;
   band: string;
-  // URL du PDF réel (pdf-service) — absent tant qu'il n'est pas encore généré.
-  pdfUrl?: string;
   // Valeur faciale brute et commande d'origine — nécessaires pour la remise
   // en revente (prix plafonné, cf. POST /tickets/:id/request-resale).
   unitPriceTtc: number;

@@ -4,7 +4,6 @@ import { JwtPayload } from "./decorators/current-user.decorator";
 
 export type AccessLogAction =
   | "TICKET_QR_VIEWED"
-  | "TICKET_PDF_DOWNLOADED"
   | "INVOICE_DOWNLOADED"
   | "TICKET_TRANSFERRED"
   | "TICKET_TRANSFER_REVERT_REQUESTED";

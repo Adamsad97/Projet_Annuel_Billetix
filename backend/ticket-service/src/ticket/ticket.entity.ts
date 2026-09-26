@@ -100,9 +100,6 @@ export class Ticket {
   @Column({ unique: true })
   qr_code_token: string;
 
-  @Column({ nullable: true })
-  pdf_url: string | null;
-
   // ─── Statut & scan ────────────────────────────────────────────────────────────
 
   @Column({ type: 'enum', enum: TicketStatus, default: TicketStatus.GENERATED })

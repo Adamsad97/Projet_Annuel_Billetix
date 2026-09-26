@@ -49,7 +49,6 @@ describe('TicketTransferService — offrir un billet', () => {
       holder_first_name: 'Jean',
       holder_last_name: 'Dupont',
       qr_code_token: 'ancien-jeton',
-      pdf_url: 'tickets/ticket-TKT-2026-000001.pdf',
       status: TicketStatus.SENT,
     };
     previousTransfers = 0;
@@ -97,7 +96,7 @@ describe('TicketTransferService — offrir un billet', () => {
     service = module.get(TicketTransferService);
   });
 
-  it('change immédiatement de titulaire et de jeton interne, et invalide l’ancien PDF', async () => {
+  it('change immédiatement de titulaire et de jeton interne', async () => {
     const { ticket: updated } = await service.gift(input);
 
     expect(updated).toMatchObject({
@@ -105,7 +104,6 @@ describe('TicketTransferService — offrir un billet', () => {
       buyer_email: 'marie@example.com',
       holder_first_name: 'Paul',
       holder_last_name: 'Martin',
-      pdf_url: null,
     });
     expect(updated.qr_code_token).not.toBe('ancien-jeton');
     expect(manager.update).toHaveBeenCalledWith(QrTokenHistory, { token: 'ancien-jeton' }, { is_current: false });
@@ -182,7 +180,6 @@ describe('TicketTransferService — offrir un billet', () => {
         buyer_email: 'jean@example.com',
         holder_first_name: 'Jean',
         holder_last_name: 'Dupont',
-        pdf_url: null,
       });
       expect(restored.qr_code_token).not.toBe('ancien-jeton');
       expect(transfer).toMatchObject({

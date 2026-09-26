@@ -27,22 +27,11 @@ import {
 } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
 import { TicketsGateway } from "../events/tickets.gateway";
-import { UploadService } from "../upload/upload.service";
-import { emitTicketPdf, formatEventDate, TicketPdfSource } from "../common/ticket-pdf";
+import { formatEventDate } from "../common/event-date";
 import { GiftTicketDto } from "./dto/gift-ticket.dto";
 import { RequestTransferRevertDto } from "./dto/transfer-revert.dto";
 import { ScanResult } from "./scan-result.enum";
 
-
-/** En-têtes d'un PDF privé : téléchargement, jamais mis en cache. */
-function sendPrivatePdf(res: Response, pdf: Buffer, filename: string): void {
-  res.set({
-    "Content-Type": "application/pdf",
-    "Content-Disposition": `attachment; filename="${filename}"`,
-    "Cache-Control": "no-store, private",
-  });
-  res.send(pdf);
-}
 
 /** Ligne de tickets.ticket_transfers (ticket-service). */
 interface TicketTransferRecord {
@@ -105,7 +94,18 @@ interface AccountSummary {
   is_suspended?: boolean;
 }
 
-type TransferredTicket = TicketPdfSource;
+/** Billet tel que renvoyé par le ticket-service (champs utiles aux emails). */
+interface TransferredTicket {
+  id: string;
+  reference: string;
+  event_name: string;
+  event_start_at: string;
+  event_venue_name: string;
+  ticket_category_name: string;
+  seat_info?: string;
+  holder_first_name: string;
+  buyer_email: string;
+}
 
 @ApiTags("tickets")
 @ApiBearerAuth()
@@ -121,10 +121,8 @@ export class TicketController {
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     @Inject("USER_SERVICE") private readonly userClient: ClientProxy,
-    @Inject("PDF_SERVICE") private readonly pdfClient: ClientProxy,
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
     private readonly ticketsGateway: TicketsGateway,
-    private readonly uploads: UploadService,
   ) {}
 
   /**
@@ -373,33 +371,6 @@ export class TicketController {
     return this.enrichResaleListings(listings);
   }
 
-  /**
-   * PDF du billet, servi uniquement à son titulaire authentifié (bucket
-   * MinIO privé — cf. pdf-service MinioService.ensureBucket()).
-   */
-  @Get(":id/pdf")
-  @ApiOperation({ summary: "Télécharger le PDF d'un billet (le sien uniquement)" })
-  async downloadPdf(
-    @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    const ticket = await firstValueFrom(
-      this.ticketClient.send<{ buyer_id: string; pdf_url: string | null; reference: string }>(
-        "ticket.get",
-        { id },
-      ),
-    );
-    if (ticket.buyer_id !== user.sub) {
-      throw new ForbiddenException("Ce billet ne vous appartient pas");
-    }
-    if (!ticket.pdf_url) {
-      throw new NotFoundException("Le PDF du billet est encore en cours de génération.");
-    }
-    sendPrivatePdf(res, await this.uploads.readStoredFile(ticket.pdf_url), `billet-${ticket.reference}.pdf`);
-    logAccess(this.adminClient, user, req, "TICKET_PDF_DOWNLOADED", { type: "TICKET", id, reference: ticket.reference });
-  }
 
   /**
    * QR code du billet, fourni uniquement sur demande explicite du titulaire
@@ -573,9 +544,6 @@ export class TicketController {
         event_name: transfer.event_name,
       },
     );
-
-    // PDF au nom du nouveau titulaire (l'ancien a été invalidé).
-    this.regenerateTicketPdf(ticket);
 
     this.notifClient.emit("notification.ticket_transferred", {
       ticketReference: ticket.reference,
@@ -862,10 +830,9 @@ export class TicketController {
       this.logger.error(`Erreur notification revente vendue ${resale.id}: ${err?.message}`),
     );
 
-    // Bug corrigé : l'acheteur ne recevait jamais rien — ni email, ni PDF à
-    // jour (le fichier existant embarque encore l'ancien QR, désormais
-    // périmé). Régénère le PDF puis envoie le même email "billet prêt" que
-    // pour un achat classique — fire-and-forget, la revente est déjà actée.
+    // Bug corrigé : l'acheteur ne recevait jamais rien. Même email "billet
+    // prêt" que pour un achat classique (la facture part avec le
+    // post-paiement) — fire-and-forget, la revente est déjà actée.
     this.notifyBuyerResalePurchase(resale.ticket_id).catch((err) =>
       this.logger.error(`Erreur notification acheteur revente ${resale.id}: ${err?.message}`),
     );
@@ -878,10 +845,8 @@ export class TicketController {
       this.ticketClient.send<TransferredTicket>("ticket.get", { id: ticketId }),
     );
 
-    this.regenerateTicketPdf(ticket);
-
-    // Le PDF régénéré au nom du nouveau titulaire sert au téléchargement dans
-    // l'application : l'email ne contient plus ni billet ni QR code.
+    // Le billet ne se consulte que dans l'application : l'email ne contient
+    // ni billet ni QR code.
     this.notifClient.emit("notification.ticket_ready", {
       email: ticket.buyer_email,
       firstName: ticket.holder_first_name,
@@ -902,12 +867,6 @@ export class TicketController {
       ],
     });
   }
-
-  /** (Re)génère le PDF d'un billet au nom de son titulaire actuel. */
-  private regenerateTicketPdf(ticket: TransferredTicket): void {
-    emitTicketPdf(this.pdfClient, ticket);
-  }
-
 
   private async notifyResaleSold(resale: {
     id: string;

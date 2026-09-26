@@ -65,7 +65,7 @@ describe("PurchaseFulfillmentService — commande de revente (bug webhook)", () 
     );
   });
 
-  it("ne tente pas de générer un nouveau billet pour une commande de revente, mais crée bien le reversement organisateur", async () => {
+  it("revente : pas de nouveau billet, mais facture et reversement organisateur", async () => {
     orderClient.send.mockImplementation((pattern: string) => {
       if (pattern === "order.get") {
         return of({ order: { ...baseOrder, is_resale: true }, items: [] });
@@ -79,7 +79,9 @@ describe("PurchaseFulfillmentService — commande de revente (bug webhook)", () 
       "ticket.generate",
       expect.anything(),
     );
-    expect(pdfClient.emit).not.toHaveBeenCalled();
+    // Plus de billet PDF : la facture est la preuve d'achat, revente comprise.
+    expect(pdfClient.emit).toHaveBeenCalledWith("pdf.generate_invoice", expect.objectContaining({ order_id: "order-1" }));
+    expect(pdfClient.emit).not.toHaveBeenCalledWith("pdf.generate_ticket", expect.anything());
     expect(notifClient.emit).not.toHaveBeenCalledWith(
       "notification.ticket_ready",
       expect.anything(),
@@ -108,6 +110,8 @@ describe("PurchaseFulfillmentService — commande de revente (bug webhook)", () 
       "ticket.generate",
       expect.objectContaining({ order_id: "order-1" }),
     );
+    expect(pdfClient.emit).toHaveBeenCalledWith("pdf.generate_invoice", expect.anything());
+    expect(pdfClient.emit).not.toHaveBeenCalledWith("pdf.generate_ticket", expect.anything());
     expect(paymentClient.send).toHaveBeenCalledWith(
       "payment.create_payout",
       expect.objectContaining({ order_id: "order-1" }),

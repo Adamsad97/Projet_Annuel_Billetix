@@ -295,7 +295,6 @@ export class OrderController {
       reference: string;
       ticket_category_name: string;
       seat_info: string | null;
-      pdf_url: string | null;
     }>;
 
     this.notifClient.emit("notification.ticket_ready", {

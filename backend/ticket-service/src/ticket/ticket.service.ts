@@ -413,11 +413,6 @@ export class TicketService {
     return this.repo.save(ticket);
   }
 
-  async setPdfUrl(id: string, url: string): Promise<Ticket> {
-    await this.repo.update(id, { pdf_url: url });
-    return this.repo.findOne({ where: { id } });
-  }
-
   private assertCancellable(ticket: Ticket): void {
     const nonCancellable: TicketStatus[] = [
       TicketStatus.USED,

@@ -23,8 +23,7 @@ const AdminServiceClient = ClientsModule.registerAsync([
   imports: [AdminServiceClient],
   providers: [PlatformConfigCache],
   // ClientsModule doit être ré-exporté explicitement pour que le token
-  // ADMIN_SERVICE soit injectable ailleurs (TicketPdfController,
-  // InvoicePdfController, pour l'alerte admin à l'épuisement des tentatives).
+  // ADMIN_SERVICE soit injectable ailleurs (InvoicePdfController, pour l'alerte admin à l'épuisement des tentatives).
   exports: [PlatformConfigCache, AdminServiceClient],
 })
 export class PlatformConfigModule {}

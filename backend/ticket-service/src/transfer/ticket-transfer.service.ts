@@ -134,7 +134,7 @@ export class TicketTransferService {
   /**
    * Change le titulaire d'un billet avec un nouveau jeton interne : tout QR
    * affiché par l'ancien titulaire devient SUPERSEDED au contrôle (l'ancien
-   * jeton reste dans l'historique). Le PDF est à régénérer (api-gateway).
+   * jeton reste dans l'historique).
    */
   private async reassign(
     manager: EntityManager,
@@ -146,7 +146,6 @@ export class TicketTransferService {
     await manager.save(manager.create(QrTokenHistory, { token: newToken, ticket_id: ticket.id, is_current: true }));
     Object.assign(ticket, holder);
     ticket.qr_code_token = newToken;
-    ticket.pdf_url = null;
     return manager.save(ticket);
   }
 

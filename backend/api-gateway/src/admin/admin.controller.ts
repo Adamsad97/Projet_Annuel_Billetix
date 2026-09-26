@@ -22,7 +22,7 @@ import {
 } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
 import { CreateEventDto } from "../event/dto/create-event.dto";
-import { emitTicketPdf, formatEventDate, TicketPdfSource } from "../common/ticket-pdf";
+import { formatEventDate } from "../common/event-date";
 import { RejectTransferRevertDto, RevertTransferDto } from "../ticket/dto/transfer-revert.dto";
 
 /** Annonce de revente renvoyée par le ticket-service. */
@@ -62,7 +62,6 @@ export class AdminController {
     @Inject("PAYMENT_SERVICE") private readonly paymentClient: ClientProxy,
     @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
-    @Inject("PDF_SERVICE") private readonly pdfClient: ClientProxy,
   ) {}
 
   private ip(req: Request): string {
@@ -125,7 +124,7 @@ export class AdminController {
     @Req() req: Request,
   ) {
     const { ticket, transfer } = await firstValueFrom(
-      this.ticketClient.send<{ ticket: TicketPdfSource; transfer: RevertedTransfer }>("ticket.revert_transfer", {
+      this.ticketClient.send<{ ticket: { id: string; reference: string }; transfer: RevertedTransfer }>("ticket.revert_transfer", {
         transfer_id: id,
         admin_id: user.sub,
         admin_email: user.email,
@@ -147,8 +146,6 @@ export class AdminController {
       event_name: transfer.event_name,
     });
 
-    // PDF au nom du titulaire d'origine (celui du bénéficiaire a été invalidé).
-    emitTicketPdf(this.pdfClient, ticket);
     this.notifClient.emit("notification.transfer_reverted", {
       ticketReference: transfer.ticket_reference,
       eventName: transfer.event_name,
@@ -1385,7 +1382,6 @@ export class AdminController {
       reference: string;
       ticket_category_name: string;
       seat_info: string | null;
-      pdf_url: string | null;
     }>;
 
     this.notifClient.emit("notification.ticket_ready", {

@@ -21,7 +21,9 @@ export class MinioService implements OnModuleInit {
     const port = this.config.get<string>('MINIO_PORT', '9000');
     const useSSL = this.config.get<string>('MINIO_USE_SSL', 'false') === 'true';
 
-    this.bucket = this.config.get<string>('MINIO_BUCKET_TICKETS', 'tickets');
+    // Seules les factures sont stockées : le billet n'existe que dans
+    // l'application (QR éphémère), il n'y a plus de billet PDF.
+    this.bucket = this.config.get<string>('MINIO_BUCKET_INVOICES', 'invoices');
 
     this.client = new S3Client({
       endpoint: `${useSSL ? 'https' : 'http'}://${endpoint}:${port}`,
@@ -33,16 +35,13 @@ export class MinioService implements OnModuleInit {
       forcePathStyle: true,
     });
 
-    // Rend privés billets et factures dès le démarrage, y compris des
-    // buckets créés publics avant le correctif — sans attendre le prochain
-    // PDF généré. Échec non bloquant (MinIO pas encore prêt) : retenté au
+    // Rend le bucket des factures privé dès le démarrage, y compris s'il a
+    // été créé public avant le correctif — sans attendre la prochaine
+    // facture. Échec non bloquant (MinIO pas encore prêt) : retenté au
     // premier upload.
-    const invoicesBucket = this.config.get<string>('MINIO_BUCKET_INVOICES', 'invoices');
-    for (const bucket of [this.bucket, invoicesBucket]) {
-      this.ensureBucket(bucket).catch((error) =>
-        this.logger.warn(`Bucket ${bucket} non vérifié au démarrage : ${error?.message}`),
-      );
-    }
+    this.ensureBucket(this.bucket).catch((error) =>
+      this.logger.warn(`Bucket ${this.bucket} non vérifié au démarrage : ${error?.message}`),
+    );
   }
 
   // Buckets déjà vérifiés privés par ce processus (évite un appel MinIO à

@@ -1,7 +1,7 @@
 // Client pour les endpoints /tickets de l'api-gateway
 // (backend/api-gateway/src/ticket/ticket.controller.ts). Câblage réel.
 
-import { apiDownload, apiGet, apiPost } from "./client";
+import { apiGet, apiPost } from "./client";
 
 export type ApiTicketStatus =
   | "GENERATED"
@@ -27,7 +27,6 @@ export interface ApiTicket {
   holder_first_name: string;
   holder_last_name: string;
   buyer_email: string;
-  pdf_url: string | null;
   created_at: string;
   // Billet reçu en cadeau : qui l'a offert (GET /tickets/mine et /tickets/:id).
   received_from?: ApiTransferParty | null;
@@ -136,11 +135,6 @@ export function requestResale(
     original_order_id: originalOrderId,
     resale_price: resalePrice,
   });
-}
-
-/** PDF du billet, servi uniquement à son titulaire connecté. */
-export function downloadTicketPdf(ticketId: string, reference: string): Promise<void> {
-  return apiDownload(`/tickets/${ticketId}/pdf`, `billet-${reference}.pdf`);
 }
 
 /**

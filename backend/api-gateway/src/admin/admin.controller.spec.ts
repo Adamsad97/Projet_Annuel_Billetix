@@ -30,7 +30,6 @@ describe("AdminController — newsletter", () => {
       {} as any, // paymentClient
       authClient as any,
       notifClient as any,
-      {} as any, // pdfClient
     );
   });
 
@@ -123,14 +122,12 @@ describe("AdminController — annulation d'un transfert de billet", () => {
   let adminClient: { send: jest.Mock };
   let ticketClient: { send: jest.Mock };
   let notifClient: { emit: jest.Mock };
-  let pdfClient: { emit: jest.Mock };
   let controller: AdminController;
 
   beforeEach(() => {
     adminClient = { send: jest.fn().mockReturnValue({ subscribe: jest.fn() }) };
     ticketClient = { send: jest.fn((pattern: string) => of(pattern === "ticket.revert_transfer" ? { ticket, transfer } : { request: { id: "req-1" }, transfer })) };
     notifClient = { emit: jest.fn() };
-    pdfClient = { emit: jest.fn() };
     controller = new AdminController(
       adminClient as any,
       {} as any,
@@ -140,18 +137,16 @@ describe("AdminController — annulation d'un transfert de billet", () => {
       {} as any,
       {} as any,
       notifClient as any,
-      pdfClient as any,
     );
   });
 
-  it("annule sur appel : billet rendu, PDF régénéré, audit et emails", async () => {
+  it("annule sur appel : billet rendu, audit et emails", async () => {
     await controller.revertTicketTransfer(admin, "tr-1", { reason: "Appel de l'acheteur", source: "PHONE" }, req);
 
     expect(ticketClient.send).toHaveBeenCalledWith(
       "ticket.revert_transfer",
       expect.objectContaining({ transfer_id: "tr-1", admin_id: "admin-1", source: "PHONE" }),
     );
-    expect(pdfClient.emit).toHaveBeenCalledWith("pdf.generate_ticket", expect.objectContaining({ holder_first_name: "Jean", unit_price_ttc: 50 }));
     expect(adminClient.send).toHaveBeenCalledWith(
       "admin.log_action",
       expect.objectContaining({
@@ -177,7 +172,6 @@ describe("AdminController — annulation d'un transfert de billet", () => {
       "notification.transfer_revert_rejected",
       expect.objectContaining({ decisionReason: "Billet déjà remis" }),
     );
-    expect(pdfClient.emit).not.toHaveBeenCalled();
   });
 });
 
@@ -208,7 +202,6 @@ describe("AdminController — reventes", () => {
       {} as any,
       {} as any,
       authClient as any,
-      {} as any,
       {} as any,
     );
 
