@@ -86,10 +86,6 @@ export default function AdminDashboardPage() {
 
   return (
     <AdminShell active="/admin">
-      {/* Bug corrigé : ce lien pointait vers "/", qui rebondit maintenant
-          aussitôt vers "/admin" pour un admin (BuyerOnlyGate) — en plus
-          d'être redondant avec l'entrée "Dashboard" de la sidebar puisqu'on
-          est déjà sur la page d'accueil du back-office ici. Supprimé. */}
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-ink-1">Dashboard administrateur</h1>
       </div>

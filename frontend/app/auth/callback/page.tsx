@@ -22,10 +22,10 @@ import { saveSession } from "@/lib/auth/session";
 import { useRegistrationPolicy } from "@/lib/auth/use-registration-policy";
 import { ApiError } from "@/lib/api/http-error";
 
-// Bug corrigé : même correctif que login-form.tsx — "/" rebondit aussitôt
-// vers "/admin" pour un ADMIN/SUPER_ADMIN (BuyerOnlyGate).
-function postLoginPath(role: string): string {
-  return role === "ADMIN" || role === "SUPER_ADMIN" ? "/admin" : "/";
+// Après connexion Google/Facebook : l'accueil pour tous les rôles, comme
+// login-form.tsx (un admin y retrouve « Profil » et « Back-office »).
+function postLoginPath(): string {
+  return "/";
 }
 
 // Bug corrigé : useSearchParams() hors <Suspense> faisait échouer
@@ -77,7 +77,7 @@ function OAuthCallbackContent() {
     // Session limitée à l'onglet, comme la connexion classique sans « Se
     // souvenir de moi » (décochée par défaut) : pas de choix proposé ici.
     saveSession(result, false);
-    router.push(postLoginPath(result.user.role));
+    router.push(postLoginPath());
   }
 
   useEffect(() => {
@@ -126,7 +126,7 @@ function OAuthCallbackContent() {
     try {
       const session = await verifyOAuth2fa(pendingToken, twoFactorCode);
       saveSession(session, false);
-      router.push(postLoginPath(session.user.role));
+      router.push(postLoginPath());
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Code invalide, veuillez réessayer.",

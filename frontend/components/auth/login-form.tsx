@@ -18,19 +18,17 @@ import { saveSession } from "@/lib/auth/session";
 // injectée en dur au build, identique des deux côtés.
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
-// Bug corrigé : la redirection post-connexion pointait toujours vers "/",
-// qui rebondit aussitôt vers "/admin" pour un ADMIN/SUPER_ADMIN
-// (BuyerOnlyGate) — un admin voyait donc un flash de la page d'accueil
-// (le temps du fetch serveur des événements) avant d'être renvoyé au
-// back-office. Redirige directement vers la bonne destination selon le rôle.
-function postLoginPath(role: string, next?: string): string {
+// Après connexion : la page demandée (?next=) ou l'accueil, pour tous les
+// rôles — un admin y retrouve « Profil » et « Back-office » dans la barre
+// de navigation (demande produit). L'achat reste impossible pour lui.
+function postLoginPath(next?: string): string {
   // Bug corrigé : ?next= (posé par les pages réservées et le bouton
   // « Réserver ») était ignoré — retour systématique à l'accueil. Seuls les
   // chemins internes sont suivis (jamais "//domaine" : redirection ouverte).
   if (next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/connexion")) {
     return next;
   }
-  return role === "ADMIN" || role === "SUPER_ADMIN" ? "/admin" : "/";
+  return "/";
 }
 
 export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; next?: string } = {}) {
@@ -73,7 +71,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
       const result = await loginUser({ email, password });
       if (isAuthSession(result)) {
         saveSession(result, rememberMe);
-        router.push(postLoginPath(result.user.role, next));
+        router.push(postLoginPath(next));
       } else {
         setPendingCredentials({ email, password, method: result.two_factor_method });
       }
@@ -117,7 +115,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
       });
       if (isAuthSession(result)) {
         saveSession(result, rememberMe);
-        router.push(postLoginPath(result.user.role, next));
+        router.push(postLoginPath(next));
       } else {
         setError("Code 2FA invalide.");
       }
