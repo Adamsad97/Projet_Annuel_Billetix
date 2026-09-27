@@ -878,6 +878,65 @@ export class AdminController {
   // menait à un événement introuvable (id mock vs UUID réel). Déclarée
   // après "events/pending" — une route ":id" placée avant avalerait
   // "pending" comme si c'était un id (même piège que /tickets/resale).
+  /**
+   * Tout ce dont l'admin a besoin pour consulter ou agir sur un événement :
+   * organisateur, ventes, finances, reversement, billets, participants,
+   * demandes de complément et historique des actions. Chaque source est
+   * facultative : une panne partielle n'empêche pas d'afficher le reste.
+   */
+  @Get("events/:id/overview")
+  @ApiOperation({ summary: "Vue complète d'un événement pour l'administration" })
+  async getAdminEventOverview(@Param("id") id: string, @CurrentUser() user?: JwtPayload) {
+    const event = (await firstValueFrom(this.eventClient.send("event.get", { id }))) as {
+      id: string;
+      organizer_id: string;
+    };
+    const soft = <T>(pattern: string, client: ClientProxy, payload: unknown, fallback: T): Promise<T> =>
+      firstValueFrom(client.send(pattern, payload)).catch(() => fallback) as Promise<T>;
+
+    const [organizer, fillStats, revenue, ticketStats, ticketCategories, payouts, attendees, validationRequests, history] =
+      await Promise.all([
+        soft<Record<string, unknown> | null>("auth.get_user", this.authClient, { id: event.organizer_id }, null),
+        soft("event.get_fill_stats", this.eventClient, { event_id: id }, { total_quota: 0, remaining: 0, sold: 0, fill_rate: 0, categories: [] }),
+        soft("order.get_revenue_by_event", this.orderClient, { event_id: id }, {
+          orders_count: 0,
+          revenue_ht: 0,
+          revenue_ttc: 0,
+          total_commission: 0,
+          net_organizer_amount: 0,
+        }),
+        soft("ticket.get_stats_by_event", this.ticketClient, { event_id: id }, { total: 0, used: 0, active: 0, cancelled: 0, for_resale: 0 }),
+        soft("event.get_categories", this.eventClient, { event_id: id }, []),
+        soft<Array<{ event_id: string }>>("payment.get_payouts_by_organizer", this.paymentClient, { organizer_id: event.organizer_id }, []),
+        soft("ticket.get_by_event", this.ticketClient, { event_id: id }, []),
+        soft("event.get_validation_requests", this.eventClient, { event_id: id }, []),
+        soft<{ logs: unknown[] }>("admin.get_logs", this.adminClient, { entity_id: id, limit: 100 }, { logs: [] }),
+      ]);
+
+    const contact = organizer
+      ? {
+          id: organizer.id,
+          first_name: organizer.first_name,
+          last_name: organizer.last_name,
+          email: organizer.email,
+          phone: organizer.phone ?? null,
+          is_suspended: organizer.is_suspended ?? false,
+        }
+      : null;
+
+    return {
+      organizer: contact,
+      fill_stats: fillStats,
+      revenue,
+      tickets: ticketStats,
+      ticket_categories: ticketCategories,
+      payout: payouts.find((payout) => payout.event_id === id) ?? null,
+      attendees,
+      validation_requests: validationRequests,
+      history: redactIpUnlessSuperAdmin(user, history.logs),
+    };
+  }
+
   @Get("events/:id")
   @ApiOperation({ summary: "Détail enrichi d'un événement (gestion globale)" })
   async getAdminEvent(@Param("id") id: string) {
