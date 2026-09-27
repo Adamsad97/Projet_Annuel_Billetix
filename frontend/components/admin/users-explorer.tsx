@@ -18,6 +18,7 @@ import {
   type ApiAdminUser,
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
+import { getStoredUser } from "@/lib/auth/session";
 
 const PAGE_SIZE = 50;
 
@@ -55,6 +56,18 @@ export function UsersExplorer() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<ActionDialogState | null>(null);
+  const [me, setMe] = useState<{ id: string; role: string } | null>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- session lue côté client uniquement
+    setMe(getStoredUser());
+  }, []);
+
+  function canManage(user: ApiAdminUser): boolean {
+    if (!me || me.id === user.id) return false;
+    const elevated = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
+    return !elevated || me.role === "SUPER_ADMIN";
+  }
 
   const query = (offset: number, limit: number) =>
     searchUsers({
@@ -216,6 +229,8 @@ export function UsersExplorer() {
             <UserRow
               key={user.id}
               user={user}
+              isSelf={me?.id === user.id}
+              canManage={canManage(user)}
               busy={busyId === user.id}
               onSuspend={() => handleSuspend(user)}
               onUnsuspend={() => handleUnsuspend(user)}

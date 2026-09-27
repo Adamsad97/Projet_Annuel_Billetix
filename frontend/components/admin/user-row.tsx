@@ -21,11 +21,17 @@ const dateFormatter = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "n
 
 export function UserRow({
   user,
+  isSelf,
+  canManage,
   busy,
   onSuspend,
   onUnsuspend,
 }: {
   user: ApiAdminUser;
+  /** Compte de la personne connectée : aucune action, lien vers son profil. */
+  isSelf: boolean;
+  /** Même règle que le serveur (assertCanManageTarget) : seul un super admin gère un admin. */
+  canManage: boolean;
   busy: boolean;
   onSuspend: () => void;
   onUnsuspend: () => void;
@@ -39,8 +45,13 @@ export function UserRow({
           {initials}
         </div>
         <div>
-          <p className="text-sm font-bold text-ink-1">
+          <p className="flex items-center gap-2 text-sm font-bold text-ink-1">
             {user.first_name} {user.last_name}
+            {isSelf ? (
+              <span className="rounded-full bg-hairline-1 px-2 py-0.5 text-xs font-medium text-ink-4 ring-1 ring-inset ring-hairline-2">
+                Vous
+              </span>
+            ) : null}
           </p>
           <p className="text-xs text-ink-5">
             {user.email} · Membre depuis {dateFormatter.format(new Date(user.created_at))}
@@ -65,12 +76,12 @@ export function UserRow({
         ) : null}
 
         <Link
-          href={`/admin/utilisateurs/${user.id}`}
+          href={isSelf ? "/profil" : `/admin/utilisateurs/${user.id}`}
           className="rounded-lg bg-hairline-1 px-3 py-1.5 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
         >
-          ● Voir
+          {isSelf ? "Mon profil" : "Voir"}
         </Link>
-        {user.is_suspended ? (
+        {!canManage ? null : user.is_suspended ? (
           <button
             type="button"
             disabled={busy}
