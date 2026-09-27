@@ -480,6 +480,8 @@ export class AdminController {
     @Query("is_suspended") is_suspended?: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
+    @Query("status") status?: string,
+    @Query("sort") sort?: string,
   ) {
     return firstValueFrom(
       this.authClient.send("auth.list_users", {
@@ -487,6 +489,8 @@ export class AdminController {
         role,
         is_suspended:
           is_suspended === undefined ? undefined : is_suspended === "true",
+        status: ["active", "suspended", "locked", "unverified"].includes(status ?? "") ? status : undefined,
+        sort: ["recent", "oldest", "name"].includes(sort ?? "") ? sort : undefined,
         limit: limit ? parseInt(limit) : undefined,
         offset: offset ? parseInt(offset) : undefined,
       }),
@@ -808,11 +812,37 @@ export class AdminController {
    */
   @Get("events")
   @ApiOperation({ summary: "Tous les événements, tous statuts confondus (gestion globale)" })
-  async listAllEvents(@Query("status") status?: string) {
-    const events = (await firstValueFrom(
-      this.eventClient.send("event.list_all", { status }),
-    )) as Array<{ id: string; organizer_id: string; category: string; [key: string]: unknown }>;
-    return this.enrichAdminEvents(events);
+  async listAllEvents(
+    @Query("status") status?: string,
+    @Query("q") q?: string,
+    @Query("category") category?: string,
+    @Query("when") when?: string,
+    @Query("sort") sort?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+  ) {
+    // Recherche aussi par organisateur : ses comptes (nom, email) sont dans
+    // auth-service, on transmet leurs identifiants à event-service.
+    const search = q?.trim();
+    const organizers = search
+      ? ((await firstValueFrom(this.authClient.send("auth.list_users", { q: search, limit: 100 })).catch(
+          () => ({ data: [] }),
+        )) as { data: Array<{ id: string }> })
+      : { data: [] };
+
+    const result = (await firstValueFrom(
+      this.eventClient.send("event.list_all", {
+        status: status || undefined,
+        category: category || undefined,
+        when: when === "upcoming" || when === "past" ? when : undefined,
+        q: search || undefined,
+        organizer_ids: organizers.data.map((user) => user.id),
+        sort: ["created_desc", "start_asc", "start_desc", "title"].includes(sort ?? "") ? sort : undefined,
+        limit: limit ? parseInt(limit, 10) : undefined,
+        offset: offset ? parseInt(offset, 10) : undefined,
+      }),
+    )) as { data: Array<{ id: string; organizer_id: string; category: string; [key: string]: unknown }>; total: number };
+    return { data: await this.enrichAdminEvents(result.data), total: result.total };
   }
 
   @Get("events/pending")
@@ -1047,12 +1077,35 @@ export class AdminController {
   @ApiOperation({ summary: "Liste des reversements, tous organisateurs confondus" })
   async listPayouts(
     @Query("status") status?: string,
+    @Query("q") q?: string,
+    @Query("scheduled_from") scheduled_from?: string,
+    @Query("scheduled_to") scheduled_to?: string,
+    @Query("sort") sort?: string,
     @Query("limit") limit?: string,
     @Query("offset") offset?: string,
   ) {
+    // Recherche par organisateur (auth-service) ou par événement
+    // (event-service) : leurs identifiants filtrent ensuite les reversements.
+    const search = q?.trim();
+    let searchIds: { organizer_ids?: string[]; event_ids?: string[] } = {};
+    if (search) {
+      const [organizers, events] = await Promise.all([
+        firstValueFrom(this.authClient.send("auth.list_users", { q: search, limit: 100 })).catch(() => ({ data: [] })),
+        firstValueFrom(this.eventClient.send("event.list_all", { q: search, limit: 100 })).catch(() => ({ data: [] })),
+      ]) as [{ data: Array<{ id: string }> }, { data: Array<{ id: string }> }];
+      searchIds = {
+        organizer_ids: organizers.data.map((user) => user.id),
+        event_ids: events.data.map((event) => event.id),
+      };
+    }
+
     const result = (await firstValueFrom(
       this.paymentClient.send("payment.list_all_payouts", {
-        status,
+        status: status || undefined,
+        ...searchIds,
+        scheduled_from: scheduled_from || undefined,
+        scheduled_to: scheduled_to || undefined,
+        sort: ["scheduled_desc", "scheduled_asc", "amount_desc"].includes(sort ?? "") ? sort : undefined,
         limit: limit ? parseInt(limit) : undefined,
         offset: offset ? parseInt(offset) : undefined,
       }),
