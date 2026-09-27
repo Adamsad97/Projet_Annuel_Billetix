@@ -725,6 +725,7 @@ export class AdminController {
       this.eventClient.send("event.create", { organizer_id: body.organizer_id, dto: body.dto }),
     );
     this.audit(user, req, "CUSTOM", "EVENT", (result as { id: string }).id, `Événement créé par l'admin pour l'organisateur ${body.organizer_id} (accueil physique)`);
+    this.notifyOrganizerOfEvent(result as { id: string; title: string; organizer_id: string }, "CREATED_FOR_YOU");
     return result;
   }
 
@@ -936,6 +937,10 @@ export class AdminController {
       "EVENT",
       id,
     );
+    this.notifyOrganizerOfEvent(
+      result as { id: string; title: string; organizer_id: string },
+      dto.approved ? "NON_PROFIT_VERIFIED" : "NON_PROFIT_REJECTED",
+    );
     return result;
   }
 
@@ -997,6 +1002,7 @@ export class AdminController {
     )) as CancelledEventSnapshot;
     this.eventRefund.refundInBackground(event, reason);
     this.audit(user, req, "EVENT_CANCELED", "EVENT", id, reason);
+    this.notifyOrganizerOfEvent(event, "CANCELLED_BY_ADMIN", reason);
     return event;
   }
 
@@ -1021,8 +1027,13 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Réactiver un événement désactivé (ADMIN)" })
   async unsuspendEvent(@CurrentUser() user: JwtPayload, @Req() req: Request, @Param("id") id: string) {
-    const result = await firstValueFrom(this.eventClient.send("event.unsuspend", { id }));
+    const result = (await firstValueFrom(this.eventClient.send("event.unsuspend", { id }))) as {
+      id: string;
+      title: string;
+      organizer_id: string;
+    };
     this.audit(user, req, "CUSTOM", "EVENT", id, "Événement réactivé : les ventes reprennent.");
+    this.notifyOrganizerOfEvent(result, "UNSUSPENDED");
     return result;
   }
 
@@ -1036,10 +1047,11 @@ export class AdminController {
     @Param("id") id: string,
     @Body() dto: { reason?: string },
   ) {
-    const result = await firstValueFrom(
+    const result = (await firstValueFrom(
       this.eventClient.send("event.hide", { id, admin_id: user.sub, dto: { reason: dto?.reason } }),
-    );
+    )) as { id: string; title: string; organizer_id: string };
     this.audit(user, req, "CUSTOM", "EVENT", id, `Événement masqué au public : ${dto?.reason ?? ""}`);
+    this.notifyOrganizerOfEvent(result, "HIDDEN", dto?.reason);
     return result;
   }
 
@@ -1047,9 +1059,48 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Rendre un événement de nouveau visible (ADMIN)" })
   async unhideEvent(@CurrentUser() user: JwtPayload, @Req() req: Request, @Param("id") id: string) {
-    const result = await firstValueFrom(this.eventClient.send("event.unhide", { id }));
+    const result = (await firstValueFrom(this.eventClient.send("event.unhide", { id }))) as {
+      id: string;
+      title: string;
+      organizer_id: string;
+    };
     this.audit(user, req, "CUSTOM", "EVENT", id, "Événement de nouveau visible au public.");
+    this.notifyOrganizerOfEvent(result, "UNHIDDEN");
     return result;
+  }
+
+  /**
+   * Prévient l'organisateur par email d'une action de l'administration sur
+   * son événement. Ne bloque ni ne fait échouer l'action elle-même.
+   */
+  private notifyOrganizerOfEvent(
+    event: { id: string; title?: string; organizer_id?: string } | null | undefined,
+    kind: string,
+    message?: string | null,
+  ): void {
+    if (!event?.id) return;
+    (async () => {
+      const full = event.title && event.organizer_id
+        ? (event as { id: string; title: string; organizer_id: string })
+        : ((await firstValueFrom(this.eventClient.send("event.get", { id: event.id }))) as {
+            id: string;
+            title: string;
+            organizer_id: string;
+          });
+      const organizer = (await firstValueFrom(this.authClient.send("auth.get_user", { id: full.organizer_id }))) as {
+        email?: string;
+        first_name?: string;
+      } | null;
+      if (!organizer?.email) return;
+      this.notifClient.emit("notification.organizer_event_notice", {
+        email: organizer.email,
+        firstName: organizer.first_name ?? "",
+        event_id: full.id,
+        event_name: full.title,
+        kind,
+        message: message ?? undefined,
+      });
+    })().catch(() => undefined);
   }
 
   // ─── Demandes d'annulation des organisateurs ─────────────────────────────────
@@ -1117,7 +1168,8 @@ export class AdminController {
         author_role: "ADMIN",
         message: dto?.message,
       }),
-    )) as { organizer_id: string };
+    )) as { organizer_id: string; event_id: string };
+    this.notifyOrganizerOfEvent({ id: request.event_id }, "CANCELLATION_MESSAGE", dto?.message);
     const [enriched] = await this.enrichCancellationRequests([request]);
     return enriched;
   }
@@ -1135,6 +1187,7 @@ export class AdminController {
       this.eventClient.send("event.cancellation.reject", { id, admin_id: user.sub, message: dto?.message }),
     )) as { organizer_id: string; event_id: string };
     this.audit(user, req, "CUSTOM", "EVENT", request.event_id, `Demande d'annulation refusée : ${dto?.message ?? ""}`);
+    this.notifyOrganizerOfEvent({ id: request.event_id }, "CANCELLATION_REJECTED", dto?.message);
     const [enriched] = await this.enrichCancellationRequests([request]);
     return enriched;
   }
@@ -1153,6 +1206,7 @@ export class AdminController {
     )) as { request: { organizer_id: string; reason: string }; event: CancelledEventSnapshot };
     this.eventRefund.refundInBackground(result.event, result.request.reason);
     this.audit(user, req, "EVENT_CANCELED", "EVENT", result.event.id, `Demande de l'organisateur acceptée : ${result.request.reason}`);
+    this.notifyOrganizerOfEvent(result.event as unknown as { id: string; title: string; organizer_id: string }, "CANCELLATION_APPROVED", dto?.message);
     const [enriched] = await this.enrichCancellationRequests([result.request]);
     return enriched;
   }
