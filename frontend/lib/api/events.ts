@@ -89,6 +89,10 @@ export interface ListEventsParams {
   lat?: number;
   lng?: number;
   radius_km?: number;
+  // Période (ISO 8601) : événements qui se déroulent au moins en partie dedans.
+  date_from?: string;
+  date_to?: string;
+  sort?: "date" | "recent";
 }
 
 export interface ListEventsResult {
