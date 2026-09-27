@@ -85,9 +85,23 @@ export interface ApiAdminEvent extends ApiEvent {
   total_quota: number;
 }
 
-export function getAdminEvents(status?: string): Promise<ApiAdminEvent[]> {
-  const qs = status && status !== "all" ? `?status=${encodeURIComponent(status)}` : "";
-  return apiGet<ApiAdminEvent[]>(`/admin/events${qs}`);
+export type AdminEventSort = "created_desc" | "start_asc" | "start_desc" | "title";
+
+export function getAdminEvents(params: {
+  status?: string;
+  q?: string;
+  category?: string;
+  when?: "upcoming" | "past";
+  sort?: AdminEventSort;
+  limit?: number;
+  offset?: number;
+}): Promise<{ data: ApiAdminEvent[]; total: number }> {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return apiGet<{ data: ApiAdminEvent[]; total: number }>(`/admin/events${qs ? `?${qs}` : ""}`);
 }
 
 export function getAdminEvent(id: string): Promise<ApiAdminEvent> {
@@ -116,8 +130,21 @@ export interface ApiAdminUser {
   created_at: string;
 }
 
-export function searchUsers(params: { q?: string; role?: string; is_suspended?: boolean; limit?: number; offset?: number }): Promise<{ data: ApiAdminUser[]; total: number }> {
+export type AdminUserStatusFilter = "active" | "suspended" | "locked" | "unverified";
+export type AdminUserSort = "recent" | "oldest" | "name";
+
+export function searchUsers(params: {
+  q?: string;
+  role?: string;
+  is_suspended?: boolean;
+  status?: AdminUserStatusFilter;
+  sort?: AdminUserSort;
+  limit?: number;
+  offset?: number;
+}): Promise<{ data: ApiAdminUser[]; total: number }> {
   const search = new URLSearchParams();
+  if (params.status) search.set("status", params.status);
+  if (params.sort) search.set("sort", params.sort);
   if (params.q) search.set("q", params.q);
   if (params.role) search.set("role", params.role);
   if (params.is_suspended !== undefined) search.set("is_suspended", String(params.is_suspended));
@@ -290,11 +317,23 @@ export function getPayoutStats(): Promise<{
   return apiGet("/admin/payouts/stats");
 }
 
-export function listPayouts(params: { status?: string; limit?: number; offset?: number } = {}): Promise<{ data: ApiPayout[]; total: number }> {
+export type AdminPayoutSort = "scheduled_desc" | "scheduled_asc" | "amount_desc";
+
+export function listPayouts(
+  params: {
+    status?: string;
+    q?: string;
+    scheduled_from?: string;
+    scheduled_to?: string;
+    sort?: AdminPayoutSort;
+    limit?: number;
+    offset?: number;
+  } = {},
+): Promise<{ data: ApiPayout[]; total: number }> {
   const search = new URLSearchParams();
-  if (params.status) search.set("status", params.status);
-  if (params.limit) search.set("limit", String(params.limit));
-  if (params.offset) search.set("offset", String(params.offset));
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "" && value !== 0) search.set(key, String(value));
+  }
   const qs = search.toString();
   return apiGet(`/admin/payouts${qs ? `?${qs}` : ""}`);
 }

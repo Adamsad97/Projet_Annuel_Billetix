@@ -1,18 +1,21 @@
 "use client";
 
-// Bug corrigé : page 100% maquette (adminPayouts factices) — câblée sur
-// GET /admin/payouts (payment-service, enrichi organisateur/événement côté
-// gateway) et les actions déjà exposées (block/unblock/approve-early).
+// Reversements aux organisateurs : recherche (organisateur ou événement),
+// statut, échéance et tri appliqués par le serveur (GET /admin/payouts),
+// pagination « Afficher plus », actions bloquer / débloquer / anticiper.
 
 import { useEffect, useState } from "react";
 import { FilterPills } from "@/components/admin/filter-pills";
 import { PayoutRow } from "@/components/admin/payout-row";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
+import { FilterMenu, FilterOption } from "@/components/ui/filter-menu";
+import { SearchField } from "@/components/ui/search-field";
 import {
   approveEarlyPayout,
   blockPayout,
   listPayouts,
   unblockPayout,
+  type AdminPayoutSort,
   type ApiPayout,
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
@@ -26,25 +29,99 @@ const statusFilters: { id: string; label: string }[] = [
   { id: "FAILED", label: "Échoués" },
 ];
 
+const PAGE_SIZE = 50;
+
+type Period = "" | "upcoming" | "this_month" | "last_month" | "last_3_months";
+
+const periodOptions: { id: Period; label: string }[] = [
+  { id: "", label: "Toutes les échéances" },
+  { id: "upcoming", label: "À venir" },
+  { id: "this_month", label: "Ce mois-ci" },
+  { id: "last_month", label: "Le mois dernier" },
+  { id: "last_3_months", label: "Les 3 derniers mois" },
+];
+
+const sortOptions: { id: AdminPayoutSort; label: string }[] = [
+  { id: "scheduled_desc", label: "Échéance la plus récente" },
+  { id: "scheduled_asc", label: "Échéance la plus ancienne" },
+  { id: "amount_desc", label: "Montant net le plus élevé" },
+];
+
+/** Bornes de l'échéance pour une période (heure locale). */
+function periodRange(period: Period): { scheduled_from?: string; scheduled_to?: string } {
+  const now = new Date();
+  const monthStart = (offset: number) => new Date(now.getFullYear(), now.getMonth() + offset, 1);
+  switch (period) {
+    case "upcoming":
+      return { scheduled_from: now.toISOString() };
+    case "this_month":
+      return { scheduled_from: monthStart(0).toISOString(), scheduled_to: new Date(monthStart(1).getTime() - 1).toISOString() };
+    case "last_month":
+      return { scheduled_from: monthStart(-1).toISOString(), scheduled_to: new Date(monthStart(0).getTime() - 1).toISOString() };
+    case "last_3_months":
+      return { scheduled_from: monthStart(-2).toISOString(), scheduled_to: now.toISOString() };
+    default:
+      return {};
+  }
+}
+
 export function PayoutsExplorer() {
   const [status, setStatus] = useState("all");
+  const [search, setSearch] = useState("");
+  const [period, setPeriod] = useState<Period>("");
+  const [sort, setSort] = useState<AdminPayoutSort>("scheduled_desc");
+  const [loadingMore, setLoadingMore] = useState(false);
   const [payouts, setPayouts] = useState<ApiPayout[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<ActionDialogState | null>(null);
 
-  function load() {
-    listPayouts({ status: status === "all" ? undefined : status, limit: 50 })
+  const query = (offset: number, limit: number) =>
+    listPayouts({
+      status: status === "all" ? undefined : status,
+      q: search.trim() || undefined,
+      ...periodRange(period),
+      sort,
+      limit,
+      offset,
+    });
+
+  function showPage(offset: number, limit: number, append: boolean) {
+    return query(offset, limit)
       .then((result) => {
-        setPayouts(result.data);
+        setPayouts((current) => (append && current ? [...current, ...result.data] : result.data));
         setTotal(result.total);
         setError(null);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger les reversements."));
   }
 
-  useEffect(load, [status]);
+  // Après une action : recharge en gardant le nombre de lignes déjà affichées.
+  function load() {
+    showPage(0, Math.max(PAGE_SIZE, payouts?.length ?? 0), false);
+  }
+
+  // Recherche différée (300ms) pour éviter une requête à chaque frappe.
+  useEffect(() => {
+    const timeout = setTimeout(() => showPage(0, PAGE_SIZE, false), 300);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, search, period, sort]);
+
+  async function loadMore() {
+    if (!payouts) return;
+    setLoadingMore(true);
+    await showPage(payouts.length, PAGE_SIZE, true);
+    setLoadingMore(false);
+  }
+
+  const hasFilters = status !== "all" || search.trim() !== "" || period !== "";
+  function reset() {
+    setStatus("all");
+    setSearch("");
+    setPeriod("");
+  }
 
   function handleBlock(payout: ApiPayout) {
     setDialog({
@@ -109,7 +186,68 @@ export function PayoutsExplorer() {
 
   return (
     <div className="flex flex-col gap-5">
-      <FilterPills options={statusFilters} active={status} onChange={setStatus} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <SearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Organisateur ou événement…"
+          className="w-full sm:max-w-sm"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterMenu
+            label="Échéance"
+            value={periodOptions.find((option) => option.id === period)?.label}
+            active={period !== ""}
+            align="right"
+          >
+            {(close) => (
+              <div role="menu">
+                {periodOptions.map((option) => (
+                  <FilterOption
+                    key={option.id}
+                    selected={period === option.id}
+                    onSelect={() => {
+                      setPeriod(option.id);
+                      close();
+                    }}
+                  >
+                    {option.label}
+                  </FilterOption>
+                ))}
+              </div>
+            )}
+          </FilterMenu>
+          <label className="flex items-center gap-2 text-sm text-ink-5">
+            <span className="sr-only">Trier par</span>
+            <select
+              value={sort}
+              onChange={(event) => setSort(event.target.value as AdminPayoutSort)}
+              className="h-10 rounded-full border border-hairline-3 bg-card px-4 text-sm font-medium text-ink-2 focus:border-blue-500 focus:outline-none"
+            >
+              {sortOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <FilterPills options={statusFilters} active={status} onChange={setStatus} />
+        {hasFilters ? (
+          <button type="button" onClick={reset} className="text-sm font-medium text-link hover:text-link-hover">
+            Réinitialiser
+          </button>
+        ) : null}
+      </div>
+
+      {payouts ? (
+        <p className="text-sm text-ink-5" role="status">
+          {total} reversement{total > 1 ? "s" : ""}
+        </p>
+      ) : null}
 
       {error ? (
         <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">{error}</div>
@@ -130,14 +268,21 @@ export function PayoutsExplorer() {
             />
           ))
         ) : (
-          <p className="px-5 py-8 text-center text-sm text-ink-5">Aucun reversement dans cette catégorie.</p>
+          <p className="px-5 py-8 text-center text-sm text-ink-5">Aucun reversement ne correspond à ces critères.</p>
         )}
       </div>
 
-      {payouts && payouts.length > 0 ? (
-        <p className="text-center text-xs text-ink-6">
-          {payouts.length} sur {total} reversement{total > 1 ? "s" : ""}
-        </p>
+      {payouts && payouts.length < total ? (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="rounded-full border border-hairline-3 px-6 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-50"
+          >
+            {loadingMore ? "Chargement…" : `Afficher plus (${total - payouts.length} restants)`}
+          </button>
+        </div>
       ) : null}
 
       <ActionDialog state={dialog} onClose={() => setDialog(null)} />
