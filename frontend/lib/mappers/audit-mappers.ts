@@ -19,7 +19,7 @@ export const auditActionLabels: Record<string, string> = {
   KYC_REJECTED: "KYC rejeté",
   EVENT_APPROVED: "Validation d'événement",
   EVENT_REJECTED: "Refus d'événement",
-  EVENT_SUSPENDED: "Suspension d'événement",
+  EVENT_SUSPENDED: "Événement désactivé",
   EVENT_NON_PROFIT_VERIFIED: "Statut non lucratif validé",
   EVENT_NON_PROFIT_REJECTED: "Statut non lucratif refusé",
   EVENT_CANCELED: "Annulation d'événement",

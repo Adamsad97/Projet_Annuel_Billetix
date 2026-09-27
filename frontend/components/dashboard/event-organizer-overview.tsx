@@ -76,11 +76,13 @@ export function EventOrganizerOverview({
   ticketCategories,
   eventCategory,
   payout,
+  viewer = "ORGANIZER",
 }: {
   detail: ApiEventDashboardDetail;
   ticketCategories: ApiTicketCategory[];
   eventCategory: ApiCategory | undefined;
-  payout: ApiPayout | undefined;
+  payout: ApiPayout | undefined | null;
+  viewer?: "ORGANIZER" | "ADMIN";
 }) {
   const { event, fill_stats, revenue, tickets } = detail;
   const sales = salesState(detail);
@@ -155,8 +157,9 @@ export function EventOrganizerOverview({
               </div>
             ) : (
               <p className="text-ink-4">
-                Le reversement est créé après l&apos;événement, une fois les ventes arrêtées. Vous suivez ensuite son avancement ici et dans
-                Finances.
+                {viewer === "ADMIN"
+                  ? "Aucun reversement pour le moment : il est créé après l'événement, une fois les ventes arrêtées."
+                  : "Le reversement est créé après l'événement, une fois les ventes arrêtées. Vous suivez ensuite son avancement ici et dans Finances."}
               </p>
             )}
           </div>

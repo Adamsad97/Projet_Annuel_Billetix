@@ -568,3 +568,28 @@ export function unhideEvent(id: string): Promise<ApiEvent> {
 export function cancelEventAsAdmin(id: string, reason: string): Promise<ApiEvent> {
   return apiPost(`/admin/events/${id}/cancel`, { reason });
 }
+
+// ─── Vue complète d'un événement (admin) ────────────────────────────────────
+
+export interface ApiAdminEventOverview {
+  organizer: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string | null;
+    is_suspended: boolean;
+  } | null;
+  fill_stats: import("./events").ApiEventFillStats;
+  revenue: import("./events").ApiEventRevenue;
+  tickets: import("./events").ApiEventTicketStats;
+  ticket_categories: import("./events").ApiTicketCategory[];
+  payout: import("./organizer").ApiPayout | null;
+  attendees: import("./tickets").ApiTicket[];
+  validation_requests: import("./events").ApiValidationRequest[];
+  history: ApiAuditLogEntry[];
+}
+
+export function getAdminEventOverview(id: string): Promise<ApiAdminEventOverview> {
+  return apiGet<ApiAdminEventOverview>(`/admin/events/${id}/overview`);
+}
