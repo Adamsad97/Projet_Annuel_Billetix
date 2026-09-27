@@ -229,4 +229,37 @@ describe('NotificationController', () => {
       }),
     );
   });
+
+  it("désactivation : email dédié à l'organisateur, plus celui du refus de validation", async () => {
+    await controller.onEventSuspended(
+      { email: 'orga@example.com', firstName: 'Awa', event_id: 'evt-1', event_name: 'Soirée Jazz', reason: 'Vérification de la salle' },
+      rmqContext,
+    );
+    const [options] = mail.send.mock.calls[0];
+    expect(options).toMatchObject({ to: 'orga@example.com', template: 'organizer-event-notice' });
+    expect(options.subject).toContain('Ventes suspendues');
+    expect(options.context).toMatchObject({ message: 'Vérification de la salle', eventUrl: 'http://localhost:3000/dashboard/evenements/evt-1' });
+  });
+
+  it.each([
+    ['HIDDEN', 'masqué'],
+    ['UNHIDDEN', 'de nouveau visible'],
+    ['UNSUSPENDED', 'Ventes rouvertes'],
+    ['CANCELLED_BY_ADMIN', 'annulé'],
+    ['CANCELLATION_MESSAGE', 'Nouveau message'],
+    ['CANCELLATION_REJECTED', 'refusée'],
+    ['CANCELLATION_APPROVED', 'acceptée'],
+    ['NON_PROFIT_VERIFIED', 'validé'],
+    ['NON_PROFIT_REJECTED', 'refusé'],
+    ['CREATED_FOR_YOU', 'créé'],
+  ] as const)("action admin %s : l'organisateur est prévenu", async (kind, subjectPart) => {
+    await controller.onOrganizerEventNotice(
+      { email: 'orga@example.com', firstName: 'Awa', event_id: 'evt-1', event_name: 'Soirée Jazz', kind, message: '  Motif  ' },
+      rmqContext,
+    );
+    const [options] = mail.send.mock.calls[0];
+    expect(options.template).toBe('organizer-event-notice');
+    expect(options.subject).toContain(subjectPart);
+    expect(options.context.message).toBe('Motif');
+  });
 });

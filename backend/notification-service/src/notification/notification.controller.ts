@@ -15,6 +15,8 @@ import { EventPublishedDto } from './dto/event-published.dto';
 import { EventReminderDto } from './dto/event-reminder.dto';
 import { EventRejectedDto } from './dto/event-rejected.dto';
 import { EventSuspendedDto } from './dto/event-suspended.dto';
+import { OrganizerEventNoticeDto, type OrganizerEventNoticeKind } from './dto/organizer-event-notice.dto';
+import { organizerEventNotice } from './organizer-event-notice';
 import { EventUpdatedDto } from './dto/event-updated.dto';
 import { FirstSaleDto } from './dto/first-sale.dto';
 import { DisputeOpenedDto } from './dto/dispute-opened.dto';
@@ -319,20 +321,41 @@ export class NotificationController {
     this.ack(rmqContext);
   }
 
-  @EventPattern('notification.event_suspended')
-  async onEventSuspended(@Payload() data: EventSuspendedDto, @Ctx() rmqContext: RmqContext) {
+  /** Email à l'organisateur pour une action de l'administration sur son événement. */
+  private async sendOrganizerEventNotice(data: {
+    email: string;
+    firstName: string;
+    event_id: string;
+    event_name: string;
+    kind: OrganizerEventNoticeKind;
+    message?: string;
+  }): Promise<void> {
+    const content = organizerEventNotice(data.kind, data.event_name);
     await this.mail.send({
       to: data.email,
-      subject: `Votre événement "${data.event_name}" a été suspendu — BilletiX`,
-      template: 'event-rejected',
+      subject: content.subject,
+      template: 'organizer-event-notice',
       context: {
+        ...content,
         firstName: data.firstName,
         eventName: data.event_name,
-        reason: data.reason,
-        eventId: data.event_id,
-        appUrl: this.appUrl,
+        message: data.message?.trim() || null,
+        eventUrl: `${this.appUrl}/dashboard/evenements/${data.event_id}`,
       },
     });
+  }
+
+  // Bug corrigé : la désactivation réutilisait l'email de refus de
+  // validation (« votre événement n'a pas pu être approuvé »).
+  @EventPattern('notification.event_suspended')
+  async onEventSuspended(@Payload() data: EventSuspendedDto, @Ctx() rmqContext: RmqContext) {
+    await this.sendOrganizerEventNotice({ ...data, kind: 'SUSPENDED', message: data.reason });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.organizer_event_notice')
+  async onOrganizerEventNotice(@Payload() data: OrganizerEventNoticeDto, @Ctx() rmqContext: RmqContext) {
+    await this.sendOrganizerEventNotice(data);
     this.ack(rmqContext);
   }
 
