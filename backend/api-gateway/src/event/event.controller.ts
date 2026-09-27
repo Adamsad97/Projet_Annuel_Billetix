@@ -8,12 +8,17 @@ import {
   HttpStatus,
   Inject,
   Logger,
+  NotFoundException,
   Param,
   Patch,
   Post,
   Query,
+  Req,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { JwtService } from "@nestjs/jwt";
 import { ClientProxy } from "@nestjs/microservices";
+import { Request } from "express";
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -33,6 +38,7 @@ import { CreateTicketTierTypeDto } from "./dto/create-ticket-tier-type.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
 import { UpdateEventDto } from "./dto/update-event.dto";
 import { UpdateTicketTierTypeDto } from "./dto/update-ticket-tier-type.dto";
+import { CancelledEventSnapshot, EventRefundService } from "./event-refund.service";
 import { Order, OrderStatus } from "./types/order-snapshot.type";
 
 @ApiTags("events")
@@ -48,6 +54,9 @@ export class EventController {
     @Inject("TICKET_SERVICE") private readonly ticketClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
+    private readonly eventRefund: EventRefundService,
+    private readonly jwtService: JwtService,
+    private readonly config: ConfigService,
   ) {}
 
   // --- Routes publiques ---
@@ -211,9 +220,29 @@ export class EventController {
 
   @Public()
   @Get(":id")
-  @ApiOperation({ summary: "Détail d'un événement" })
-  getById(@Param("id") id: string) {
-    return firstValueFrom(this.eventClient.send("event.get", { id }));
+  @ApiOperation({ summary: "Détail d'un événement (un événement masqué n'est visible que par son organisateur et les admins)" })
+  async getById(@Param("id") id: string, @Req() req: Request) {
+    const event = (await firstValueFrom(this.eventClient.send("event.get", { id }))) as {
+      organizer_id: string;
+      is_hidden?: boolean;
+    };
+    if (event.is_hidden) {
+      const viewer = this.optionalViewer(req);
+      const allowed = viewer && (viewer.role === "ADMIN" || viewer.role === "SUPER_ADMIN" || viewer.sub === event.organizer_id);
+      if (!allowed) throw new NotFoundException("Événement introuvable");
+    }
+    return event;
+  }
+
+  /** Utilisateur connecté sur une route publique (jeton facultatif), sinon null. */
+  private optionalViewer(req: Request): JwtPayload | null {
+    const [type, token] = req.headers.authorization?.split(" ") ?? [];
+    if (type !== "Bearer" || !token) return null;
+    try {
+      return this.jwtService.verify<JwtPayload>(token, { secret: this.config.get<string>("JWT_ACCESS_SECRET") });
+    } catch {
+      return null;
+    }
   }
 
   @Public()
@@ -585,93 +614,78 @@ export class EventController {
   @Roles("ORGANIZER", "ADMIN")
   @ApiOperation({
     summary:
-      "Annuler un événement et rembourser tous les acheteurs (ORGANIZER/ADMIN)",
+      "Annuler un événement et rembourser tous les acheteurs (ADMIN). Un organisateur passe par une demande d'annulation.",
   })
   async cancel(
     @CurrentUser() user: JwtPayload,
     @Param("id") id: string,
     @Body() dto: { reason?: string },
   ) {
+    if (user.role === "ORGANIZER") {
+      throw new ForbiddenException(
+        "L'annulation d'un événement doit être approuvée par un administrateur : faites une demande d'annulation.",
+      );
+    }
     const cancelledEvent = (await firstValueFrom(
-      this.eventClient.send("event.cancel", {
-        id,
-        actor_id: user.sub,
-        dto,
-        is_admin: user.role === "ADMIN",
-      }),
-    )) as {
-      id: string;
-      title: string;
-      start_date: string;
-      venue_name: string;
-      organizer_id: string;
-    };
+      this.eventClient.send("event.cancel", { id, actor_id: user.sub, dto, is_admin: true }),
+    )) as CancelledEventSnapshot;
 
-    // Cascade de remboursements (fire-and-forget — ne bloque pas la réponse)
-    this.refundAllOrdersForEvent(cancelledEvent, dto.reason).catch((err) =>
-      this.logger.error(
-        `Erreur cascade remboursement event ${id}: ${err?.message}`,
-      ),
-    );
-
+    // Cascade de remboursements (ne bloque pas la réponse)
+    this.eventRefund.refundInBackground(cancelledEvent, dto.reason);
     return cancelledEvent;
   }
 
-  private async refundAllOrdersForEvent(
-    event: {
-      id: string;
-      title: string;
-      start_date: string;
-      venue_name: string;
-    },
-    cancellationReason?: string,
-  ): Promise<void> {
-    const orders = (await firstValueFrom(
-      this.orderClient.send("order.list_by_event", { event_id: event.id }),
-    )) as Order[];
+  // --- Demandes d'annulation (organisateur) ---
+  // L'organisateur ne peut pas annuler seul : il demande, un admin accepte
+  // (annulation + remboursements) ou refuse, après échange de messages.
 
-    const paidOrders = orders.filter(
-      (order) =>
-        order.status === OrderStatus.CONFIRMED ||
-        order.status === OrderStatus.TICKETS_SENT,
+  @Post(":id/cancellation-requests")
+  @Roles("ORGANIZER")
+  @ApiOperation({ summary: "Demander l'annulation de son événement (ORGANIZER)" })
+  requestCancellation(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: { reason?: string },
+  ) {
+    return firstValueFrom(
+      this.eventClient.send("event.cancellation.request", { event_id: id, organizer_id: user.sub, reason: dto?.reason }),
     );
+  }
 
-    // Annulation en masse des billets (une seule requête)
-    if (paidOrders.length > 0) {
-      await firstValueFrom(
-        this.ticketClient.send("ticket.cancel_by_event", {
-          event_id: event.id,
-        }),
-      );
-    }
+  @Get(":id/cancellation-requests")
+  @Roles("ORGANIZER")
+  @ApiOperation({ summary: "Demandes d'annulation de son événement, avec l'échange (ORGANIZER)" })
+  listCancellationRequests(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return firstValueFrom(
+      this.eventClient.send("event.cancellation.list_by_event", { event_id: id, organizer_id: user.sub }),
+    );
+  }
 
-    // Remboursement individuel par commande
-    for (const order of paidOrders) {
-      try {
-        await firstValueFrom(
-          this.paymentClient.send("payment.refund", { order_id: order.id }),
-        );
-        await firstValueFrom(
-          this.orderClient.send("order.mark_refunded", { id: order.id }),
-        );
-        this.notifClient.emit("notification.event_canceled", {
-          email: order.buyer_email,
-          firstName: order.buyer_first_name,
-          eventName: event.title,
-          eventDate: event.start_date,
-          eventVenue: event.venue_name,
-          refundAmount: Number(order.total_amount_ttc).toFixed(2),
-          cancellationReason: cancellationReason,
-        });
-      } catch (refundError) {
-        this.logger.error(
-          `Échec remboursement commande ${order.id}: ${refundError?.message}`,
-        );
-      }
-    }
+  @Post("cancellation-requests/:requestId/messages")
+  @Roles("ORGANIZER")
+  @ApiOperation({ summary: "Répondre dans l'échange d'une demande d'annulation (ORGANIZER)" })
+  postCancellationMessage(
+    @CurrentUser() user: JwtPayload,
+    @Param("requestId") requestId: string,
+    @Body() dto: { message?: string },
+  ) {
+    return firstValueFrom(
+      this.eventClient.send("event.cancellation.message", {
+        id: requestId,
+        author_id: user.sub,
+        author_role: "ORGANIZER",
+        message: dto?.message,
+      }),
+    );
+  }
 
-    this.logger.log(
-      `Cascade annulation event ${event.id} : ${paidOrders.length} commande(s) remboursée(s)`,
+  @Post("cancellation-requests/:requestId/withdraw")
+  @HttpCode(HttpStatus.OK)
+  @Roles("ORGANIZER")
+  @ApiOperation({ summary: "Retirer sa demande d'annulation (ORGANIZER)" })
+  withdrawCancellation(@CurrentUser() user: JwtPayload, @Param("requestId") requestId: string) {
+    return firstValueFrom(
+      this.eventClient.send("event.cancellation.withdraw", { id: requestId, organizer_id: user.sub }),
     );
   }
 

@@ -22,6 +22,7 @@ import {
 } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
 import { CreateEventDto } from "../event/dto/create-event.dto";
+import { CancelledEventSnapshot, EventRefundService } from "../event/event-refund.service";
 import { formatEventDate } from "../common/event-date";
 import { redactIpUnlessSuperAdmin } from "../common/redact-ip";
 import { RejectTransferRevertDto, RevertTransferDto } from "../ticket/dto/transfer-revert.dto";
@@ -64,6 +65,7 @@ export class AdminController {
     @Inject("PAYMENT_SERVICE") private readonly paymentClient: ClientProxy,
     @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
+    private readonly eventRefund: EventRefundService,
   ) {}
 
   private ip(req: Request): string {
@@ -978,28 +980,181 @@ export class AdminController {
     return result;
   }
 
+  /** Annulation directe par un admin : événement annulé, acheteurs remboursés. */
   @Post("events/:id/cancel")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary:
-      "Annuler un événement (ADMIN) — le remboursement des acheteurs se déclenche via POST /events/:id/cancel",
-  })
+  @ApiOperation({ summary: "Annuler un événement et rembourser les acheteurs (ADMIN)" })
   async cancelEvent(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
     @Param("id") id: string,
-    @Body() dto: { reason: string },
+    @Body() dto: { reason?: string },
+  ) {
+    const reason = dto?.reason?.trim();
+    if (!reason) throw new BadRequestException("Le motif de l'annulation est obligatoire.");
+    const event = (await firstValueFrom(
+      this.eventClient.send("event.cancel", { id, actor_id: user.sub, dto: { reason }, is_admin: true }),
+    )) as CancelledEventSnapshot;
+    this.eventRefund.refundInBackground(event, reason);
+    this.audit(user, req, "EVENT_CANCELED", "EVENT", id, reason);
+    return event;
+  }
+
+  /** Désactivation : ventes bloquées, la page publique affiche le message. */
+  @Post("events/:id/suspend")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Désactiver un événement avec un message public (ADMIN)" })
+  async suspendEvent(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() dto: { reason?: string },
   ) {
     const result = await firstValueFrom(
-      this.eventClient.send("event.cancel", {
-        id,
-        actor_id: user.sub,
-        dto: { reason: dto.reason },
-        is_admin: true,
-      }),
+      this.eventClient.send("event.suspend", { id, admin_id: user.sub, dto: { reason: dto?.reason } }),
     );
-    this.audit(user, req, "EVENT_CANCELED", "EVENT", id, dto.reason);
+    this.audit(user, req, "EVENT_SUSPENDED", "EVENT", id, dto?.reason);
     return result;
+  }
+
+  @Post("events/:id/unsuspend")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Réactiver un événement désactivé (ADMIN)" })
+  async unsuspendEvent(@CurrentUser() user: JwtPayload, @Req() req: Request, @Param("id") id: string) {
+    const result = await firstValueFrom(this.eventClient.send("event.unsuspend", { id }));
+    this.audit(user, req, "CUSTOM", "EVENT", id, "Événement réactivé : les ventes reprennent.");
+    return result;
+  }
+
+  /** Masquage : hors catalogue, page publique indisponible, ventes bloquées. */
+  @Post("events/:id/hide")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Masquer un événement au public (ADMIN)" })
+  async hideEvent(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() dto: { reason?: string },
+  ) {
+    const result = await firstValueFrom(
+      this.eventClient.send("event.hide", { id, admin_id: user.sub, dto: { reason: dto?.reason } }),
+    );
+    this.audit(user, req, "CUSTOM", "EVENT", id, `Événement masqué au public : ${dto?.reason ?? ""}`);
+    return result;
+  }
+
+  @Post("events/:id/unhide")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Rendre un événement de nouveau visible (ADMIN)" })
+  async unhideEvent(@CurrentUser() user: JwtPayload, @Req() req: Request, @Param("id") id: string) {
+    const result = await firstValueFrom(this.eventClient.send("event.unhide", { id }));
+    this.audit(user, req, "CUSTOM", "EVENT", id, "Événement de nouveau visible au public.");
+    return result;
+  }
+
+  // ─── Demandes d'annulation des organisateurs ─────────────────────────────────
+
+  /** Ajoute le nom et l'email de l'organisateur à chaque demande. */
+  private async enrichCancellationRequests<T extends { organizer_id: string }>(requests: T[]) {
+    const ids = [...new Set(requests.map((request) => request.organizer_id))];
+    const organizers = (ids.length
+      ? await firstValueFrom(this.authClient.send("auth.get_users_by_ids", { ids })).catch(() => [])
+      : []) as Array<{ id: string; first_name: string; last_name: string; email: string }>;
+    const byId = new Map(organizers.map((organizer) => [organizer.id, organizer]));
+    return requests.map((request) => {
+      const organizer = byId.get(request.organizer_id);
+      return {
+        ...request,
+        organizer_name: organizer ? `${organizer.first_name} ${organizer.last_name}` : null,
+        organizer_email: organizer?.email ?? null,
+      };
+    });
+  }
+
+  @Get("cancellation-requests")
+  @ApiOperation({ summary: "Demandes d'annulation des organisateurs (ADMIN)" })
+  async listCancellationRequests(
+    @Query("status") status?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+  ) {
+    const result = (await firstValueFrom(
+      this.eventClient.send("event.cancellation.list_admin", {
+        status: ["PENDING", "APPROVED", "REJECTED", "WITHDRAWN"].includes(status ?? "") ? status : undefined,
+        limit: limit ? parseInt(limit, 10) : undefined,
+        offset: offset ? parseInt(offset, 10) : undefined,
+      }),
+    )) as { data: Array<{ organizer_id: string }>; total: number };
+    return { data: await this.enrichCancellationRequests(result.data), total: result.total };
+  }
+
+  @Get("cancellation-requests/pending-count")
+  @ApiOperation({ summary: "Nombre de demandes d'annulation en attente (ADMIN)" })
+  async pendingCancellationCount() {
+    return { count: await firstValueFrom(this.eventClient.send("event.cancellation.count_pending", {})) };
+  }
+
+  @Get("events/:id/cancellation-requests")
+  @ApiOperation({ summary: "Historique des demandes d'annulation d'un événement (ADMIN)" })
+  async eventCancellationRequests(@Param("id") id: string) {
+    const requests = (await firstValueFrom(
+      this.eventClient.send("event.cancellation.list_by_event", { event_id: id }),
+    )) as Array<{ organizer_id: string }>;
+    return this.enrichCancellationRequests(requests);
+  }
+
+  @Post("cancellation-requests/:id/messages")
+  @ApiOperation({ summary: "Répondre à l'organisateur dans l'échange (ADMIN)" })
+  async postCancellationMessage(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: { message?: string },
+  ) {
+    const request = (await firstValueFrom(
+      this.eventClient.send("event.cancellation.message", {
+        id,
+        author_id: user.sub,
+        author_role: "ADMIN",
+        message: dto?.message,
+      }),
+    )) as { organizer_id: string };
+    const [enriched] = await this.enrichCancellationRequests([request]);
+    return enriched;
+  }
+
+  @Post("cancellation-requests/:id/reject")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Refuser une demande d'annulation, avec un message (ADMIN)" })
+  async rejectCancellation(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() dto: { message?: string },
+  ) {
+    const request = (await firstValueFrom(
+      this.eventClient.send("event.cancellation.reject", { id, admin_id: user.sub, message: dto?.message }),
+    )) as { organizer_id: string; event_id: string };
+    this.audit(user, req, "CUSTOM", "EVENT", request.event_id, `Demande d'annulation refusée : ${dto?.message ?? ""}`);
+    const [enriched] = await this.enrichCancellationRequests([request]);
+    return enriched;
+  }
+
+  @Post("cancellation-requests/:id/approve")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Accepter une demande d'annulation : événement annulé, acheteurs remboursés (ADMIN)" })
+  async approveCancellation(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("id") id: string,
+    @Body() dto: { message?: string },
+  ) {
+    const result = (await firstValueFrom(
+      this.eventClient.send("event.cancellation.approve", { id, admin_id: user.sub, message: dto?.message }),
+    )) as { request: { organizer_id: string; reason: string }; event: CancelledEventSnapshot };
+    this.eventRefund.refundInBackground(result.event, result.request.reason);
+    this.audit(user, req, "EVENT_CANCELED", "EVENT", result.event.id, `Demande de l'organisateur acceptée : ${result.request.reason}`);
+    const [enriched] = await this.enrichCancellationRequests([result.request]);
+    return enriched;
   }
 
   // ─── Gestion des billets ──────────────────────────────────────────────────────

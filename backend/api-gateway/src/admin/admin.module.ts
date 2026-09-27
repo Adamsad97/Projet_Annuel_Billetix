@@ -1,9 +1,12 @@
 import { Module } from "@nestjs/common";
 import { ClientsModule, Transport } from "@nestjs/microservices";
+import { EventModule } from "../event/event.module";
 import { AdminController } from "./admin.controller";
 
 @Module({
   imports: [
+    // EventRefundService : remboursements après une annulation.
+    EventModule,
     ClientsModule.register([
       {
         name: "NOTIFICATION_SERVICE",
