@@ -147,14 +147,14 @@ export function EventAdminControls({ event, onChanged }: { event: ApiAdminEvent;
       ) : null}
 
       {event.status === "SUSPENDED" ? (
-        <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">
-          <p className="font-semibold">Désactivé : les ventes sont bloquées</p>
+        <div className="mb-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-ink-2">
+          <p className="font-semibold text-ink-1">Désactivé : les ventes sont bloquées</p>
           {event.suspension_reason ? <p className="mt-1">Message public : « {event.suspension_reason} »</p> : null}
         </div>
       ) : null}
       {event.is_hidden ? (
-        <div className="mb-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-5 py-4 text-sm text-amber-200">
-          <p className="font-semibold">Masqué au public</p>
+        <div className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-5 py-4 text-sm text-ink-2">
+          <p className="font-semibold text-ink-1">Masqué au public</p>
           {event.hidden_reason ? <p className="mt-1">Motif : « {event.hidden_reason} »</p> : null}
         </div>
       ) : null}

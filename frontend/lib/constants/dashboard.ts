@@ -33,6 +33,8 @@ export interface OrganizerEvent {
   progressLabel: string;
   amountLabel: string;
   amountSubLabel: string;
+  /** Masqué au public par l'administration. */
+  isHidden?: boolean;
 }
 
 export const statusBadgeStyles: Record<
@@ -66,7 +68,7 @@ export const statusBadgeStyles: Record<
     className: "bg-hairline-2 text-ink-5 ring-1 ring-inset ring-white/15",
   },
   SUSPENDED: {
-    label: "Suspendu",
+    label: "Désactivé",
     className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
   },
 };

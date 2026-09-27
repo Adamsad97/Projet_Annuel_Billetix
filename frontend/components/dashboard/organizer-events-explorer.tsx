@@ -12,7 +12,7 @@ import type { ApiOrganizerEventSummary } from "@/lib/api/organizer";
 import { matchesSearch } from "@/lib/format/search";
 import { apiEventSummaryToOrganizerEvent } from "@/lib/mappers/dashboard-mappers";
 
-type Group = "all" | "live" | "draft" | "pending" | "past" | "cancelled";
+type Group = "all" | "live" | "draft" | "pending" | "hidden" | "past" | "cancelled";
 type SortOrder = "upcoming" | "latest" | "revenue" | "title";
 
 const GROUPS: { id: Group; label: string; statuses: string[] }[] = [
@@ -20,8 +20,9 @@ const GROUPS: { id: Group; label: string; statuses: string[] }[] = [
   { id: "live", label: "En vente", statuses: ["PUBLISHED"] },
   { id: "draft", label: "Brouillons", statuses: ["DRAFT"] },
   { id: "pending", label: "En validation", statuses: ["PENDING_VALIDATION"] },
+  { id: "hidden", label: "Masqués au public", statuses: [] },
   { id: "past", label: "Terminés", statuses: ["TERMINATED", "ARCHIVED"] },
-  { id: "cancelled", label: "Annulés ou suspendus", statuses: ["CANCELLED", "SUSPENDED"] },
+  { id: "cancelled", label: "Annulés ou désactivés", statuses: ["CANCELLED", "SUSPENDED"] },
 ];
 
 const SORT_OPTIONS: { id: SortOrder; label: string }[] = [
@@ -49,7 +50,12 @@ export function OrganizerEventsExplorer({
 
   const filtered = useMemo(() => {
     const statuses = GROUPS.find((g) => g.id === group)?.statuses ?? [];
-    const list = statuses.length ? searched.filter((event) => statuses.includes(event.status)) : searched;
+    const list =
+      group === "hidden"
+        ? searched.filter((event) => event.is_hidden)
+        : statuses.length
+          ? searched.filter((event) => statuses.includes(event.status))
+          : searched;
     return [...list].sort((a, b) => {
       if (sort === "title") return a.title.localeCompare(b.title, "fr");
       if (sort === "revenue") return b.revenue_ttc - a.revenue_ttc;
@@ -62,7 +68,12 @@ export function OrganizerEventsExplorer({
   const groupOptions = GROUPS.map((g) => ({
     id: g.id,
     label: g.label,
-    count: g.statuses.length ? searched.filter((event) => g.statuses.includes(event.status)).length : searched.length,
+    count:
+      g.id === "hidden"
+        ? searched.filter((event) => event.is_hidden).length
+        : g.statuses.length
+          ? searched.filter((event) => g.statuses.includes(event.status)).length
+          : searched.length,
   })).filter((option) => option.id === "all" || option.count > 0 || option.id === group);
 
   if (events.length === 0) {

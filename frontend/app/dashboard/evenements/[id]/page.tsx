@@ -268,19 +268,33 @@ export default function DashboardEventDetailPage({
                         <span className="rounded-full bg-hairline-1 px-2.5 py-1 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2">
                           {eventTiming(event.start_date, event.end_date)}
                         </span>
+                        {event.is_hidden ? (
+                          <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
+                            Masqué au public
+                          </span>
+                        ) : null}
                       </div>
                       <p className="mt-1 text-sm text-ink-5">
                         {dateFormatter.format(new Date(event.start_date))} · {event.venue_name}, {event.venue_city}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <Link
-                        href={`/evenements/${id}`}
-                        className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
-                      >
-                        Voir la page publique →
-                      </Link>
-                      {event.status === "PUBLISHED" ? (
+                      {event.is_hidden ? (
+                        <span
+                          title="La page publique est indisponible tant que l'événement est masqué."
+                          className="rounded-full border border-hairline-2 px-4 py-2 text-sm font-medium text-ink-5"
+                        >
+                          Page publique indisponible
+                        </span>
+                      ) : (
+                        <Link
+                          href={`/evenements/${id}`}
+                          className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+                        >
+                          Voir la page publique →
+                        </Link>
+                      )}
+                      {event.status === "PUBLISHED" && !event.is_hidden ? (
                         <button
                           type="button"
                           onClick={copyPublicLink}
@@ -350,18 +364,18 @@ export default function DashboardEventDetailPage({
                   ) : null}
 
                   {event.status === "SUSPENDED" ? (
-                    <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">
-                      <p className="font-semibold">Événement désactivé par l&apos;administration : les ventes sont suspendues</p>
-                      {event.suspension_reason ? <p className="mt-1 text-red-300/80">« {event.suspension_reason} »</p> : null}
-                      <p className="mt-1 text-xs text-red-300/60">Ce message est affiché sur la page publique de l&apos;événement.</p>
+                    <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-ink-2">
+                      <p className="font-semibold text-ink-1">Événement désactivé par l&apos;administration : les ventes sont suspendues</p>
+                      {event.suspension_reason ? <p className="mt-1">« {event.suspension_reason} »</p> : null}
+                      <p className="mt-1 text-xs text-ink-4">Ce message est affiché sur la page publique de l&apos;événement.</p>
                     </div>
                   ) : null}
 
                   {event.is_hidden ? (
-                    <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-5 py-4 text-sm text-amber-200">
-                      <p className="font-semibold">Événement masqué au public par l&apos;administration</p>
-                      {event.hidden_reason ? <p className="mt-1 text-amber-200/80">« {event.hidden_reason} »</p> : null}
-                      <p className="mt-1 text-xs text-amber-200/60">
+                    <div className="mb-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-5 py-4 text-sm text-ink-2">
+                      <p className="font-semibold text-ink-1">Événement masqué au public par l&apos;administration</p>
+                      {event.hidden_reason ? <p className="mt-1">« {event.hidden_reason} »</p> : null}
+                      <p className="mt-1 text-xs text-ink-4">
                         Il n&apos;apparaît plus dans le catalogue, sa page publique est indisponible et les ventes sont bloquées.
                         Les billets déjà vendus restent valables.
                       </p>

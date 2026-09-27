@@ -21,6 +21,10 @@ export interface ApiOrganizerEventSummary {
   category: string;
   venue_name: string;
   venue_city: string;
+  // Masqué au public par l'administration (hors catalogue, page indisponible).
+  is_hidden?: boolean;
+  hidden_reason?: string | null;
+  suspension_reason?: string | null;
   sold: number;
   total_quota: number;
   fill_rate: number;

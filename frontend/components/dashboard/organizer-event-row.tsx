@@ -29,6 +29,11 @@ export function OrganizerEventRow({ event }: { event: OrganizerEvent }) {
             >
               {badge.label}
             </span>
+            {event.isHidden ? (
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
+                Masqué au public
+              </span>
+            ) : null}
           </div>
 
           <div className="mt-3 h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-hairline-1">

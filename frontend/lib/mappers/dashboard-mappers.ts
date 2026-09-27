@@ -60,6 +60,7 @@ export function apiEventSummaryToOrganizerEvent(
         : "Ventes pas encore ouvertes",
     amountLabel: currency.format(Number(event.revenue_ttc)),
     amountSubLabel: "chiffre d'affaires TTC",
+    isHidden: event.is_hidden ?? false,
   };
 }
 
