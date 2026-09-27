@@ -10,26 +10,29 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthHeader } from "@/components/layout/auth-header";
-import { StatCard } from "@/components/dashboard/stat-card";
+import { EventOrganizerOverview, eventTiming } from "@/components/dashboard/event-organizer-overview";
 import { AttendeesExplorer } from "@/components/dashboard/attendees-explorer";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import { statusBadgeStyles } from "@/lib/constants/dashboard";
+import { listCategories, type ApiCategory } from "@/lib/api/categories";
+import { getMyPayouts, type ApiPayout } from "@/lib/api/organizer";
 import {
   cancelEvent,
   duplicateEvent,
   getEventAttendees,
+  getEventCategories,
   getEventDashboardDetail,
   getValidationRequests,
   respondToValidationRequest,
   submitEventForValidation,
   type ApiEventDashboardDetail,
+  type ApiTicketCategory,
   type ApiValidationRequest,
 } from "@/lib/api/events";
 import type { ApiTicket } from "@/lib/api/tickets";
 import { ApiError } from "@/lib/api/http-error";
 
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+const dateFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
 export default function DashboardEventDetailPage({
   params,
@@ -42,6 +45,10 @@ export default function DashboardEventDetailPage({
   const [detail, setDetail] = useState<ApiEventDashboardDetail | undefined>(undefined);
   const [attendees, setAttendees] = useState<ApiTicket[]>([]);
   const [validationRequests, setValidationRequests] = useState<ApiValidationRequest[]>([]);
+  const [ticketCategories, setTicketCategories] = useState<ApiTicketCategory[]>([]);
+  const [eventCategories, setEventCategories] = useState<ApiCategory[]>([]);
+  const [payout, setPayout] = useState<ApiPayout | undefined>(undefined);
+  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notFoundError, setNotFoundError] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
@@ -53,11 +60,17 @@ export default function DashboardEventDetailPage({
       getEventDashboardDetail(id),
       getEventAttendees(id).catch(() => []),
       getValidationRequests(id).catch(() => []),
+      getEventCategories(id).catch(() => []),
+      listCategories().catch(() => []),
+      getMyPayouts().catch(() => []),
     ])
-      .then(([dashboardResult, attendeesResult, requestsResult]) => {
+      .then(([dashboardResult, attendeesResult, requestsResult, ticketCategoriesResult, categoriesResult, payoutsResult]) => {
         setDetail(dashboardResult);
         setAttendees(attendeesResult);
         setValidationRequests(requestsResult);
+        setTicketCategories(ticketCategoriesResult);
+        setEventCategories(categoriesResult);
+        setPayout(payoutsResult.find((item) => item.event_id === id));
       })
       .catch((err) => {
         if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
@@ -128,6 +141,16 @@ export default function DashboardEventDetailPage({
     }
   }
 
+  async function copyPublicLink() {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/evenements/${id}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Impossible de copier le lien : copiez-le depuis la page publique.");
+    }
+  }
+
   async function handleRespond(requestId: string) {
     const response = responseDrafts[requestId]?.trim();
     if (!response) return;
@@ -164,7 +187,7 @@ export default function DashboardEventDetailPage({
     <div className="flex flex-1 flex-col bg-page">
       <AuthHeader />
 
-      <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
         <Link
           href="/dashboard"
           className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
@@ -183,7 +206,7 @@ export default function DashboardEventDetailPage({
         ) : (
           <>
             {(() => {
-              const { event, fill_stats, revenue, tickets } = detail;
+              const { event, fill_stats } = detail;
               const badge = statusBadgeStyles[event.status];
               const pendingRequests = validationRequests.filter((request) => !request.responded_at);
 
@@ -195,6 +218,9 @@ export default function DashboardEventDetailPage({
                         <h1 className="text-2xl font-bold text-ink-1">{event.title}</h1>
                         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${badge.className}`}>
                           {badge.label}
+                        </span>
+                        <span className="rounded-full bg-hairline-1 px-2.5 py-1 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2">
+                          {eventTiming(event.start_date, event.end_date)}
                         </span>
                       </div>
                       <p className="mt-1 text-sm text-ink-5">
@@ -208,6 +234,15 @@ export default function DashboardEventDetailPage({
                       >
                         Voir la page publique →
                       </Link>
+                      {event.status === "PUBLISHED" ? (
+                        <button
+                          type="button"
+                          onClick={copyPublicLink}
+                          className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+                        >
+                          {copied ? "Lien copié ✓" : "Copier le lien"}
+                        </button>
+                      ) : null}
                       {event.status !== "SUSPENDED" &&
                       event.status !== "CANCELLED" &&
                       event.status !== "TERMINATED" &&
@@ -312,52 +347,18 @@ export default function DashboardEventDetailPage({
                     </div>
                   ) : null}
 
-                  <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-4">
-                    <StatCard stat={{ id: "sold", label: "Billets vendus", value: String(tickets.total), accent: "bg-blue-500" }} />
-                    <StatCard stat={{ id: "checked", label: "Entrées scannées", value: String(tickets.used), accent: "bg-emerald-500" }} />
-                    <StatCard
-                      stat={{
-                        id: "fill",
-                        label: "Taux de remplissage",
-                        value: `${Math.round(fill_stats.fill_rate)}%`,
-                        accent: "bg-blue-500",
-                      }}
-                    />
-                    <StatCard
-                      stat={{
-                        id: "revenue",
-                        label: "Revenu net",
-                        value: currency.format(revenue.net_organizer_amount),
-                        accent: "bg-amber-500",
-                      }}
-                    />
-                  </div>
-
-                  {fill_stats.categories.length > 0 ? (
-                    <>
-                      <h2 className="mb-3 text-lg font-bold text-ink-1">Catégories de billets</h2>
-                      <div className="mb-8 overflow-hidden rounded-2xl border border-hairline-1 bg-card">
-                        {fill_stats.categories.map((category) => (
-                          <div
-                            key={category.id}
-                            className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline-1 px-5 py-3.5 last:border-b-0"
-                          >
-                            <div>
-                              <p className="text-sm font-bold text-ink-1">{category.name}</p>
-                              <p className="text-xs text-ink-5">{currency.format(category.price_ht)} HT</p>
-                            </div>
-                            <p className="text-sm text-ink-3">
-                              {category.sold} / {category.quota} vendus
-                              <span className="ml-2 text-xs text-ink-5">({category.remaining_quota} restantes)</span>
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
+                  <EventOrganizerOverview
+                    detail={detail}
+                    ticketCategories={ticketCategories}
+                    eventCategory={eventCategories.find((category) => category.code === event.category)}
+                    payout={payout}
+                  />
 
                   <h2 className="mb-4 text-lg font-bold text-ink-1">Participants</h2>
-                  <AttendeesExplorer tickets={attendees} />
+                  <AttendeesExplorer
+                    tickets={attendees}
+                    exportName={`participants-${event.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}`}
+                  />
                 </>
               );
             })()}

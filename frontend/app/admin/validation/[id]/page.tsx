@@ -11,7 +11,7 @@ import { AdminShell } from "@/components/layout/admin-shell";
 import { DocumentGrid, type SubmittedDocument } from "@/components/admin/document-viewer";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import { listCategories, type ApiCategory } from "@/lib/api/categories";
-import { getEvent, getEventCategories, type ApiEvent, type ApiTicketCategory } from "@/lib/api/events";
+import { getEvent, getEventCategories, ticketVisibilityLabels, type ApiEvent, type ApiTicketCategory } from "@/lib/api/events";
 import {
   approveEvent,
   getPendingEvents,
@@ -376,8 +376,10 @@ export default function AdminValidationDetailPage({
                   <li key={tc.id} className="flex items-center justify-between text-sm">
                     <span className="text-ink-2">
                       {tc.name}
-                      {tc.visibility === "PRIVATE" ? (
-                        <span className="ml-2 rounded-full bg-hairline-2 px-2 py-0.5 text-[11px] text-ink-4">Privé</span>
+                      {tc.visibility !== "PUBLIC" ? (
+                        <span className="ml-2 rounded-full bg-hairline-2 px-2 py-0.5 text-[11px] text-ink-4">
+                          {ticketVisibilityLabels[tc.visibility]}
+                        </span>
                       ) : null}
                     </span>
                     <span className="text-ink-4">

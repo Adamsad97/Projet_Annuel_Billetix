@@ -61,6 +61,15 @@ export interface ApiEvent {
   created_at: string;
 }
 
+export type TicketCategoryVisibility = "PUBLIC" | "PROMO_CODE" | "HIDDEN";
+
+/** Libellés lisibles de la visibilité d'une catégorie de billet. */
+export const ticketVisibilityLabels: Record<TicketCategoryVisibility, string> = {
+  PUBLIC: "Publique",
+  PROMO_CODE: "Avec code promo",
+  HIDDEN: "Masquée",
+};
+
 export interface ApiTicketCategory {
   id: string;
   event_id: string;
@@ -73,7 +82,7 @@ export interface ApiTicketCategory {
   quota: number;
   remaining_quota: number;
   max_per_order: number;
-  visibility: "PUBLIC" | "PRIVATE";
+  visibility: TicketCategoryVisibility;
   is_active: boolean;
 }
 

@@ -16,6 +16,29 @@ import { apiTicketToAttendee, type Attendee } from "@/lib/mappers/event-detail-m
 
 const PAGE_SIZE = 50;
 
+const STATUS_LABELS: Record<Attendee["status"], string> = {
+  pending: "À scanner",
+  used: "Entré",
+  cancelled: "Annulé",
+};
+
+/** Liste d'émargement au format CSV (séparateur « ; », lisible par Excel en français). */
+function downloadCsv(rows: Attendee[], fileName: string) {
+  const escape = (value: string) => `"${value.replace(/"/g, '""')}"`;
+  const lines = [
+    ["Nom", "Email", "Billet", "Référence", "Statut", "Date d'achat"],
+    ...rows.map((row) => [row.name, row.email, row.category, row.reference, STATUS_LABELS[row.status], row.purchasedLabel]),
+  ].map((cells) => cells.map(escape).join(";"));
+  // BOM UTF-8 : accents corrects à l'ouverture dans Excel.
+  const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 type StatusFilter = "all" | Attendee["status"];
 type SortOrder = "name" | "recent" | "oldest";
 
@@ -25,7 +48,7 @@ const SORT_OPTIONS: { id: SortOrder; label: string }[] = [
   { id: "oldest", label: "Achat le plus ancien" },
 ];
 
-export function AttendeesExplorer({ tickets }: { tickets: ApiTicket[] }) {
+export function AttendeesExplorer({ tickets, exportName }: { tickets: ApiTicket[]; exportName: string }) {
   const attendees = useMemo(() => tickets.map(apiTicketToAttendee), [tickets]);
 
   const [search, setSearch] = useState("");
@@ -144,10 +167,20 @@ export function AttendeesExplorer({ tickets }: { tickets: ApiTicket[] }) {
         ) : null}
       </div>
 
-      <p className="text-sm text-ink-5" role="status">
-        {filtered.length} participant{filtered.length > 1 ? "s" : ""}
-        {filtered.length !== attendees.length ? ` sur ${attendees.length}` : ""}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-ink-5" role="status">
+          {filtered.length} participant{filtered.length > 1 ? "s" : ""}
+          {filtered.length !== attendees.length ? ` sur ${attendees.length}` : ""}
+        </p>
+        <button
+          type="button"
+          onClick={() => downloadCsv(filtered, `${exportName}.csv`)}
+          disabled={filtered.length === 0}
+          className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-40"
+        >
+          Exporter la liste (CSV)
+        </button>
+      </div>
 
       <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
         {filtered.length > 0 ? (
