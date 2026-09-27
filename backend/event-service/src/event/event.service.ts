@@ -3,7 +3,7 @@ import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { isUUID } from 'class-validator';
 import { firstValueFrom } from 'rxjs';
-import { In, Repository } from 'typeorm';
+import { In, Repository, Brackets } from 'typeorm';
 import { CategoryService } from '../category/category.service';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { CategoryVisibility, TicketCategory } from '../ticket-category/ticket-category.entity';
@@ -59,6 +59,19 @@ function pickUpdatableFields(dto: Partial<CreateEventDto>): Partial<CreateEventD
     if (key in dto) (picked as Record<string, unknown>)[key] = dto[key];
   }
   return picked;
+}
+
+/** Filtres de la liste admin des événements (event.list_all). */
+export interface AdminEventListFilters {
+  status?: EventStatus;
+  category?: string;
+  when?: 'upcoming' | 'past';
+  q?: string;
+  /** Organisateurs dont le nom ou l'email correspond à q (résolus par la passerelle). */
+  organizer_ids?: string[];
+  sort?: 'created_desc' | 'start_asc' | 'start_desc' | 'title';
+  limit?: number;
+  offset?: number;
 }
 
 @Injectable()
@@ -441,11 +454,40 @@ export class EventService {
    * lignes) ; la recherche texte (titre/organisateur) reste côté gateway
    * après enrichissement, l'organisateur n'existant pas dans cette base.
    */
-  async listAll(status?: EventStatus): Promise<Event[]> {
-    return this.repo.find({
-      where: status ? { status } : {},
-      order: { created_at: 'DESC' },
-    });
+  /**
+   * Liste admin de tous les événements : filtres (statut, catégorie, période,
+   * texte ou organisateurs correspondants), tri et pagination côté base.
+   */
+  async listAll(filters: AdminEventListFilters = {}): Promise<{ data: Event[]; total: number }> {
+    const limit = Math.min(filters.limit ?? 50, 100);
+    const qb = this.repo.createQueryBuilder('e').skip(filters.offset ?? 0).take(limit);
+
+    if (filters.status) qb.andWhere('e.status = :status', { status: filters.status });
+    if (filters.category) qb.andWhere('e.category = :category', { category: filters.category });
+    if (filters.when === 'upcoming') qb.andWhere('e.end_date >= NOW()');
+    if (filters.when === 'past') qb.andWhere('e.end_date < NOW()');
+
+    const q = filters.q?.trim().toLowerCase();
+    if (q) {
+      const organizerIds = filters.organizer_ids ?? [];
+      qb.andWhere(
+        new Brackets((sub) => {
+          sub
+            .where('LOWER(e.title) LIKE :q', { q: `%${q}%` })
+            .orWhere('LOWER(e.venue_name) LIKE :q')
+            .orWhere('LOWER(e.venue_city) LIKE :q');
+          if (organizerIds.length) sub.orWhere('e.organizer_id IN (:...organizerIds)', { organizerIds });
+        }),
+      );
+    }
+
+    if (filters.sort === 'start_asc') qb.orderBy('e.start_date', 'ASC');
+    else if (filters.sort === 'start_desc') qb.orderBy('e.start_date', 'DESC');
+    else if (filters.sort === 'title') qb.orderBy('LOWER(e.title)', 'ASC');
+    else qb.orderBy('e.created_at', 'DESC');
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, total };
   }
 
   /** Répartition des événements par statut — utilisé par le dashboard KPIs admin. */

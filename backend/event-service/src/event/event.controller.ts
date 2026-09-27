@@ -2,7 +2,7 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { AdminActionDto } from './dto/admin-action.dto';
 import { CreateEventDto } from './dto/create-event.dto';
-import { EventService } from './event.service';
+import { EventService, type AdminEventListFilters } from './event.service';
 import { EventStatus } from './event.entity';
 
 @Controller()
@@ -60,8 +60,8 @@ export class EventController {
   }
 
   @MessagePattern('event.list_all')
-  listAll(@Payload() data: { status?: EventStatus }) {
-    return this.eventService.listAll(data?.status);
+  listAll(@Payload() data: AdminEventListFilters) {
+    return this.eventService.listAll(data ?? {});
   }
 
   @MessagePattern('event.get_count_by_status')
