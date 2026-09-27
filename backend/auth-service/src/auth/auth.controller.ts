@@ -1,7 +1,7 @@
 import { Controller } from "@nestjs/common";
 import { MessagePattern, Payload } from "@nestjs/microservices";
 import { OAuthProvider, UserRole } from "../user/user.entity";
-import { AuthService } from "./auth.service";
+import { AuthService, type UserListSort, type UserListStatus } from "./auth.service";
 import { TwoFactorService } from "./two-factor.service";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
@@ -237,6 +237,8 @@ export class AuthController {
       q?: string;
       role?: UserRole;
       is_suspended?: boolean;
+      status?: UserListStatus;
+      sort?: UserListSort;
       limit?: number;
       offset?: number;
     },

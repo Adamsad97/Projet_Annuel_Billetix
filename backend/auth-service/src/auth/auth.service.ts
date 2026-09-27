@@ -56,6 +56,10 @@ type OAuthProfile = {
 // dont le compte n'est PAS encore créé.
 type OAuthBirthDatePending = { user_id: string } | { profile: OAuthProfile };
 
+/** Filtres de la liste admin des comptes. */
+export type UserListStatus = "active" | "suspended" | "locked" | "unverified";
+export type UserListSort = "recent" | "oldest" | "name";
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -1034,6 +1038,8 @@ export class AuthService {
     q?: string;
     role?: UserRole;
     is_suspended?: boolean;
+    status?: UserListStatus;
+    sort?: UserListSort;
     limit?: number;
     offset?: number;
   }): Promise<{ data: ReturnType<AuthService["sanitize"]>[]; total: number }> {
@@ -1046,15 +1052,30 @@ export class AuthService {
       // (contrairement à find()/findOne()) — exclusion explicite des
       // comptes supprimés (RGPD) des résultats de recherche admin.
       .where("u.deleted_at IS NULL")
-      .orderBy("u.created_at", "DESC")
       .skip(offset)
       .take(limit);
 
-    if (filters.q) {
+    if (filters.sort === "oldest") qb.orderBy("u.created_at", "ASC");
+    else if (filters.sort === "name") qb.orderBy("LOWER(u.last_name)", "ASC").addOrderBy("LOWER(u.first_name)", "ASC");
+    else qb.orderBy("u.created_at", "DESC");
+
+    if (filters.q?.trim()) {
+      // Nom complet dans les deux sens : « Adama Diawara » comme « Diawara Adama ».
       qb.andWhere(
-        "(LOWER(u.email) LIKE :q OR LOWER(u.first_name) LIKE :q OR LOWER(u.last_name) LIKE :q)",
-        { q: `%${filters.q.toLowerCase()}%` },
+        `(LOWER(u.email) LIKE :q
+          OR LOWER(u.first_name || ' ' || u.last_name) LIKE :q
+          OR LOWER(u.last_name || ' ' || u.first_name) LIKE :q)`,
+        { q: `%${filters.q.trim().toLowerCase()}%` },
       );
+    }
+    if (filters.status === "active") {
+      qb.andWhere("u.is_suspended = false").andWhere("(u.locked_until IS NULL OR u.locked_until <= NOW())");
+    } else if (filters.status === "suspended") {
+      qb.andWhere("u.is_suspended = true");
+    } else if (filters.status === "locked") {
+      qb.andWhere("u.locked_until > NOW()");
+    } else if (filters.status === "unverified") {
+      qb.andWhere("u.is_email_verified = false");
     }
     if (filters.role) qb.andWhere("u.role = :role", { role: filters.role });
     if (filters.is_suspended !== undefined) {
