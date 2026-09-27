@@ -149,6 +149,20 @@ export class Event {
   @Column({ type: 'text', nullable: true })
   suspension_reason: string | null;
 
+  // Masqué par un admin : retiré du catalogue, page publique indisponible,
+  // ventes bloquées. Les billets déjà vendus restent valables.
+  @Column({ default: false })
+  is_hidden: boolean;
+
+  @Column({ nullable: true })
+  hidden_at: Date | null;
+
+  @Column({ nullable: true })
+  hidden_by: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  hidden_reason: string | null;
+
   @Column({ nullable: true })
   cancelled_at: Date | null;
 

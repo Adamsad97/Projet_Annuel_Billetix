@@ -6,6 +6,10 @@ import { CategoryModule } from '../category/category.module';
 import { TicketCategory } from '../ticket-category/ticket-category.entity';
 import { TicketCategoryModule } from '../ticket-category/ticket-category.module';
 import { ValidationRequestModule } from '../validation-request/validation-request.module';
+import { CancellationController } from './cancellation/cancellation.controller';
+import { CancellationMessage } from './cancellation/cancellation-message.entity';
+import { CancellationRequest } from './cancellation/cancellation-request.entity';
+import { CancellationService } from './cancellation/cancellation.service';
 import { Event } from './event.entity';
 import { EventController } from './event.controller';
 import { EventService } from './event.service';
@@ -15,7 +19,7 @@ import { EventService } from './event.service';
     // TicketCategory enregistré ici aussi (en plus de TicketCategoryModule) :
     // le filtre prix du catalogue public (listPublished) a besoin d'un accès
     // direct au repository pour une sous-requête, pas seulement du service.
-    TypeOrmModule.forFeature([Event, TicketCategory]),
+    TypeOrmModule.forFeature([Event, TicketCategory, CancellationRequest, CancellationMessage]),
     ValidationRequestModule,
     TicketCategoryModule,
     CategoryModule,
@@ -48,8 +52,8 @@ import { EventService } from './event.service';
       },
     ]),
   ],
-  controllers: [EventController],
-  providers: [EventService],
+  controllers: [EventController, CancellationController],
+  providers: [EventService, CancellationService],
   exports: [EventService],
 })
 export class EventModule {}

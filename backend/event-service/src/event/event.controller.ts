@@ -19,6 +19,11 @@ export class EventController {
     return this.eventService.getById(data.id);
   }
 
+  @MessagePattern('event.get_public')
+  getPublic(@Payload() data: { id: string }) {
+    return this.eventService.getPublic(data.id);
+  }
+
   @MessagePattern('event.get_by_ids')
   getByIds(@Payload() data: { ids: string[] }) {
     return this.eventService.getByIds(data.ids);
@@ -102,6 +107,21 @@ export class EventController {
   @MessagePattern('event.suspend')
   suspend(@Payload() data: { id: string; admin_id: string; dto: AdminActionDto }) {
     return this.eventService.suspend(data.id, data.admin_id, data.dto);
+  }
+
+  @MessagePattern('event.unsuspend')
+  unsuspend(@Payload() data: { id: string }) {
+    return this.eventService.unsuspend(data.id);
+  }
+
+  @MessagePattern('event.hide')
+  hide(@Payload() data: { id: string; admin_id: string; dto: AdminActionDto }) {
+    return this.eventService.hide(data.id, data.admin_id, data.dto);
+  }
+
+  @MessagePattern('event.unhide')
+  unhide(@Payload() data: { id: string }) {
+    return this.eventService.unhide(data.id);
   }
 
   @MessagePattern('event.cancel')

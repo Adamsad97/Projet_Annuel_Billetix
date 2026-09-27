@@ -281,6 +281,8 @@ describe('TicketCategoryService', () => {
       repo.findOne.mockResolvedValue({ ...baseCategory });
       eventRepo.findOne.mockResolvedValue({
         id: 'evt-1',
+        status: 'PUBLISHED',
+        is_hidden: false,
         sales_start_date: new Date(Date.now() + HOUR).toISOString(),
         sales_end_date: new Date(Date.now() + 2 * HOUR).toISOString(),
       });
@@ -293,6 +295,8 @@ describe('TicketCategoryService', () => {
       repo.findOne.mockResolvedValue({ ...baseCategory });
       eventRepo.findOne.mockResolvedValue({
         id: 'evt-1',
+        status: 'PUBLISHED',
+        is_hidden: false,
         sales_start_date: new Date(Date.now() - 2 * HOUR).toISOString(),
         sales_end_date: new Date(Date.now() - HOUR).toISOString(),
       });
@@ -305,6 +309,8 @@ describe('TicketCategoryService', () => {
       repo.findOne.mockResolvedValue({ ...baseCategory });
       eventRepo.findOne.mockResolvedValue({
         id: 'evt-1',
+        status: 'PUBLISHED',
+        is_hidden: false,
         sales_start_date: new Date(Date.now() - HOUR).toISOString(),
         sales_end_date: new Date(Date.now() + HOUR).toISOString(),
       });
@@ -321,6 +327,8 @@ describe('TicketCategoryService', () => {
       });
       eventRepo.findOne.mockResolvedValue({
         id: 'evt-1',
+        status: 'PUBLISHED',
+        is_hidden: false,
         sales_start_date: new Date(Date.now() - HOUR).toISOString(),
         sales_end_date: new Date(Date.now() + 2 * HOUR).toISOString(),
       });
@@ -338,11 +346,30 @@ describe('TicketCategoryService', () => {
       });
       eventRepo.findOne.mockResolvedValue({
         id: 'evt-1',
+        status: 'PUBLISHED',
+        is_hidden: false,
         sales_start_date: new Date(Date.now() + HOUR).toISOString(),
         sales_end_date: new Date(Date.now() + 2 * HOUR).toISOString(),
       });
 
       await expect(service.decrementQuota('cat-1', 1)).resolves.toEqual({ success: true });
+    });
+
+    it.each([
+      ['suspendu', { status: 'SUSPENDED', is_hidden: false, suspension_reason: 'Contrôle en cours' }],
+      ['annulé', { status: 'CANCELLED', is_hidden: false }],
+      ['masqué', { status: 'PUBLISHED', is_hidden: true }],
+    ])("refuse l'achat pour un événement %s", async (_label, state) => {
+      repo.findOne.mockResolvedValue({ ...baseCategory });
+      eventRepo.findOne.mockResolvedValue({
+        id: 'evt-1',
+        ...state,
+        sales_start_date: new Date(Date.now() - HOUR).toISOString(),
+        sales_end_date: new Date(Date.now() + HOUR).toISOString(),
+      });
+
+      await expect(service.decrementQuota('cat-1', 1)).rejects.toThrow(RpcException);
+      expect(dataSource.query).not.toHaveBeenCalled();
     });
   });
 

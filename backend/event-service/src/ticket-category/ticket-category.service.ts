@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { isUUID } from 'class-validator';
 import { firstValueFrom } from 'rxjs';
 import { DataSource, Repository } from 'typeorm';
-import { Event } from '../event/event.entity';
+import { Event, EventStatus } from '../event/event.entity';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { TicketTierTypeService } from '../ticket-tier-type/ticket-tier-type.service';
 import { CreateTicketCategoryDto } from './dto/create-ticket-category.dto';
@@ -190,6 +190,17 @@ export class TicketCategoryService {
     const event = await this.eventRepo.findOne({ where: { id: category.event_id } });
     if (!event) {
       throw new RpcException({ statusCode: 404, message: 'Événement introuvable' });
+    }
+    // Faille corrigée : un événement suspendu, annulé, en brouillon ou
+    // masqué restait achetable (seules les dates de vente étaient vérifiées).
+    if (event.status !== EventStatus.PUBLISHED || event.is_hidden) {
+      throw new RpcException({
+        statusCode: 403,
+        message:
+          event.status === EventStatus.SUSPENDED
+            ? `Les ventes sont suspendues pour cet événement${event.suspension_reason ? ` : ${event.suspension_reason}` : '.'}`
+            : "Cet événement n'est pas en vente.",
+      });
     }
     const salesStart = category.sales_start_date ?? event.sales_start_date;
     const salesEnd = category.sales_end_date ?? event.sales_end_date;

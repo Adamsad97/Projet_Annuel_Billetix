@@ -6,6 +6,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Category } from './category/category.entity';
 import { CategoryModule } from './category/category.module';
+import { CancellationMessage } from './event/cancellation/cancellation-message.entity';
+import { CancellationRequest } from './event/cancellation/cancellation-request.entity';
 import { Event } from './event/event.entity';
 import { EventModule } from './event/event.module';
 import { PromoCode } from './promo-code/promo-code.entity';
@@ -31,7 +33,7 @@ import { HealthModule } from './health/health.module';
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
         schema: 'events',
-        entities: [Event, Category, TicketCategory, TicketTierType, PromoCode, ValidationRequest],
+        entities: [Event, Category, TicketCategory, TicketTierType, PromoCode, ValidationRequest, CancellationRequest, CancellationMessage],
         synchronize: config.get('NODE_ENV') !== 'production',
         migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
         migrationsRun: config.get('NODE_ENV') === 'production',
