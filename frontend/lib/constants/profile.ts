@@ -23,10 +23,10 @@ export interface ProfileTicket {
 export type OrderStatus = "sent" | "used" | "pending" | "cancelled" | "refunded";
 
 export interface ProfileOrder {
-  // Présent uniquement pour une vraie commande (id réel order-service) —
-  // absent pour les données de démonstration, qui restent liées par référence.
   id?: string;
   reference: string;
+  // Événement concerné (recherche dans « Mes commandes »).
+  eventName?: string;
   amountLabel: string;
   dateLabel: string;
   ticketCountLabel: string;

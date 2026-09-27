@@ -107,6 +107,7 @@ export function apiOrderToProfileOrder(order: ApiOrder, ticketCount: number): Pr
   return {
     id: order.id,
     reference: order.reference,
+    eventName: order.event_name ?? undefined,
     amountLabel: currency.format(Number(order.total_amount_ttc)),
     dateLabel: `Passée le ${dateFormatter.format(new Date(order.created_at))}`,
     ticketCountLabel: ticketCount > 1 ? `${ticketCount} billets` : `${ticketCount} billet`,
