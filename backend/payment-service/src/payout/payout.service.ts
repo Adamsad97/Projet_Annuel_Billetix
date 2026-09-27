@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, Repository } from 'typeorm';
+import { LessThanOrEqual, Repository, Brackets } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { StripeService } from '../stripe/stripe.service';
 import { Payout, PayoutStatus } from './payout.entity';
@@ -200,19 +200,42 @@ export class PayoutService {
    * pas de pagination car volume par compte toujours restreint). */
   async listAll(filters: {
     status?: PayoutStatus;
+    /** Recherche résolue par la passerelle : organisateurs ou événements correspondants. */
+    organizer_ids?: string[];
+    event_ids?: string[];
+    scheduled_from?: string;
+    scheduled_to?: string;
+    sort?: 'scheduled_desc' | 'scheduled_asc' | 'amount_desc';
     limit?: number;
     offset?: number;
   }): Promise<{ data: Payout[]; total: number }> {
     const limit = Math.min(filters.limit ?? 20, 100);
     const offset = filters.offset ?? 0;
 
-    const qb = this.repo
-      .createQueryBuilder('payout')
-      .orderBy('payout.scheduled_at', 'DESC')
-      .skip(offset)
-      .take(limit);
+    const qb = this.repo.createQueryBuilder('payout').skip(offset).take(limit);
+
+    if (filters.sort === 'scheduled_asc') qb.orderBy('payout.scheduled_at', 'ASC');
+    else if (filters.sort === 'amount_desc') qb.orderBy('payout.net_amount', 'DESC');
+    else qb.orderBy('payout.scheduled_at', 'DESC');
 
     if (filters.status) qb.andWhere('payout.status = :status', { status: filters.status });
+
+    if (filters.organizer_ids !== undefined || filters.event_ids !== undefined) {
+      const organizerIds = filters.organizer_ids ?? [];
+      const eventIds = filters.event_ids ?? [];
+      if (organizerIds.length === 0 && eventIds.length === 0) return { data: [], total: 0 };
+      qb.andWhere(
+        new Brackets((sub) => {
+          if (organizerIds.length) sub.orWhere('payout.organizer_id IN (:...organizerIds)', { organizerIds });
+          if (eventIds.length) sub.orWhere('payout.event_id IN (:...eventIds)', { eventIds });
+        }),
+      );
+    }
+
+    const from = filters.scheduled_from ? new Date(filters.scheduled_from) : null;
+    const to = filters.scheduled_to ? new Date(filters.scheduled_to) : null;
+    if (from && !Number.isNaN(from.getTime())) qb.andWhere('payout.scheduled_at >= :from', { from });
+    if (to && !Number.isNaN(to.getTime())) qb.andWhere('payout.scheduled_at <= :to', { to });
 
     const [data, total] = await qb.getManyAndCount();
     return { data, total };

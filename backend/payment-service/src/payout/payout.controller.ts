@@ -44,7 +44,7 @@ export class PayoutController {
   }
 
   @MessagePattern('payment.list_all_payouts')
-  listAll(@Payload() data: { status?: string; limit?: number; offset?: number }) {
+  listAll(@Payload() data: Parameters<PayoutService['listAll']>[0]) {
     return this.payoutService.listAll(data as Parameters<PayoutService['listAll']>[0]);
   }
 
