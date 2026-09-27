@@ -257,8 +257,11 @@ export class EventService {
   }): Promise<{ data: Event[]; total: number }> {
     const page = filters.page ?? 1;
     const limit = 20;
+    // Un événement désactivé par un admin reste affiché (avec son message,
+    // ventes bloquées) ; seul le masquage le retire du catalogue.
     const queryBuilder = this.repo.createQueryBuilder('e')
-      .where('e.status = :status', { status: EventStatus.PUBLISHED });
+      .where('e.status IN (:...statuses)', { statuses: [EventStatus.PUBLISHED, EventStatus.SUSPENDED] })
+      .andWhere('e.is_hidden = false');
 
     if (filters.category) queryBuilder.andWhere('e.category = :category', { category: filters.category });
     if (filters.city) queryBuilder.andWhere('LOWER(e.venue_city) LIKE :city', { city: `%${filters.city.toLowerCase()}%` });
@@ -704,12 +707,30 @@ export class EventService {
     return event;
   }
 
+  /** Page publique : un événement masqué par un admin n'est plus accessible. */
+  async getPublic(id: string): Promise<Event> {
+    const event = await this.getById(id);
+    if (event.is_hidden) throw new RpcException({ statusCode: 404, message: 'Événement introuvable' });
+    return event;
+  }
+
+  /**
+   * Désactivation par un admin en cas de problème : ventes bloquées, la page
+   * publique reste visible avec le message de l'admin. Réversible (unsuspend).
+   */
   async suspend(id: string, adminId: string, dto: AdminActionDto): Promise<Event> {
     const event = await this.getById(id);
+    if (event.status !== EventStatus.PUBLISHED) {
+      throw new RpcException({ statusCode: 400, message: 'Seul un événement publié peut être désactivé.' });
+    }
+    const reason = dto.reason?.trim();
+    if (!reason) {
+      throw new RpcException({ statusCode: 400, message: 'Le message affiché au public est obligatoire.' });
+    }
     event.status = EventStatus.SUSPENDED;
     event.suspended_at = new Date();
     event.suspended_by = adminId;
-    event.suspension_reason = dto.reason ?? null;
+    event.suspension_reason = reason;
     await this.repo.save(event);
 
     const { email, firstName } = await this.getOrganizerContact(event.organizer_id);
@@ -726,10 +747,55 @@ export class EventService {
     return event;
   }
 
+  /** Réactivation d'un événement désactivé : les ventes reprennent. */
+  async unsuspend(id: string): Promise<Event> {
+    const event = await this.getById(id);
+    if (event.status !== EventStatus.SUSPENDED) {
+      throw new RpcException({ statusCode: 400, message: "Cet événement n'est pas désactivé." });
+    }
+    event.status = EventStatus.PUBLISHED;
+    event.suspended_at = null;
+    event.suspended_by = null;
+    event.suspension_reason = null;
+    return this.repo.save(event);
+  }
+
+  /** Masquage par un admin : hors catalogue, page publique indisponible, ventes bloquées. */
+  async hide(id: string, adminId: string, dto: AdminActionDto): Promise<Event> {
+    const event = await this.getById(id);
+    const reason = dto.reason?.trim();
+    if (!reason) throw new RpcException({ statusCode: 400, message: 'Le motif du masquage est obligatoire.' });
+    event.is_hidden = true;
+    event.hidden_at = new Date();
+    event.hidden_by = adminId;
+    event.hidden_reason = reason;
+    return this.repo.save(event);
+  }
+
+  async unhide(id: string): Promise<Event> {
+    const event = await this.getById(id);
+    event.is_hidden = false;
+    event.hidden_at = null;
+    event.hidden_by = null;
+    event.hidden_reason = null;
+    return this.repo.save(event);
+  }
+
+  /**
+   * Annulation définitive (remboursements déclenchés par la passerelle).
+   * Réservée aux admins : un organisateur passe par une demande d'annulation
+   * (CancellationService), acceptée ou refusée par un admin.
+   */
   async cancel(id: string, actorId: string, dto: AdminActionDto, isAdmin: boolean): Promise<Event> {
     const event = await this.getById(id);
-    if (!isAdmin && event.organizer_id !== actorId) {
-      throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
+    if (!isAdmin) {
+      throw new RpcException({
+        statusCode: 403,
+        message: "L'annulation d'un événement doit être approuvée par un administrateur : faites une demande d'annulation.",
+      });
+    }
+    if (event.status === EventStatus.CANCELLED) {
+      throw new RpcException({ statusCode: 400, message: 'Cet événement est déjà annulé.' });
     }
     event.status = EventStatus.CANCELLED;
     event.cancelled_at = new Date();
