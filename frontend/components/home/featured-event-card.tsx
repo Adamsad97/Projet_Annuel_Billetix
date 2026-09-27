@@ -63,6 +63,13 @@ export function FeaturedEventCard({ event }: { event: FeaturedEvent }) {
           <span className="truncate">{event.venueName}</span>
         </p>
 
+        {event.suspendedNotice !== null ? (
+          <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-ink-2">
+            <span className="font-semibold">Ventes momentanément suspendues.</span>
+            {event.suspendedNotice ? <span className="mt-0.5 block line-clamp-2 text-ink-3">{event.suspendedNotice}</span> : null}
+          </p>
+        ) : null}
+
         <ul className="mt-1 flex flex-wrap gap-2">
           <Chip icon={<CalendarIcon />}>{event.dateLabel}</Chip>
           <Chip icon={<CountryFlag country={event.country} />}>{event.country}</Chip>

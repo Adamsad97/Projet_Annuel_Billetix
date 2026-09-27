@@ -43,6 +43,13 @@ export function EventCard({ event }: { event: MockEvent }) {
           </p>
         </div>
 
+        {event.suspendedNotice !== undefined && event.suspendedNotice !== null ? (
+          <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-ink-2">
+            <span className="font-semibold">Ventes momentanément suspendues.</span>
+            {event.suspendedNotice ? <span className="mt-0.5 block line-clamp-2 text-ink-3">{event.suspendedNotice}</span> : null}
+          </p>
+        ) : null}
+
         <div className="flex items-center justify-between border-t border-hairline-1 pt-3">
           <span
             className={

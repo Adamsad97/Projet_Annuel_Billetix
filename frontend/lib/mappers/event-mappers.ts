@@ -38,8 +38,11 @@ export function apiEventToCard(event: ApiEvent, categories: ApiTicketCategory[])
 
   const totalRemaining = categories.reduce((sum, c) => sum + c.remaining_quota, 0);
   const totalQuota = categories.reduce((sum, c) => sum + c.quota, 0);
+  const suspended = event.status === "SUSPENDED";
   let badge: string | undefined;
-  if (totalQuota > 0 && totalRemaining === 0) {
+  if (suspended) {
+    badge = "Ventes suspendues";
+  } else if (totalQuota > 0 && totalRemaining === 0) {
     badge = "Complet";
   } else if (totalQuota > 0 && totalRemaining / totalQuota < 0.1) {
     badge = `${totalRemaining} places restantes`;
@@ -62,6 +65,7 @@ export function apiEventToCard(event: ApiEvent, categories: ApiTicketCategory[])
         ? `À partir de ${currency.format(min)}`
         : "Tarifs à venir",
     free: isFree,
+    suspendedNotice: suspended ? event.suspension_reason ?? "" : null,
   };
 }
 
@@ -98,6 +102,8 @@ export interface FeaturedEvent {
   categoryLabel: string;
   categoryEmoji: string;
   band: string;
+  /** Ventes suspendues par l'administration : message affiché sur la carte. */
+  suspendedNotice: string | null;
 }
 
 export function apiEventToFeatured(event: ApiEvent, categories: ApiTicketCategory[]): FeaturedEvent {
@@ -115,6 +121,7 @@ export function apiEventToFeatured(event: ApiEvent, categories: ApiTicketCategor
     categoryLabel: meta.label,
     categoryEmoji: meta.emoji,
     band: meta.band,
+    suspendedNotice: event.status === "SUSPENDED" ? event.suspension_reason ?? "" : null,
   };
 }
 

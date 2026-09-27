@@ -22,6 +22,8 @@ export interface MockEvent {
   category: EventCategory;
   priceLabel: string;
   free?: boolean;
+  /** Ventes suspendues par l'administration : message affiché sur la carte. */
+  suspendedNotice?: string | null;
 }
 
 // Bug corrigé (demande produit) : "Concert" et "Danse" utilisaient du
