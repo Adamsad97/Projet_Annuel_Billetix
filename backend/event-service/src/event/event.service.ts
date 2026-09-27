@@ -238,6 +238,9 @@ export class EventService {
     lat?: number;
     lng?: number;
     radius_km?: number;
+    date_from?: string;
+    date_to?: string;
+    sort?: 'date' | 'recent';
   }): Promise<{ data: Event[]; total: number }> {
     const page = filters.page ?? 1;
     const limit = 20;
@@ -308,8 +311,19 @@ export class EventService {
         );
     }
 
+    // Période : événements qui se déroulent au moins en partie dans
+    // l'intervalle demandé (un festival commencé hier reste visible aujourd'hui).
+    const dateFrom = filters.date_from ? new Date(filters.date_from) : null;
+    const dateTo = filters.date_to ? new Date(filters.date_to) : null;
+    if (dateFrom && !Number.isNaN(dateFrom.getTime())) {
+      queryBuilder.andWhere('e.end_date >= :dateFrom', { dateFrom });
+    }
+    if (dateTo && !Number.isNaN(dateTo.getTime())) {
+      queryBuilder.andWhere('e.start_date <= :dateTo', { dateTo });
+    }
+
     queryBuilder
-      .orderBy('e.start_date', 'ASC')
+      .orderBy(filters.sort === 'recent' ? 'e.created_at' : 'e.start_date', filters.sort === 'recent' ? 'DESC' : 'ASC')
       .skip((page - 1) * limit)
       .take(limit);
 

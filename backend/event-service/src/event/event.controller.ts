@@ -35,6 +35,9 @@ export class EventController {
     lat?: number;
     lng?: number;
     radius_km?: number;
+    date_from?: string;
+    date_to?: string;
+    sort?: 'date' | 'recent';
   }) {
     return this.eventService.listPublished(filters);
   }
