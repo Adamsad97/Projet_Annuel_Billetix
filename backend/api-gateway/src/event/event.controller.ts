@@ -299,6 +299,9 @@ export class EventController {
       category: string;
       venue_name: string;
       venue_city: string;
+      is_hidden?: boolean;
+      hidden_reason?: string | null;
+      suspension_reason?: string | null;
     }>;
 
     const balance = await firstValueFrom(
@@ -334,6 +337,10 @@ export class EventController {
           category: event.category,
           venue_name: event.venue_name,
           venue_city: event.venue_city,
+          // Décisions de l'administration, visibles par l'organisateur.
+          is_hidden: event.is_hidden ?? false,
+          hidden_reason: event.hidden_reason ?? null,
+          suspension_reason: event.suspension_reason ?? null,
           sold: (fillStats as { sold: number }).sold,
           total_quota: (fillStats as { total_quota: number }).total_quota,
           fill_rate: (fillStats as { fill_rate: number }).fill_rate,
