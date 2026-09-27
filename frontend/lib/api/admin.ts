@@ -543,3 +543,28 @@ export interface ApiDispute {
 export function listDisputes(): Promise<ApiDispute[]> {
   return apiGet<ApiDispute[]>("/admin/disputes");
 }
+
+// ─── Cycle de vie d'un événement (admin) ────────────────────────────────────
+
+/** Désactive l'événement : ventes bloquées, la page publique affiche le message. */
+export function suspendEvent(id: string, reason: string): Promise<ApiEvent> {
+  return apiPost(`/admin/events/${id}/suspend`, { reason });
+}
+
+export function unsuspendEvent(id: string): Promise<ApiEvent> {
+  return apiPost(`/admin/events/${id}/unsuspend`, {});
+}
+
+/** Masque l'événement : hors catalogue, page publique indisponible. */
+export function hideEvent(id: string, reason: string): Promise<ApiEvent> {
+  return apiPost(`/admin/events/${id}/hide`, { reason });
+}
+
+export function unhideEvent(id: string): Promise<ApiEvent> {
+  return apiPost(`/admin/events/${id}/unhide`, {});
+}
+
+/** Annulation directe : événement annulé, acheteurs remboursés. */
+export function cancelEventAsAdmin(id: string, reason: string): Promise<ApiEvent> {
+  return apiPost(`/admin/events/${id}/cancel`, { reason });
+}

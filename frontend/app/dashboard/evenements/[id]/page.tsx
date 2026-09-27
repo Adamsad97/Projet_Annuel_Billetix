@@ -17,7 +17,14 @@ import { statusBadgeStyles } from "@/lib/constants/dashboard";
 import { listCategories, type ApiCategory } from "@/lib/api/categories";
 import { getMyPayouts, type ApiPayout } from "@/lib/api/organizer";
 import {
-  cancelEvent,
+  listEventCancellationRequests,
+  replyToCancellation,
+  requestEventCancellation,
+  withdrawCancellation,
+  type ApiCancellationRequest,
+} from "@/lib/api/cancellation";
+import { CancellationThread } from "@/components/events/cancellation-thread";
+import {
   duplicateEvent,
   getEventAttendees,
   getEventCategories,
@@ -49,6 +56,7 @@ export default function DashboardEventDetailPage({
   const [eventCategories, setEventCategories] = useState<ApiCategory[]>([]);
   const [payout, setPayout] = useState<ApiPayout | undefined>(undefined);
   const [copied, setCopied] = useState(false);
+  const [cancellations, setCancellations] = useState<ApiCancellationRequest[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notFoundError, setNotFoundError] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
@@ -63,8 +71,10 @@ export default function DashboardEventDetailPage({
       getEventCategories(id).catch(() => []),
       listCategories().catch(() => []),
       getMyPayouts().catch(() => []),
+      listEventCancellationRequests(id).catch(() => []),
     ])
-      .then(([dashboardResult, attendeesResult, requestsResult, ticketCategoriesResult, categoriesResult, payoutsResult]) => {
+      .then(([dashboardResult, attendeesResult, requestsResult, ticketCategoriesResult, categoriesResult, payoutsResult, cancellationsResult]) => {
+        setCancellations(cancellationsResult);
         setDetail(dashboardResult);
         setAttendees(attendeesResult);
         setValidationRequests(requestsResult);
@@ -103,27 +113,57 @@ export default function DashboardEventDetailPage({
     });
   }
 
-  function handleCancel() {
+  // L'annulation n'est jamais immédiate : elle doit être acceptée par un
+  // admin, après échange si besoin. L'événement continue en attendant.
+  function handleRequestCancellation() {
     setDialog({
-      title: "Annuler cet événement",
-      message: "Les acheteurs déjà payés seront automatiquement remboursés. Le motif leur sera communiqué.",
-      confirmLabel: "Annuler l'événement",
+      title: "Demander l'annulation de l'événement",
+      message:
+        "Votre demande sera examinée par l'administration. L'événement reste en vente en attendant. Si elle est acceptée, les acheteurs sont remboursés et reçoivent votre motif.",
+      confirmLabel: "Envoyer la demande",
       danger: true,
       showReason: true,
-      reasonPlaceholder: "Motif d'annulation (optionnel)…",
+      reasonRequired: true,
+      reasonPlaceholder: "Expliquez la raison de l'annulation…",
       onConfirm: async (reason) => {
         setActionBusy(true);
         setError(null);
         try {
-          await cancelEvent(id, reason);
+          await requestEventCancellation(id, reason!);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible d'annuler l'événement.");
+          setError(err instanceof ApiError ? err.message : "Impossible d'envoyer la demande d'annulation.");
         } finally {
           setActionBusy(false);
         }
       },
     });
+  }
+
+  function handleWithdraw(requestId: string) {
+    setDialog({
+      title: "Retirer votre demande d'annulation ?",
+      message: "L'événement continue normalement. Vous pourrez faire une nouvelle demande plus tard.",
+      confirmLabel: "Retirer la demande",
+      onConfirm: async () => {
+        try {
+          await withdrawCancellation(requestId);
+          load();
+        } catch (err) {
+          setError(err instanceof ApiError ? err.message : "Impossible de retirer la demande.");
+        }
+      },
+    });
+  }
+
+  async function handleCancellationReply(requestId: string, message: string) {
+    try {
+      const updated = await replyToCancellation(requestId, message);
+      setCancellations((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Impossible d'envoyer le message.");
+      throw err;
+    }
   }
 
   async function handleDuplicate() {
@@ -209,6 +249,12 @@ export default function DashboardEventDetailPage({
               const { event, fill_stats } = detail;
               const badge = statusBadgeStyles[event.status];
               const pendingRequests = validationRequests.filter((request) => !request.responded_at);
+              const pendingCancellation = cancellations.find((request) => request.status === "PENDING");
+              // Demandes à afficher : celle en cours et la dernière décision.
+              const shownCancellations = cancellations.slice(0, pendingCancellation ? 2 : 1);
+              const canRequestCancellation =
+                !pendingCancellation &&
+                ["DRAFT", "PENDING_VALIDATION", "PUBLISHED", "SUSPENDED"].includes(event.status);
 
               return (
                 <>
@@ -280,14 +326,14 @@ export default function DashboardEventDetailPage({
                           Soumettre à la validation →
                         </button>
                       ) : null}
-                      {event.status === "PUBLISHED" || event.status === "PENDING_VALIDATION" ? (
+                      {canRequestCancellation ? (
                         <button
                           type="button"
-                          onClick={handleCancel}
+                          onClick={handleRequestCancellation}
                           disabled={actionBusy}
                           className="rounded-full border border-red-500/30 px-4 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/5 disabled:opacity-50"
                         >
-                          Annuler l&apos;événement
+                          Demander l&apos;annulation
                         </button>
                       ) : null}
                     </div>
@@ -303,11 +349,53 @@ export default function DashboardEventDetailPage({
                     </div>
                   ) : null}
 
-                  {event.status === "SUSPENDED" && event.suspension_reason ? (
+                  {event.status === "SUSPENDED" ? (
                     <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">
-                      <p className="font-semibold">Événement suspendu par l&apos;admin</p>
-                      <p className="mt-1 text-red-300/80">{event.suspension_reason}</p>
+                      <p className="font-semibold">Événement désactivé par l&apos;administration : les ventes sont suspendues</p>
+                      {event.suspension_reason ? <p className="mt-1 text-red-300/80">« {event.suspension_reason} »</p> : null}
+                      <p className="mt-1 text-xs text-red-300/60">Ce message est affiché sur la page publique de l&apos;événement.</p>
                     </div>
+                  ) : null}
+
+                  {event.is_hidden ? (
+                    <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-5 py-4 text-sm text-amber-200">
+                      <p className="font-semibold">Événement masqué au public par l&apos;administration</p>
+                      {event.hidden_reason ? <p className="mt-1 text-amber-200/80">« {event.hidden_reason} »</p> : null}
+                      <p className="mt-1 text-xs text-amber-200/60">
+                        Il n&apos;apparaît plus dans le catalogue, sa page publique est indisponible et les ventes sont bloquées.
+                        Les billets déjà vendus restent valables.
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {shownCancellations.length > 0 ? (
+                    <section className="mb-8">
+                      <h2 className="mb-1 text-lg font-bold text-ink-1">Demande d&apos;annulation</h2>
+                      <p className="mb-3 text-sm text-ink-5">
+                        {pendingCancellation
+                          ? "En cours d'examen par l'administration. Vous pouvez échanger ici jusqu'à trouver un accord."
+                          : "Historique de votre dernière demande."}
+                      </p>
+                      <div className="flex flex-col gap-3">
+                        {shownCancellations.map((request) => (
+                          <CancellationThread
+                            key={request.id}
+                            request={request}
+                            viewer="ORGANIZER"
+                            onReply={(message) => handleCancellationReply(request.id, message)}
+                            actions={
+                              <button
+                                type="button"
+                                onClick={() => handleWithdraw(request.id)}
+                                className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+                              >
+                                Retirer ma demande
+                              </button>
+                            }
+                          />
+                        ))}
+                      </div>
+                    </section>
                   ) : null}
 
                   {event.status === "CANCELLED" && event.cancellation_reason ? (

@@ -13,6 +13,33 @@ import {
 } from "@/lib/mappers/event-mappers";
 import { ApiError } from "@/lib/api/http-error";
 
+/**
+ * Événement non achetable : bandeau affiché au public (désactivé par
+ * l'administration avec son message, annulé, terminé, pas encore publié).
+ */
+function unavailability(
+  status: string,
+  suspensionReason: string | null,
+  cancellationReason: string | null,
+): { title: string; message: string | null } | null {
+  switch (status) {
+    case "PUBLISHED":
+      return null;
+    case "SUSPENDED":
+      return { title: "Les ventes de cet événement sont momentanément suspendues.", message: suspensionReason };
+    case "CANCELLED":
+      return {
+        title: "Cet événement est annulé. Les acheteurs sont remboursés automatiquement.",
+        message: cancellationReason,
+      };
+    case "TERMINATED":
+    case "ARCHIVED":
+      return { title: "Cet événement est terminé.", message: null };
+    default:
+      return { title: "Cet événement n'est pas encore en vente.", message: null };
+  }
+}
+
 // Nombre de suggestions sous la fiche (réglage d'affichage).
 const SUGGESTIONS_LIMIT = 3;
 
@@ -40,6 +67,7 @@ export default async function EventDetailPage({
 
   let event;
   let organizerId: string;
+  let availability: { title: string; message: string | null } | null = null;
   try {
     const [apiEvent, categories] = await Promise.all([
       getEvent(id),
@@ -47,6 +75,7 @@ export default async function EventDetailPage({
     ]);
     event = apiEventToDetail(apiEvent, categories);
     organizerId = apiEvent.organizer_id;
+    availability = unavailability(apiEvent.status, apiEvent.suspension_reason, apiEvent.cancellation_reason);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       notFound();
@@ -62,6 +91,15 @@ export default async function EventDetailPage({
 
       <main className="flex-1">
         <EventHeader event={event} />
+
+        {availability ? (
+          <div className="mx-auto max-w-6xl px-6 pt-6">
+            <div role="status" className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
+              <p className="text-sm font-semibold text-ink-1">{availability.title}</p>
+              {availability.message ? <p className="mt-1 text-sm text-ink-3">{availability.message}</p> : null}
+            </div>
+          </div>
+        ) : null}
 
         {/* Deux colonnes dès md (768px) : Détails à gauche (2/3), Date et
             billets à droite (1/3) — même disposition que la maquette. En
@@ -91,17 +129,25 @@ export default async function EventDetailPage({
           </section>
 
           <div className="md:col-span-1">
-            <TicketSelector
-              eventId={id}
-              eventTitle={event.title}
-              tickets={event.tickets}
-              organizerId={organizerId}
-              salesStartAt={event.salesStartAt}
-              salesEndAt={event.salesEndAt}
-              dateRangeLabel={event.dateRangeLabel}
-              timeRangeLabel={event.timeRangeLabel}
-              venueName={event.venueName}
-            />
+            {availability ? (
+              <div className="rounded-2xl border border-hairline-2 bg-card p-5 text-sm text-ink-4">
+                <p className="font-semibold text-ink-2">{event.dateRangeLabel}</p>
+                <p className="mt-1">{event.timeRangeLabel}</p>
+                <p className="mt-4">La billetterie n&apos;est pas disponible pour le moment.</p>
+              </div>
+            ) : (
+              <TicketSelector
+                eventId={id}
+                eventTitle={event.title}
+                tickets={event.tickets}
+                organizerId={organizerId}
+                salesStartAt={event.salesStartAt}
+                salesEndAt={event.salesEndAt}
+                dateRangeLabel={event.dateRangeLabel}
+                timeRangeLabel={event.timeRangeLabel}
+                venueName={event.venueName}
+              />
+            )}
           </div>
         </div>
 

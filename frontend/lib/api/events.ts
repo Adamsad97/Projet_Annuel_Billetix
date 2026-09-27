@@ -58,6 +58,9 @@ export interface ApiEvent {
   cancellation_reason: string | null;
   validated_at: string | null;
   validation_requested_at: string | null;
+  // Masqué par un admin : hors catalogue, page publique indisponible.
+  is_hidden?: boolean;
+  hidden_reason?: string | null;
   created_at: string;
 }
 
@@ -257,10 +260,6 @@ export function submitEventForValidation(eventId: string): Promise<ApiEvent> {
 
 export function duplicateEvent(eventId: string): Promise<ApiEvent> {
   return apiPost<ApiEvent>(`/events/${eventId}/duplicate`);
-}
-
-export function cancelEvent(eventId: string, reason?: string): Promise<ApiEvent> {
-  return apiPost<ApiEvent>(`/events/${eventId}/cancel`, { reason });
 }
 
 export interface ApiValidationRequest {

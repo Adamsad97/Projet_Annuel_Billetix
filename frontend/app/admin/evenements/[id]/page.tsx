@@ -10,6 +10,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { DocumentGrid } from "@/components/admin/document-viewer";
+import { EventAdminControls } from "@/components/admin/event-admin-controls";
 import { getAdminEvent, type ApiAdminEvent } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
 
@@ -19,7 +20,7 @@ const statusBadge: Record<string, { label: string; className: string }> = {
   DRAFT: { label: "Brouillon", className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
   ARCHIVED: { label: "Archivé", className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
   CANCELLED: { label: "✕ Annulé", className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
-  SUSPENDED: { label: "⊘ Suspendu", className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
+  SUSPENDED: { label: "⊘ Désactivé", className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
   TERMINATED: { label: "Terminé", className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
 };
 
@@ -30,7 +31,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
   const [event, setEvent] = useState<ApiAdminEvent | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  function load() {
     getAdminEvent(id)
       .then(setEvent)
       .catch((err) => {
@@ -40,7 +41,9 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
           setError(err instanceof ApiError ? err.message : "Impossible de charger cet événement.");
         }
       });
-  }, [id]);
+  }
+
+  useEffect(load, [id]);
 
   if (event === undefined) {
     return (
@@ -92,6 +95,11 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
             </p>
             <div className="mt-2 flex items-center gap-2">
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}>{badge.label}</span>
+              {event.is_hidden ? (
+                <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
+                  Masqué au public
+                </span>
+              ) : null}
               <span className="text-sm text-ink-4">{ticketsLabel} billets</span>
             </div>
           </div>
@@ -106,6 +114,8 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
           </Link>
         </div>
       </div>
+
+      <EventAdminControls event={event} onChanged={load} />
 
       <div className="mb-6 rounded-2xl border border-hairline-1 bg-card p-5">
         <h2 className="mb-3 text-sm font-semibold text-ink-2">Documents</h2>
