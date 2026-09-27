@@ -11,10 +11,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthHeader } from "@/components/layout/auth-header";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { AttendeeRow } from "@/components/dashboard/attendee-row";
+import { AttendeesExplorer } from "@/components/dashboard/attendees-explorer";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import { statusBadgeStyles } from "@/lib/constants/dashboard";
-import { apiTicketToAttendee } from "@/lib/mappers/event-detail-mappers";
 import {
   cancelEvent,
   duplicateEvent,
@@ -358,17 +357,7 @@ export default function DashboardEventDetailPage({
                   ) : null}
 
                   <h2 className="mb-4 text-lg font-bold text-ink-1">Participants</h2>
-                  <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
-                    {attendees.length > 0 ? (
-                      attendees.map((ticket) => (
-                        <AttendeeRow key={ticket.id} attendee={apiTicketToAttendee(ticket)} />
-                      ))
-                    ) : (
-                      <p className="px-5 py-8 text-center text-sm text-ink-5">
-                        Aucun participant pour cet événement.
-                      </p>
-                    )}
-                  </div>
+                  <AttendeesExplorer tickets={attendees} />
                 </>
               );
             })()}

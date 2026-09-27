@@ -1,16 +1,18 @@
 // Convertit un billet réel (ApiTicket, ticket-service via
 // GET /events/:id/attendees) vers la forme attendue par AttendeeRow,
-// construit à l'origine pour des données de démonstration.
+// et AttendeesExplorer.
 
 import type { ApiTicket } from "@/lib/api/tickets";
 
 export interface Attendee {
   id: string;
+  reference: string;
   name: string;
   email: string;
   category: string;
   status: "used" | "pending" | "cancelled";
   purchasedLabel: string;
+  purchasedAt: string;
 }
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
@@ -22,10 +24,12 @@ export function apiTicketToAttendee(ticket: ApiTicket): Attendee {
 
   return {
     id: ticket.id,
+    reference: ticket.reference,
     name: `${ticket.holder_first_name} ${ticket.holder_last_name}`,
     email: ticket.buyer_email,
     category: ticket.ticket_category_name,
     status,
     purchasedLabel: dateFormatter.format(new Date(ticket.created_at)),
+    purchasedAt: ticket.created_at,
   };
 }

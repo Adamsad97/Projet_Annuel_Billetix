@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { EventCard } from "@/components/home/event-card";
-import { FilterMenu, FilterOption } from "@/components/catalogue/filter-menu";
+import { FilterMenu, FilterOption } from "@/components/ui/filter-menu";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import { listCategories, type ApiCategory } from "@/lib/api/categories";
 import { getEventCategories, listPublishedEvents } from "@/lib/api/events";

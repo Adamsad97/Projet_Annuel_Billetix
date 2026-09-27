@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AuthHeader } from "@/components/layout/auth-header";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { FinanceRow } from "@/components/dashboard/finance-row";
+import { OrganizerPayoutsExplorer } from "@/components/dashboard/organizer-payouts-explorer";
 import {
   getMyBalance,
   getMyPayouts,
@@ -114,22 +114,7 @@ export default function DashboardFinancesPage() {
               />
             </div>
 
-            {payouts.length === 0 ? (
-              <div className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
-                Aucun reversement pour le moment.
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
-                {payouts.map((payout) => (
-                  <FinanceRow
-                    key={payout.id}
-                    payout={payout}
-                    onRequestEarly={handleRequestEarly}
-                    busy={busyId === payout.id}
-                  />
-                ))}
-              </div>
-            )}
+            <OrganizerPayoutsExplorer payouts={payouts} busyId={busyId} onRequestEarly={handleRequestEarly} />
           </>
         )}
       </main>

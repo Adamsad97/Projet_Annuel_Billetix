@@ -8,10 +8,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AuthHeader } from "@/components/layout/auth-header";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { OrganizerEventRow } from "@/components/dashboard/organizer-event-row";
+import { OrganizerEventsExplorer } from "@/components/dashboard/organizer-events-explorer";
 import { getOrganizerDashboard, getMyPayouts, type ApiOrganizerDashboard } from "@/lib/api/organizer";
 import { listCategories, type ApiCategory } from "@/lib/api/categories";
-import { apiEventSummaryToOrganizerEvent, buildOrganizerDashboardStats } from "@/lib/mappers/dashboard-mappers";
+import { buildOrganizerDashboardStats } from "@/lib/mappers/dashboard-mappers";
 import { getStoredUser } from "@/lib/auth/session";
 import { ApiError } from "@/lib/api/http-error";
 
@@ -112,20 +112,7 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {dashboard.events.length === 0 ? (
-              <div className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
-                Vous n&apos;avez encore créé aucun événement.
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
-                {dashboard.events.map((event) => (
-                  <OrganizerEventRow
-                    key={event.id}
-                    event={apiEventSummaryToOrganizerEvent(event, categoriesByCode)}
-                  />
-                ))}
-              </div>
-            )}
+            <OrganizerEventsExplorer events={dashboard.events} categoriesByCode={categoriesByCode} />
           </>
         )}
       </main>
