@@ -64,6 +64,9 @@ export class EventController {
   @ApiQuery({ name: "lat", required: false, description: "Latitude du point de recherche (avec lng et radius_km)" })
   @ApiQuery({ name: "lng", required: false, description: "Longitude du point de recherche (avec lat et radius_km)" })
   @ApiQuery({ name: "radius_km", required: false, description: "Rayon de recherche en km (avec lat et lng)" })
+  @ApiQuery({ name: "date_from", required: false, description: "Début de période (ISO 8601)" })
+  @ApiQuery({ name: "date_to", required: false, description: "Fin de période (ISO 8601)" })
+  @ApiQuery({ name: "sort", required: false, enum: ["date", "recent"], description: "Tri : date de l'événement ou nouveautés" })
   listPublished(
     @Query("category") category?: string,
     @Query("city") city?: string,
@@ -74,6 +77,9 @@ export class EventController {
     @Query("lat") lat?: number,
     @Query("lng") lng?: number,
     @Query("radius_km") radius_km?: number,
+    @Query("date_from") date_from?: string,
+    @Query("date_to") date_to?: string,
+    @Query("sort") sort?: string,
   ) {
     return firstValueFrom(
       this.eventClient.send("event.list_published", {
@@ -86,6 +92,9 @@ export class EventController {
         lat: lat !== undefined ? Number(lat) : undefined,
         lng: lng !== undefined ? Number(lng) : undefined,
         radius_km: radius_km !== undefined ? Number(radius_km) : undefined,
+        date_from,
+        date_to,
+        sort: sort === "recent" ? "recent" : "date",
       }),
     );
   }
