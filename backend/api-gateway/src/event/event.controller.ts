@@ -738,7 +738,7 @@ export class EventController {
   ) {
     return firstValueFrom(
       this.eventClient.send("event.request_info", {
-        event_id: id,
+        id,
         admin_id: user.sub,
         message: dto.message,
       }),
