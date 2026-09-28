@@ -26,6 +26,10 @@ import {
 import { TicketsGateway } from "../events/tickets.gateway";
 import { CreatePaymentIntentDto } from "./dto/create-payment-intent.dto";
 import { PurchaseFulfillmentService } from "./purchase-fulfillment.service";
+import { ReasonDto } from "../common/dto/common.dto";
+import { CreateDisputeDto, OrangeMoneyWebhookDto, RefundAmountDto } from "./dto/payment-actions.dto";
+import { ResolveDisputeDto } from "../admin/dto/admin-actions.dto";
+import { UuidPipe } from "../common/pipes/uuid.pipe";
 
 @ApiTags("payments")
 @ApiBearerAuth()
@@ -69,7 +73,7 @@ export class PaymentController {
   // mais restait un endpoint réel et atteignable.
   @Get("order/:orderId")
   @ApiOperation({ summary: "Paiement d'une commande (le titulaire, ou un admin)" })
-  async getByOrder(@CurrentUser() user: JwtPayload, @Param("orderId") orderId: string) {
+  async getByOrder(@CurrentUser() user: JwtPayload, @Param("orderId", UuidPipe) orderId: string) {
     const { order } = (await firstValueFrom(
       this.orderClient.send("order.get", { id: orderId }),
     )) as { order: { buyer_id: string } };
@@ -92,7 +96,7 @@ export class PaymentController {
   @Post("orders/:orderId/sync")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Vérifier auprès de Stripe l'état du paiement d'une commande (titulaire)" })
-  async syncOrderPayment(@CurrentUser() user: JwtPayload, @Param("orderId") orderId: string) {
+  async syncOrderPayment(@CurrentUser() user: JwtPayload, @Param("orderId", UuidPipe) orderId: string) {
     const { order } = (await firstValueFrom(
       this.orderClient.send("order.get", { id: orderId }),
     )) as { order: { buyer_id: string } };
@@ -132,8 +136,8 @@ export class PaymentController {
   @Roles("ADMIN")
   @ApiOperation({ summary: "Rembourser une commande (ADMIN)" })
   async refund(
-    @Param("orderId") orderId: string,
-    @Body() dto: { amount_cents?: number },
+    @Param("orderId", UuidPipe) orderId: string,
+    @Body() dto: RefundAmountDto,
   ) {
     const result = (await firstValueFrom(
       this.paymentClient.send("payment.refund", {
@@ -246,7 +250,7 @@ export class PaymentController {
   @HttpCode(HttpStatus.OK)
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Demander un reversement anticipé (ORGANIZER)" })
-  requestEarlyPayout(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+  requestEarlyPayout(@CurrentUser() user: JwtPayload, @Param("id", UuidPipe) id: string) {
     return firstValueFrom(
       this.paymentClient.send("payment.request_early_payout", {
         id,
@@ -259,7 +263,7 @@ export class PaymentController {
   @HttpCode(HttpStatus.OK)
   @Roles("ADMIN")
   @ApiOperation({ summary: "Approuver un reversement anticipé (ADMIN)" })
-  approveEarlyPayout(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+  approveEarlyPayout(@CurrentUser() user: JwtPayload, @Param("id", UuidPipe) id: string) {
     return firstValueFrom(
       this.paymentClient.send("payment.approve_early_payout", {
         id,
@@ -274,8 +278,8 @@ export class PaymentController {
   @ApiOperation({ summary: "Bloquer un reversement (ADMIN)" })
   blockPayout(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Body() dto: { reason: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ReasonDto,
   ) {
     return firstValueFrom(
       this.paymentClient.send("payment.block_payout", {
@@ -294,12 +298,7 @@ export class PaymentController {
   async createDispute(
     @CurrentUser() user: JwtPayload,
     @Body()
-    dto: {
-      payment_id: string;
-      order_id: string;
-      reason: string;
-      description?: string;
-    },
+    dto: CreateDisputeDto,
   ) {
     const result = await firstValueFrom(
       this.paymentClient.send("payment.create_dispute", {
@@ -353,7 +352,7 @@ export class PaymentController {
   @Get("disputes/order/:orderId")
   @Roles("ADMIN")
   @ApiOperation({ summary: "Litiges d'une commande (ADMIN)" })
-  disputesByOrder(@Param("orderId") orderId: string) {
+  disputesByOrder(@Param("orderId", UuidPipe) orderId: string) {
     return firstValueFrom(
       this.paymentClient.send("payment.get_disputes_by_order", {
         order_id: orderId,
@@ -367,8 +366,8 @@ export class PaymentController {
   @ApiOperation({ summary: "Résoudre un litige (ADMIN)" })
   async resolveDispute(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Body() dto: { status: string; resolution_notes?: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ResolveDisputeDto,
   ) {
     const dispute = (await firstValueFrom(
       this.paymentClient.send("payment.resolve_dispute", {
@@ -542,7 +541,7 @@ export class PaymentController {
     summary: "Callback de notification Orange Money (jeton vérifié côté payment-service)",
   })
   async orangeMoneyCallback(
-    @Body() dto: { pay_token: string; order_id: string; notif_token: string },
+    @Body() dto: OrangeMoneyWebhookDto,
   ) {
     const confirmed = (await firstValueFrom(
       this.paymentClient.send("payment.confirm_orange_money_callback", dto),

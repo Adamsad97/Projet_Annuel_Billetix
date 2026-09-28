@@ -40,6 +40,10 @@ import { UpdateEventDto } from "./dto/update-event.dto";
 import { UpdateTicketTierTypeDto } from "./dto/update-ticket-tier-type.dto";
 import { CancelledEventSnapshot, EventRefundService } from "./event-refund.service";
 import { Order, OrderStatus } from "./types/order-snapshot.type";
+import { MessageDto, OptionalReasonDto, ReasonDto } from "../common/dto/common.dto";
+import { CreatePromoCodeDto, CreateTicketCategoryDto, RespondToInfoRequestDto, ValidatePromoCodeDto } from "./dto/event-actions.dto";
+import { UuidPipe } from "../common/pipes/uuid.pipe";
+import { EventOwner } from "../common/guards/event-owner.guard";
 
 @ApiTags("events")
 @ApiBearerAuth()
@@ -136,7 +140,7 @@ export class EventController {
   @Patch("categories/:categoryId")
   @Roles("ADMIN")
   @ApiOperation({ summary: "Modifier une catégorie d'événement (ADMIN)" })
-  updateEventCategory(@Param("categoryId") categoryId: string, @Body() dto: UpdateCategoryDto) {
+  updateEventCategory(@Param("categoryId", UuidPipe) categoryId: string, @Body() dto: UpdateCategoryDto) {
     return firstValueFrom(
       this.eventClient.send("event.category.update", { id: categoryId, dto }),
     );
@@ -145,7 +149,7 @@ export class EventController {
   @Delete("categories/:categoryId")
   @Roles("ADMIN")
   @ApiOperation({ summary: "Supprimer une catégorie d'événement inutilisée (ADMIN)" })
-  deleteEventCategory(@Param("categoryId") categoryId: string) {
+  deleteEventCategory(@Param("categoryId", UuidPipe) categoryId: string) {
     return firstValueFrom(this.eventClient.send("event.category.delete", { id: categoryId }));
   }
 
@@ -173,7 +177,7 @@ export class EventController {
   @Patch("ticket-tier-types/:typeId")
   @Roles("ADMIN")
   @ApiOperation({ summary: "Modifier un nom de catégorie de billet (ADMIN)" })
-  updateTicketTierType(@Param("typeId") typeId: string, @Body() dto: UpdateTicketTierTypeDto) {
+  updateTicketTierType(@Param("typeId", UuidPipe) typeId: string, @Body() dto: UpdateTicketTierTypeDto) {
     return firstValueFrom(
       this.eventClient.send("event.ticket_tier_type.update", { id: typeId, dto }),
     );
@@ -182,7 +186,7 @@ export class EventController {
   @Delete("ticket-tier-types/:typeId")
   @Roles("ADMIN")
   @ApiOperation({ summary: "Supprimer un nom de catégorie de billet inutilisé (ADMIN)" })
-  deleteTicketTierType(@Param("typeId") typeId: string) {
+  deleteTicketTierType(@Param("typeId", UuidPipe) typeId: string) {
     return firstValueFrom(this.eventClient.send("event.ticket_tier_type.delete", { id: typeId }));
   }
 
@@ -221,7 +225,7 @@ export class EventController {
   @Public()
   @Get(":id")
   @ApiOperation({ summary: "Détail d'un événement (un événement masqué n'est visible que par son organisateur et les admins)" })
-  async getById(@Param("id") id: string, @Req() req: Request) {
+  async getById(@Param("id", UuidPipe) id: string, @Req() req: Request) {
     const event = (await firstValueFrom(this.eventClient.send("event.get", { id }))) as {
       organizer_id: string;
       is_hidden?: boolean;
@@ -248,7 +252,7 @@ export class EventController {
   @Public()
   @Get(":id/categories")
   @ApiOperation({ summary: "Catégories de billets d'un événement" })
-  getCategories(@Param("id") id: string) {
+  getCategories(@Param("id", UuidPipe) id: string) {
     return firstValueFrom(
       this.eventClient.send("event.get_categories", { event_id: id }),
     );
@@ -376,22 +380,17 @@ export class EventController {
 
   @Get(":id/dashboard")
   @Roles("ORGANIZER")
+  @EventOwner({ param: "id" })
   @ApiOperation({
     summary: "Tableau de bord détaillé d'un événement (ORGANIZER)",
   })
   async eventDashboard(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
   ) {
     const event = (await firstValueFrom(
       this.eventClient.send("event.get", { id }),
     )) as { organizer_id: string; [key: string]: unknown };
-
-    if (event.organizer_id !== user.sub) {
-      throw new ForbiddenException(
-        "Ce tableau de bord n'appartient pas à votre compte.",
-      );
-    }
 
     const [fillStats, revenue, ticketStats] = await Promise.all([
       firstValueFrom(
@@ -410,18 +409,9 @@ export class EventController {
 
   @Get(":id/attendees")
   @Roles("ORGANIZER")
+  @EventOwner({ param: "id" })
   @ApiOperation({ summary: "Liste des billets/participants d'un événement (ORGANIZER)" })
-  async eventAttendees(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
-    const event = (await firstValueFrom(
-      this.eventClient.send("event.get", { id }),
-    )) as { organizer_id: string; [key: string]: unknown };
-
-    if (event.organizer_id !== user.sub) {
-      throw new ForbiddenException(
-        "Cet événement n'appartient pas à votre compte.",
-      );
-    }
-
+  eventAttendees(@Param("id", UuidPipe) id: string) {
     return firstValueFrom(this.ticketClient.send("ticket.get_by_event", { event_id: id }));
   }
 
@@ -431,7 +421,7 @@ export class EventController {
   @ApiOperation({ summary: "Modifier un événement (ORGANIZER)" })
   async update(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
     @Body() dto: UpdateEventDto,
   ) {
     const updatedEvent = (await firstValueFrom(
@@ -493,7 +483,7 @@ export class EventController {
   @ApiOperation({
     summary: "Soumettre un événement à la validation (ORGANIZER)",
   })
-  submit(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+  submit(@CurrentUser() user: JwtPayload, @Param("id", UuidPipe) id: string) {
     return firstValueFrom(
       this.eventClient.send("event.submit_for_validation", {
         id,
@@ -508,7 +498,7 @@ export class EventController {
   @ApiOperation({
     summary: "Dupliquer un événement en nouveau brouillon (ORGANIZER, événement récurrent simple)",
   })
-  duplicate(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+  duplicate(@CurrentUser() user: JwtPayload, @Param("id", UuidPipe) id: string) {
     return firstValueFrom(
       this.eventClient.send("event.duplicate", {
         id,
@@ -520,7 +510,7 @@ export class EventController {
   @Get(":id/validation-requests")
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Consulter les demandes de complément d'information de l'admin (ORGANIZER)" })
-  getValidationRequests(@Param("id") id: string) {
+  getValidationRequests(@Param("id", UuidPipe) id: string) {
     return firstValueFrom(
       this.eventClient.send("event.get_validation_requests", { event_id: id }),
     );
@@ -532,8 +522,8 @@ export class EventController {
   @ApiOperation({ summary: "Répondre à une demande de complément d'information (ORGANIZER, relance le délai de traitement)" })
   respondToValidationRequest(
     @CurrentUser() user: JwtPayload,
-    @Param("requestId") requestId: string,
-    @Body() dto: { response: string },
+    @Param("requestId", UuidPipe) requestId: string,
+    @Body() dto: RespondToInfoRequestDto,
   ) {
     return firstValueFrom(
       this.eventClient.send("event.respond_to_info_request", {
@@ -549,8 +539,8 @@ export class EventController {
   @ApiOperation({ summary: "Ajouter une catégorie de billet (ORGANIZER)" })
   createCategory(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Body() dto: Record<string, unknown>,
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: CreateTicketCategoryDto,
   ) {
     return firstValueFrom(
       this.eventClient.send("event.create_category", {
@@ -565,8 +555,8 @@ export class EventController {
   @ApiOperation({ summary: "Créer un code promo (ORGANIZER)" })
   createPromoCode(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Body() dto: Record<string, unknown>,
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: CreatePromoCodeDto,
   ) {
     return firstValueFrom(
       this.eventClient.send("event.create_promo_code", {
@@ -581,7 +571,7 @@ export class EventController {
   @ApiOperation({
     summary: "Lister les codes promo d'un événement (ORGANIZER/ADMIN)",
   })
-  listPromoCodes(@Param("id") id: string) {
+  listPromoCodes(@Param("id", UuidPipe) id: string) {
     return firstValueFrom(
       this.eventClient.send("event.get_promo_codes", { event_id: id }),
     );
@@ -593,7 +583,7 @@ export class EventController {
   @ApiOperation({ summary: "Désactiver un code promo (ORGANIZER)" })
   deactivatePromoCode(
     @CurrentUser() user: JwtPayload,
-    @Param("codeId") codeId: string,
+    @Param("codeId", UuidPipe) codeId: string,
   ) {
     return firstValueFrom(
       this.eventClient.send("event.deactivate_promo_code", {
@@ -607,7 +597,7 @@ export class EventController {
   @Post("validate-promo")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Valider un code promo (public — avant commande)" })
-  validatePromoCode(@Body() dto: { event_id: string; code: string }) {
+  validatePromoCode(@Body() dto: ValidatePromoCodeDto) {
     return firstValueFrom(
       this.eventClient.send("event.validate_promo_code", {
         event_id: dto.event_id,
@@ -625,8 +615,8 @@ export class EventController {
   })
   async cancel(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Body() dto: { reason?: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: OptionalReasonDto,
   ) {
     if (user.role === "ORGANIZER") {
       throw new ForbiddenException(
@@ -651,8 +641,8 @@ export class EventController {
   @ApiOperation({ summary: "Demander l'annulation de son événement (ORGANIZER)" })
   requestCancellation(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Body() dto: { reason?: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ReasonDto,
   ) {
     return firstValueFrom(
       this.eventClient.send("event.cancellation.request", { event_id: id, organizer_id: user.sub, reason: dto?.reason }),
@@ -662,7 +652,7 @@ export class EventController {
   @Get(":id/cancellation-requests")
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Demandes d'annulation de son événement, avec l'échange (ORGANIZER)" })
-  listCancellationRequests(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+  listCancellationRequests(@CurrentUser() user: JwtPayload, @Param("id", UuidPipe) id: string) {
     return firstValueFrom(
       this.eventClient.send("event.cancellation.list_by_event", { event_id: id, organizer_id: user.sub }),
     );
@@ -673,8 +663,8 @@ export class EventController {
   @ApiOperation({ summary: "Répondre dans l'échange d'une demande d'annulation (ORGANIZER)" })
   postCancellationMessage(
     @CurrentUser() user: JwtPayload,
-    @Param("requestId") requestId: string,
-    @Body() dto: { message?: string },
+    @Param("requestId", UuidPipe) requestId: string,
+    @Body() dto: MessageDto,
   ) {
     return firstValueFrom(
       this.eventClient.send("event.cancellation.message", {
@@ -690,7 +680,7 @@ export class EventController {
   @HttpCode(HttpStatus.OK)
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Retirer sa demande d'annulation (ORGANIZER)" })
-  withdrawCancellation(@CurrentUser() user: JwtPayload, @Param("requestId") requestId: string) {
+  withdrawCancellation(@CurrentUser() user: JwtPayload, @Param("requestId", UuidPipe) requestId: string) {
     return firstValueFrom(
       this.eventClient.send("event.cancellation.withdraw", { id: requestId, organizer_id: user.sub }),
     );
@@ -702,7 +692,7 @@ export class EventController {
   @HttpCode(HttpStatus.OK)
   @Roles("ADMIN")
   @ApiOperation({ summary: "Valider un événement (ADMIN)" })
-  validate(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+  validate(@CurrentUser() user: JwtPayload, @Param("id", UuidPipe) id: string) {
     return firstValueFrom(
       this.eventClient.send("event.validate", { id, admin_id: user.sub }),
     );
@@ -714,8 +704,8 @@ export class EventController {
   @ApiOperation({ summary: "Rejeter un événement (ADMIN)" })
   reject(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Body() dto: { reason?: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: OptionalReasonDto,
   ) {
     return firstValueFrom(
       this.eventClient.send("event.reject", { id, admin_id: user.sub, dto }),
@@ -728,8 +718,8 @@ export class EventController {
   @ApiOperation({ summary: "Suspendre un événement (ADMIN)" })
   suspend(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Body() dto: { reason?: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ReasonDto,
   ) {
     return firstValueFrom(
       this.eventClient.send("event.suspend", { id, admin_id: user.sub, dto }),
@@ -743,8 +733,8 @@ export class EventController {
   })
   requestInfo(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Body() dto: { message: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: MessageDto,
   ) {
     return firstValueFrom(
       this.eventClient.send("event.request_info", {

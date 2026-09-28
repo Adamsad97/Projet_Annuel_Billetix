@@ -5,6 +5,7 @@ import { IoAdapter } from "@nestjs/platform-socket.io";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
 import { RpcExceptionFilter } from "./common/filters/rpc-exception.filter";
+import { frenchValidationException } from "./common/validation/french-validation";
 
 async function bootstrap() {
   // rawBody: true — nécessaire pour vérifier les signatures des webhooks
@@ -29,6 +30,7 @@ async function bootstrap() {
       whitelist: true,
       transform: true,
       forbidNonWhitelisted: true,
+      exceptionFactory: frenchValidationException,
     }),
   );
 

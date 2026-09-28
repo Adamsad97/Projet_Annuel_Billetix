@@ -9,7 +9,6 @@ import {
   HttpStatus,
   Inject,
   Logger,
-  NotFoundException,
   Param,
   Post,
   Query,
@@ -31,6 +30,11 @@ import { formatEventDate } from "../common/event-date";
 import { GiftTicketDto } from "./dto/gift-ticket.dto";
 import { RequestTransferRevertDto } from "./dto/transfer-revert.dto";
 import { ScanResult } from "./scan-result.enum";
+import { ReasonDto } from "../common/dto/common.dto";
+import { AssignAgentDto, EventRefDto, OrderRefDto, RequestResaleDto, ScanTicketDto, SyncOfflineScansDto } from "./dto/ticket-actions.dto";
+import { BillingDto } from "../order/dto/order.dto";
+import { UuidPipe } from "../common/pipes/uuid.pipe";
+import { EventOwner } from "../common/guards/event-owner.guard";
 
 
 /** Ligne de tickets.ticket_transfers (ticket-service). */
@@ -144,24 +148,6 @@ export class TicketController {
     }
   }
 
-  /**
-   * Bug corrigé (CDC §6.2) : un ORGANIZER n'était jamais vérifié comme
-   * propriétaire réel de l'événement scanné — seul son rôle JWT global
-   * était contrôlé. Un AGENT, lui, est vérifié côté ticket-service
-   * (affectation ControlAgent réelle, cf. ScanService.scan).
-   */
-  private async assertOrganizerOwnsEvent(
-    userId: string,
-    eventId: string,
-  ): Promise<void> {
-    const event = await firstValueFrom(
-      this.eventClient.send<{ organizer_id: string }>("event.get", { id: eventId }),
-    );
-    if (event.organizer_id !== userId) {
-      throw new ForbiddenException("Vous n'êtes pas l'organisateur de cet événement");
-    }
-  }
-
   // ─── Acheteur ────────────────────────────────────────────────────────────────
 
   /**
@@ -171,7 +157,7 @@ export class TicketController {
    */
   @Get("order/:orderId")
   @ApiOperation({ summary: "Billets d'une commande (le sien uniquement)" })
-  async getByOrder(@CurrentUser() user: JwtPayload, @Param("orderId") orderId: string) {
+  async getByOrder(@CurrentUser() user: JwtPayload, @Param("orderId", UuidPipe) orderId: string) {
     const { order } = await firstValueFrom(
       this.orderClient.send<{ order: { buyer_id: string } }>("order.get", { id: orderId }),
     );
@@ -317,7 +303,7 @@ export class TicketController {
   @ApiOperation({ summary: "Demander l'annulation d'un billet offert" })
   async requestTransferRevert(
     @CurrentUser() user: JwtPayload,
-    @Param("transferId") transferId: string,
+    @Param("transferId", UuidPipe) transferId: string,
     @Body() dto: RequestTransferRevertDto,
     @Req() req: Request,
   ) {
@@ -383,7 +369,7 @@ export class TicketController {
   @ApiOperation({ summary: "QR code d'un billet valide (le sien uniquement, sur demande)" })
   async getQr(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Query("refresh") refresh?: string,
@@ -435,7 +421,7 @@ export class TicketController {
    */
   @Get(":id")
   @ApiOperation({ summary: "Détail d'un billet (le sien uniquement, sans QR code)" })
-  async getById(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+  async getById(@CurrentUser() user: JwtPayload, @Param("id", UuidPipe) id: string) {
     const ticket = await firstValueFrom(
       this.ticketClient.send<{ buyer_id: string } & Record<string, unknown>>("ticket.get", { id }),
     );
@@ -478,7 +464,7 @@ export class TicketController {
   @ApiOperation({ summary: "Offrir son billet à un autre compte (irréversible)" })
   async gift(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
     @Body() dto: GiftTicketDto,
     @Req() req: Request,
   ) {
@@ -589,8 +575,8 @@ export class TicketController {
   @ApiOperation({ summary: "Remettre un billet en vente" })
   async requestResale(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Body() dto: { original_order_id: string; resale_price: number },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: RequestResaleDto,
   ) {
     const resale = await firstValueFrom(
       this.ticketClient.send<{ id: string; ticket_id: string; resale_price: number }>(
@@ -618,7 +604,7 @@ export class TicketController {
   @ApiOperation({
     summary: "Annonce de revente active de ce billet, si en vente (pour la gérer/retirer)",
   })
-  getActiveResale(@Param("id") id: string) {
+  getActiveResale(@Param("id", UuidPipe) id: string) {
     return firstValueFrom(
       this.ticketClient.send("ticket.get_active_resale_by_ticket", { ticket_id: id }),
     );
@@ -630,7 +616,7 @@ export class TicketController {
     summary:
       "Annuler un billet (bloqué à -24h du spectacle — proposer la revente)",
   })
-  cancel(@Param("id") id: string) {
+  cancel(@Param("id", UuidPipe) id: string) {
     return firstValueFrom(this.ticketClient.send("ticket.cancel", { id }));
   }
 
@@ -638,7 +624,7 @@ export class TicketController {
   @Roles("BUYER", "ADMIN")
   @Get("resale/event/:eventId")
   @ApiOperation({ summary: "Billets en revente pour un événement (acheteur connecté)" })
-  listResaleByEvent(@Param("eventId") eventId: string) {
+  listResaleByEvent(@Param("eventId", UuidPipe) eventId: string) {
     return firstValueFrom(
       this.ticketClient.send("ticket.list_resale_by_event", {
         event_id: eventId,
@@ -650,7 +636,7 @@ export class TicketController {
   @Roles("BUYER", "ADMIN")
   @Get("resale/:resaleId")
   @ApiOperation({ summary: "Détail d'une offre de revente (acheteur connecté)" })
-  async getResale(@Param("resaleId") resaleId: string) {
+  async getResale(@Param("resaleId", UuidPipe) resaleId: string) {
     const listing = await firstValueFrom(
       this.ticketClient.send("ticket.get_resale", { id: resaleId }),
     );
@@ -727,19 +713,9 @@ export class TicketController {
   @ApiOperation({ summary: "Acheter un billet en revente" })
   async purchaseResale(
     @CurrentUser() user: JwtPayload,
-    @Param("resaleId") resaleId: string,
+    @Param("resaleId", UuidPipe) resaleId: string,
     @Body()
-    dto: {
-      billing_first_name: string;
-      billing_last_name: string;
-      billing_email: string;
-      billing_address_line1: string;
-      billing_address_line2?: string;
-      billing_city: string;
-      billing_postal_code: string;
-      billing_country: string;
-      payment_method: string;
-    },
+    dto: BillingDto,
   ) {
     // Même règle que la réservation classique (order.controller.ts) : un
     // compte administrateur n'achète jamais, revente comprise — y compris
@@ -783,8 +759,8 @@ export class TicketController {
   @ApiOperation({ summary: "Finaliser l'achat d'une revente après paiement" })
   async completeResale(
     @CurrentUser() user: JwtPayload,
-    @Param("resaleId") resaleId: string,
-    @Body() dto: { order_id: string },
+    @Param("resaleId", UuidPipe) resaleId: string,
+    @Body() dto: OrderRefDto,
   ) {
     // 1. Vérifier que le paiement est bien confirmé
     const payment = await firstValueFrom(
@@ -935,7 +911,7 @@ export class TicketController {
   @ApiOperation({ summary: "Retirer un billet de la revente" })
   async withdrawResale(
     @CurrentUser() user: JwtPayload,
-    @Param("resaleId") resaleId: string,
+    @Param("resaleId", UuidPipe) resaleId: string,
   ) {
     const resale = (await firstValueFrom(
       this.ticketClient.send("ticket.withdraw_resale", {
@@ -979,15 +955,13 @@ export class TicketController {
   @Post("scan")
   @HttpCode(HttpStatus.OK)
   @Roles("AGENT", "ORGANIZER")
+  @EventOwner({ body: "event_id" })
   @ApiOperation({ summary: "Scanner un QR code (AGENT/ORGANIZER)" })
   async scan(
     @CurrentUser() user: JwtPayload,
-    @Body() dto: { qr_token: string; event_id: string; device_info?: string },
+    @Body() dto: ScanTicketDto,
   ) {
     const isOrganizer = user.role === "ORGANIZER";
-    if (isOrganizer) {
-      await this.assertOrganizerOwnsEvent(user.sub, dto.event_id);
-    }
 
     const response = await firstValueFrom(
       this.ticketClient.send("ticket.scan", {
@@ -1053,6 +1027,7 @@ export class TicketController {
   }
 
   @Post("sync-offline")
+  @EventOwner({ body: "event_id" })
   @HttpCode(HttpStatus.OK)
   @Roles("AGENT", "ORGANIZER")
   @ApiOperation({
@@ -1060,12 +1035,9 @@ export class TicketController {
   })
   async syncOffline(
     @CurrentUser() user: JwtPayload,
-    @Body() dto: { event_id: string; entries: unknown[] },
+    @Body() dto: SyncOfflineScansDto,
   ) {
     const isOrganizer = user.role === "ORGANIZER";
-    if (isOrganizer) {
-      await this.assertOrganizerOwnsEvent(user.sub, dto.event_id);
-    }
 
     return firstValueFrom(
       this.ticketClient.send("ticket.sync_offline", {
@@ -1078,8 +1050,9 @@ export class TicketController {
 
   @Get("event/:eventId/scan-logs")
   @Roles("ORGANIZER", "ADMIN")
+  @EventOwner({ param: "eventId" })
   @ApiOperation({ summary: "Logs de scan d'un événement (ORGANIZER/ADMIN)" })
-  getScanLogs(@Param("eventId") eventId: string) {
+  getScanLogs(@Param("eventId", UuidPipe) eventId: string) {
     return firstValueFrom(
       this.ticketClient.send("ticket.get_scan_logs", { event_id: eventId }),
     );
@@ -1095,13 +1068,13 @@ export class TicketController {
    */
   @Post("event/:eventId/agents")
   @Roles("ORGANIZER")
+  @EventOwner({ param: "eventId" })
   @ApiOperation({ summary: "Assigner un agent à l'événement (ORGANIZER)" })
   async assignAgent(
     @CurrentUser() user: JwtPayload,
-    @Param("eventId") eventId: string,
-    @Body() dto: { user_id: string; is_supervisor?: boolean },
+    @Param("eventId", UuidPipe) eventId: string,
+    @Body() dto: AssignAgentDto,
   ) {
-    await this.assertOrganizerOwnsEvent(user.sub, eventId);
     return firstValueFrom(
       this.ticketClient.send("ticket.assign_agent", {
         ...dto,
@@ -1113,16 +1086,14 @@ export class TicketController {
 
   @Get("event/:eventId/agents")
   @Roles("ORGANIZER", "ADMIN")
+  @EventOwner({ param: "eventId" })
   @ApiOperation({
     summary: "Liste des agents d'un événement (ORGANIZER/ADMIN)",
   })
   async getAgents(
     @CurrentUser() user: JwtPayload,
-    @Param("eventId") eventId: string,
+    @Param("eventId", UuidPipe) eventId: string,
   ) {
-    if (user.role === "ORGANIZER") {
-      await this.assertOrganizerOwnsEvent(user.sub, eventId);
-    }
     return firstValueFrom(
       this.ticketClient.send("ticket.get_agents", { event_id: eventId }),
     );
@@ -1131,13 +1102,13 @@ export class TicketController {
   @Delete("event/:eventId/agents/:userId")
   @HttpCode(HttpStatus.OK)
   @Roles("ORGANIZER")
+  @EventOwner({ param: "eventId" })
   @ApiOperation({ summary: "Révoquer un agent de l'événement (ORGANIZER)" })
   async removeAgent(
     @CurrentUser() user: JwtPayload,
-    @Param("eventId") eventId: string,
-    @Param("userId") userId: string,
+    @Param("eventId", UuidPipe) eventId: string,
+    @Param("userId", UuidPipe) userId: string,
   ) {
-    await this.assertOrganizerOwnsEvent(user.sub, eventId);
     return firstValueFrom(
       this.ticketClient.send("ticket.remove_agent", {
         user_id: userId,
@@ -1154,7 +1125,7 @@ export class TicketController {
   @ApiOperation({ summary: "Démarrer une session de scan mobile" })
   startSession(
     @CurrentUser() user: JwtPayload,
-    @Body() dto: { event_id: string },
+    @Body() dto: EventRefDto,
   ) {
     return firstValueFrom(
       this.ticketClient.send("ticket.start_session", {
@@ -1170,7 +1141,7 @@ export class TicketController {
   @ApiOperation({ summary: "Terminer la session de scan" })
   endSession(
     @CurrentUser() user: JwtPayload,
-    @Body() dto: { event_id: string },
+    @Body() dto: EventRefDto,
   ) {
     return firstValueFrom(
       this.ticketClient.send("ticket.end_session", {
@@ -1188,8 +1159,8 @@ export class TicketController {
   @ApiOperation({ summary: "Invalider un billet (ADMIN)" })
   invalidate(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Body() dto: { reason: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ReasonDto,
   ) {
     return firstValueFrom(
       this.ticketClient.send("ticket.invalidate", {

@@ -27,6 +27,9 @@ import {
 import { Roles } from "../common/decorators/roles.decorator";
 import { PurchaseFulfillmentService } from "../payment/purchase-fulfillment.service";
 import { UploadService } from "../upload/upload.service";
+import { OptionalReasonDto } from "../common/dto/common.dto";
+import { CreateOrderDto, ReserveStockDto } from "./dto/order.dto";
+import { UuidPipe } from "../common/pipes/uuid.pipe";
 
 @ApiTags("orders")
 @ApiBearerAuth()
@@ -74,10 +77,7 @@ export class OrderController {
   reserve(
     @CurrentUser() user: JwtPayload,
     @Body()
-    dto: {
-      event_id: string;
-      items: { ticket_category_id: string; quantity: number }[];
-    },
+    dto: ReserveStockDto,
   ) {
     // Bug corrigé : un compte ADMIN/SUPER_ADMIN reste purement administratif,
     // jamais acheteur (cf. commit 220f98e) — la règle n'était appliquée que
@@ -131,7 +131,7 @@ export class OrderController {
   })
   async create(
     @CurrentUser() user: JwtPayload,
-    @Body() dto: Record<string, unknown>,
+    @Body() dto: CreateOrderDto,
   ) {
     // Défense en profondeur : même blocage qu'à l'étape reserve() ci-dessus.
     if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
@@ -220,7 +220,7 @@ export class OrderController {
 
   @Get(":id")
   @ApiOperation({ summary: "Détail d'une commande (le titulaire, ou un admin)" })
-  getById(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+  getById(@CurrentUser() user: JwtPayload, @Param("id", UuidPipe) id: string) {
     return this.getOwnedOrder(id, user);
   }
 
@@ -229,7 +229,7 @@ export class OrderController {
   @ApiOperation({ summary: "Télécharger la facture d'une commande (le titulaire, ou un admin)" })
   async getInvoice(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
     @Req() req: Request,
     @Res() res: Response,
   ) {
@@ -264,7 +264,7 @@ export class OrderController {
   @ApiOperation({ summary: "Renvoyer l'email des billets d'une commande" })
   async resendTickets(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
   ) {
     const { order } = (await firstValueFrom(
       this.orderClient.send("order.get", { id }),
@@ -323,8 +323,8 @@ export class OrderController {
   @ApiOperation({ summary: "Annuler sa propre commande (ou toute commande pour un ADMIN)" })
   cancel(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Body() dto: { reason?: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: OptionalReasonDto,
   ) {
     return firstValueFrom(
       this.orderClient.send("order.cancel", {
@@ -339,7 +339,7 @@ export class OrderController {
   @Get("event/:eventId")
   @Roles("ORGANIZER", "ADMIN")
   @ApiOperation({ summary: "Commandes d'un événement (ORGANIZER/ADMIN)" })
-  listByEvent(@Param("eventId") eventId: string) {
+  listByEvent(@Param("eventId", UuidPipe) eventId: string) {
     return firstValueFrom(
       this.orderClient.send("order.list_by_event", { event_id: eventId }),
     );

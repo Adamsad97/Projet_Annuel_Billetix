@@ -21,11 +21,19 @@ import {
   JwtPayload,
 } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
-import { CreateEventDto } from "../event/dto/create-event.dto";
 import { CancelledEventSnapshot, EventRefundService } from "../event/event-refund.service";
 import { formatEventDate } from "../common/event-date";
 import { redactIpUnlessSuperAdmin } from "../common/redact-ip";
 import { RejectTransferRevertDto, RevertTransferDto } from "../ticket/dto/transfer-revert.dto";
+import { MessageDto, OptionalMessageDto, ReasonDto } from "../common/dto/common.dto";
+import {
+  AdminEventsQueryDto,
+  AuditLogsQueryDto,
+  AdminPayoutsQueryDto,
+  AdminUsersQueryDto,
+  CancellationRequestsQueryDto,
+  ChangeRoleDto, CreateCategoryForOrganizerDto, CreateEventForOrganizerDto, ForceRefundDto, OrganizerRefDto, ResolveDisputeDto, SendNewsletterDto, UpdateSettingDto, VerifyNonProfitDto } from "./dto/admin-actions.dto";
+import { UuidPipe } from "../common/pipes/uuid.pipe";
 
 /** Annonce de revente renvoyée par le ticket-service. */
 interface AdminResale {
@@ -127,7 +135,7 @@ export class AdminController {
   @ApiOperation({ summary: "Annuler un transfert de billet (billet rendu à l'expéditeur)" })
   async revertTicketTransfer(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
     @Body() dto: RevertTransferDto,
     @Req() req: Request,
   ) {
@@ -174,7 +182,7 @@ export class AdminController {
   @ApiOperation({ summary: "Refuser une demande d'annulation de transfert" })
   async rejectTransferRevert(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
     @Body() dto: RejectTransferRevertDto,
     @Req() req: Request,
   ) {
@@ -244,7 +252,7 @@ export class AdminController {
   /** Reventes où ce compte est vendeur ou acheteur. */
   @Get("users/:id/resales")
   @ApiOperation({ summary: "Reventes d'un compte (vendeur ou acheteur)" })
-  async getUserResales(@Param("id") id: string) {
+  async getUserResales(@Param("id", UuidPipe) id: string) {
     const resales = await firstValueFrom(this.ticketClient.send<AdminResale[]>("ticket.resales_by_user", { user_id: id }));
     return this.withAccounts(resales);
   }
@@ -275,7 +283,7 @@ export class AdminController {
   /** Chaîne complète des titulaires d'un billet. */
   @Get("tickets/:id/transfers")
   @ApiOperation({ summary: "Historique des titulaires d'un billet" })
-  async getTicketTransfers(@Param("id") id: string, @CurrentUser() user?: JwtPayload) {
+  async getTicketTransfers(@Param("id", UuidPipe) id: string, @CurrentUser() user?: JwtPayload) {
     return redactIpUnlessSuperAdmin(
       user,
       await firstValueFrom(this.ticketClient.send("ticket.transfers_by_ticket", { ticket_id: id })),
@@ -440,30 +448,19 @@ export class AdminController {
 
   @Get("audit-logs")
   @ApiOperation({ summary: "Journal des actions admin" })
-  async getLogs(
-    @Query("entity_type") entity_type?: string,
-    @Query("entity_id") entity_id?: string,
-    @Query("performed_by") performed_by?: string,
-    @Query("action") action?: string,
-    @Query("from") from?: string,
-    @Query("to") to?: string,
-    @Query("limit") limit?: string,
-    @Query("offset") offset?: string,
-    @Query("q") q?: string,
-    @CurrentUser() user?: JwtPayload,
-  ) {
+  async getLogs(@Query() query: AuditLogsQueryDto, @CurrentUser() user?: JwtPayload) {
     const logs = await firstValueFrom(
       this.adminClient.send("admin.get_logs", {
-        entity_type,
-        entity_id,
-        performed_by,
-        action,
-        q: q || undefined,
+        entity_type: query.entity_type,
+        entity_id: query.entity_id,
+        performed_by: query.performed_by,
+        action: query.action,
+        q: query.q || undefined,
         search_ip: user?.role === "SUPER_ADMIN",
-        from,
-        to,
-        limit: limit ? parseInt(limit) : undefined,
-        offset: offset ? parseInt(offset) : undefined,
+        from: query.from,
+        to: query.to,
+        limit: query.limit,
+        offset: query.offset,
       }),
     );
     return redactIpUnlessSuperAdmin(user, logs);
@@ -476,25 +473,16 @@ export class AdminController {
     summary:
       "Recherche/liste globale des utilisateurs (email, nom, rôle, statut)",
   })
-  searchUsers(
-    @Query("q") searchQuery?: string,
-    @Query("role") role?: string,
-    @Query("is_suspended") is_suspended?: string,
-    @Query("limit") limit?: string,
-    @Query("offset") offset?: string,
-    @Query("status") status?: string,
-    @Query("sort") sort?: string,
-  ) {
+  searchUsers(@Query() query: AdminUsersQueryDto) {
     return firstValueFrom(
       this.authClient.send("auth.list_users", {
-        q: searchQuery,
-        role,
-        is_suspended:
-          is_suspended === undefined ? undefined : is_suspended === "true",
-        status: ["active", "suspended", "locked", "unverified"].includes(status ?? "") ? status : undefined,
-        sort: ["recent", "oldest", "name"].includes(sort ?? "") ? sort : undefined,
-        limit: limit ? parseInt(limit) : undefined,
-        offset: offset ? parseInt(offset) : undefined,
+        q: query.q,
+        role: query.role,
+        is_suspended: query.is_suspended === undefined ? undefined : query.is_suspended === "true",
+        status: query.status,
+        sort: query.sort,
+        limit: query.limit,
+        offset: query.offset,
       }),
     );
   }
@@ -512,7 +500,7 @@ export class AdminController {
    * supplémentaire côté frontend à orchestrer. */
   @Get("users/:id")
   @ApiOperation({ summary: "Détail d'un utilisateur (+ profil organisateur si applicable)" })
-  async getUserDetail(@Param("id") id: string) {
+  async getUserDetail(@Param("id", UuidPipe) id: string) {
     const user = (await firstValueFrom(
       this.authClient.send("auth.get_user", { id }),
     )) as { role: string };
@@ -531,7 +519,7 @@ export class AdminController {
    * la fiche compte (POST /admin/orders/:id/resend-tickets ci-dessous). */
   @Get("users/:id/transfers")
   @ApiOperation({ summary: "Billets offerts et reçus par ce compte" })
-  async getUserTransfers(@Param("id") id: string, @CurrentUser() user?: JwtPayload) {
+  async getUserTransfers(@Param("id", UuidPipe) id: string, @CurrentUser() user?: JwtPayload) {
     return redactIpUnlessSuperAdmin(
       user,
       await firstValueFrom(this.ticketClient.send("ticket.transfers_by_user", { user_id: id })),
@@ -540,7 +528,7 @@ export class AdminController {
 
   @Get("users/:id/orders")
   @ApiOperation({ summary: "Commandes passées par cet acheteur" })
-  getUserOrders(@Param("id") id: string) {
+  getUserOrders(@Param("id", UuidPipe) id: string) {
     return firstValueFrom(
       this.orderClient.send("order.list_by_buyer", { buyer_id: id }),
     );
@@ -552,8 +540,8 @@ export class AdminController {
   async suspendUser(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
-    @Body() dto: { reason: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ReasonDto,
   ) {
     const result = (await firstValueFrom(
       this.authClient.send("auth.suspend_user", {
@@ -578,7 +566,7 @@ export class AdminController {
   async unsuspendUser(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
   ) {
     const result = (await firstValueFrom(
       this.authClient.send("auth.unsuspend_user", {
@@ -604,7 +592,7 @@ export class AdminController {
   async unlockAccount(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
   ) {
     const result = (await firstValueFrom(
       this.authClient.send("auth.unlock_account", {
@@ -630,8 +618,8 @@ export class AdminController {
   async resetTwoFactor(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
-    @Body() dto: { reason: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ReasonDto,
   ) {
     if (!dto.reason?.trim()) {
       throw new BadRequestException("Un motif est requis pour réinitialiser la 2FA d'un compte.");
@@ -662,7 +650,7 @@ export class AdminController {
   async activateAccount(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
   ) {
     const result = (await firstValueFrom(
       this.authClient.send("auth.activate_account", {
@@ -685,8 +673,8 @@ export class AdminController {
   async changeRole(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
-    @Body() dto: { role: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ChangeRoleDto,
   ) {
     const result = await firstValueFrom(
       this.authClient.send("auth.change_role", {
@@ -719,7 +707,7 @@ export class AdminController {
   async createEventForOrganizer(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Body() body: { organizer_id: string; dto: CreateEventDto },
+    @Body() body: CreateEventForOrganizerDto,
   ) {
     const result = await firstValueFrom(
       this.eventClient.send("event.create", { organizer_id: body.organizer_id, dto: body.dto }),
@@ -733,8 +721,8 @@ export class AdminController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: "Ajouter une catégorie de billet à un événement créé pour un organisateur (accueil physique)" })
   createCategoryForOrganizer(
-    @Param("id") id: string,
-    @Body() body: { organizer_id: string; dto: Record<string, unknown> },
+    @Param("id", UuidPipe) id: string,
+    @Body() body: CreateCategoryForOrganizerDto,
   ) {
     return firstValueFrom(
       this.eventClient.send("event.create_category", {
@@ -747,7 +735,7 @@ export class AdminController {
   @Post("events/:id/submit")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Soumettre à la validation un événement créé pour un organisateur (accueil physique)" })
-  submitEventForOrganizer(@Param("id") id: string, @Body() body: { organizer_id: string }) {
+  submitEventForOrganizer(@Param("id", UuidPipe) id: string, @Body() body: OrganizerRefDto) {
     return firstValueFrom(
       this.eventClient.send("event.submit_for_validation", { id, organizer_id: body.organizer_id }),
     );
@@ -815,18 +803,10 @@ export class AdminController {
    */
   @Get("events")
   @ApiOperation({ summary: "Tous les événements, tous statuts confondus (gestion globale)" })
-  async listAllEvents(
-    @Query("status") status?: string,
-    @Query("q") q?: string,
-    @Query("category") category?: string,
-    @Query("when") when?: string,
-    @Query("sort") sort?: string,
-    @Query("limit") limit?: string,
-    @Query("offset") offset?: string,
-  ) {
+  async listAllEvents(@Query() query: AdminEventsQueryDto) {
     // Recherche aussi par organisateur : ses comptes (nom, email) sont dans
     // auth-service, on transmet leurs identifiants à event-service.
-    const search = q?.trim();
+    const search = query.q?.trim();
     const organizers = search
       ? ((await firstValueFrom(this.authClient.send("auth.list_users", { q: search, limit: 100 })).catch(
           () => ({ data: [] }),
@@ -835,14 +815,14 @@ export class AdminController {
 
     const result = (await firstValueFrom(
       this.eventClient.send("event.list_all", {
-        status: status || undefined,
-        category: category || undefined,
-        when: when === "upcoming" || when === "past" ? when : undefined,
+        status: query.status || undefined,
+        category: query.category || undefined,
+        when: query.when,
         q: search || undefined,
         organizer_ids: organizers.data.map((user) => user.id),
-        sort: ["created_desc", "start_asc", "start_desc", "title"].includes(sort ?? "") ? sort : undefined,
-        limit: limit ? parseInt(limit, 10) : undefined,
-        offset: offset ? parseInt(offset, 10) : undefined,
+        sort: query.sort,
+        limit: query.limit,
+        offset: query.offset,
       }),
     )) as { data: Array<{ id: string; organizer_id: string; category: string; [key: string]: unknown }>; total: number };
     return { data: await this.enrichAdminEvents(result.data), total: result.total };
@@ -886,7 +866,7 @@ export class AdminController {
    */
   @Get("events/:id/overview")
   @ApiOperation({ summary: "Vue complète d'un événement pour l'administration" })
-  async getAdminEventOverview(@Param("id") id: string, @CurrentUser() user?: JwtPayload) {
+  async getAdminEventOverview(@Param("id", UuidPipe) id: string, @CurrentUser() user?: JwtPayload) {
     const event = (await firstValueFrom(this.eventClient.send("event.get", { id }))) as {
       id: string;
       organizer_id: string;
@@ -939,7 +919,7 @@ export class AdminController {
 
   @Get("events/:id")
   @ApiOperation({ summary: "Détail enrichi d'un événement (gestion globale)" })
-  async getAdminEvent(@Param("id") id: string) {
+  async getAdminEvent(@Param("id", UuidPipe) id: string) {
     const event = (await firstValueFrom(this.eventClient.send("event.get", { id }))) as {
       id: string;
       organizer_id: string;
@@ -956,7 +936,7 @@ export class AdminController {
   async approveEvent(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
   ) {
     const result = await firstValueFrom(
       this.eventClient.send("event.validate", { id, admin_id: user.sub }),
@@ -979,8 +959,8 @@ export class AdminController {
   async verifyEventNonProfit(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
-    @Body() dto: { approved: boolean },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: VerifyNonProfitDto,
   ) {
     const result = await firstValueFrom(
       this.eventClient.send("event.verify_non_profit", {
@@ -1009,8 +989,8 @@ export class AdminController {
   async rejectEvent(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
-    @Body() dto: { reason: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ReasonDto,
   ) {
     const result = await firstValueFrom(
       this.eventClient.send("event.reject", {
@@ -1030,8 +1010,8 @@ export class AdminController {
   async requestEventInfo(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
-    @Body() dto: { message: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: MessageDto,
   ) {
     const result = await firstValueFrom(
       this.eventClient.send("event.request_info", {
@@ -1051,8 +1031,8 @@ export class AdminController {
   async cancelEvent(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
-    @Body() dto: { reason?: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ReasonDto,
   ) {
     const reason = dto?.reason?.trim();
     if (!reason) throw new BadRequestException("Le motif de l'annulation est obligatoire.");
@@ -1072,8 +1052,8 @@ export class AdminController {
   async suspendEvent(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
-    @Body() dto: { reason?: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ReasonDto,
   ) {
     const result = await firstValueFrom(
       this.eventClient.send("event.suspend", { id, admin_id: user.sub, dto: { reason: dto?.reason } }),
@@ -1085,7 +1065,7 @@ export class AdminController {
   @Post("events/:id/unsuspend")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Réactiver un événement désactivé (ADMIN)" })
-  async unsuspendEvent(@CurrentUser() user: JwtPayload, @Req() req: Request, @Param("id") id: string) {
+  async unsuspendEvent(@CurrentUser() user: JwtPayload, @Req() req: Request, @Param("id", UuidPipe) id: string) {
     const result = (await firstValueFrom(this.eventClient.send("event.unsuspend", { id }))) as {
       id: string;
       title: string;
@@ -1103,8 +1083,8 @@ export class AdminController {
   async hideEvent(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
-    @Body() dto: { reason?: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ReasonDto,
   ) {
     const result = (await firstValueFrom(
       this.eventClient.send("event.hide", { id, admin_id: user.sub, dto: { reason: dto?.reason } }),
@@ -1117,7 +1097,7 @@ export class AdminController {
   @Post("events/:id/unhide")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Rendre un événement de nouveau visible (ADMIN)" })
-  async unhideEvent(@CurrentUser() user: JwtPayload, @Req() req: Request, @Param("id") id: string) {
+  async unhideEvent(@CurrentUser() user: JwtPayload, @Req() req: Request, @Param("id", UuidPipe) id: string) {
     const result = (await firstValueFrom(this.eventClient.send("event.unhide", { id }))) as {
       id: string;
       title: string;
@@ -1183,16 +1163,12 @@ export class AdminController {
 
   @Get("cancellation-requests")
   @ApiOperation({ summary: "Demandes d'annulation des organisateurs (ADMIN)" })
-  async listCancellationRequests(
-    @Query("status") status?: string,
-    @Query("limit") limit?: string,
-    @Query("offset") offset?: string,
-  ) {
+  async listCancellationRequests(@Query() query: CancellationRequestsQueryDto) {
     const result = (await firstValueFrom(
       this.eventClient.send("event.cancellation.list_admin", {
-        status: ["PENDING", "APPROVED", "REJECTED", "WITHDRAWN"].includes(status ?? "") ? status : undefined,
-        limit: limit ? parseInt(limit, 10) : undefined,
-        offset: offset ? parseInt(offset, 10) : undefined,
+        status: query.status,
+        limit: query.limit,
+        offset: query.offset,
       }),
     )) as { data: Array<{ organizer_id: string }>; total: number };
     return { data: await this.enrichCancellationRequests(result.data), total: result.total };
@@ -1206,7 +1182,7 @@ export class AdminController {
 
   @Get("events/:id/cancellation-requests")
   @ApiOperation({ summary: "Historique des demandes d'annulation d'un événement (ADMIN)" })
-  async eventCancellationRequests(@Param("id") id: string) {
+  async eventCancellationRequests(@Param("id", UuidPipe) id: string) {
     const requests = (await firstValueFrom(
       this.eventClient.send("event.cancellation.list_by_event", { event_id: id }),
     )) as Array<{ organizer_id: string }>;
@@ -1217,8 +1193,8 @@ export class AdminController {
   @ApiOperation({ summary: "Répondre à l'organisateur dans l'échange (ADMIN)" })
   async postCancellationMessage(
     @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Body() dto: { message?: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: MessageDto,
   ) {
     const request = (await firstValueFrom(
       this.eventClient.send("event.cancellation.message", {
@@ -1239,8 +1215,8 @@ export class AdminController {
   async rejectCancellation(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
-    @Body() dto: { message?: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: MessageDto,
   ) {
     const request = (await firstValueFrom(
       this.eventClient.send("event.cancellation.reject", { id, admin_id: user.sub, message: dto?.message }),
@@ -1257,8 +1233,8 @@ export class AdminController {
   async approveCancellation(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
-    @Body() dto: { message?: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: OptionalMessageDto,
   ) {
     const result = (await firstValueFrom(
       this.eventClient.send("event.cancellation.approve", { id, admin_id: user.sub, message: dto?.message }),
@@ -1278,8 +1254,8 @@ export class AdminController {
   async invalidateTicket(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
-    @Body() dto: { reason: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ReasonDto,
   ) {
     const result = await firstValueFrom(
       this.ticketClient.send("ticket.invalidate", {
@@ -1343,18 +1319,10 @@ export class AdminController {
 
   @Get("payouts")
   @ApiOperation({ summary: "Liste des reversements, tous organisateurs confondus" })
-  async listPayouts(
-    @Query("status") status?: string,
-    @Query("q") q?: string,
-    @Query("scheduled_from") scheduled_from?: string,
-    @Query("scheduled_to") scheduled_to?: string,
-    @Query("sort") sort?: string,
-    @Query("limit") limit?: string,
-    @Query("offset") offset?: string,
-  ) {
+  async listPayouts(@Query() query: AdminPayoutsQueryDto) {
     // Recherche par organisateur (auth-service) ou par événement
     // (event-service) : leurs identifiants filtrent ensuite les reversements.
-    const search = q?.trim();
+    const search = query.q?.trim();
     let searchIds: { organizer_ids?: string[]; event_ids?: string[] } = {};
     if (search) {
       const [organizers, events] = await Promise.all([
@@ -1369,13 +1337,13 @@ export class AdminController {
 
     const result = (await firstValueFrom(
       this.paymentClient.send("payment.list_all_payouts", {
-        status: status || undefined,
+        status: query.status,
         ...searchIds,
-        scheduled_from: scheduled_from || undefined,
-        scheduled_to: scheduled_to || undefined,
-        sort: ["scheduled_desc", "scheduled_asc", "amount_desc"].includes(sort ?? "") ? sort : undefined,
-        limit: limit ? parseInt(limit) : undefined,
-        offset: offset ? parseInt(offset) : undefined,
+        scheduled_from: query.scheduled_from || undefined,
+        scheduled_to: query.scheduled_to || undefined,
+        sort: query.sort,
+        limit: query.limit,
+        offset: query.offset,
       }),
     )) as {
       data: Array<{ id: string; organizer_id: string; event_id: string }>;
@@ -1387,7 +1355,7 @@ export class AdminController {
 
   @Get("payouts/:id")
   @ApiOperation({ summary: "Détail d'un reversement" })
-  async getPayoutDetail(@Param("id") id: string) {
+  async getPayoutDetail(@Param("id", UuidPipe) id: string) {
     const payout = (await firstValueFrom(
       this.paymentClient.send("payment.get_payout", { id }),
     )) as { organizer_id: string; event_id: string };
@@ -1407,8 +1375,8 @@ export class AdminController {
   async blockPayout(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
-    @Body() dto: { reason: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ReasonDto,
   ) {
     const result = await firstValueFrom(
       this.paymentClient.send("payment.block_payout", {
@@ -1427,7 +1395,7 @@ export class AdminController {
   async unblockPayout(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
   ) {
     const result = await firstValueFrom(
       this.paymentClient.send("payment.unblock_payout", { id }),
@@ -1449,7 +1417,7 @@ export class AdminController {
   async processPayout(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
   ) {
     const payout = await firstValueFrom(
       this.paymentClient.send("payment.get_payout", { id }),
@@ -1485,7 +1453,7 @@ export class AdminController {
   async approveEarlyPayout(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
   ) {
     const result = await firstValueFrom(
       this.paymentClient.send("payment.approve_early_payout", {
@@ -1518,8 +1486,8 @@ export class AdminController {
   async resolveDispute(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
-    @Body() dto: { status: string; resolution_notes?: string },
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: ResolveDisputeDto,
   ) {
     const result = await firstValueFrom(
       this.paymentClient.send("payment.resolve_dispute", {
@@ -1550,7 +1518,7 @@ export class AdminController {
   async approveKyc(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("userId") userId: string,
+    @Param("userId", UuidPipe) userId: string,
   ) {
     const result = await firstValueFrom(
       this.userClient.send("user.update_kyc", {
@@ -1569,8 +1537,8 @@ export class AdminController {
   async rejectKyc(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("userId") userId: string,
-    @Body() dto: { reason: string },
+    @Param("userId", UuidPipe) userId: string,
+    @Body() dto: ReasonDto,
   ) {
     const result = await firstValueFrom(
       this.userClient.send("user.update_kyc", {
@@ -1605,7 +1573,7 @@ export class AdminController {
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
     @Param("key") key: string,
-    @Body() dto: { value: string },
+    @Body() dto: UpdateSettingDto,
   ) {
     const result = await firstValueFrom(
       this.adminClient.send<{ key: string; value: string; previous_value: string }>("admin.update_platform_setting", {
@@ -1643,7 +1611,7 @@ export class AdminController {
   async sendNewsletter(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Body() dto: { subject: string; body: string },
+    @Body() dto: SendNewsletterDto,
   ) {
     if (!dto.subject?.trim() || !dto.body?.trim()) {
       throw new BadRequestException("Le sujet et le contenu sont obligatoires.");
@@ -1694,7 +1662,7 @@ export class AdminController {
   async resendOrderTickets(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("id") id: string,
+    @Param("id", UuidPipe) id: string,
   ) {
     const { order } = (await firstValueFrom(
       this.orderClient.send("order.get", { id }),
@@ -1754,8 +1722,8 @@ export class AdminController {
   async forceRefund(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Param("orderId") orderId: string,
-    @Body() dto: { reason: string; amount_cents?: number },
+    @Param("orderId", UuidPipe) orderId: string,
+    @Body() dto: ForceRefundDto,
   ) {
     const result = (await firstValueFrom(
       this.paymentClient.send("payment.refund", {

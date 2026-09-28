@@ -38,6 +38,7 @@ import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { ResendVerificationDto } from "./dto/resend-verification.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
+import { OAuthCodeDto, OAuthTwoFactorDto, TwoFactorCodeDto } from "./dto/two-factor.dto";
 
 @ApiTags("auth")
 @Controller("auth")
@@ -269,7 +270,7 @@ export class AuthController {
   @ApiOperation({
     summary: "Échanger le code obtenu après callback OAuth contre les tokens (usage unique, ~60s)",
   })
-  exchangeOAuthCode(@Body() dto: { code: string }) {
+  exchangeOAuthCode(@Body() dto: OAuthCodeDto) {
     return firstValueFrom(
       this.authClient.send("auth.exchange_oauth_code", { code: dto.code }),
     );
@@ -301,7 +302,7 @@ export class AuthController {
   @ApiOperation({
     summary: "Valider le code 2FA après une connexion OAuth qui l'exige",
   })
-  verifyOAuth2fa(@Body() dto: { pending_token: string; code: string }) {
+  verifyOAuth2fa(@Body() dto: OAuthTwoFactorDto) {
     return firstValueFrom(
       this.authClient.send("auth.oauth_verify_2fa", dto),
     );
@@ -327,7 +328,7 @@ export class AuthController {
     summary:
       "Confirmer la 2FA avec un code TOTP — active la 2FA et retourne les codes de secours",
   })
-  confirm2fa(@CurrentUser() user: JwtPayload, @Body() body: { code: string }) {
+  confirm2fa(@CurrentUser() user: JwtPayload, @Body() body: TwoFactorCodeDto) {
     return firstValueFrom(
       this.authClient.send("auth.2fa.confirm", {
         user_id: user.sub,
@@ -343,7 +344,7 @@ export class AuthController {
   @ApiOperation({
     summary: "Vérifier un code 2FA TOTP (lors de la connexion si 2FA activée)",
   })
-  verify2fa(@CurrentUser() user: JwtPayload, @Body() body: { code: string }) {
+  verify2fa(@CurrentUser() user: JwtPayload, @Body() body: TwoFactorCodeDto) {
     return firstValueFrom(
       this.authClient.send("auth.2fa.verify", {
         user_id: user.sub,
@@ -356,7 +357,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Désactiver la 2FA (code TOTP requis)" })
-  disable2fa(@CurrentUser() user: JwtPayload, @Body() body: { code: string }) {
+  disable2fa(@CurrentUser() user: JwtPayload, @Body() body: TwoFactorCodeDto) {
     return firstValueFrom(
       this.authClient.send("auth.2fa.disable", {
         user_id: user.sub,

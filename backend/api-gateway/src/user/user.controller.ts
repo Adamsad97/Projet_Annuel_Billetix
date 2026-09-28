@@ -27,6 +27,7 @@ import { UpdateBuyerProfileDto } from "./dto/update-buyer-profile.dto";
 import { UpdateIbanDto } from "./dto/update-iban.dto";
 import { UpdateNotificationPrefsDto } from "./dto/update-notification-prefs.dto";
 import { UpdateOrganizerProfileDto } from "./dto/update-organizer-profile.dto";
+import { DeleteAccountDto } from "./dto/delete-account.dto";
 
 @ApiTags("users")
 @ApiBearerAuth()
@@ -260,7 +261,7 @@ export class UserController {
   async deleteMyAccount(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
-    @Body() dto: { password?: string },
+    @Body() dto: DeleteAccountDto,
   ) {
     // Un organisateur avec des obligations en cours ne peut pas supprimer son
     // compte tant qu'elles ne sont pas résolues (événements à venir déjà
