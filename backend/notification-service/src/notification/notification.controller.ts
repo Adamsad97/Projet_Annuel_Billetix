@@ -438,7 +438,7 @@ export class NotificationController {
           threshold: data.threshold,
           soldCount: data.sold_count,
           totalCapacity: data.total_capacity,
-          dashboardUrl: `${this.appUrl}/dashboard`,
+          dashboardUrl: data.event_id ? `${this.appUrl}/dashboard/evenements/${data.event_id}` : `${this.appUrl}/dashboard`,
         },
       });
     }

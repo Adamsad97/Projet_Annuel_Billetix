@@ -1,4 +1,4 @@
-import { IsEmail, IsInt, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsInt, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class FillThresholdReachedDto {
   @IsEmail()
@@ -8,6 +8,11 @@ export class FillThresholdReachedDto {
   @IsString()
   @IsOptional()
   firstName: string | null;
+
+  // Lien direct vers l'événement dans l'espace organisateur.
+  @IsUUID()
+  @IsOptional()
+  event_id?: string;
 
   @IsString()
   event_name: string;

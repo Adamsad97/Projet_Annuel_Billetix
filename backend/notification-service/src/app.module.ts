@@ -6,10 +6,11 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/adapters/handlebars.ad
 import { NotificationModule } from './notification/notification.module';
 import { HealthModule } from './health/health.module';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
+import { validateEnvironment } from './common/env.validation';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
 
     MailerModule.forRootAsync({
       inject: [ConfigService],
