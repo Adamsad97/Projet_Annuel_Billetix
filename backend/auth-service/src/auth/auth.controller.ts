@@ -1,15 +1,14 @@
 import { Controller } from "@nestjs/common";
 import { MessagePattern, Payload } from "@nestjs/microservices";
-import { OAuthProvider, UserRole } from "../user/user.entity";
-import { AuthService, type UserListSort, type UserListStatus } from "./auth.service";
+import { AuthService } from "./auth.service";
 import { TwoFactorService } from "./two-factor.service";
-import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { ResendVerificationDto } from "./dto/resend-verification.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
+import { AdminActionOnUserPayload, ChangePasswordPayload, ChangeRolePayload, CodePayload, DeleteAccountPayload, EmailPayload, IdPayload, IdsPayload, ListUsersPayload, OAuthBirthDatePayload, OAuthExchangePayload, OAuthLoginPayload, OAuthTwoFactorPayload, ResetTwoFactorByAdminPayload, SuspendUserPayload, TokenPayload, TwoFactorCodePayload, UserIdPayload } from '../common/payloads';
 
 @Controller()
 export class AuthController {
@@ -49,7 +48,7 @@ export class AuthController {
   }
 
   @MessagePattern("auth.validate_token")
-  validateToken(@Payload() data: { token: string }) {
+  validateToken(@Payload() data: TokenPayload) {
     return this.authService.validateToken(data.token);
   }
 
@@ -64,12 +63,12 @@ export class AuthController {
   }
 
   @MessagePattern("auth.change_password")
-  changePassword(@Payload() data: { user_id: string; dto: ChangePasswordDto }) {
+  changePassword(@Payload() data: ChangePasswordPayload) {
     return this.authService.changePassword(data.user_id, data.dto);
   }
 
   @MessagePattern("auth.verify_email")
-  verifyEmail(@Payload() data: { token: string }) {
+  verifyEmail(@Payload() data: TokenPayload) {
     return this.authService.verifyEmail(data.token);
   }
 
@@ -81,63 +80,59 @@ export class AuthController {
   @MessagePattern("auth.oauth_login")
   oauthLogin(
     @Payload()
-    data: {
-      provider: OAuthProvider;
-      oauth_id: string;
-      email: string;
-      first_name: string;
-      last_name: string;
-    },
+    data: OAuthLoginPayload,
   ) {
     return this.authService.oauthLogin(data);
   }
 
   @MessagePattern("auth.create_oauth_exchange_code")
   createOAuthExchangeCode(
-    @Payload() data: { access_token: string; refresh_token: string },
+    @Payload() data: OAuthExchangePayload,
   ) {
-    return this.authService.createOAuthExchangeCode(data);
+    // La classe décrit les trois formes possibles avec des champs facultatifs ;
+    // le service attend l'union exacte (session, 2FA ou date de naissance).
+    return this.authService.createOAuthExchangeCode(data as Parameters<AuthService["createOAuthExchangeCode"]>[0]);
   }
 
   @MessagePattern("auth.exchange_oauth_code")
-  exchangeOAuthCode(@Payload() data: { code: string }) {
+  exchangeOAuthCode(@Payload() data: CodePayload) {
     return this.authService.exchangeOAuthCode(data.code);
   }
 
   @MessagePattern("auth.oauth_complete_birth_date")
-  completeOAuthBirthDate(@Payload() data: { pending_token: string; birth_date: string }) {
+  completeOAuthBirthDate(@Payload() data: OAuthBirthDatePayload) {
     return this.authService.completeOAuthBirthDate(data.pending_token, data.birth_date);
   }
 
   @MessagePattern("auth.oauth_verify_2fa")
-  verifyOauth2fa(@Payload() data: { pending_token: string; code: string }) {
+  verifyOauth2fa(@Payload() data: OAuthTwoFactorPayload) {
     return this.authService.verifyOauth2fa(data.pending_token, data.code);
   }
 
   // ──────────────── 2FA TOTP ────────────────
 
   @MessagePattern("auth.2fa.setup")
-  setup2fa(@Payload() data: { user_id: string }) {
+  setup2fa(@Payload() data: UserIdPayload) {
     return this.twoFactorService.setupTotp(data.user_id);
   }
 
   @MessagePattern("auth.2fa.confirm")
-  confirm2fa(@Payload() data: { user_id: string; code: string }) {
+  confirm2fa(@Payload() data: TwoFactorCodePayload) {
     return this.twoFactorService.confirmTotp(data.user_id, data.code);
   }
 
   @MessagePattern("auth.2fa.verify")
-  verify2fa(@Payload() data: { user_id: string; code: string }) {
+  verify2fa(@Payload() data: TwoFactorCodePayload) {
     return this.twoFactorService.verify(data.user_id, data.code);
   }
 
   @MessagePattern("auth.2fa.disable")
-  disable2fa(@Payload() data: { user_id: string; code: string }) {
+  disable2fa(@Payload() data: TwoFactorCodePayload) {
     return this.twoFactorService.disable(data.user_id, data.code);
   }
 
   @MessagePattern("auth.2fa.status")
-  get2faStatus(@Payload() data: { user_id: string }) {
+  get2faStatus(@Payload() data: UserIdPayload) {
     return this.twoFactorService.isTwoFactorRequired(data.user_id);
   }
 
@@ -145,7 +140,7 @@ export class AuthController {
   // déjà ce pattern, mais aucun handler n'existait ici — timeout RPC garanti.
   @MessagePattern("auth.2fa.reset_by_admin")
   reset2faByAdmin(
-    @Payload() data: { user_id: string; admin_id: string; actor_role: UserRole },
+    @Payload() data: ResetTwoFactorByAdminPayload,
   ) {
     return this.twoFactorService.resetByAdmin(
       data.user_id,
@@ -155,17 +150,17 @@ export class AuthController {
   }
 
   @MessagePattern("auth.get_user")
-  getUser(@Payload() data: { id: string }) {
+  getUser(@Payload() data: IdPayload) {
     return this.authService.getUserById(data.id);
   }
 
   @MessagePattern("auth.find_by_email")
-  findByEmail(@Payload() data: { email: string }) {
+  findByEmail(@Payload() data: EmailPayload) {
     return this.authService.findByEmail(data.email);
   }
 
   @MessagePattern("auth.get_users_by_ids")
-  getUsersByIds(@Payload() data: { ids: string[] }) {
+  getUsersByIds(@Payload() data: IdsPayload) {
     return this.authService.getUsersByIds(data.ids);
   }
 
@@ -179,7 +174,7 @@ export class AuthController {
   @MessagePattern("auth.suspend_user")
   suspendUser(
     @Payload()
-    data: { id: string; admin_id: string; reason: string; actor_role: UserRole },
+    data: SuspendUserPayload,
   ) {
     return this.authService.suspendUser(
       data.id,
@@ -191,7 +186,7 @@ export class AuthController {
 
   @MessagePattern("auth.unsuspend_user")
   unsuspendUser(
-    @Payload() data: { id: string; admin_id: string; actor_role: UserRole },
+    @Payload() data: AdminActionOnUserPayload,
   ) {
     return this.authService.unsuspendUser(data.id, data.admin_id, data.actor_role);
   }
@@ -200,14 +195,14 @@ export class AuthController {
   // patterns, mais aucun handler n'existait ici — timeout RPC garanti.
   @MessagePattern("auth.unlock_account")
   unlockAccount(
-    @Payload() data: { id: string; admin_id: string; actor_role: UserRole },
+    @Payload() data: AdminActionOnUserPayload,
   ) {
     return this.authService.unlockAccount(data.id, data.admin_id, data.actor_role);
   }
 
   @MessagePattern("auth.activate_account")
   activateAccount(
-    @Payload() data: { id: string; admin_id: string; actor_role: UserRole },
+    @Payload() data: AdminActionOnUserPayload,
   ) {
     return this.authService.activateAccount(data.id, data.admin_id, data.actor_role);
   }
@@ -215,7 +210,7 @@ export class AuthController {
   @MessagePattern("auth.change_role")
   changeRole(
     @Payload()
-    data: { id: string; role: UserRole; admin_id: string; actor_role: UserRole },
+    data: ChangeRolePayload,
   ) {
     return this.authService.changeRole(
       data.id,
@@ -226,28 +221,20 @@ export class AuthController {
   }
 
   @MessagePattern("auth.self_upgrade_to_organizer")
-  selfUpgradeToOrganizer(@Payload() data: { user_id: string }) {
+  selfUpgradeToOrganizer(@Payload() data: UserIdPayload) {
     return this.authService.selfUpgradeToOrganizer(data.user_id);
   }
 
   @MessagePattern("auth.list_users")
   listUsers(
     @Payload()
-    data: {
-      q?: string;
-      role?: UserRole;
-      is_suspended?: boolean;
-      status?: UserListStatus;
-      sort?: UserListSort;
-      limit?: number;
-      offset?: number;
-    },
+    data: ListUsersPayload,
   ) {
     return this.authService.listUsers(data);
   }
 
   @MessagePattern("auth.delete_account")
-  deleteAccount(@Payload() data: { id: string; password?: string }) {
+  deleteAccount(@Payload() data: DeleteAccountPayload) {
     return this.authService.deleteAccount(data.id, data.password);
   }
 }

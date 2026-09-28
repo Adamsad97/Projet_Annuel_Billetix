@@ -1,13 +1,15 @@
 import { NestFactory } from "@nestjs/core";
 import { MicroserviceOptions, Transport } from "@nestjs/microservices";
-import { ValidationPipe } from "@nestjs/common";
 import { AppModule } from "./app.module";
+import { AllRpcExceptionsFilter } from "./common/rpc-exception.filter";
+import { rpcValidationPipe } from "./common/rpc-validation";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableShutdownHooks();
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalPipes(rpcValidationPipe());
+  app.useGlobalFilters(new AllRpcExceptionsFilter());
 
   const port = parseInt(process.env.PORT ?? "3001");
   const healthPort = parseInt(process.env.HEALTH_PORT ?? `${port + 6000}`);

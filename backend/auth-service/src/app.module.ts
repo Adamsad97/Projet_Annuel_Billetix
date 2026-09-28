@@ -8,10 +8,11 @@ import { BackupCode } from "./auth/backup-code.entity";
 import { HealthModule } from "./health/health.module";
 import { PlatformConfigModule } from "./platform-config/platform-config.module";
 import { User } from "./user/user.entity";
+import { validateEnvironment } from "./common/env.validation";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     ClientsModule.registerAsync([
       {
         name: "NOTIFICATION_SERVICE",
