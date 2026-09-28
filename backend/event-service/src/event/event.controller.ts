@@ -1,55 +1,41 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { AdminActionDto } from './dto/admin-action.dto';
-import { CreateEventDto } from './dto/create-event.dto';
-import { EventService, type AdminEventListFilters } from './event.service';
-import { EventStatus } from './event.entity';
+import { EventService } from './event.service';
+import { AdminActionPayload, AdminIdPayload, IdPayload, IdsPayload, OrganizerPayload, OwnedIdPayload } from '../common/payloads';
+import { CancelEventPayload, CreateEventPayload, ListAllEventsPayload, ListPublishedPayload, RecommendationPayload, RequestInfoPayload, RespondToInfoPayload, UpdateEventPayload, VerifyNonProfitPayload } from './dto/event-payloads';
 
 @Controller()
 export class EventController {
   constructor(private readonly eventService: EventService) {}
 
   @MessagePattern('event.create')
-  create(@Payload() data: { organizer_id: string; dto: CreateEventDto }) {
+  create(@Payload() data: CreateEventPayload) {
     return this.eventService.create(data.organizer_id, data.dto);
   }
 
   @MessagePattern('event.get')
-  getById(@Payload() data: { id: string }) {
+  getById(@Payload() data: IdPayload) {
     return this.eventService.getById(data.id);
   }
 
   @MessagePattern('event.get_public')
-  getPublic(@Payload() data: { id: string }) {
+  getPublic(@Payload() data: IdPayload) {
     return this.eventService.getPublic(data.id);
   }
 
   @MessagePattern('event.get_by_ids')
-  getByIds(@Payload() data: { ids: string[] }) {
+  getByIds(@Payload() data: IdsPayload) {
     return this.eventService.getByIds(data.ids);
   }
 
   @MessagePattern('event.list_published')
-  listPublished(@Payload() filters: {
-    category?: string;
-    city?: string;
-    page?: number;
-    q?: string;
-    min_price?: number;
-    max_price?: number;
-    lat?: number;
-    lng?: number;
-    radius_km?: number;
-    date_from?: string;
-    date_to?: string;
-    sort?: 'date' | 'recent';
-  }) {
+  listPublished(@Payload() filters: ListPublishedPayload) {
     return this.eventService.listPublished(filters);
   }
 
   @MessagePattern('event.list_for_recommendation')
   listForRecommendation(
-    @Payload() data: { category: string; exclude_event_ids: string[]; limit: number },
+    @Payload() data: RecommendationPayload,
   ) {
     return this.eventService.listForRecommendation(data.category, data.exclude_event_ids, data.limit);
   }
@@ -60,12 +46,12 @@ export class EventController {
   }
 
   @MessagePattern('event.list_by_organizer')
-  listByOrganizer(@Payload() data: { organizer_id: string }) {
+  listByOrganizer(@Payload() data: OrganizerPayload) {
     return this.eventService.listByOrganizer(data.organizer_id);
   }
 
   @MessagePattern('event.list_all')
-  listAll(@Payload() data: AdminEventListFilters) {
+  listAll(@Payload() data: ListAllEventsPayload) {
     return this.eventService.listAll(data ?? {});
   }
 
@@ -75,72 +61,72 @@ export class EventController {
   }
 
   @MessagePattern('event.update')
-  update(@Payload() data: { id: string; organizer_id: string; dto: Partial<CreateEventDto> }) {
+  update(@Payload() data: UpdateEventPayload) {
     return this.eventService.update(data.id, data.organizer_id, data.dto);
   }
 
   @MessagePattern('event.submit_for_validation')
-  submitForValidation(@Payload() data: { id: string; organizer_id: string }) {
+  submitForValidation(@Payload() data: OwnedIdPayload) {
     return this.eventService.submitForValidation(data.id, data.organizer_id);
   }
 
   @MessagePattern('event.validate')
-  validate(@Payload() data: { id: string; admin_id: string }) {
+  validate(@Payload() data: AdminIdPayload) {
     return this.eventService.validate(data.id, data.admin_id);
   }
 
   @MessagePattern('event.mark_first_sale')
-  markFirstSale(@Payload() data: { id: string }) {
+  markFirstSale(@Payload() data: IdPayload) {
     return this.eventService.markFirstSale(data.id);
   }
 
   @MessagePattern('event.verify_non_profit')
-  verifyNonProfit(@Payload() data: { id: string; admin_id: string; approved: boolean }) {
+  verifyNonProfit(@Payload() data: VerifyNonProfitPayload) {
     return this.eventService.verifyNonProfit(data.id, data.admin_id, data.approved);
   }
 
   @MessagePattern('event.reject')
-  reject(@Payload() data: { id: string; admin_id: string; dto: AdminActionDto }) {
+  reject(@Payload() data: AdminActionPayload) {
     return this.eventService.reject(data.id, data.admin_id, data.dto);
   }
 
   @MessagePattern('event.suspend')
-  suspend(@Payload() data: { id: string; admin_id: string; dto: AdminActionDto }) {
+  suspend(@Payload() data: AdminActionPayload) {
     return this.eventService.suspend(data.id, data.admin_id, data.dto);
   }
 
   @MessagePattern('event.unsuspend')
-  unsuspend(@Payload() data: { id: string }) {
+  unsuspend(@Payload() data: IdPayload) {
     return this.eventService.unsuspend(data.id);
   }
 
   @MessagePattern('event.hide')
-  hide(@Payload() data: { id: string; admin_id: string; dto: AdminActionDto }) {
+  hide(@Payload() data: AdminActionPayload) {
     return this.eventService.hide(data.id, data.admin_id, data.dto);
   }
 
   @MessagePattern('event.unhide')
-  unhide(@Payload() data: { id: string }) {
+  unhide(@Payload() data: IdPayload) {
     return this.eventService.unhide(data.id);
   }
 
   @MessagePattern('event.cancel')
-  cancel(@Payload() data: { id: string; actor_id: string; dto: AdminActionDto; is_admin?: boolean }) {
+  cancel(@Payload() data: CancelEventPayload) {
     return this.eventService.cancel(data.id, data.actor_id, data.dto, data.is_admin ?? false);
   }
 
   @MessagePattern('event.request_info')
-  requestInfo(@Payload() data: { id: string; admin_id: string; message: string }) {
+  requestInfo(@Payload() data: RequestInfoPayload) {
     return this.eventService.requestInfo(data.id, data.admin_id, data.message);
   }
 
   @MessagePattern('event.respond_to_info_request')
-  respondToInfoRequest(@Payload() data: { request_id: string; organizer_id: string; response: string }) {
+  respondToInfoRequest(@Payload() data: RespondToInfoPayload) {
     return this.eventService.respondToInfoRequest(data.request_id, data.organizer_id, data.response);
   }
 
   @MessagePattern('event.duplicate')
-  duplicate(@Payload() data: { id: string; organizer_id: string }) {
+  duplicate(@Payload() data: OwnedIdPayload) {
     return this.eventService.duplicate(data.id, data.organizer_id);
   }
 }

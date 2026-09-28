@@ -21,10 +21,11 @@ import { ValidationRequestModule } from './validation-request/validation-request
 import { PlatformConfigModule } from './platform-config/platform-config.module';
 import { EventLifecycleModule } from './scheduler/event-lifecycle.module';
 import { HealthModule } from './health/health.module';
+import { validateEnvironment } from './common/env.validation';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     ScheduleModule.forRoot(),
 
     TypeOrmModule.forRootAsync({

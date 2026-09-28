@@ -1,6 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ValidationRequestService } from './validation-request.service';
+import { EventIdPayload } from '../common/payloads';
 
 // La création (event.request_info) et la réponse (event.respond_to_info_request)
 // passent par EventService — qui vérifie le statut de l'événement / la
@@ -11,7 +12,7 @@ export class ValidationRequestController {
   constructor(private readonly service: ValidationRequestService) {}
 
   @MessagePattern('event.get_validation_requests')
-  getByEvent(@Payload() data: { event_id: string }) {
+  getByEvent(@Payload() data: EventIdPayload) {
     return this.service.getByEvent(data.event_id);
   }
 }

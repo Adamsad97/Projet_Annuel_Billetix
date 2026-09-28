@@ -1,8 +1,9 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CreateTicketTierTypeDto } from './dto/create-ticket-tier-type.dto';
-import { UpdateTicketTierTypeDto } from './dto/update-ticket-tier-type.dto';
 import { TicketTierTypeService } from './ticket-tier-type.service';
+import { IdPayload } from '../common/payloads';
+import { UpdateTicketTierTypePayload } from '../common/module-payloads';
 
 @Controller()
 export class TicketTierTypeController {
@@ -24,12 +25,12 @@ export class TicketTierTypeController {
   }
 
   @MessagePattern('event.ticket_tier_type.update')
-  update(@Payload() data: { id: string; dto: UpdateTicketTierTypeDto }) {
+  update(@Payload() data: UpdateTicketTierTypePayload) {
     return this.service.update(data.id, data.dto);
   }
 
   @MessagePattern('event.ticket_tier_type.delete')
-  remove(@Payload() data: { id: string }) {
+  remove(@Payload() data: IdPayload) {
     return this.service.remove(data.id);
   }
 }

@@ -2,7 +2,8 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
+import { IdPayload } from '../common/payloads';
+import { UpdateCategoryPayload } from '../common/module-payloads';
 
 @Controller()
 export class CategoryController {
@@ -24,12 +25,12 @@ export class CategoryController {
   }
 
   @MessagePattern('event.category.update')
-  update(@Payload() data: { id: string; dto: UpdateCategoryDto }) {
+  update(@Payload() data: UpdateCategoryPayload) {
     return this.categoryService.update(data.id, data.dto);
   }
 
   @MessagePattern('event.category.delete')
-  remove(@Payload() data: { id: string }) {
+  remove(@Payload() data: IdPayload) {
     return this.categoryService.remove(data.id);
   }
 }
