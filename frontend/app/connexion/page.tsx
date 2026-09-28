@@ -3,10 +3,10 @@ import { LoginForm } from "@/components/auth/login-form";
 import { ForceReauth } from "@/components/auth/force-reauth";
 
 // Motif d'une déconnexion automatique (cf. SessionManager), affiché au-dessus
-// du formulaire. Déconnexion pour inactivité : volontairement silencieuse
-// (demande produit), simple retour au formulaire de connexion.
+// du formulaire. Déconnexion pour inactivité ou pour durée maximale de
+// session : volontairement silencieuses (demande produit), simple retour au
+// formulaire de connexion.
 const SESSION_MESSAGES: Record<string, string> = {
-  duree_max: "Par sécurité, une session a une durée limitée, même en restant actif. Veuillez vous reconnecter pour continuer.",
   expiree: "Votre session a expiré. Veuillez vous reconnecter pour continuer.",
 };
 
