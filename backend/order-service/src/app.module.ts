@@ -12,10 +12,11 @@ import { ReminderModule } from './scheduler/reminder.module';
 import { RecommendationModule } from './scheduler/recommendation.module';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
 import { HealthModule } from './health/health.module';
+import { validateEnvironment } from './common/env.validation';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     ScheduleModule.forRoot(),
 
     TypeOrmModule.forRootAsync({

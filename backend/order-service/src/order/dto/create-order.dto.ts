@@ -5,6 +5,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -12,7 +13,7 @@ import { Type } from 'class-transformer';
 import { PaymentMethod } from '../order.entity';
 
 export class OrderItemInputDto {
-  @IsString()
+  @IsUUID()
   ticket_category_id: string;
 
   @IsInt() @Min(1)
@@ -33,10 +34,10 @@ export class OrderItemInputDto {
 }
 
 export class CreateOrderDto {
-  @IsString()
+  @IsUUID()
   buyer_id: string;
 
-  @IsString()
+  @IsUUID()
   event_id: string;
 
   // Token de réservation Redis (obligatoire — anti-race-condition F1)
@@ -60,7 +61,7 @@ export class CreateOrderDto {
   // — voir OrderService.create(). Un champ ici serait une porte de fraude.
 
   // Snapshot événement (transmis depuis api-gateway)
-  @IsString() @IsOptional()
+  @IsUUID() @IsOptional()
   organizer_id?: string;
 
   @IsString() @IsOptional()
@@ -123,7 +124,7 @@ export class CreateOrderDto {
 // de OrderItemInputDto même si leur forme se ressemble aujourd'hui, les deux
 // étapes ayant des cycles de vie et des validations différents.
 export class ReserveStockItemDto {
-  @IsString()
+  @IsUUID()
   ticket_category_id: string;
 
   @IsInt() @Min(1)
@@ -131,10 +132,10 @@ export class ReserveStockItemDto {
 }
 
 export class ReserveStockDto {
-  @IsString()
+  @IsUUID()
   buyer_id: string;
 
-  @IsString()
+  @IsUUID()
   event_id: string;
 
   @IsArray()
@@ -148,10 +149,10 @@ export class ReserveStockDto {
 // par le client : tout est relu depuis l'offre de revente (ticket-service)
 // et l'événement (event-service) — voir OrderService.createFromResale().
 export class CreateResaleOrderDto {
-  @IsString()
+  @IsUUID()
   buyer_id: string;
 
-  @IsString()
+  @IsUUID()
   resale_id: string;
 
   @IsString()
