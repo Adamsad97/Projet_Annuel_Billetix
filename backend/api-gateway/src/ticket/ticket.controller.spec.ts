@@ -552,3 +552,62 @@ describe("TicketController — achat en revente", () => {
     expect(orderClient.send).not.toHaveBeenCalled();
   });
 });
+
+describe("TicketController — finalisation d'une revente (remboursement du vendeur)", () => {
+  const buyer: JwtPayload = { sub: "buyer-2", email: "acheteur@test.com", role: "BUYER" };
+  const soldResale = { id: "resale-1", original_buyer_id: "seller-1", ticket_id: "ticket-1", resale_price: 25 };
+  let orderClient: { send: jest.Mock };
+  let paymentClient: { send: jest.Mock };
+  let adminClient: { send: jest.Mock };
+  let controller: TicketController;
+
+  function build(refund: () => unknown) {
+    const ticketClient = {
+      send: jest.fn((pattern: string) =>
+        pattern === "ticket.complete_resale" ? of({ resale: soldResale, originalOrderId: "order-origin" }) : of({}),
+      ),
+    };
+    orderClient = {
+      send: jest.fn((pattern: string) =>
+        pattern === "order.get" ? of({ order: { buyer_email: "acheteur@test.com", buyer_first_name: "Awa", buyer_last_name: "Diallo" } }) : of({}),
+      ),
+    };
+    paymentClient = {
+      send: jest.fn((pattern: string) => (pattern === "payment.get_by_order" ? of({ status: "PAID" }) : (refund() as never))),
+    };
+    adminClient = { send: jest.fn().mockReturnValue(of({})) };
+    const authClient = { send: jest.fn().mockReturnValue(of(null)) };
+    const userClient = { send: jest.fn().mockReturnValue(of({})) };
+    controller = new TicketController(
+      ticketClient as any,
+      orderClient as any,
+      paymentClient as any,
+      {} as any,
+      { emit: jest.fn() } as any,
+      authClient as any,
+      userClient as any,
+      adminClient as any,
+      {} as TicketsGateway,
+    );
+  }
+
+  it("rembourse seulement le prix de revente et garde la commande d'origine confirmée", async () => {
+    build(() => of({ status: "PARTIALLY_REFUNDED" }));
+    await controller.completeResale(buyer, "resale-1", { order_id: "order-new" });
+
+    expect(paymentClient.send).toHaveBeenCalledWith("payment.refund", { order_id: "order-origin", amount_cents: 2500 });
+    expect(orderClient.send).toHaveBeenCalledWith("order.record_partial_refund", { id: "order-origin", amount_ttc: 25 });
+    expect(orderClient.send).not.toHaveBeenCalledWith("order.mark_refunded", expect.anything());
+  });
+
+  it("signale à l'administration un remboursement échoué sans défaire la revente", async () => {
+    build(() => throwError(() => ({ statusCode: 502, message: "Stripe indisponible" })));
+    await expect(controller.completeResale(buyer, "resale-1", { order_id: "order-new" })).resolves.toMatchObject({ success: true });
+
+    expect(orderClient.send).not.toHaveBeenCalledWith("order.record_partial_refund", expect.anything());
+    expect(adminClient.send).toHaveBeenCalledWith(
+      "admin.log_action",
+      expect.objectContaining({ entity_id: "order-origin", performed_by: "system" }),
+    );
+  });
+});

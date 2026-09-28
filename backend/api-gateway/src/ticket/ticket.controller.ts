@@ -793,21 +793,43 @@ export class TicketController {
       }),
     );
 
-    // 3. Rembourser l'acheteur original
-    await firstValueFrom(
-      this.paymentClient.send("payment.refund", { order_id: originalOrderId }),
-    );
-
-    // Bug corrigé : ce remboursement passait par payment.refund directement
-    // (pas par POST /payments/refund/:id), donc order.mark_refunded n'était
-    // jamais appelé — le paiement passait bien à REFUNDED côté
-    // payment-service, mais la commande originale restait CONFIRMED/PAID
-    // pour toujours côté order-service (incohérence, double comptage de
-    // revenu potentiel). restore_stock: false — le billet a été transféré,
-    // pas annulé : la place reste occupée par le nouvel acheteur.
-    this.orderClient
-      .send("order.mark_refunded", { id: originalOrderId, restore_stock: false })
-      .subscribe({ error: () => undefined });
+    // 3. Rembourser le vendeur du prix de revente de CE billet.
+    // Bug corrigé : le remboursement portait sur toute la commande d'origine
+    // (tous ses billets), et la commande entière était marquée remboursée
+    // alors que ses autres billets restent valables. Désormais : remboursement
+    // partiel du seul prix de revente (plafonné au prix d'achat), sur le
+    // moyen de paiement d'origine ; le reversement de l'organisateur est
+    // réduit d'autant (payment-service), la commande de revente le compensant.
+    const resaleAmount = Number(resale.resale_price);
+    if (resaleAmount > 0) {
+      try {
+        await firstValueFrom(
+          this.paymentClient.send("payment.refund", {
+            order_id: originalOrderId,
+            amount_cents: Math.round(resaleAmount * 100),
+          }),
+        );
+        // La commande d'origine reste confirmée : seul le montant remboursé
+        // est enregistré (déduit des chiffres d'affaires).
+        await firstValueFrom(
+          this.orderClient.send("order.record_partial_refund", { id: originalOrderId, amount_ttc: resaleAmount }),
+        );
+      } catch (err) {
+        // La revente est déjà actée (billet transféré) : on ne la défait pas,
+        // mais le remboursement manquant doit être traité par un admin.
+        const message = (err as { message?: string })?.message ?? String(err);
+        this.logger.error(`Remboursement du vendeur échoué — revente ${resale.id}, commande ${originalOrderId} : ${message}`);
+        this.adminClient
+          .send("admin.log_action", {
+            action: "CUSTOM",
+            entity_type: "ORDER",
+            entity_id: originalOrderId,
+            performed_by: "system",
+            reason: `Revente ${resale.id} : remboursement du vendeur (${resaleAmount.toFixed(2)} €) à effectuer manuellement — ${message}`,
+          })
+          .subscribe({ error: () => undefined });
+      }
+    }
 
     // Notifie le vendeur original — fire-and-forget, ne doit jamais faire
     // échouer la finalisation de la revente elle-même (déjà actée à ce stade).
