@@ -1,5 +1,5 @@
 import { ClassConstructor, plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
+import { validate, ValidationError } from 'class-validator';
 
 /**
  * Validation manuelle (pas de ValidationPipe ici) : un payload PDF invalide
@@ -20,10 +20,14 @@ export async function validatePayload<T extends object>(
     return { valid: true, data: instance };
   }
 
-  const message = errors
-    .map((validationError) =>
-      Object.values(validationError.constraints ?? {}).join(', '),
-    )
-    .join(' | ');
-  return { valid: false, message };
+  return { valid: false, message: describe(errors).join(' | ') };
+}
+
+/** Champs refusés, y compris dans les objets imbriqués (lignes de facture). */
+function describe(errors: ValidationError[], parent = ''): string[] {
+  return errors.flatMap((error) => {
+    const field = parent ? `${parent}.${error.property}` : error.property;
+    const own = Object.values(error.constraints ?? {}).map((constraint) => `${field} : ${constraint}`);
+    return [...own, ...describe(error.children ?? [], field)];
+  });
 }

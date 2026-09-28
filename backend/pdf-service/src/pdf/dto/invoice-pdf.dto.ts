@@ -1,10 +1,16 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
   IsArray,
+  IsDateString,
   IsEmail,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
+  Max,
+  Min,
   ValidateNested,
 } from 'class-validator';
 
@@ -12,33 +18,40 @@ class InvoicePdfItemDto {
   @IsString()
   ticket_category_name: string;
 
-  @IsNumber()
+  @IsInt()
+  @Min(1)
   quantity: number;
 
   @IsNumber()
+  @Min(0)
   unit_price_ht: number;
 
   @IsNumber()
+  @Min(0)
   unit_price_ttc: number;
 
   @IsNumber()
+  @Min(0)
   total_price_ht: number;
 
   @IsNumber()
+  @Min(0)
   total_price_ttc: number;
 }
 
 export class InvoicePdfDto {
-  @IsString()
+  @IsUUID()
   order_id: string;
 
   @IsString()
   reference: string;
 
-  @IsString()
+  @IsDateString()
   paid_at: string;
 
   @IsNumber()
+  @Min(0)
+  @Max(1)
   tva_rate: number;
 
   @IsString()
@@ -67,20 +80,25 @@ export class InvoicePdfDto {
   billing_country: string;
 
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => InvoicePdfItemDto)
   items: InvoicePdfItemDto[];
 
   @IsNumber()
+  @Min(0)
   total_amount_ht: number;
 
   @IsNumber()
+  @Min(0)
   total_amount_ttc: number;
 
   @IsNumber()
+  @Min(0)
   discount_amount: number;
 
   @IsNumber()
+  @Min(0)
   free_ticket_fees: number;
 
   @IsString()

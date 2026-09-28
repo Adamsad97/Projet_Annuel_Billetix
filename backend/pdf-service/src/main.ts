@@ -1,11 +1,16 @@
 import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
+import { RmqPoisonMessageFilter } from './common/filters/rmq-poison-message.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableShutdownHooks();
+  // Filet de sécurité : une erreur qui échapperait au traitement d'un message
+  // (hors validation et nouvelles tentatives gérées dans le contrôleur) ne doit
+  // jamais laisser le message non acquitté et bloquer la file.
+  app.useGlobalFilters(new RmqPoisonMessageFilter());
 
   const healthPort = parseInt(process.env.HEALTH_PORT ?? `${parseInt(process.env.PORT ?? '3008') + 6000}`);
 
@@ -18,7 +23,7 @@ async function bootstrap() {
       noAck: false,
       prefetchCount: 5,
     },
-  });
+  }, { inheritAppConfig: true });
 
   await app.startAllMicroservices();
   await app.listen(healthPort);
