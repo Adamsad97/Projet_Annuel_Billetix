@@ -7,10 +7,11 @@ import { AuditLogModule } from './audit-log/audit-log.module';
 import { PlatformSetting } from './platform-config/platform-config.entity';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
 import { HealthModule } from './health/health.module';
+import { validateEnvironment } from './common/env.validation';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],

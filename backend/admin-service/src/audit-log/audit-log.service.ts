@@ -1,34 +1,43 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Type } from 'class-transformer';
+import { IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsObject, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { Repository } from 'typeorm';
 import { AuditAction, AuditEntityType, AuditLog } from './audit-log.entity';
 
-export interface LogActionDto {
-  action: AuditAction;
-  entity_type: AuditEntityType;
-  entity_id?: string;
-  performed_by: string;
-  performed_by_email?: string;
-  reason?: string;
-  metadata?: Record<string, unknown>;
-  ip_address?: string;
+/**
+ * Action à journaliser (message interne admin.log_action). performed_by est
+ * l'identifiant du compte, ou « system » pour une tâche automatique
+ * (planificateur, envoi d'email, génération de PDF).
+ */
+export class LogActionDto {
+  @IsEnum(AuditAction) action: AuditAction;
+  @IsEnum(AuditEntityType) entity_type: AuditEntityType;
+  // Identifiant de l'entité : UUID, référence, ou clé de paramètre.
+  @IsOptional() @IsString() @MaxLength(200) entity_id?: string;
+  @IsString() @MaxLength(100) performed_by: string;
+  @IsOptional() @IsEmail() performed_by_email?: string;
+  @IsOptional() @IsString() @MaxLength(5000) reason?: string;
+  @IsOptional() @IsObject() metadata?: Record<string, unknown>;
+  @IsOptional() @IsString() @MaxLength(100) ip_address?: string;
 }
 
-export interface GetLogsDto {
-  entity_type?: AuditEntityType;
-  entity_id?: string;
-  performed_by?: string;
-  action?: AuditAction;
+/** Filtres du journal (message interne admin.get_logs). */
+export class GetLogsDto {
+  @IsOptional() @IsEnum(AuditEntityType) entity_type?: AuditEntityType;
+  @IsOptional() @IsString() @MaxLength(200) entity_id?: string;
+  @IsOptional() @IsString() @MaxLength(100) performed_by?: string;
+  @IsOptional() @IsEnum(AuditAction) action?: AuditAction;
   // Recherche libre : email de l'auteur, entité, motif, détails (référence
   // de billet, email du bénéficiaire…), action.
-  q?: string;
+  @IsOptional() @IsString() @MaxLength(200) q?: string;
   // Recherche aussi dans l'adresse IP : réservée au super admin (donnée
   // personnelle), cf. api-gateway redact-ip.
-  search_ip?: boolean;
-  from?: string;
-  to?: string;
-  limit?: number;
-  offset?: number;
+  @IsOptional() @IsBoolean() search_ip?: boolean;
+  @IsOptional() @IsDateString() from?: string;
+  @IsOptional() @IsDateString() to?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(200) limit?: number;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) offset?: number;
 }
 
 @Injectable()

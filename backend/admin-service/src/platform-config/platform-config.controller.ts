@@ -1,6 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PlatformConfigService } from './platform-config.service';
+import { ListSettingsPayload, UpdateSettingPayload } from '../common/payloads';
 
 @Controller()
 export class PlatformConfigController {
@@ -12,12 +13,12 @@ export class PlatformConfigController {
   }
 
   @MessagePattern('admin.list_platform_settings')
-  list(@Payload() data: { actor_role?: string } = {}) {
+  list(@Payload() data: ListSettingsPayload = {}) {
     return this.service.list(data?.actor_role);
   }
 
   @MessagePattern('admin.update_platform_setting')
-  update(@Payload() data: { key: string; value: string; actor_role?: string }) {
+  update(@Payload() data: UpdateSettingPayload) {
     return this.service.update(data.key, data.value, data.actor_role);
   }
 }
