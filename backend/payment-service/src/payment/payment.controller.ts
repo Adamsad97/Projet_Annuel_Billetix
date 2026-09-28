@@ -5,6 +5,7 @@ import { PaypalProvider } from '../providers/paypal.provider';
 import { WaveProvider } from '../providers/wave.provider';
 import { StripeService } from '../stripe/stripe.service';
 import { PaymentService } from './payment.service';
+import { ConnectOnboardingPayload, CreateIntentPayload, OrangeMoneyCallbackPayload, OrderIdPayload, PaypalWebhookPayload, RefundPayload, StripeWebhookPayload, WaveWebhookPayload } from '../common/payloads';
 
 @Controller()
 export class PaymentController {
@@ -25,13 +26,7 @@ export class PaymentController {
   @MessagePattern('payment.create_connect_onboarding_link')
   async createConnectOnboardingLink(
     @Payload()
-    data: {
-      organizer_id: string;
-      email: string;
-      existing_account_id: string | null;
-      refresh_url: string;
-      return_url: string;
-    },
+    data: ConnectOnboardingPayload,
   ) {
     let accountId = data.existing_account_id;
     if (!accountId) {
@@ -53,12 +48,12 @@ export class PaymentController {
   }
 
   @MessagePattern('payment.create_intent')
-  createIntent(@Payload() data: { order_id: string; buyer_id: string; buyer_email: string }) {
+  createIntent(@Payload() data: CreateIntentPayload) {
     return this.paymentService.createIntent(data);
   }
 
   @MessagePattern('payment.confirm_webhook')
-  async confirmFromWebhook(@Payload() data: { payload: string; signature: string }) {
+  async confirmFromWebhook(@Payload() data: StripeWebhookPayload) {
     let event: ReturnType<typeof this.stripe.constructWebhookEvent>;
     try {
       event = this.stripe.constructWebhookEvent(
@@ -128,7 +123,7 @@ export class PaymentController {
    * traitement (idempotent) que le webhook.
    */
   @MessagePattern('payment.sync_stripe_status')
-  async syncStripeStatus(@Payload() data: { order_id: string }) {
+  async syncStripeStatus(@Payload() data: OrderIdPayload) {
     const payment = await this.paymentService.findLatestStripeByOrder(data.order_id);
     if (!payment?.provider_payment_id) {
       return { status: 'unknown' as const };
@@ -157,7 +152,7 @@ export class PaymentController {
 
   @MessagePattern('payment.confirm_paypal_webhook')
   async confirmPaypalWebhook(
-    @Payload() data: { payload: string; headers: Record<string, string> },
+    @Payload() data: PaypalWebhookPayload,
   ) {
     const verified = await this.paypal.verifyWebhookSignature(data.headers, data.payload);
     if (!verified) {
@@ -188,7 +183,7 @@ export class PaymentController {
    */
   @MessagePattern('payment.confirm_orange_money_callback')
   async confirmOrangeMoneyCallback(
-    @Payload() data: { pay_token: string; order_id: string; notif_token: string },
+    @Payload() data: OrangeMoneyCallbackPayload,
   ) {
     const payment = await this.paymentService.confirmOrangeMoneyCallback(
       data.pay_token,
@@ -208,7 +203,7 @@ export class PaymentController {
 
   @MessagePattern('payment.confirm_wave_webhook')
   async confirmWaveWebhook(
-    @Payload() data: { payload: string; signatureHeader: string },
+    @Payload() data: WaveWebhookPayload,
   ) {
     const verified = this.wave.verifyWebhookSignature(data.signatureHeader, data.payload);
     if (!verified) {
@@ -235,12 +230,12 @@ export class PaymentController {
   }
 
   @MessagePattern('payment.get_by_order')
-  getByOrder(@Payload() data: { order_id: string }) {
+  getByOrder(@Payload() data: OrderIdPayload) {
     return this.paymentService.getByOrder(data.order_id);
   }
 
   @MessagePattern('payment.refund')
-  refund(@Payload() data: { order_id: string; amount_cents?: number }) {
+  refund(@Payload() data: RefundPayload) {
     return this.paymentService.refund(data.order_id, data.amount_cents);
   }
 }

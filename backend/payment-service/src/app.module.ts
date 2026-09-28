@@ -12,10 +12,11 @@ import { DisputeModule } from './dispute/dispute.module';
 import { PlatformConfigModule } from './platform-config/platform-config.module';
 import { PayoutSchedulerModule } from './scheduler/payout-scheduler.module';
 import { HealthModule } from './health/health.module';
+import { validateEnvironment } from './common/env.validation';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     ScheduleModule.forRoot(),
 
     TypeOrmModule.forRootAsync({

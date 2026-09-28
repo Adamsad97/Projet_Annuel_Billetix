@@ -1,26 +1,19 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { DisputeService } from './dispute.service';
-import { DisputeReason, DisputeStatus } from './dispute.entity';
+import { BuyerPayload, CreateDisputePayload, IdPayload, OrderIdPayload, ResolveDisputePayload, UpdateDisputeStatusPayload } from '../common/payloads';
 
 @Controller()
 export class DisputeController {
   constructor(private readonly disputeService: DisputeService) {}
 
   @MessagePattern('payment.create_dispute')
-  create(@Payload() data: {
-    payment_id: string;
-    order_id: string;
-    buyer_id: string;
-    reason: DisputeReason;
-    description?: string;
-    stripe_dispute_id?: string;
-  }) {
+  create(@Payload() data: CreateDisputePayload) {
     return this.disputeService.create(data);
   }
 
   @MessagePattern('payment.get_dispute')
-  getById(@Payload() data: { id: string }) {
+  getById(@Payload() data: IdPayload) {
     return this.disputeService.getById(data.id);
   }
 
@@ -35,27 +28,22 @@ export class DisputeController {
   }
 
   @MessagePattern('payment.get_disputes_by_order')
-  getByOrder(@Payload() data: { order_id: string }) {
+  getByOrder(@Payload() data: OrderIdPayload) {
     return this.disputeService.getByOrder(data.order_id);
   }
 
   @MessagePattern('payment.get_disputes_by_buyer')
-  getByBuyer(@Payload() data: { buyer_id: string }) {
+  getByBuyer(@Payload() data: BuyerPayload) {
     return this.disputeService.getByBuyer(data.buyer_id);
   }
 
   @MessagePattern('payment.update_dispute_status')
-  updateStatus(@Payload() data: { id: string; status: DisputeStatus }) {
+  updateStatus(@Payload() data: UpdateDisputeStatusPayload) {
     return this.disputeService.updateStatus(data.id, data.status);
   }
 
   @MessagePattern('payment.resolve_dispute')
-  resolve(@Payload() data: {
-    id: string;
-    status: DisputeStatus.WON | DisputeStatus.LOST | DisputeStatus.CLOSED;
-    resolved_by: string;
-    resolution_notes?: string;
-  }) {
+  resolve(@Payload() data: ResolveDisputePayload) {
     return this.disputeService.resolve(data.id, data);
   }
 }
