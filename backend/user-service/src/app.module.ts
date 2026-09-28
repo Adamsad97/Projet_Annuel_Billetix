@@ -7,10 +7,11 @@ import { BuyerModule } from './buyer/buyer.module';
 import { OrganizerProfile } from './organizer/organizer-profile.entity';
 import { OrganizerModule } from './organizer/organizer.module';
 import { HealthModule } from './health/health.module';
+import { validateEnvironment } from './common/env.validation';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
