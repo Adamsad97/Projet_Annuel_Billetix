@@ -47,6 +47,10 @@ export class MarkRefundedPayload extends IdPayload {
   @IsOptional() @IsBoolean() restore_stock?: boolean;
 }
 
+export class PartialRefundPayload extends IdPayload {
+  @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0.01) amount_ttc: number;
+}
+
 export class SetInvoiceUrlPayload extends IdPayload {
   @IsString() @MaxLength(1000) url: string;
 }

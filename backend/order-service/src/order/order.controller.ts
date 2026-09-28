@@ -9,6 +9,7 @@ import {
   EventIdPayload,
   IdPayload,
   MarkRefundedPayload,
+  PartialRefundPayload,
   RecentRefundsPayload,
   ReleaseReservationPayload,
   SalesTrendPayload,
@@ -96,6 +97,11 @@ export class OrderController {
   @MessagePattern('order.mark_refunded')
   markRefunded(@Payload() data: MarkRefundedPayload) {
     return this.orderService.markRefunded(data.id, data.restore_stock ?? true);
+  }
+
+  @MessagePattern('order.record_partial_refund')
+  recordPartialRefund(@Payload() data: PartialRefundPayload) {
+    return this.orderService.recordPartialRefund(data.id, data.amount_ttc);
   }
 
   @MessagePattern('order.set_invoice_url')

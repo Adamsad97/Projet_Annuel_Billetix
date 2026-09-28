@@ -168,6 +168,34 @@ describe('OrderService', () => {
     });
   });
 
+  describe('recordPartialRefund — billet revendu', () => {
+    it('garde la commande confirmée et enregistre seulement le montant remboursé', async () => {
+      orderRepo.findOne.mockResolvedValue({
+        id: 'order-1',
+        status: OrderStatus.CONFIRMED,
+        total_amount_ttc: '60.00',
+        refunded_amount: '0.00',
+      });
+
+      const result = await service.recordPartialRefund('order-1', 30);
+
+      expect(result.status).toBe(OrderStatus.CONFIRMED);
+      expect(result.refunded_amount).toBe(30);
+      expect(reservationService.restoreItems).not.toHaveBeenCalled();
+    });
+
+    it('cumule les remboursements partiels successifs', async () => {
+      orderRepo.findOne.mockResolvedValue({ id: 'order-1', status: OrderStatus.CONFIRMED, total_amount_ttc: '60.00', refunded_amount: '30.00' });
+      await expect(service.recordPartialRefund('order-1', 30)).resolves.toMatchObject({ refunded_amount: 60 });
+    });
+
+    it('refuse de rembourser plus que le total de la commande', async () => {
+      orderRepo.findOne.mockResolvedValue({ id: 'order-1', status: OrderStatus.CONFIRMED, total_amount_ttc: '60.00', refunded_amount: '40.00' });
+      await expect(service.recordPartialRefund('order-1', 30)).rejects.toMatchObject({ error: expect.objectContaining({ statusCode: 400 }) });
+      expect(orderRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
   describe('markRefunded — idempotence (défense en profondeur)', () => {
     it('ne restaure pas le stock une seconde fois si la commande est déjà remboursée', async () => {
       orderRepo.findOne.mockResolvedValue({

@@ -114,6 +114,12 @@ export class Order {
   @Column({ nullable: true })
   refunded_at: Date | null;
 
+  // Montant TTC déjà remboursé sans annuler la commande (ex. un billet
+  // revendu : son vendeur récupère le prix de revente, les autres billets de
+  // la commande restent valables). Déduit des chiffres d'affaires.
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  refunded_amount: number;
+
   @Column({ nullable: true })
   invoice_url: string | null;
 

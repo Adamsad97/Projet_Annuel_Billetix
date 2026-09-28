@@ -372,10 +372,12 @@ export class OrderService {
     const row = await this.orderRepo
       .createQueryBuilder('o')
       .select('COUNT(*)', 'orders_count')
-      .addSelect('COALESCE(SUM(o.total_amount_ht), 0)', 'revenue_ht')
-      .addSelect('COALESCE(SUM(o.total_amount_ttc), 0)', 'revenue_ttc')
-      .addSelect('COALESCE(SUM(o.total_commission), 0)', 'total_commission')
-      .addSelect('COALESCE(SUM(o.net_organizer_amount), 0)', 'net_organizer_amount')
+      // Part remboursée d'une commande (billet revendu) déduite au prorata :
+      // le billet est compté dans la commande de revente, pas deux fois.
+      .addSelect('COALESCE(SUM(o.total_amount_ht * COALESCE((1 - COALESCE(o.refunded_amount, 0) / NULLIF(o.total_amount_ttc, 0)), 1)), 0)', 'revenue_ht')
+      .addSelect('COALESCE(SUM(o.total_amount_ttc - COALESCE(o.refunded_amount, 0)), 0)', 'revenue_ttc')
+      .addSelect('COALESCE(SUM(o.total_commission * COALESCE((1 - COALESCE(o.refunded_amount, 0) / NULLIF(o.total_amount_ttc, 0)), 1)), 0)', 'total_commission')
+      .addSelect('COALESCE(SUM(o.net_organizer_amount * COALESCE((1 - COALESCE(o.refunded_amount, 0) / NULLIF(o.total_amount_ttc, 0)), 1)), 0)', 'net_organizer_amount')
       .where('o.event_id = :eventId', { eventId })
       .andWhere('o.status IN (:...statuses)', {
         statuses: [OrderStatus.CONFIRMED, OrderStatus.TICKETS_SENT],
@@ -401,9 +403,9 @@ export class OrderService {
     const row = await this.orderRepo
       .createQueryBuilder('o')
       .select('COUNT(*)', 'orders_count')
-      .addSelect('COALESCE(SUM(o.total_amount_ht), 0)', 'revenue_ht')
-      .addSelect('COALESCE(SUM(o.total_amount_ttc), 0)', 'revenue_ttc')
-      .addSelect('COALESCE(SUM(o.total_commission), 0)', 'total_commission')
+      .addSelect('COALESCE(SUM(o.total_amount_ht * COALESCE((1 - COALESCE(o.refunded_amount, 0) / NULLIF(o.total_amount_ttc, 0)), 1)), 0)', 'revenue_ht')
+      .addSelect('COALESCE(SUM(o.total_amount_ttc - COALESCE(o.refunded_amount, 0)), 0)', 'revenue_ttc')
+      .addSelect('COALESCE(SUM(o.total_commission * COALESCE((1 - COALESCE(o.refunded_amount, 0) / NULLIF(o.total_amount_ttc, 0)), 1)), 0)', 'total_commission')
       .where('o.status IN (:...statuses)', {
         statuses: [OrderStatus.CONFIRMED, OrderStatus.TICKETS_SENT],
       })
@@ -436,7 +438,7 @@ export class OrderService {
       WITH orders_agg AS (
         SELECT date_trunc('day', paid_at) AS day,
                COUNT(*) AS orders_count,
-               COALESCE(SUM(total_amount_ttc), 0) AS revenue_ttc
+               COALESCE(SUM(total_amount_ttc - COALESCE(refunded_amount, 0)), 0) AS revenue_ttc
         FROM orders.orders
         WHERE status IN ('CONFIRMED', 'TICKETS_SENT') AND paid_at >= $1 AND paid_at <= $2
         GROUP BY date_trunc('day', paid_at)
@@ -640,6 +642,26 @@ export class OrderService {
     }
 
     return saved;
+  }
+
+  /**
+   * Remboursement partiel sans annulation (billet revendu) : la commande
+   * reste confirmée, ses autres billets restent valables ; seul le montant
+   * remboursé est enregistré, et déduit des chiffres d'affaires.
+   */
+  async recordPartialRefund(id: string, amountTtc: number): Promise<Order> {
+    const order = await this.orderRepo.findOne({ where: { id } });
+    if (!order) throw new RpcException({ statusCode: 404, message: 'Commande introuvable' });
+    const already = Number(order.refunded_amount ?? 0);
+    const total = Number(order.total_amount_ttc);
+    if (amountTtc <= 0 || already + amountTtc > total + 0.01) {
+      throw new RpcException({
+        statusCode: 400,
+        message: `Montant de remboursement invalide (déjà remboursé : ${already} €, total : ${total} €)`,
+      });
+    }
+    order.refunded_amount = parseFloat((already + amountTtc).toFixed(2));
+    return this.orderRepo.save(order);
   }
 
   async setInvoiceUrl(id: string, url: string): Promise<Order> {
