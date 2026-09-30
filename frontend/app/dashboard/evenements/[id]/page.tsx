@@ -40,6 +40,7 @@ import type { ApiTicket } from "@/lib/api/tickets";
 import { ApiError } from "@/lib/api/http-error";
 import { eventPath } from "@/lib/format/event-path";
 import { NonProfitResubmit } from "@/components/dashboard/non-profit-resubmit";
+import { EventAgents } from "@/components/dashboard/event-agents";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
@@ -463,6 +464,10 @@ export default function DashboardEventDetailPage({
                     eventCategory={eventCategories.find((category) => category.code === event.category)}
                     payout={payout}
                   />
+
+                  {["PUBLISHED", "PENDING_VALIDATION", "SUSPENDED", "TERMINATED"].includes(event.status) ? (
+                    <EventAgents eventId={event.id} />
+                  ) : null}
 
                   <h2 className="mb-4 text-lg font-bold text-ink-1">Participants</h2>
                   <AttendeesExplorer
