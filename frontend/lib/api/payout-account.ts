@@ -17,6 +17,8 @@ export interface ApiPayoutAccount {
   /** Compte Google/Facebook sans mot de passe : une connexion récente suffit. */
   has_password: boolean;
   iban_change_payout_hold_hours: number;
+  /** Compte sans mot de passe : délai après connexion pour modifier l'IBAN. */
+  sensitive_action_reauth_minutes: number;
   /** Reversements suspendus après un changement d'IBAN, jusqu'à cette date. */
   payouts_held_until: string | null;
 }

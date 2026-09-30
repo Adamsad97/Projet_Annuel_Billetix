@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { postLoginPath, rememberOAuthNext } from "@/lib/auth/post-login";
 import { FormEvent, useState } from "react";
 import { PasswordInput } from "@/components/ui/password-input";
 import { isAuthSession, loginUser, resendVerificationEmail } from "@/lib/api/auth";
@@ -25,16 +26,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1
 // Après connexion : la page demandée (?next=) ou l'accueil, pour tous les
 // rôles — un admin y retrouve « Profil » et « Back-office » dans la barre
 // de navigation (demande produit). L'achat reste impossible pour lui.
-function postLoginPath(next?: string): string {
-  // Bug corrigé : ?next= (posé par les pages réservées et le bouton
-  // « Réserver ») était ignoré — retour systématique à l'accueil. Seuls les
-  // chemins internes sont suivis (jamais "//domaine" : redirection ouverte).
-  if (next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/connexion")) {
-    return next;
-  }
-  return "/";
-}
-
 export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; next?: string } = {}) {
   const router = useRouter();
   // Décoché par défaut : sur un ordinateur partagé ou prêté, la session ne
@@ -200,6 +191,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
             Facebook, une requête XHR ne le permettrait pas. */}
         <a
           href={`${API_URL}/auth/google`}
+          onClick={() => rememberOAuthNext(next)}
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-hairline-2 bg-hairline-1 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
         >
           <span className="font-bold">G</span>
@@ -207,6 +199,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
         </a>
         <a
           href={`${API_URL}/auth/facebook`}
+          onClick={() => rememberOAuthNext(next)}
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-hairline-2 bg-hairline-1 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
         >
           <span className="font-bold">f</span>

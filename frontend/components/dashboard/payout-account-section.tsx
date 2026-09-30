@@ -9,6 +9,7 @@ import {
   type PayoutMethod,
 } from "@/lib/api/payout-account";
 import { ApiError } from "@/lib/api/http-error";
+import { reauthUrl } from "@/lib/auth/post-login";
 import { longDateTime } from "@/lib/format/dates";
 import {
   IBAN_LENGTHS,
@@ -50,6 +51,8 @@ export function PayoutAccountSection() {
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  // Compte Google/Facebook : connexion trop ancienne pour modifier l'IBAN.
+  const [reauthRequired, setReauthRequired] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [methodError, setMethodError] = useState<string | null>(null);
   const [switching, setSwitching] = useState(false);
@@ -85,6 +88,7 @@ export function PayoutAccountSection() {
     if (!account) return;
     setSaving(true);
     setFormError(null);
+    setReauthRequired(false);
     setNotice(null);
     try {
       const result = await updateIban({
@@ -108,13 +112,11 @@ export function PayoutAccountSection() {
       setIban("");
       setPassword("");
     } catch (err) {
-      setFormError(
-        err instanceof ApiError
-          ? err.code === "REAUTH_REQUIRED"
-            ? "Pour modifier votre IBAN, déconnectez-vous puis reconnectez-vous, et recommencez aussitôt."
-            : err.message
-          : "Enregistrement impossible, veuillez réessayer.",
-      );
+      if (err instanceof ApiError && err.code === "REAUTH_REQUIRED") {
+        setReauthRequired(true);
+      } else {
+        setFormError(err instanceof ApiError ? err.message : "Enregistrement impossible, veuillez réessayer.");
+      }
     } finally {
       setSaving(false);
     }
@@ -130,6 +132,11 @@ export function PayoutAccountSection() {
     if (raw.length < iban.length && compact(raw) === compact(iban) && caret > 0) {
       raw = raw.slice(0, caret - 1) + raw.slice(caret);
       caret -= 1;
+    }
+    // Saisie commencée par les chiffres : le code du pays choisi est ajouté devant.
+    if (/^[0-9]/.test(compact(raw))) {
+      raw = country + raw;
+      caret += country.length;
     }
     // IBAN collé ou tapé avec un autre code pays : la liste suit.
     const typedCountry = compact(raw).slice(0, 2).toUpperCase();
@@ -182,6 +189,17 @@ export function PayoutAccountSection() {
                 affiché en entier.
               </p>
               {formError ? <FormError className="">{formError}</FormError> : null}
+              {reauthRequired ? (
+                <Alert tone="warning">
+                  <p>
+                    Votre connexion date de plus de {account.sensitive_action_reauth_minutes} minutes. Reconnectez-vous
+                    avec Google ou Facebook : vous reviendrez ici pour enregistrer votre IBAN.
+                  </p>
+                  <a href={reauthUrl("/dashboard/paiements")} className={buttonClass("primary", "mt-3 inline-flex rounded-full px-4 py-2 text-sm")}>
+                    Me reconnecter
+                  </a>
+                </Alert>
+              ) : null}
               <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">
                 Titulaire du compte
                 <input
@@ -241,8 +259,11 @@ export function PayoutAccountSection() {
                 </label>
               ) : (
                 <p className="text-xs text-ink-5">
-                  Votre compte utilise une connexion Google ou Facebook : une connexion récente est exigée pour
-                  modifier votre IBAN.
+                  Votre compte utilise une connexion Google ou Facebook : l&apos;IBAN ne peut être enregistré que
+                  dans les {account.sensitive_action_reauth_minutes} minutes suivant votre connexion.{" "}
+                  <a href={reauthUrl("/dashboard/paiements")} className="font-medium text-link hover:text-link-hover">
+                    Me reconnecter maintenant
+                  </a>
                 </p>
               )}
               {account.has_iban ? (

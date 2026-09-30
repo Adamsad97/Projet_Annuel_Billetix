@@ -19,6 +19,7 @@ import {
 } from "@/lib/api/auth";
 import { ageInYears, underageMessage } from "@/lib/auth/age";
 import { saveSession } from "@/lib/auth/session";
+import { consumeOAuthNext } from "@/lib/auth/post-login";
 import { useRegistrationPolicy } from "@/lib/auth/use-registration-policy";
 import { ApiError } from "@/lib/api/http-error";
 import { FormError } from "@/components/ui/alert";
@@ -27,11 +28,8 @@ import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
 
-// Après connexion Google/Facebook : l'accueil pour tous les rôles, comme
-// login-form.tsx (un admin y retrouve « Profil » et « Back-office »).
-function postLoginPath(): string {
-  return "/";
-}
+// Après connexion Google/Facebook : la page demandée avant de partir chez
+// Google (mémorisée par login-form.tsx), sinon l'accueil.
 
 // Bug corrigé : useSearchParams() hors <Suspense> faisait échouer
 // `next build` (prérendu impossible) — invisible en `next dev`.
@@ -82,7 +80,7 @@ function OAuthCallbackContent() {
     // Session limitée à l'onglet, comme la connexion classique sans « Se
     // souvenir de moi » (décochée par défaut) : pas de choix proposé ici.
     saveSession(result, false);
-    router.push(postLoginPath());
+    router.push(consumeOAuthNext());
   }
 
   useEffect(() => {
@@ -131,7 +129,7 @@ function OAuthCallbackContent() {
     try {
       const session = await verifyOAuth2fa(pendingToken, twoFactorCode);
       saveSession(session, false);
-      router.push(postLoginPath());
+      router.push(consumeOAuthNext());
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Code invalide, veuillez réessayer.",
