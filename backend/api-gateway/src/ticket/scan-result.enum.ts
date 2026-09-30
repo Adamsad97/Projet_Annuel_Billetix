@@ -7,4 +7,9 @@ export enum ScanResult {
   SUPERSEDED = "SUPERSEDED",
   EXPIRED = "EXPIRED",
   STATIC_REFUSED = "STATIC_REFUSED",
+  // Événement annulé, suspendu, masqué ou non publié.
+  EVENT_UNAVAILABLE = "EVENT_UNAVAILABLE",
+  // Hors de la fenêtre de contrôle (réglages admin).
+  TOO_EARLY = "TOO_EARLY",
+  TOO_LATE = "TOO_LATE",
 }
