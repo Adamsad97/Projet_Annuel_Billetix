@@ -80,6 +80,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
     super_admin_only: true,
     keys: [
       'payout_delay_days',
+      'iban_change_payout_hold_hours',
       'payout_early_request_min_days_after_event',
       'dispute_alert_threshold',
       'dispute_payout_block_max_days',
@@ -100,7 +101,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
   {
     id: 'legal',
     super_admin_only: true,
-    keys: ['platform_legal_name', 'platform_siret', 'platform_vat_number', 'platform_address'],
+    keys: ['platform_legal_name', 'platform_siret', 'platform_vat_number', 'platform_address', 'platform_iban', 'platform_bic'],
   },
 ];
 

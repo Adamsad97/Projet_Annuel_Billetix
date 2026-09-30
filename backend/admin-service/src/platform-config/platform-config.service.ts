@@ -12,6 +12,9 @@ export interface PlatformConfig {
   commission_large_event_percent: number;
   large_event_threshold: number;
   payout_delay_days: number;
+  iban_change_payout_hold_hours: number;
+  platform_iban: string;
+  platform_bic: string;
   stripe_fee_percent: number;
   stripe_fee_fixed_eur: number;
   paypal_fee_percent: number;
@@ -73,6 +76,7 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'commission_large_event_percent', value: '8',             type: 'number',  description: 'Commission grande jauge (> seuil) (%)' },
   { key: 'large_event_threshold',          value: '1000',          type: 'number',  description: 'Seuil de places pour la commission dégressives' },
   { key: 'payout_delay_days',              value: '5',             type: 'number',  description: 'Délai de reversement en jours ouvrés après l\'événement' },
+  { key: 'iban_change_payout_hold_hours',  value: '72',            type: 'number',  description: 'Reversements suspendus après un changement d\'IBAN (heures), le temps que l\'organisateur réagisse à l\'email d\'alerte' },
   { key: 'stripe_fee_percent',             value: '2.9',           type: 'number',  description: 'Taux de frais Stripe (%)' },
   { key: 'stripe_fee_fixed_eur',           value: '0.30',          type: 'number',  description: 'Frais fixe Stripe par transaction (€)' },
   { key: 'paypal_fee_percent',             value: '3.4',           type: 'number',  description: 'Taux de frais PayPal (%)' },
@@ -90,6 +94,8 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'platform_siret',                 value: '',              type: 'string',  description: 'Numéro SIRET de la plateforme (en-tête facture)' },
   { key: 'platform_vat_number',            value: '',              type: 'string',  description: 'Numéro de TVA intracommunautaire de la plateforme' },
   { key: 'platform_address',               value: '',              type: 'string',  description: 'Adresse légale de la plateforme (en-tête facture)' },
+  { key: 'platform_iban',                  value: '',              type: 'string',  description: 'IBAN du compte de la plateforme, émetteur des virements SEPA aux organisateurs' },
+  { key: 'platform_bic',                   value: '',              type: 'string',  description: 'BIC de la banque de la plateforme (fichier de virements SEPA)' },
   { key: 'dispute_alert_threshold',        value: '5',             type: 'number',  description: 'Nombre de litiges ouverts déclenchant une alerte admin' },
   { key: 'refund_alert_threshold_24h',     value: '10',            type: 'number',  description: 'Nombre de remboursements sur 24h déclenchant une alerte "remboursements massifs"' },
   { key: 'email_max_retry_attempts',       value: '3',             type: 'number',  description: 'Nombre de tentatives d\'envoi d\'un email avant abandon définitif' },
@@ -149,6 +155,7 @@ export class PlatformConfigService implements OnModuleInit {
       commission_large_event_percent: parseFloat(map.commission_large_event_percent ?? '8'),
       large_event_threshold:          parseInt(map.large_event_threshold ?? '1000'),
       payout_delay_days:              parseInt(map.payout_delay_days ?? '5'),
+      iban_change_payout_hold_hours:  parseInt(map.iban_change_payout_hold_hours ?? '72'),
       stripe_fee_percent:             parseFloat(map.stripe_fee_percent ?? '2.9'),
       stripe_fee_fixed_eur:           parseFloat(map.stripe_fee_fixed_eur ?? '0.30'),
       paypal_fee_percent:             parseFloat(map.paypal_fee_percent ?? '3.4'),
@@ -166,6 +173,8 @@ export class PlatformConfigService implements OnModuleInit {
       platform_siret:                 map.platform_siret ?? '',
       platform_vat_number:            map.platform_vat_number ?? '',
       platform_address:               map.platform_address ?? '',
+      platform_iban:                  map.platform_iban ?? '',
+      platform_bic:                   map.platform_bic ?? '',
       dispute_alert_threshold:        parseInt(map.dispute_alert_threshold ?? '5'),
       refund_alert_threshold_24h:     parseInt(map.refund_alert_threshold_24h ?? '10'),
       email_max_retry_attempts:       parseInt(map.email_max_retry_attempts ?? '3'),
