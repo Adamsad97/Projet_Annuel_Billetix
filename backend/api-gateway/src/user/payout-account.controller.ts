@@ -73,6 +73,7 @@ export class PayoutAccountController {
       ...account,
       has_password,
       iban_change_payout_hold_hours: config.iban_change_payout_hold_hours,
+      sensitive_action_reauth_minutes: config.sensitive_action_reauth_minutes,
       payouts_held_until: this.heldUntil(account.iban_updated_at, config.iban_change_payout_hold_hours),
     };
   }
