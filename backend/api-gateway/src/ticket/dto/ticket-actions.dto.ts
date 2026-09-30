@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -74,4 +75,17 @@ export class AssignAgentDto {
   last_name: string;
 
   @ApiPropertyOptional() @IsOptional() @IsBoolean() is_supervisor?: boolean;
+}
+
+/** Invitation groupée d'agents de contrôle (plafond technique par envoi). */
+export const AGENTS_BULK_MAX = 20;
+
+export class AssignAgentsBulkDto {
+  @ApiProperty({ type: [AssignAgentDto] })
+  @IsArray()
+  @ArrayMinSize(1, { message: "Ajoutez au moins un agent." })
+  @ArrayMaxSize(AGENTS_BULK_MAX, { message: `${AGENTS_BULK_MAX} agents au maximum par envoi.` })
+  @ValidateNested({ each: true })
+  @Type(() => AssignAgentDto)
+  agents: AssignAgentDto[];
 }

@@ -32,7 +32,8 @@ import { GiftTicketDto } from "./dto/gift-ticket.dto";
 import { RequestTransferRevertDto } from "./dto/transfer-revert.dto";
 import { ScanResult } from "./scan-result.enum";
 import { ReasonDto } from "../common/dto/common.dto";
-import { AssignAgentDto, EventRefDto, OrderRefDto, RequestResaleDto, ScanTicketDto, SyncOfflineScansDto } from "./dto/ticket-actions.dto";
+import { AssignAgentDto,
+  AssignAgentsBulkDto, EventRefDto, OrderRefDto, RequestResaleDto, ScanTicketDto, SyncOfflineScansDto } from "./dto/ticket-actions.dto";
 import { BillingDto } from "../order/dto/order.dto";
 import { UuidPipe } from "../common/pipes/uuid.pipe";
 import { EventOwner } from "../common/guards/event-owner.guard";
@@ -1120,6 +1121,74 @@ export class TicketController {
     @Param("eventId", UuidPipe) eventId: string,
     @Body() dto: AssignAgentDto,
   ) {
+    const context = await this.agentInvitationContext(user.sub, eventId);
+    return this.inviteOneAgent(user.sub, eventId, dto, context);
+  }
+
+  /**
+   * Invitation groupée : chaque agent est traité indépendamment — une
+   * adresse refusée n'empêche pas les autres. Résultat ligne par ligne.
+   */
+  @Post("event/:eventId/agents/bulk")
+  @Roles("ORGANIZER")
+  @EventOwner({ param: "eventId" })
+  @ApiOperation({ summary: "Inviter plusieurs agents de contrôle en une fois (ORGANIZER)" })
+  async assignAgentsBulk(
+    @CurrentUser() user: JwtPayload,
+    @Param("eventId", UuidPipe) eventId: string,
+    @Body() dto: AssignAgentsBulkDto,
+  ) {
+    const context = await this.agentInvitationContext(user.sub, eventId);
+    const results: Array<{ email: string; status: "invited" | "assigned" | "error"; message?: string }> = [];
+    const seen = new Set<string>();
+    for (const agent of dto.agents) {
+      const email = agent.email.toLowerCase();
+      if (seen.has(email)) {
+        results.push({ email: agent.email, status: "error", message: "Adresse en double dans la liste." });
+        continue;
+      }
+      seen.add(email);
+      try {
+        const invited = await this.inviteOneAgent(user.sub, eventId, agent, context);
+        results.push({ email: agent.email, status: invited.account_created ? "invited" : "assigned" });
+      } catch (err) {
+        const message =
+          (err as { response?: { message?: string } })?.response?.message ??
+          (err as { message?: string })?.message ??
+          "Invitation impossible.";
+        results.push({ email: agent.email, status: "error", message: String(message) });
+      }
+    }
+    return { results };
+  }
+
+  /** Événement et nom de l'organisateur, repris dans l'email d'invitation. */
+  private async agentInvitationContext(organizerId: string, eventId: string) {
+    const [event, organizerProfile, organizer] = await Promise.all([
+      firstValueFrom(
+        this.eventClient.send<{ title: string; start_date: string; timezone?: string }>("event.get", { id: eventId }),
+      ),
+      firstValueFrom(
+        this.userClient.send<{ display_name?: string } | null>("user.get_organizer_profile", { user_id: organizerId }),
+      ).catch(() => null),
+      firstValueFrom(
+        this.authClient.send<{ first_name: string; last_name: string }>("auth.get_user", { id: organizerId }),
+      ).catch(() => null),
+    ]);
+    return {
+      event_name: event.title,
+      event_date: formatEventDate(event.start_date, event.timezone),
+      organizer_name:
+        organizerProfile?.display_name ?? (organizer ? `${organizer.first_name} ${organizer.last_name}` : "L'organisateur"),
+    };
+  }
+
+  private async inviteOneAgent(
+    organizerId: string,
+    eventId: string,
+    dto: AssignAgentDto,
+    context: { event_name: string; event_date: string; organizer_name: string },
+  ): Promise<{ user_id: string; account_created: boolean }> {
     // Déjà affecté : refus avant tout email.
     const existing = await firstValueFrom(
       this.authClient.send<{ id: string } | null>("auth.find_by_email", { email: dto.email }),
@@ -1133,27 +1202,12 @@ export class TicketController {
       }
     }
 
-    const [event, organizerProfile, organizer] = await Promise.all([
-      firstValueFrom(
-        this.eventClient.send<{ title: string; start_date: string; timezone?: string }>("event.get", { id: eventId }),
-      ),
-      firstValueFrom(
-        this.userClient.send<{ display_name?: string } | null>("user.get_organizer_profile", { user_id: user.sub }),
-      ).catch(() => null),
-      firstValueFrom(
-        this.authClient.send<{ first_name: string; last_name: string }>("auth.get_user", { id: user.sub }),
-      ).catch(() => null),
-    ]);
-
     const invited = await firstValueFrom(
       this.authClient.send<{ user_id: string; created: boolean }>("auth.invite_agent", {
         email: dto.email,
         first_name: dto.first_name,
         last_name: dto.last_name,
-        event_name: event.title,
-        event_date: formatEventDate(event.start_date, event.timezone),
-        organizer_name:
-          organizerProfile?.display_name ?? (organizer ? `${organizer.first_name} ${organizer.last_name}` : "L'organisateur"),
+        ...context,
       }),
     );
 
@@ -1161,7 +1215,7 @@ export class TicketController {
       this.ticketClient.send("ticket.assign_agent", {
         user_id: invited.user_id,
         event_id: eventId,
-        assigned_by: user.sub,
+        assigned_by: organizerId,
         is_supervisor: dto.is_supervisor,
       }),
     );
