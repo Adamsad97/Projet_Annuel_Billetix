@@ -6,6 +6,8 @@ import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { StripeService } from '../stripe/stripe.service';
 import { Payout, PayoutStatus } from './payout.entity';
 
+const round2 = (value: number) => Math.round(value * 100) / 100;
+
 @Injectable()
 export class PayoutService {
   constructor(
@@ -21,10 +23,12 @@ export class PayoutService {
     gross_amount: number;
     commission_amount: number;
     payment_fees_amount: number;
+    free_ticket_fees_amount?: number;
     event_end_at?: string;
   }): Promise<Payout> {
     const config = await this.platformConfig.get();
-    const net = data.gross_amount - data.commission_amount - data.payment_fees_amount;
+    const freeTicketFees = data.free_ticket_fees_amount ?? 0;
+    const net = data.gross_amount - data.commission_amount - data.payment_fees_amount - freeTicketFees;
 
     const base = data.event_end_at ? new Date(data.event_end_at) : new Date();
     // Bug corrigé : le CDC §7.2 exige explicitement des jours OUVRÉS
@@ -42,6 +46,7 @@ export class PayoutService {
         gross_amount: data.gross_amount,
         commission_amount: data.commission_amount,
         payment_fees_amount: data.payment_fees_amount,
+        free_ticket_fees_amount: freeTicketFees,
         net_amount: parseFloat(net.toFixed(2)),
         scheduled_at: scheduled,
         event_end_at: data.event_end_at ? new Date(data.event_end_at) : null,
@@ -80,8 +85,10 @@ export class PayoutService {
       );
       payout.gross_amount = newGross;
       payout.commission_amount = newCommission;
+      // Frais Stripe (jamais rendus par Stripe) et frais billets gratuits
+      // restent à la charge de l'organisateur ; la commission est rendue.
       payout.net_amount = parseFloat(
-        (newGross - newCommission - Number(payout.payment_fees_amount)).toFixed(2),
+        (newGross - newCommission - Number(payout.payment_fees_amount) - Number(payout.free_ticket_fees_amount ?? 0)).toFixed(2),
       );
       await this.repo.save(payout);
       return;
@@ -291,29 +298,98 @@ export class PayoutService {
       .getMany();
   }
 
+  /**
+   * Montants dus par l'organisateur, échus et non suspendus (frais de billets
+   * gratuits, remboursements survenus après un versement), du plus ancien au
+   * plus récent.
+   */
+  async getOutstandingDebts(organizerId: string): Promise<Payout[]> {
+    const pending = await this.repo.find({
+      where: { organizer_id: organizerId, status: PayoutStatus.PENDING, on_hold_for_postponement: false },
+      order: { created_at: 'ASC' },
+    });
+    const now = Date.now();
+    return pending.filter((payout) => Number(payout.net_amount) < 0 && new Date(payout.scheduled_at).getTime() <= now);
+  }
+
+  /**
+   * Versement d'un reversement, après compensation des montants dus par
+   * l'organisateur : seul le reste est viré. Un montant dû couvert en partie
+   * est scindé (part réglée soldée, reste toujours dû), pour que l'historique
+   * des versements reste juste. Virement refusé : rien n'est compensé.
+   */
   async process(id: string, stripeAccountId: string): Promise<Payout> {
     const payout = await this.getById(id);
     if (payout.status !== PayoutStatus.PENDING) {
       throw new RpcException({ statusCode: 400, message: 'Reversement non éligible au traitement' });
     }
 
+    const net = Number(payout.net_amount);
+    let available = net;
+    const settlements: Array<{ debt: Payout; covered: number }> = [];
+    for (const debt of await this.getOutstandingDebts(payout.organizer_id)) {
+      if (available <= 0) break;
+      const covered = round2(Math.min(available, -Number(debt.net_amount)));
+      settlements.push({ debt, covered });
+      available = round2(available - covered);
+    }
+    payout.offset_amount = round2(net - available);
     payout.status = PayoutStatus.PROCESSING;
     await this.repo.save(payout);
 
     try {
-      const transfer = await this.stripe.createTransfer({
-        amount_cents: Math.round(Number(payout.net_amount) * 100),
-        stripe_account_id: stripeAccountId,
-        order_id: payout.event_id,
-      });
-      payout.stripe_transfer_id = transfer.id;
+      if (available > 0) {
+        const transfer = await this.stripe.createTransfer({
+          amount_cents: Math.round(available * 100),
+          stripe_account_id: stripeAccountId,
+          order_id: payout.event_id,
+        });
+        payout.stripe_transfer_id = transfer.id;
+      }
       payout.status = PayoutStatus.COMPLETED;
       payout.processed_at = new Date();
     } catch {
       payout.status = PayoutStatus.FAILED;
+      payout.offset_amount = 0;
+      return this.repo.save(payout);
     }
 
-    return this.repo.save(payout);
+    const saved = await this.repo.save(payout);
+    await this.settleDebts(settlements, saved);
+    return saved;
+  }
+
+  private async settleDebts(settlements: Array<{ debt: Payout; covered: number }>, by: Payout): Promise<void> {
+    const now = new Date();
+    for (const { debt, covered } of settlements) {
+      if (covered >= -Number(debt.net_amount) - 0.001) {
+        debt.status = PayoutStatus.COMPLETED;
+        debt.processed_at = now;
+        debt.settled_by_payout_id = by.id;
+        await this.repo.save(debt);
+        continue;
+      }
+      // Couverture partielle : la part réglée devient une ligne soldée, le
+      // reste demeure dû.
+      debt.net_amount = round2(Number(debt.net_amount) + covered);
+      await this.repo.save(debt);
+      await this.repo.save(
+        this.repo.create({
+          organizer_id: debt.organizer_id,
+          event_id: debt.event_id,
+          order_id: debt.order_id,
+          gross_amount: 0,
+          commission_amount: 0,
+          payment_fees_amount: 0,
+          free_ticket_fees_amount: 0,
+          net_amount: -covered,
+          status: PayoutStatus.COMPLETED,
+          scheduled_at: now,
+          processed_at: now,
+          settled_by_payout_id: by.id,
+        }),
+      );
+    }
   }
 
   async block(id: string, adminId: string, reason: string): Promise<Payout> {

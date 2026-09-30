@@ -95,6 +95,7 @@ export class CreatePayoutPayload extends OrganizerPayload {
   @Type(() => Number) @IsNumber() gross_amount: number;
   @Type(() => Number) @IsNumber() commission_amount: number;
   @Type(() => Number) @IsNumber() payment_fees_amount: number;
+  @IsOptional() @Type(() => Number) @IsNumber() free_ticket_fees_amount?: number;
   @IsOptional() @IsDateString() event_end_at?: string;
 }
 

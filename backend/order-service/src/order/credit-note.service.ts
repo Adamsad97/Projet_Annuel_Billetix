@@ -11,7 +11,7 @@ const SEQUENCE = 'orders.credit_note_seq';
 const round = (value: number) => Math.round(value * 100) / 100;
 
 /**
- * Avoirs des commandes remboursées. Montant HT, TVA et frais calculés au
+ * Avoirs des commandes remboursées. Montant HT et TVA calculés au
  * prorata de la facture d'origine ; le total des avoirs d'une commande ne
  * dépasse jamais son montant facturé.
  */
@@ -60,10 +60,12 @@ export class CreditNoteService implements OnModuleInit {
       const amount = round(Math.min(amountTtc ?? remaining, remaining));
       if (amount <= 0) return null;
 
+      // Frais des billets gratuits : à la charge de l'organisateur, jamais
+      // facturés à l'acheteur, donc absents de sa facture comme de ses avoirs.
       const ratio = amount / invoiced;
       const amountHt = round(Number(order.total_amount_ht) * ratio);
-      const fees = round(Number(order.free_ticket_fees ?? 0) * ratio);
-      const tva = round(amount - amountHt - fees);
+      const fees = 0;
+      const tva = round(amount - amountHt);
 
       const [{ nextval }] = await manager.query(`SELECT nextval('${SEQUENCE}') AS nextval`);
       const number = `AV-${new Date().getFullYear()}-${String(nextval).padStart(5, '0')}`;

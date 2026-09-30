@@ -37,7 +37,7 @@ describe('PayoutService', () => {
       save: jest.fn().mockImplementation((payout) => Promise.resolve(payout)),
       create: jest.fn().mockImplementation((payout) => payout),
       findOne: jest.fn(),
-      find: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
     };
@@ -387,6 +387,56 @@ describe('PayoutService', () => {
       await expect(service.rescheduleForEvent('evt-1', end)).resolves.toEqual({ rescheduled: 1 });
       expect(payout).toMatchObject({ event_end_at: end, on_hold_for_postponement: false, requested_early_at: null, early_request_approved_by: null });
       expect((payout as { scheduled_at?: Date }).scheduled_at!.getTime()).toBeGreaterThan(end.getTime());
+    });
+  });
+
+  describe('frais des billets gratuits et compensation', () => {
+    const past = new Date(Date.now() - 86_400_000);
+
+    it('réservation gratuite : reversement négatif du montant des frais', async () => {
+      repo.save.mockImplementation(async (value: object) => value);
+      repo.create.mockImplementation((value: object) => value);
+      const payout = await service.create({
+        organizer_id: 'org-1', event_id: 'evt-1', order_id: 'o-1',
+        gross_amount: 0, commission_amount: 0, payment_fees_amount: 0, free_ticket_fees_amount: 1.5,
+      });
+      expect(payout.net_amount).toBe(-1.5);
+    });
+
+    it('verse le net moins les montants dus, soldés par ce reversement', async () => {
+      const due = { id: 'due-1', organizer_id: 'org-1', net_amount: -3, status: PayoutStatus.PENDING, scheduled_at: past };
+      repo.findOne.mockResolvedValue({ id: 'p1', organizer_id: 'org-1', event_id: 'evt-1', net_amount: 50, status: PayoutStatus.PENDING });
+      repo.find.mockResolvedValue([due]);
+      repo.save.mockImplementation(async (value: object) => value);
+      stripe.createTransfer.mockResolvedValue({ id: 'tr_1' });
+      const result = await service.process('p1', 'acct_1');
+      expect(stripe.createTransfer).toHaveBeenCalledWith(expect.objectContaining({ amount_cents: 4700 }));
+      expect(result).toMatchObject({ status: PayoutStatus.COMPLETED, offset_amount: 3 });
+      expect(due).toMatchObject({ status: PayoutStatus.COMPLETED, settled_by_payout_id: 'p1' });
+    });
+
+    it('montant dû supérieur au reversement : rien n\'est viré, le reste demeure dû', async () => {
+      const due = { id: 'due-1', organizer_id: 'org-1', event_id: 'evt-0', order_id: null, net_amount: -80, status: PayoutStatus.PENDING, scheduled_at: past };
+      repo.findOne.mockResolvedValue({ id: 'p1', organizer_id: 'org-1', event_id: 'evt-1', net_amount: 50, status: PayoutStatus.PENDING });
+      repo.find.mockResolvedValue([due]);
+      repo.save.mockImplementation(async (value: object) => value);
+      repo.create.mockImplementation((value: object) => value);
+      const result = await service.process('p1', 'acct_1');
+      expect(stripe.createTransfer).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ status: PayoutStatus.COMPLETED, offset_amount: 50 });
+      expect(due.net_amount).toBe(-30);
+      expect(repo.save).toHaveBeenCalledWith(expect.objectContaining({ net_amount: -50, status: PayoutStatus.COMPLETED, settled_by_payout_id: 'p1' }));
+    });
+
+    it('virement refusé : aucune compensation', async () => {
+      const due = { id: 'due-1', organizer_id: 'org-1', net_amount: -3, status: PayoutStatus.PENDING, scheduled_at: past };
+      repo.findOne.mockResolvedValue({ id: 'p1', organizer_id: 'org-1', event_id: 'evt-1', net_amount: 50, status: PayoutStatus.PENDING });
+      repo.find.mockResolvedValue([due]);
+      repo.save.mockImplementation(async (value: object) => value);
+      stripe.createTransfer.mockRejectedValue(new Error('refus'));
+      const result = await service.process('p1', 'acct_1');
+      expect(result).toMatchObject({ status: PayoutStatus.FAILED, offset_amount: 0 });
+      expect(due.status).toBe(PayoutStatus.PENDING);
     });
   });
 });

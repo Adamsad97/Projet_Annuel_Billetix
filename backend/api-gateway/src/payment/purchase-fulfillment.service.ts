@@ -379,7 +379,7 @@ export class PurchaseFulfillmentService {
       totalVat: money(totalTtc - Number(order.total_amount_ht)),
       totalTtc: money(totalTtc),
       discount: Number(order.discount_amount) > 0 ? money(order.discount_amount) : undefined,
-      fees: Number(order.free_ticket_fees) > 0 ? money(order.free_ticket_fees) : undefined,
+      // Frais des billets gratuits : à la charge de l'organisateur, absents du récapitulatif de l'acheteur.
       paymentMethod: totalTtc === 0 ? "Gratuit" : (PAYMENT_METHOD_LABELS[order.payment_method] ?? order.payment_method),
       paidAt: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: DEFAULT_EVENT_TIMEZONE }),
       billingName: `${order.billing_first_name ?? ""} ${order.billing_last_name ?? ""}`.trim(),
@@ -391,11 +391,18 @@ export class PurchaseFulfillmentService {
 
   /** Reversement organisateur — commun aux commandes normales et de revente
    * (l'organisateur touche sa commission sur une revente comme sur une vente
-   * initiale). Pour un événement gratuit, gross/commission/fees valent tous
-   * 0 : le reversement ne sert alors qu'à tracer le frais fixe billet
-   * gratuit (déjà déduit de net_organizer_amount côté order-service). */
+   * initiale). Les frais des billets gratuits y sont déduits ; réservation
+   * entièrement gratuite : reversement négatif, repris par compensation sur
+   * les reversements suivants de l'organisateur (cf. PayoutService.process). */
   private createOrganizerPayout(
-    order: { organizer_id?: string; event_id: string; total_amount_ht: number; total_commission: number; event_end_at?: string },
+    order: {
+      organizer_id?: string;
+      event_id: string;
+      total_amount_ht: number;
+      total_commission: number;
+      free_ticket_fees?: number | string;
+      event_end_at?: string;
+    },
     orderId: string,
     paymentFees: number,
   ): void {
@@ -408,6 +415,7 @@ export class PurchaseFulfillmentService {
         gross_amount: Number(order.total_amount_ht),
         commission_amount: Number(order.total_commission),
         payment_fees_amount: paymentFees,
+        free_ticket_fees_amount: Number(order.free_ticket_fees ?? 0),
         event_end_at: order.event_end_at,
       })
       .subscribe();

@@ -220,7 +220,6 @@ export class InvoicePdfService {
   <div class="totals">
     <div class="totals-row"><span>Total HT</span><span>${minus(note.amount_ht)}</span></div>
     <div class="totals-row"><span>TVA (${(note.tva_rate * 100).toFixed(0)}%)</span><span>${minus(note.tva_amount)}</span></div>
-    ${Number(note.fees_amount) > 0 ? `<div class="totals-row"><span>Frais billets gratuits</span><span>${minus(note.fees_amount)}</span></div>` : ''}
     <div class="totals-row total"><span>Total TTC</span><span>${minus(note.amount_ttc)}</span></div>
   </div>
 
@@ -235,7 +234,9 @@ export class InvoicePdfService {
     const paidDate = new Date(invoiceData.paid_at).toLocaleDateString('fr-FR', {
       day: 'numeric', month: 'long', year: 'numeric',
     });
-    const tvaAmount = Number(invoiceData.total_amount_ttc) - Number(invoiceData.total_amount_ht) - Number(invoiceData.free_ticket_fees);
+    // Les frais des billets gratuits sont à la charge de l'organisateur, jamais
+    // facturés à l'acheteur : ils n'apparaissent pas sur sa facture.
+    const tvaAmount = Number(invoiceData.total_amount_ttc) - Number(invoiceData.total_amount_ht);
     const money = (amount: number) => Number(amount).toFixed(2) + ' €';
 
     const rows = invoiceData.items.map((item) => `
@@ -333,7 +334,6 @@ export class InvoicePdfService {
     ${invoiceData.discount_amount > 0 ? `<div class="totals-row"><span>Remise</span><span>-${money(invoiceData.discount_amount)}</span></div>` : ''}
     <div class="totals-row"><span>Total HT</span><span>${money(invoiceData.total_amount_ht)}</span></div>
     <div class="totals-row"><span>TVA (${(invoiceData.tva_rate * 100).toFixed(0)}%)</span><span>${money(tvaAmount)}</span></div>
-    ${invoiceData.free_ticket_fees > 0 ? `<div class="totals-row"><span>Frais billets gratuits</span><span>${money(invoiceData.free_ticket_fees)}</span></div>` : ''}
     <div class="totals-row total"><span>Total TTC</span><span>${money(invoiceData.total_amount_ttc)}</span></div>
   </div>
 

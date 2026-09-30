@@ -8,7 +8,7 @@ describe('CreditNoteService — avoirs', () => {
   let service: CreditNoteService;
 
   beforeEach(() => {
-    order = { id: 'order-1', total_amount_ttc: '120.00', total_amount_ht: '98.00', free_ticket_fees: '2.40' };
+    order = { id: 'order-1', total_amount_ttc: '120.00', total_amount_ht: '100.00', free_ticket_fees: '2.40' };
     credited = '0';
     sequence = 41;
     saved = [];
@@ -41,21 +41,21 @@ describe('CreditNoteService — avoirs', () => {
     service = new CreditNoteService({} as never, dataSource as never);
   });
 
-  it('remboursement total : avoir du montant facturé, HT, TVA et frais au prorata, numéro continu', async () => {
+  it('remboursement total : avoir du montant facturé, HT et TVA au prorata, sans les frais organisateur', async () => {
     const result = await service.issue('order-1', undefined, 'Événement annulé');
     expect(result?.credit_note).toMatchObject({
       number: `AV-${new Date().getFullYear()}-00042`,
       amount_ttc: 120,
-      amount_ht: 98,
-      fees_amount: 2.4,
-      tva_amount: 19.6,
+      amount_ht: 100,
+      fees_amount: 0,
+      tva_amount: 20,
       reason: 'Événement annulé',
     });
   });
 
   it('remboursement partiel : prorata du montant remboursé', async () => {
     const result = await service.issue('order-1', 30, 'Billet revendu');
-    expect(result?.credit_note).toMatchObject({ amount_ttc: 30, amount_ht: 24.5, fees_amount: 0.6, tva_amount: 4.9 });
+    expect(result?.credit_note).toMatchObject({ amount_ttc: 30, amount_ht: 25, fees_amount: 0, tva_amount: 5 });
   });
 
   it('ne couvre jamais plus que le montant facturé restant', async () => {

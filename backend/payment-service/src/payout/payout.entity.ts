@@ -53,6 +53,21 @@ export class Payout {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   payment_fees_amount: number;
 
+  // Frais des billets gratuits (free_ticket_fee_eur par billet), à la charge
+  // de l'organisateur. Réservation entièrement gratuite : net négatif, repris
+  // sur ses prochains reversements.
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  free_ticket_fees_amount: number;
+
+  // Montants dus par l'organisateur (frais, remboursements après versement)
+  // déduits de ce reversement : virement effectif = net_amount - offset_amount.
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  offset_amount: number;
+
+  // Montant dû soldé par compensation : reversement qui l'a absorbé.
+  @Column({ type: 'varchar', nullable: true })
+  settled_by_payout_id: string | null;
+
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   net_amount: number;
 
