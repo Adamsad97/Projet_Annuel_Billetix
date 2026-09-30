@@ -1039,6 +1039,32 @@ export class TicketController {
     return response;
   }
 
+  /**
+   * Paquet hors ligne de l'appareil de contrôle, à télécharger avant
+   * l'ouverture des portes : clé publique de vérification des QR signés,
+   * empreintes et statuts des billets, état et dates de l'événement, fenêtre
+   * de contrôle. Aucun jeton ni donnée personnelle. Organisateur de
+   * l'événement ou agent affecté (vérifié par ticket-service).
+   */
+  @Get("event/:eventId/offline-pack")
+  @Roles("AGENT", "ORGANIZER")
+  @EventOwner({ param: "eventId" })
+  @ApiOperation({ summary: "Paquet de contrôle hors ligne d'un événement (AGENT/ORGANIZER)" })
+  async offlinePack(
+    @CurrentUser() user: JwtPayload,
+    @Param("eventId", UuidPipe) eventId: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    res.set("Cache-Control", "no-store, private");
+    return firstValueFrom(
+      this.ticketClient.send("ticket.offline_pack", {
+        event_id: eventId,
+        requester_id: user.sub,
+        is_organizer: user.role === "ORGANIZER",
+      }),
+    );
+  }
+
   @Post("sync-offline")
   @EventOwner({ body: "event_id" })
   @HttpCode(HttpStatus.OK)
