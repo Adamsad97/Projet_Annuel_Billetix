@@ -37,6 +37,7 @@ import { AssignAgentDto,
 import { BillingDto } from "../order/dto/order.dto";
 import { UuidPipe } from "../common/pipes/uuid.pipe";
 import { EventOwner } from "../common/guards/event-owner.guard";
+import { findScheduleConflict, type ScheduledEvent } from "./agent-schedule";
 
 
 /** Ligne de tickets.ticket_transfers (ticket-service). */
@@ -1166,7 +1167,7 @@ export class TicketController {
   private async agentInvitationContext(organizerId: string, eventId: string) {
     const [event, organizerProfile, organizer] = await Promise.all([
       firstValueFrom(
-        this.eventClient.send<{ title: string; start_date: string; timezone?: string }>("event.get", { id: eventId }),
+        this.eventClient.send<ScheduledEvent & { timezone?: string }>("event.get", { id: eventId }),
       ),
       firstValueFrom(
         this.userClient.send<{ display_name?: string } | null>("user.get_organizer_profile", { user_id: organizerId }),
@@ -1176,6 +1177,7 @@ export class TicketController {
       ).catch(() => null),
     ]);
     return {
+      event,
       event_name: event.title,
       event_date: formatEventDate(event.start_date, event.timezone),
       organizer_name:
@@ -1187,7 +1189,7 @@ export class TicketController {
     organizerId: string,
     eventId: string,
     dto: AssignAgentDto,
-    context: { event_name: string; event_date: string; organizer_name: string },
+    context: { event: ScheduledEvent; event_name: string; event_date: string; organizer_name: string },
   ): Promise<{ user_id: string; account_created: boolean }> {
     // Déjà affecté : refus avant tout email.
     const existing = await firstValueFrom(
@@ -1200,6 +1202,23 @@ export class TicketController {
       if (agents.some((agent) => agent.user_id === existing.id)) {
         throw new ConflictException("Cet agent est déjà affecté à l'événement.");
       }
+
+      // Un agent ne contrôle qu'un événement à la fois : aucun chevauchement
+      // de créneaux avec ses autres affectations.
+      const assignedIds = await firstValueFrom(
+        this.ticketClient.send<string[]>("ticket.get_agent_events", { user_id: existing.id }),
+      );
+      if (assignedIds.length > 0) {
+        const assigned = await firstValueFrom(
+          this.eventClient.send<ScheduledEvent[]>("event.get_by_ids", { ids: assignedIds }),
+        );
+        const conflict = findScheduleConflict(context.event, assigned);
+        if (conflict) {
+          throw new ConflictException(
+            `Cet agent contrôle déjà « ${conflict.title} » (${formatEventDate(conflict.start_date)}) sur un créneau qui chevauche cet événement.`,
+          );
+        }
+      }
     }
 
     const invited = await firstValueFrom(
@@ -1207,7 +1226,9 @@ export class TicketController {
         email: dto.email,
         first_name: dto.first_name,
         last_name: dto.last_name,
-        ...context,
+        event_name: context.event_name,
+        event_date: context.event_date,
+        organizer_name: context.organizer_name,
       }),
     );
 
