@@ -3,7 +3,7 @@ import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes, randomUUID } from 'crypto';
 import * as QRCode from 'qrcode';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { GenerateTicketsDto } from './dto/generate-tickets.dto';
 import { QrDisplayCode } from './qr-display-code.entity';
@@ -78,7 +78,9 @@ export class TicketService {
     const { ticket_qr_rotation_seconds: period, ticket_qr_rotation_tolerance_steps: tolerance } =
       await this.platformConfig.get();
     const tickets = await this.repo.find({
-      where: { event_id: eventId, status: In([TicketStatus.GENERATED, TicketStatus.SENT, TicketStatus.USED]) },
+      // Tous les billets de l'événement : l'appareil hors ligne distingue ainsi
+      // un billet annulé ou en revente d'un QR inconnu.
+      where: { event_id: eventId },
     });
     return {
       algorithm: 'Ed25519',
@@ -287,7 +289,8 @@ export class TicketService {
       throw new RpcException({ statusCode: 400, code: 'CANCELLED', message: 'Billet annulé ou remboursé' });
     }
     if (ticket.status === TicketStatus.FOR_RESALE) {
-      throw new RpcException({ statusCode: 400, code: 'INVALID', message: 'Billet en cours de revente' });
+      // Bug corrigé : signalé INVALID (« falsifié ») alors que le billet est authentique.
+      throw new RpcException({ statusCode: 400, code: 'FOR_RESALE', message: 'Billet mis en revente par son titulaire' });
     }
 
     return { valid: true, ticket };

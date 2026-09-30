@@ -168,6 +168,8 @@ export class ScanService {
         result = ScanResult.EXPIRED;
       } else if (code === 'STATIC_REFUSED') {
         result = ScanResult.STATIC_REFUSED;
+      } else if (code === 'FOR_RESALE') {
+        result = ScanResult.FOR_RESALE;
       } else {
         result = ScanResult.INVALID;
       }

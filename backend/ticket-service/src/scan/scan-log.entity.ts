@@ -30,6 +30,9 @@ export enum ScanResult {
   // scan_closes_after_minutes) : trop tôt avant le début, trop tard après la fin.
   TOO_EARLY = 'TOO_EARLY',
   TOO_LATE = 'TOO_LATE',
+  // Billet authentique mais mis en revente par son titulaire : aucune entrée
+  // tant que l'annonce est active (ni pour lui, ni pour un acheteur).
+  FOR_RESALE = 'FOR_RESALE',
 }
 
 @Entity({ name: 'scan_logs', schema: 'tickets' })

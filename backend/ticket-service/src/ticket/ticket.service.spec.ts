@@ -220,6 +220,12 @@ describe('TicketService', () => {
       await expect(service.verifyQr(after, new Date(now + 1_000))).resolves.toMatchObject({ valid: true });
     });
 
+    it('signale (FOR_RESALE, pas INVALID) un billet mis en revente par son titulaire', async () => {
+      const text = await displayedQrText();
+      repo.findOne.mockResolvedValue(ticketRow({ status: TicketStatus.FOR_RESALE }));
+      await expect(service.verifyQr(text)).rejects.toMatchObject({ error: { code: 'FOR_RESALE' } });
+    });
+
     it('refuse (ALREADY_USED) un billet déjà scanné', async () => {
       const text = await displayedQrText();
       repo.findOne.mockResolvedValue(ticketRow({ status: TicketStatus.USED }));
