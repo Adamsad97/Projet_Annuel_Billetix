@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  Logger,
   Patch,
   Post,
   Req,
@@ -34,6 +35,8 @@ import { DeleteAccountDto } from "./dto/delete-account.dto";
 @ApiBearerAuth()
 @Controller("users")
 export class UserController {
+  private readonly logger = new Logger(UserController.name);
+
   constructor(
     @Inject("USER_SERVICE") private readonly userClient: ClientProxy,
     @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
@@ -211,24 +214,78 @@ export class UserController {
         organizer_id: user.sub,
         email: user.email,
         existing_account_id: profile.stripe_connect_account_id,
-        refresh_url: `${frontendUrl}/organizer/stripe-connect/refresh`,
-        return_url: `${frontendUrl}/organizer/stripe-connect/return`,
+        // Bug corrigé : ces adresses pointaient vers des pages inexistantes
+        // (/organizer/stripe-connect/...) — retour sur la page Paiements.
+        refresh_url: `${frontendUrl}/dashboard/paiements?stripe=relancer`,
+        return_url: `${frontendUrl}/dashboard/paiements?stripe=retour`,
       }),
     );
     return result;
   }
 
+  /**
+   * Statut du compte de reversement, lu chez Stripe et reporté sur le profil
+   * s'il a changé : ne dépend pas du webhook account.updated, qui peut ne
+   * jamais arriver (poste de développement, webhook mal configuré). Jamais
+   * le numéro de compte complet : banque et 4 derniers chiffres seulement.
+   */
   @Get("organizer/stripe-connect/status")
   @Roles("ORGANIZER")
-  @ApiOperation({ summary: "Statut de l'onboarding Stripe Connect" })
+  @ApiOperation({ summary: "Statut du compte de reversement (Stripe Connect)" })
   async getStripeConnectStatus(@CurrentUser() user: JwtPayload) {
     const profile = (await firstValueFrom(
       this.userClient.send("user.get_organizer_profile", { user_id: user.sub }),
     )) as { stripe_connect_account_id: string | null; stripe_connect_onboarded: boolean };
-    return {
-      connected: !!profile.stripe_connect_account_id,
-      onboarded: profile.stripe_connect_onboarded,
-    };
+    const accountId = profile.stripe_connect_account_id;
+    if (!accountId) {
+      return { connected: false, onboarded: false, details_submitted: false, payouts_enabled: false, requirements_due: 0, bank: null };
+    }
+
+    try {
+      const status = (await firstValueFrom(
+        this.paymentClient.send("payment.get_connect_status", { account_id: accountId }),
+      )) as {
+        details_submitted: boolean;
+        payouts_enabled: boolean;
+        onboarded: boolean;
+        requirements_due: number;
+        bank: { bank_name: string | null; last4: string } | null;
+      };
+      if (status.onboarded !== profile.stripe_connect_onboarded) {
+        await firstValueFrom(
+          this.userClient.send("user.set_stripe_connect_onboarded", { account_id: accountId, onboarded: status.onboarded }),
+        );
+      }
+      return { connected: true, ...status };
+    } catch (err) {
+      // Stripe injoignable : dernier état connu, sans détail.
+      this.logger.warn(`Statut Stripe Connect indisponible (${accountId}) : ${(err as Error)?.message}`);
+      return {
+        connected: true,
+        onboarded: profile.stripe_connect_onboarded,
+        details_submitted: profile.stripe_connect_onboarded,
+        payouts_enabled: profile.stripe_connect_onboarded,
+        requirements_due: 0,
+        bank: null,
+      };
+    }
+  }
+
+  /** Espace Stripe de l'organisateur (compte bancaire, virements reçus). */
+  @Post("organizer/stripe-connect/dashboard")
+  @HttpCode(HttpStatus.OK)
+  @Roles("ORGANIZER")
+  @ApiOperation({ summary: "Lien vers l'espace Stripe de l'organisateur" })
+  async stripeConnectDashboard(@CurrentUser() user: JwtPayload) {
+    const profile = (await firstValueFrom(
+      this.userClient.send("user.get_organizer_profile", { user_id: user.sub }),
+    )) as { stripe_connect_account_id: string | null };
+    if (!profile.stripe_connect_account_id) {
+      throw new BadRequestException("Aucun compte de reversement connecté.");
+    }
+    return firstValueFrom(
+      this.paymentClient.send("payment.create_connect_login_link", { account_id: profile.stripe_connect_account_id }),
+    );
   }
 
   @Get("organizer/kyc")
