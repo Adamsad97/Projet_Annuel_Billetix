@@ -68,7 +68,7 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
   return (
     <main className="flex-1 px-6 py-10">
       <div className="mb-10">
-        <CheckoutStepper current="confirmation" />
+        <CheckoutStepper current="confirmation" free={order ? Number(order.total_amount_ttc) === 0 : false} />
       </div>
 
       {loading ? (
@@ -85,7 +85,11 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
 
           <div>
             <h1 className="text-2xl font-bold text-ink-1">
-              {order.status === "PENDING_PAYMENT" ? "Commande créée" : "Paiement confirmé !"}
+              {order.status === "PENDING_PAYMENT"
+                ? "Commande créée"
+                : Number(order.total_amount_ttc) === 0
+                  ? "Réservation confirmée !"
+                  : "Paiement confirmé !"}
             </h1>
             <p className="mt-1 text-sm text-ink-5">
               Commande <span className="text-ink-1">{order.reference}</span>
@@ -106,13 +110,14 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
             <div className="mt-3 flex items-center justify-between border-t border-hairline-2 pt-3">
               <span className="font-bold text-ink-1">Total payé</span>
               <span className="font-bold text-ink-1">
-                {currency.format(Number(order.total_amount_ttc))}
+                {Number(order.total_amount_ttc) === 0 ? "Gratuit" : currency.format(Number(order.total_amount_ttc))}
               </span>
             </div>
           </div>
 
           <p className="text-sm text-accent">
-            🎫 Vos billets sont disponibles dans « Mes billets ». Votre facture vous est envoyée par email.
+            🎫 Vos billets sont disponibles dans « Mes billets ».
+            {Number(order.total_amount_ttc) > 0 ? " Votre facture vous est envoyée par email." : ""}
           </p>
 
           <div className="flex w-full flex-col gap-3 sm:flex-row">

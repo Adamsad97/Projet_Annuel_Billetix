@@ -10,7 +10,9 @@ export type ApiPaymentMethod =
   | "APPLE_PAY"
   | "GOOGLE_PAY"
   | "ORANGE_MONEY"
-  | "WAVE";
+  | "WAVE"
+  // Réservation gratuite : aucun paiement.
+  | "FREE";
 
 export type ApiOrderStatus =
   | "PENDING_PAYMENT"
@@ -43,11 +45,12 @@ export interface CreateOrderPayload {
   billing_first_name: string;
   billing_last_name: string;
   billing_email: string;
-  billing_address_line1: string;
+  // Adresse : exigée pour une commande payante seulement.
+  billing_address_line1?: string;
   billing_address_line2?: string;
-  billing_city: string;
-  billing_postal_code: string;
-  billing_country: string;
+  billing_city?: string;
+  billing_postal_code?: string;
+  billing_country?: string;
   payment_method: ApiPaymentMethod;
 }
 

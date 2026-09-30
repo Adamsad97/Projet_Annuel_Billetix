@@ -122,6 +122,7 @@ const paymentMethodLabels: Record<ApiPaymentMethod, string> = {
   GOOGLE_PAY: "Google Pay",
   ORANGE_MONEY: "Orange Money",
   WAVE: "Wave",
+  FREE: "Gratuit",
 };
 
 export function apiOrderItemsToLines(items: ApiOrderItem[]): { label: string; amount: number }[] {

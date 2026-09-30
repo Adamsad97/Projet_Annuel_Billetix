@@ -2,15 +2,19 @@ import { checkoutSteps, type CheckoutStepId } from "@/lib/constants/checkout";
 
 export function CheckoutStepper({
   current,
+  free = false,
 }: {
   current: CheckoutStepId;
+  /** Réservation gratuite : l'étape « Paiement » n'existe pas. */
+  free?: boolean;
 }) {
-  const currentIndex = checkoutSteps.findIndex((step) => step.id === current);
+  const steps = free ? checkoutSteps.filter((step) => step.id !== "paiement") : checkoutSteps;
+  const currentIndex = steps.findIndex((step) => step.id === current);
 
   return (
     <ol className="mx-auto flex max-w-3xl items-center">
-      {checkoutSteps.map((step, index) => {
-        const isLast = index === checkoutSteps.length - 1;
+      {steps.map((step, index) => {
+        const isLast = index === steps.length - 1;
         // La dernière étape (Confirmation) n'a pas d'étape suivante : y
         // arriver signifie que tout le parcours est terminé, donc elle
         // doit s'afficher comme "terminée" (✓ vert), pas "en cours".

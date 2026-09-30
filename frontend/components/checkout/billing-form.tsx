@@ -24,6 +24,8 @@ export function BillingForm({
   /** Refus 410 du serveur : réservation expirée entre-temps. */
   onReservationExpired?: () => void;
 }) {
+  // Réservation gratuite : ni adresse de facturation ni paiement.
+  const isFree = cartTotal(cart) === 0;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null | undefined>(undefined);
@@ -52,12 +54,16 @@ export function BillingForm({
       billing_first_name: String(form.get("firstName") ?? ""),
       billing_last_name: String(form.get("lastName") ?? ""),
       billing_email: String(form.get("email") ?? ""),
-      billing_address_line1: String(form.get("address1") ?? ""),
-      billing_address_line2: String(form.get("address2") ?? "") || undefined,
-      billing_city: String(form.get("city") ?? ""),
-      billing_postal_code: String(form.get("postalCode") ?? ""),
-      billing_country: String(form.get("country") ?? "FR"),
-      payment_method: "STRIPE",
+      ...(isFree
+        ? { payment_method: "FREE" as const }
+        : {
+            billing_address_line1: String(form.get("address1") ?? ""),
+            billing_address_line2: String(form.get("address2") ?? "") || undefined,
+            billing_city: String(form.get("city") ?? ""),
+            billing_postal_code: String(form.get("postalCode") ?? ""),
+            billing_country: String(form.get("country") ?? "FR"),
+            payment_method: "STRIPE" as const,
+          }),
     };
 
     setLoading(true);
@@ -81,13 +87,15 @@ export function BillingForm({
     <div className="rounded-2xl border border-hairline-1 bg-card p-5">
       <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-ink-2">
         <span>👤</span>
-        Coordonnées de facturation
+        {isFree ? "Vos coordonnées" : "Coordonnées de facturation"}
       </h2>
 
       <div className="mb-4 rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3">
         <div className="flex items-center justify-between text-sm">
           <span className="text-ink-4">{cart.eventTitle}</span>
-          <span className="font-bold text-ink-1">{currency.format(cartTotal(cart))}</span>
+          <span className={`font-bold ${isFree ? "text-emerald-600" : "text-ink-1"}`}>
+            {isFree ? "Gratuit" : currency.format(cartTotal(cart))}
+          </span>
         </div>
         {cartTotal(cart) > 0 && cartVat(cart) !== null ? (
           <p className="mt-1 text-right text-xs text-ink-5">TTC, dont TVA {currency.format(cartVat(cart) ?? 0)}</p>
@@ -139,14 +147,27 @@ export function BillingForm({
           />
         </label>
 
-        <BillingAddressFields fieldClassName={fieldClassName} />
+        {isFree ? (
+          <p className="text-xs text-ink-5">
+            Entrée gratuite : aucun paiement ni adresse de facturation. Vos billets vous sont envoyés par email et
+            restent disponibles dans votre espace.
+          </p>
+        ) : (
+          <BillingAddressFields fieldClassName={fieldClassName} />
+        )}
 
         <button
           type="submit"
           disabled={loading}
           className="mt-1 w-full rounded-full bg-blue-700 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? "Création de la commande…" : "Continuer vers le paiement →"}
+          {loading
+            ? isFree
+              ? "Réservation…"
+              : "Création de la commande…"
+            : isFree
+              ? "Confirmer ma réservation"
+              : "Continuer vers le paiement →"}
         </button>
       </form>
     </div>

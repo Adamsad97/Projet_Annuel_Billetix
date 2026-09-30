@@ -106,7 +106,7 @@ export default function TicketDetailPage({
                   QR éphémère) : la facture de la commande sert de preuve
                   d'achat. Billet reçu en cadeau : la facture appartient à
                   l'acheteur d'origine (ses coordonnées de facturation). */}
-              {ticket.receivedFrom ? (
+              {ticket.unitPriceTtc === 0 ? null : ticket.receivedFrom ? (
                 <p className="rounded-xl bg-hairline-1 px-4 py-3 text-center text-sm text-ink-4">
                   Billet reçu en cadeau : la facture reste celle de la personne qui l&apos;a acheté.
                 </p>

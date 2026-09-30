@@ -125,7 +125,7 @@ export function CheckoutFlow() {
 
   return (
     <div className="flex flex-col gap-6">
-      <CheckoutStepper current={step === "billing" ? "identification" : "paiement"} />
+      <CheckoutStepper current={step === "billing" ? "identification" : "paiement"} free={cartTotal(cart) === 0} />
 
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
         {step === "billing" ? (
