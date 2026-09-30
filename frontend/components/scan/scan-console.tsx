@@ -287,6 +287,21 @@ export function ScanConsole() {
       .catch(() => undefined);
   }, [eventId, refreshPack, syncQueue]);
 
+  // --- Liste des billets tenue à jour sans bouton : au retour sur la page
+  // (téléphone déverrouillé, autre application quittée) et au retour du réseau.
+  useEffect(() => {
+    if (!eventId) return;
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) void refreshPack(eventId);
+    };
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    window.addEventListener("online", refreshIfVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+      window.removeEventListener("online", refreshIfVisible);
+    };
+  }, [eventId, refreshPack]);
+
   // --- Retour du réseau : synchronisation automatique
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- l'état n'est modifié qu'après l'appel réseau
@@ -641,11 +656,13 @@ export function ScanConsole() {
           {/* Paquet hors ligne */}
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-hairline-1 bg-card px-4 py-3 text-xs">
             <div className="min-w-0">
-              <p className="font-semibold text-ink-2">Contrôle sans réseau</p>
+              <p className="font-semibold text-ink-2">Si le réseau coupe</p>
               <p className="text-ink-5">
-                {pack
-                  ? `Prêt : ${pack.tickets.length} billet${pack.tickets.length > 1 ? "s" : ""} vérifiable${pack.tickets.length > 1 ? "s" : ""} même sans connexion (liste du ${timeOnly.format(new Date(pack.generated_at))})`
-                  : "Pas encore prêt : connectez-vous pour télécharger la liste des billets"}
+                {!pack
+                  ? "Liste des billets pas encore téléchargée : connectez-vous pour l'obtenir, le contrôle pourra alors continuer sans réseau."
+                  : pack.tickets.length === 0
+                    ? `Aucun billet vendu au moment du téléchargement (${timeOnly.format(new Date(pack.generated_at))}).`
+                    : `Ce téléphone peut vérifier les ${pack.tickets.length} billet${pack.tickets.length > 1 ? "s" : ""} de l'événement même sans connexion (liste de ${timeOnly.format(new Date(pack.generated_at))}).`}
               </p>
               {packError ? <p className="mt-0.5 text-amber-600">{packError}</p> : null}
             </div>
