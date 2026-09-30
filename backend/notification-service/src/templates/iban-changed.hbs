@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coordonnées bancaires modifiées</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #f59e0b; padding: 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0; font-size: 28px; }
+    .body { padding: 32px; color: #333; line-height: 1.6; }
+    .receipt-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+    .alert { background: #fef2f2; border-left: 4px solid #dc2626; padding: 16px; border-radius: 4px; margin: 16px 0; font-weight: bold; }
+    .btn { display: inline-block; margin: 24px 0; padding: 14px 32px; background: #6c3de0; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; }
+    .footer { padding: 20px 32px; background: #f9f9f9; color: #999; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>Coordonnées bancaires modifiées</h1></div>
+    <div class="body">
+      <p>Bonjour {{firstName}},</p>
+      <p>Le compte bancaire qui reçoit vos reversements vient d'être modifié.</p>
+      <div class="receipt-row"><span>Nouvel IBAN</span><span>{{ibanMasked}}</span></div>
+      <div class="receipt-row"><span>Date du changement</span><span>{{changedAt}}</span></div>
+      {{#if holdHours}}<p style="margin-top:24px;">Par sécurité, vos reversements sont suspendus pendant {{holdHours}} heures.</p>{{/if}}
+      <div class="alert">Si vous n'êtes pas à l'origine de ce changement, modifiez immédiatement votre mot de passe et contactez le support BilletiX.</div>
+      <a href="{{paymentsUrl}}" class="btn">Vérifier mes coordonnées bancaires</a>
+    </div>
+    <div class="footer">© {{year}} BilletiX — Tous droits réservés</div>
+  </div>
+</body>
+</html>

@@ -30,6 +30,7 @@
       </div>
       <div class="receipt-row"><span>Événement</span><span>{{eventName}}</span></div>
       <div class="receipt-row"><span>Date de versement</span><span>{{payoutDate}}</span></div>
+      {{#if reference}}<div class="receipt-row"><span>Référence du virement</span><span>{{reference}}</span></div>{{/if}}
       <p style="margin-top:24px;">Le délai d'arrivée sur votre compte bancaire dépend de votre établissement (généralement quelques jours ouvrés).</p>
       <a href="{{dashboardUrl}}" class="btn">Voir mon tableau de bord</a>
     </div>

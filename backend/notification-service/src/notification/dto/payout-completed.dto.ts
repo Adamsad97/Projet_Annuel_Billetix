@@ -1,4 +1,4 @@
-import { IsEmail, IsString } from 'class-validator';
+import { IsEmail, IsOptional, IsString } from 'class-validator';
 
 export class PayoutCompletedDto {
   @IsEmail()
@@ -15,4 +15,9 @@ export class PayoutCompletedDto {
 
   @IsString()
   payoutDate: string;
+
+  /** Virement bancaire émis par la plateforme : référence du virement. */
+  @IsOptional()
+  @IsString()
+  reference?: string;
 }

@@ -27,6 +27,7 @@ import { DisputeOpenedDto } from './dto/dispute-opened.dto';
 import { DisputeResolvedDto } from './dto/dispute-resolved.dto';
 import { FillThresholdReachedDto } from './dto/fill-threshold-reached.dto';
 import { PayoutCompletedDto } from './dto/payout-completed.dto';
+import { IbanChangedDto } from './dto/iban-changed.dto';
 import { RefundCompletedDto } from './dto/refund-completed.dto';
 import { ResaleListedDto } from './dto/resale-listed.dto';
 import { ResaleSoldDto } from './dto/resale-sold.dto';
@@ -630,6 +631,17 @@ export class NotificationController {
         ...data,
         dashboardUrl: `${this.appUrl}/dashboard`,
       },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.iban_changed')
+  async onIbanChanged(@Payload() data: IbanChangedDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: 'Coordonnées bancaires modifiées — BilletiX',
+      template: 'iban-changed',
+      context: { ...data, paymentsUrl: `${this.appUrl}/dashboard/paiements` },
     });
     this.ack(rmqContext);
   }
