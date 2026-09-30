@@ -104,6 +104,12 @@ export function CreateEventForm({
   const [isNonProfit, setIsNonProfit] = useState(false);
   // Événement gratuit : toutes les catégories à 0 €.
   const [isFree, setIsFree] = useState(false);
+
+  /** Bascule payant / gratuit : 0 € partout, ou prix à saisir de nouveau. */
+  function applyFree(free: boolean) {
+    setIsFree(free);
+    setTierRows((rows) => rows.map((row) => ({ ...row, price: free ? "0" : "" })));
+  }
   const [nonProfitFile, setNonProfitFile] = useState<File | null>(null);
   const [tierRows, setTierRows] = useState<TicketTierRow[]>(() =>
     makeInitialTierRows(genId, tierTypes, initial?.ticketTiers),
@@ -390,7 +396,13 @@ export function CreateEventForm({
               <input
                 type="checkbox"
                 checked={isNonProfit}
-                onChange={(event) => setIsNonProfit(event.target.checked)}
+                onChange={(event) => {
+                  const nonProfit = event.target.checked;
+                  setIsNonProfit(nonProfit);
+                  // Un événement à but non lucratif est proposé en gratuit par
+                  // défaut — « Payant » reste possible (gala caritatif…).
+                  if (nonProfit !== isFree) applyFree(nonProfit);
+                }}
                 className="mt-0.5 h-4 w-4 accent-blue-600"
               />
               <span className="text-sm text-ink-3">
@@ -398,6 +410,13 @@ export function CreateEventForm({
                 du justificatif par un administrateur, la commission de la plateforme ne s&apos;applique pas.
               </span>
             </label>
+            {isNonProfit ? (
+              <p className="text-xs text-ink-5">
+                {isFree
+                  ? "Billetterie passée en « Gratuit ». Si vous vendez des billets (gala caritatif…), cochez « Payant » dans la section Billetterie."
+                  : "Billetterie payante : la commission de la plateforme ne s'appliquera pas après vérification du justificatif."}
+              </p>
+            ) : null}
             {isNonProfit ? (
               <DocumentDropzone
                 onFileSelected={setNonProfitFile}
@@ -411,30 +430,42 @@ export function CreateEventForm({
 
       <InfoCard icon="🎟️" title="Billetterie">
         <div className="flex flex-col gap-4">
-          {/* Payant par défaut ; cochée, l'entrée devient gratuite (prix à 0 €, non saisissables). */}
-          <label
-            className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${
-              isFree ? "border-emerald-500/50 bg-emerald-500/10" : "border-hairline-2 bg-hairline-1 hover:border-hairline-4"
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={isFree}
-              onChange={(event) => {
-                const free = event.target.checked;
-                setIsFree(free);
-                // Gratuit : 0 € partout ; décochée : prix à saisir de nouveau.
-                setTierRows((rows) => rows.map((row) => ({ ...row, price: free ? "0" : "" })));
-              }}
-              className="mt-0.5 h-4 w-4 accent-emerald-600"
-            />
-            <span>
-              <span className="block text-sm font-semibold text-ink-1">Événement gratuit</span>
-              <span className="block text-xs text-ink-5">
-                Entrée libre, sur réservation : les participants ne paient pas leur billet.
-              </span>
-            </span>
-          </label>
+          {/* Deux cases liées : « Payant » cochée par défaut ; cocher ou décocher
+              l'une bascule l'autre. Gratuit : prix à 0 €, non saisissables. */}
+          <div role="group" aria-label="Type d'entrée" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {(
+              [
+                { free: false, label: "Payant", description: "Les participants achètent leur billet." },
+                { free: true, label: "Gratuit", description: "Entrée libre, sur réservation." },
+              ] as const
+            ).map((option) => {
+              const checked = option.free === isFree;
+              return (
+                <label
+                  key={option.label}
+                  className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${
+                    checked
+                      ? option.free
+                        ? "border-emerald-500/50 bg-emerald-500/10"
+                        : "border-blue-500/50 bg-blue-500/10"
+                      : "border-hairline-2 bg-hairline-1 hover:border-hairline-4"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    // Cocher l'une décoche l'autre ; décocher l'une coche l'autre.
+                    onChange={() => applyFree(!isFree)}
+                    className={`mt-0.5 h-4 w-4 ${option.free ? "accent-emerald-600" : "accent-blue-600"}`}
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-ink-1">{option.label}</span>
+                    <span className="block text-xs text-ink-5">{option.description}</span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
