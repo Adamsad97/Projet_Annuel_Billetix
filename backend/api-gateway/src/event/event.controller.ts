@@ -15,6 +15,7 @@ import {
   Query,
   Req,
 } from "@nestjs/common";
+import { assertOwnDocumentUrl } from "../upload/document-url";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { ClientProxy } from "@nestjs/microservices";
@@ -260,10 +261,15 @@ export class EventController {
 
   // --- Routes organisateur ---
 
+  private checkNonProfitDocument(url: string | undefined, organizerId: string): void {
+    if (url) assertOwnDocumentUrl(url, organizerId, this.config.get("MINIO_BUCKET_DOCUMENTS", "documents"));
+  }
+
   @Post()
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Créer un événement (ORGANIZER)" })
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateEventDto) {
+    this.checkNonProfitDocument(dto.non_profit_document_url, user.sub);
     return firstValueFrom(
       this.eventClient.send("event.create", { organizer_id: user.sub, dto }),
     );
@@ -424,6 +430,7 @@ export class EventController {
     @Param("id", UuidPipe) id: string,
     @Body() dto: UpdateEventDto,
   ) {
+    this.checkNonProfitDocument(dto.non_profit_document_url, user.sub);
     const updatedEvent = (await firstValueFrom(
       this.eventClient.send("event.update", {
         id,

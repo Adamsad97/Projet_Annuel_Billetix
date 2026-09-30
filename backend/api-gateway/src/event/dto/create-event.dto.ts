@@ -41,7 +41,7 @@ export class CreateEventDto {
   // l'exonération de commission (cf. event-service EventService.computeCommissionRate).
   @ApiPropertyOptional()
   @ValidateIf((dto: CreateEventDto) => dto.is_non_profit === true)
-  @IsUrl({}, { message: 'Un justificatif est requis pour une déclaration à but non lucratif' })
+  @IsUrl({ require_tld: false }, { message: 'Un justificatif est requis pour une déclaration à but non lucratif' })
   non_profit_document_url?: string;
 
   @ApiProperty() @IsDateString()

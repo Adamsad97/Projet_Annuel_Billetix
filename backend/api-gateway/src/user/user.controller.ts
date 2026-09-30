@@ -12,6 +12,7 @@ import {
   Req,
 } from "@nestjs/common";
 import { ClientProxy } from "@nestjs/microservices";
+import { assertOwnDocumentUrl } from "../upload/document-url";
 import { ConfigService } from "@nestjs/config";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Request } from "express";
@@ -177,6 +178,7 @@ export class UserController {
     @CurrentUser() user: JwtPayload,
     @Body() body: SubmitKycDto,
   ) {
+    assertOwnDocumentUrl(body.document_url, user.sub, this.config.get("MINIO_BUCKET_DOCUMENTS", "documents"));
     return firstValueFrom(
       this.userClient.send("user.update_kyc", {
         user_id: user.sub,
