@@ -123,11 +123,11 @@ export const apiPatch = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: "PATCH", body });
 
 /**
- * Télécharge un fichier privé (billet, facture) : requête authentifiée
- * (Bearer, rafraîchissement de session compris), puis enregistrement local.
- * Les PDF ne sont plus accessibles par un lien direct (buckets privés).
+ * Lit un fichier privé (billet, facture, pièce justificative) : requête
+ * authentifiée (Bearer, rafraîchissement de session compris). Les fichiers
+ * privés ne sont plus accessibles par un lien direct (buckets privés).
  */
-export async function apiDownload(path: string, filename: string, isRetry = false): Promise<void> {
+export async function apiFetchBlob(path: string, isRetry = false): Promise<Blob> {
   const token = getAccessToken();
   let response: Response;
   try {
@@ -140,7 +140,7 @@ export async function apiDownload(path: string, filename: string, isRetry = fals
 
   if (response.status === 401 && !isRetry && token) {
     const newToken = await refreshAccessToken();
-    if (newToken) return apiDownload(path, filename, true);
+    if (newToken) return apiFetchBlob(path, true);
   }
   if (!response.ok) {
     let data: unknown = null;
@@ -149,10 +149,14 @@ export async function apiDownload(path: string, filename: string, isRetry = fals
     } catch {
       // Réponse sans corps JSON.
     }
-    throw new ApiError(response.status, extractErrorMessage(data, "Téléchargement impossible, veuillez réessayer."));
+    throw new ApiError(response.status, extractErrorMessage(data, "Fichier inaccessible, veuillez réessayer."));
   }
+  return response.blob();
+}
 
-  const url = URL.createObjectURL(await response.blob());
+/** Télécharge un fichier privé et l'enregistre localement. */
+export async function apiDownload(path: string, filename: string): Promise<void> {
+  const url = URL.createObjectURL(await apiFetchBlob(path));
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;

@@ -1,24 +1,31 @@
-import { Injectable, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   CreateBucketCommand,
+  DeleteBucketPolicyCommand,
+  GetObjectCommand,
   HeadBucketCommand,
   PutBucketPolicyCommand,
-  GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
-import { extname } from "path";
+
+/** Visibilité d'un bucket : public (affiches, avatars) ou privé (pièces justificatives). */
+export type BucketVisibility = "public" | "private";
 
 @Injectable()
 export class UploadService implements OnModuleInit {
+  private readonly logger = new Logger(UploadService.name);
   private client: S3Client;
   private publicBase: string;
+  private readonly documentBucket: string;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly config: ConfigService) {
+    this.documentBucket = this.config.get("MINIO_BUCKET_DOCUMENTS", "documents");
+  }
 
-  onModuleInit() {
+  async onModuleInit() {
     const endpoint = this.config.get("MINIO_ENDPOINT", "minio");
     const port = this.config.get("MINIO_PORT", "9000");
     const ssl = this.config.get("MINIO_USE_SSL", "false") === "true";
@@ -41,6 +48,18 @@ export class UploadService implements OnModuleInit {
       },
       forcePathStyle: true,
     });
+
+    // Faille corrigée : le bucket des pièces justificatives (identité KYC,
+    // justificatif « but non lucratif ») recevait une règle de lecture
+    // publique. Il est remis en privé à chaque démarrage, y compris s'il a
+    // été créé avec l'ancienne règle.
+    await this.ensureBucket(this.documentBucket, "private").catch((err) =>
+      this.logger.warn(`Bucket ${this.documentBucket} non vérifié au démarrage : ${err?.message}`),
+    );
+  }
+
+  get documentsBucket(): string {
+    return this.documentBucket;
   }
 
   /**
@@ -51,23 +70,39 @@ export class UploadService implements OnModuleInit {
   async readStoredFile(storedUrl: string): Promise<Buffer> {
     const path = new URL(storedUrl).pathname.replace(/^\/+/, "");
     const [bucket, ...keyParts] = path.split("/");
-    const result = await this.client.send(
-      new GetObjectCommand({ Bucket: bucket, Key: decodeURIComponent(keyParts.join("/")) }),
-    );
-    if (!result.Body) throw new Error(`Fichier vide : ${bucket}/${keyParts.join("/")}`);
-    return Buffer.from(await result.Body.transformToByteArray());
+    return (await this.readObject(bucket, decodeURIComponent(keyParts.join("/")))).body;
   }
 
+  /** Lit un objet ; 404 s'il n'existe pas. */
+  async readObject(bucket: string, key: string): Promise<{ body: Buffer; contentType: string }> {
+    try {
+      const result = await this.client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+      if (!result.Body) throw new NotFoundException("Document introuvable.");
+      return {
+        body: Buffer.from(await result.Body.transformToByteArray()),
+        contentType: result.ContentType ?? "application/octet-stream",
+      };
+    } catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      if ((err as { name?: string })?.name === "NoSuchKey") throw new NotFoundException("Document introuvable.");
+      throw err;
+    }
+  }
+
+  /**
+   * Dépose un fichier. Le nom est généré (jamais celui fourni par
+   * l'utilisateur) ; `prefix` range les documents privés par propriétaire.
+   */
   async upload(
     buffer: Buffer,
-    originalName: string,
+    extension: string,
     bucket: string,
     mimeType: string,
+    visibility: BucketVisibility,
+    prefix?: string,
   ): Promise<string> {
-    await this.ensureBucket(bucket);
-
-    const ext = extname(originalName) || ".bin";
-    const key = `${randomUUID()}${ext}`;
+    await this.ensureBucket(bucket, visibility);
+    const key = `${prefix ? `${prefix}/` : ""}${randomUUID()}${extension}`;
 
     await this.client.send(
       new PutObjectCommand({
@@ -81,17 +116,19 @@ export class UploadService implements OnModuleInit {
     return `${this.publicBase}/${bucket}/${key}`;
   }
 
-  // Bug corrigé : le bucket créé restait privé par défaut (politique MinIO
-  // de base) — toute affiche/avatar/justificatif uploadé renvoyait 403 dès
-  // que le navigateur tentait de l'afficher directement via son URL
-  // publique (repéré via une affiche cassée sur la fiche de validation
-  // admin). La policy est réappliquée à chaque appel (idempotent, coût
-  // négligeable) pour couvrir aussi les buckets déjà créés avant ce correctif.
-  private async ensureBucket(bucket: string): Promise<void> {
+  // Bucket public (affiches, avatars) : lecture anonyme pour que le
+  // navigateur les affiche directement. Bucket privé : aucune règle publique,
+  // lecture uniquement via la passerelle après contrôle d'accès.
+  private async ensureBucket(bucket: string, visibility: BucketVisibility): Promise<void> {
     try {
       await this.client.send(new HeadBucketCommand({ Bucket: bucket }));
     } catch {
       await this.client.send(new CreateBucketCommand({ Bucket: bucket }));
+    }
+
+    if (visibility === "private") {
+      await this.client.send(new DeleteBucketPolicyCommand({ Bucket: bucket })).catch(() => undefined);
+      return;
     }
 
     await this.client.send(
