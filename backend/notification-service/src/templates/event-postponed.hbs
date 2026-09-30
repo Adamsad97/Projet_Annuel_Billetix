@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{#if rescheduled}}Nouvelle date{{else}}Événement reporté{{/if}}</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #d97706; padding: 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0; font-size: 26px; }
+    .body { padding: 32px; color: #333; line-height: 1.6; }
+    .event-box { background: #fffbeb; border-left: 4px solid #d97706; padding: 16px; margin: 16px 0; color: #78350f; }
+    .event-name { font-size: 18px; font-weight: bold; color: #0f172a; }
+    .old-date { text-decoration: line-through; color: #92400e; }
+    .date-box { background: #f0fdf4; border-radius: 6px; padding: 16px; margin: 20px 0; }
+    .date-box h3 { color: #16a34a; margin: 0 0 6px; font-size: 16px; }
+    .pending-box { background: #f1f5f9; border-radius: 6px; padding: 16px; margin: 20px 0; }
+    .pending-box h3 { color: #334155; margin: 0 0 6px; font-size: 16px; }
+    .btn { display: inline-block; margin: 20px 0 8px; padding: 14px 32px; background: #1d4ed8; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; }
+    .note { font-size: 13px; color: #64748b; }
+    .footer { padding: 20px 32px; background: #f9f9f9; color: #999; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>{{#if rescheduled}}Nouvelle date annoncée{{else}}Événement reporté{{/if}}</h1></div>
+    <div class="body">
+      <p>Bonjour {{firstName}},</p>
+      {{#if rescheduled}}
+      <p>L'événement reporté pour lequel vous avez un billet a désormais une nouvelle date :</p>
+      {{else}}
+      <p>L'événement pour lequel vous avez un billet est reporté :</p>
+      {{/if}}
+      <div class="event-box">
+        <div class="event-name">{{eventName}}</div>
+        Initialement prévu le <span class="old-date">{{originalDate}}</span>
+        {{#if reason}}<br/><em>Motif : {{reason}}</em>{{/if}}
+      </div>
+
+      {{#if newDate}}
+      <div class="date-box">
+        <h3>Nouvelle date</h3>
+        <p style="margin:0;"><strong>{{newDate}}</strong></p>
+      </div>
+      <p><strong>Votre billet reste valable pour cette nouvelle date :</strong> vous n'avez rien à faire.</p>
+      {{#if refundDeadline}}
+      <p>Si cette date ne vous convient pas, vous pouvez demander le remboursement de votre commande jusqu'au <strong>{{refundDeadline}}</strong>, depuis la page de votre commande.</p>
+      {{/if}}
+      {{else}}
+      <div class="pending-box">
+        <h3>Nouvelle date à venir</h3>
+        <p style="margin:0;">L'organisateur l'annoncera dès que possible : vous recevrez alors un email.</p>
+      </div>
+      <p><strong>Votre billet reste valable pour la nouvelle date.</strong> Si vous préférez ne pas attendre, vous pouvez dès maintenant demander le remboursement de votre commande depuis sa page.</p>
+      {{/if}}
+
+      <a href="{{ordersUrl}}" class="btn">Voir mes commandes</a>
+      <p class="note">Le remboursement est versé sur votre moyen de paiement d'origine sous 5 à 10 jours ouvrés.</p>
+    </div>
+    <div class="footer">© {{year}} BilletiX — Tous droits réservés</div>
+  </div>
+</body>
+</html>

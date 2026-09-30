@@ -8,6 +8,9 @@ export enum EventStatus {
   TERMINATED = 'TERMINATED',
   ARCHIVED = 'ARCHIVED',
   SUSPENDED = 'SUSPENDED',
+  // Reporté sans nouvelle date : ventes et contrôle suspendus jusqu'à ce que
+  // l'organisateur fixe la nouvelle date (retour à PUBLISHED).
+  POSTPONED = 'POSTPONED',
 }
 
 export enum RefundPolicy {
@@ -184,6 +187,24 @@ export class Event {
 
   @Column({ type: 'text', nullable: true })
   cancellation_reason: string | null;
+
+  // Report accepté par un admin. original_* : dates annoncées à l'achat ;
+  // rescheduled_at : annonce de la nouvelle date, point de départ du délai
+  // pendant lequel un acheteur peut demander le remboursement.
+  @Column({ type: 'timestamptz', nullable: true })
+  postponed_at: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  postponement_reason: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  original_start_date: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  original_end_date: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  rescheduled_at: Date | null;
 
   @Column({ nullable: true })
   terminated_at: Date | null;

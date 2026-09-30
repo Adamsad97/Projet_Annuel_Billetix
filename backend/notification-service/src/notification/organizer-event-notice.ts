@@ -130,5 +130,36 @@ export function organizerEventNotice(kind: OrganizerEventNoticeKind, eventName: 
         details: 'Les acheteurs sont remboursés automatiquement et reçoivent votre motif par email.',
         ctaLabel: cta,
       };
+    case 'POSTPONEMENT_MESSAGE':
+      return {
+        subject: `Nouveau message sur votre demande de report — ${eventName}`,
+        headline: "L'administration vous a répondu",
+        intro: 'Un nouveau message a été ajouté à votre demande de report de :',
+        messageLabel: 'Message',
+        tone: '',
+        details: "Votre demande reste en cours d'examen. Vous pouvez répondre depuis la page de votre événement.",
+        ctaLabel: 'Répondre',
+      };
+    case 'POSTPONEMENT_REJECTED':
+      return {
+        subject: `Demande de report refusée — ${eventName}`,
+        headline: 'Votre demande de report a été refusée',
+        intro: "L'administration a refusé votre demande de report de :",
+        messageLabel: 'Message',
+        tone: 'warning',
+        details: "L'événement est maintenu à sa date. Vous pouvez faire une nouvelle demande si la situation évolue.",
+        ctaLabel: cta,
+      };
+    case 'POSTPONEMENT_APPROVED':
+      return {
+        subject: `Demande de report acceptée — ${eventName}`,
+        headline: 'Votre demande de report a été acceptée',
+        intro: "L'administration a accepté le report de :",
+        messageLabel: 'Message',
+        tone: 'success',
+        details:
+          "Les acheteurs sont prévenus par email : leur billet reste valable pour la nouvelle date, et ils peuvent demander le remboursement pendant le délai prévu. Si la nouvelle date n'est pas encore fixée, indiquez-la depuis la page de votre événement dès qu'elle est connue.",
+        ctaLabel: cta,
+      };
   }
 }

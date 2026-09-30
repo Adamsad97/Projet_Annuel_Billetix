@@ -9,6 +9,12 @@ import {
 } from 'typeorm';
 import { CancellationMessage } from './cancellation-message.entity';
 
+/** Objet de la demande de l'organisateur. */
+export enum ChangeRequestKind {
+  CANCELLATION = 'CANCELLATION',
+  POSTPONEMENT = 'POSTPONEMENT',
+}
+
 export enum CancellationRequestStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
@@ -17,9 +23,9 @@ export enum CancellationRequestStatus {
 }
 
 /**
- * Demande d'annulation d'un événement par son organisateur : l'annulation
- * (et le remboursement des acheteurs) n'a lieu qu'après accord d'un admin.
- * Tant qu'elle est en attente, les deux parties échangent des messages.
+ * Demande d'annulation ou de report d'un événement par son organisateur :
+ * rien ne change pour les acheteurs avant l'accord d'un admin. Tant qu'elle
+ * est en attente, les deux parties échangent des messages.
  */
 @Entity({ name: 'event_cancellation_requests', schema: 'events' })
 @Index(['event_id', 'status'])
@@ -35,6 +41,16 @@ export class CancellationRequest {
 
   @Column({ type: 'text' })
   reason: string;
+
+  @Column({ type: 'enum', enum: ChangeRequestKind, default: ChangeRequestKind.CANCELLATION })
+  kind: ChangeRequestKind;
+
+  // Report : nouvelle date proposée, ou null si elle n'est pas encore connue.
+  @Column({ type: 'timestamptz', nullable: true })
+  new_start_date: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  new_end_date: Date | null;
 
   @Column({ type: 'enum', enum: CancellationRequestStatus, default: CancellationRequestStatus.PENDING })
   status: CancellationRequestStatus;

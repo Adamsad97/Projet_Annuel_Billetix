@@ -10,7 +10,11 @@ export class CancellationController {
 
   @MessagePattern('event.cancellation.request')
   request(@Payload() data: RequestCancellationPayload) {
-    return this.service.request(data.event_id, data.organizer_id, data.reason);
+    return this.service.request(data.event_id, data.organizer_id, data.reason, {
+      kind: data.kind,
+      new_start_date: data.new_start_date,
+      new_end_date: data.new_end_date,
+    });
   }
 
   @MessagePattern('event.cancellation.list_by_event')

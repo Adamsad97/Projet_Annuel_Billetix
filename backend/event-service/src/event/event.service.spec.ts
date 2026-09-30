@@ -18,6 +18,7 @@ describe('EventService', () => {
     findOne: jest.Mock;
     find: jest.Mock;
     createQueryBuilder: jest.Mock;
+    manager: { query: jest.Mock };
   };
   let queryBuilder: {
     where: jest.Mock;
@@ -67,6 +68,7 @@ describe('EventService', () => {
       findOne: jest.fn(),
       find: jest.fn(),
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+      manager: { query: jest.fn() },
     };
     ticketCategoryRepo = {
       create: jest.fn().mockImplementation((category) => category),
@@ -625,6 +627,79 @@ describe('EventService', () => {
         expect.objectContaining({ remaining_quota: expect.anything() }),
         expect.anything(),
       );
+    });
+  });
+
+  describe('report', () => {
+    const DAY = 24 * 3600 * 1000;
+    const published = () => ({
+      id: '33333333-3333-4333-8333-333333333333',
+      organizer_id: 'organizer-1',
+      status: EventStatus.PUBLISHED,
+      start_date: new Date(Date.now() + 10 * DAY),
+      end_date: new Date(Date.now() + 10 * DAY + 3 * 3600 * 1000),
+      sales_end_date: new Date(Date.now() + 10 * DAY),
+      original_start_date: null,
+      original_end_date: null,
+    });
+
+    it('sans nouvelle date : « Reporté », date d\'origine conservée', async () => {
+      const event = published();
+      repo.findOne.mockResolvedValue(event);
+      const result = await service.postpone('33333333-3333-4333-8333-333333333333', 'Intempéries', null);
+      expect(result.status).toBe(EventStatus.POSTPONED);
+      expect(result.original_start_date).toEqual(event.start_date);
+      expect(result.postponement_reason).toBe('Intempéries');
+      expect(result.rescheduled_at).toBeNull();
+    });
+
+    it('avec nouvelle date : reste publié, fin des ventes décalée d\'autant', async () => {
+      const event = published();
+      const originalStart = event.start_date;
+      const salesEnd = event.sales_end_date.getTime();
+      repo.findOne.mockResolvedValue(event);
+      const start = new Date(originalStart.getTime() + 7 * DAY);
+      const result = await service.postpone('33333333-3333-4333-8333-333333333333', 'Salle indisponible', { start, end: new Date(start.getTime() + 3600 * 1000) });
+      expect(result.status).toBe(EventStatus.PUBLISHED);
+      expect(result.start_date).toEqual(start);
+      expect(result.original_start_date).toEqual(originalStart);
+      expect(new Date(result.sales_end_date).getTime()).toBe(salesEnd + 7 * DAY);
+      expect(result.rescheduled_at).toBeInstanceOf(Date);
+      expect(repo.manager.query).toHaveBeenCalledWith(expect.stringContaining('ticket_categories'), ['33333333-3333-4333-8333-333333333333', 7 * DAY]);
+    });
+
+    it('refuse une nouvelle date antérieure à la date actuelle', () => {
+      const event = published();
+      const earlier = new Date(event.start_date.getTime() - DAY);
+      expect(() =>
+        service.parseNewDates(event as never, earlier.toISOString(), new Date(earlier.getTime() + 3600 * 1000).toISOString()),
+      ).toThrow(RpcException);
+    });
+
+    it('refuse de reporter un événement déjà commencé', () => {
+      expect(() => service.assertPostponable({ ...published(), start_date: new Date(Date.now() - 1000) } as never)).toThrow(RpcException);
+    });
+
+    it('nouvelle date fixée par l\'organisateur : l\'événement repasse publié', async () => {
+      const event = { ...published(), status: EventStatus.POSTPONED };
+      repo.findOne.mockResolvedValue(event);
+      const start = new Date(event.start_date.getTime() + 30 * DAY);
+      const result = await service.reschedule(
+        '33333333-3333-4333-8333-333333333333',
+        'organizer-1',
+        start.toISOString(),
+        new Date(start.getTime() + 3600 * 1000).toISOString(),
+      );
+      expect(result.status).toBe(EventStatus.PUBLISHED);
+      expect(result.start_date).toEqual(start);
+    });
+
+    it('seul un événement reporté attend une nouvelle date', async () => {
+      repo.findOne.mockResolvedValue(published());
+      const start = new Date(Date.now() + 40 * DAY);
+      await expect(
+        service.reschedule('33333333-3333-4333-8333-333333333333', 'organizer-1', start.toISOString(), new Date(start.getTime() + 3600 * 1000).toISOString()),
+      ).rejects.toBeInstanceOf(RpcException);
     });
   });
 });

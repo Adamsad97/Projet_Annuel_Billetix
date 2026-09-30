@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import { MailAttachment, MailService } from '../mail/mail.service';
 import { AccountActivatedDto } from './dto/account-activated.dto';
+import { EventPostponedDto } from './dto/event-postponed.dto';
 import { AccountSuspendedDto } from './dto/account-suspended.dto';
 import { AccountUnlockedDto } from './dto/account-unlocked.dto';
 import { AccountUnsuspendedDto } from './dto/account-unsuspended.dto';
@@ -424,6 +425,22 @@ export class NotificationController {
       context: {
         firstName: data.firstName,
         eventName: data.eventName,
+        ordersUrl: `${this.appUrl}/profil/commandes`,
+      },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.event_postponed')
+  async onEventPostponed(@Payload() data: EventPostponedDto, @Ctx() rmqContext: RmqContext) {
+    const rescheduled = data.announcement === 'RESCHEDULED';
+    await this.mail.send({
+      to: data.email,
+      subject: rescheduled ? `Nouvelle date — ${data.eventName}` : `Événement reporté — ${data.eventName}`,
+      template: 'event-postponed',
+      context: {
+        ...data,
+        rescheduled,
         ordersUrl: `${this.appUrl}/profil/commandes`,
       },
     });

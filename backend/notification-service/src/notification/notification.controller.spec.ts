@@ -249,6 +249,9 @@ describe('NotificationController', () => {
     ['CANCELLATION_MESSAGE', 'Nouveau message'],
     ['CANCELLATION_REJECTED', 'refusée'],
     ['CANCELLATION_APPROVED', 'acceptée'],
+    ['POSTPONEMENT_MESSAGE', 'Nouveau message'],
+    ['POSTPONEMENT_REJECTED', 'refusée'],
+    ['POSTPONEMENT_APPROVED', 'acceptée'],
     ['NON_PROFIT_VERIFIED', 'validé'],
     ['NON_PROFIT_REJECTED', 'refusé'],
     ['CREATED_FOR_YOU', 'créé'],
@@ -261,5 +264,27 @@ describe('NotificationController', () => {
     expect(options.template).toBe('organizer-event-notice');
     expect(options.subject).toContain(subjectPart);
     expect(options.context.message).toBe('Motif');
+  });
+
+  it.each([
+    ['POSTPONED', 'Événement reporté', false],
+    ['RESCHEDULED', 'Nouvelle date', true],
+  ] as const)('report %s : acheteur prévenu', async (announcement, subjectPart, rescheduled) => {
+    await controller.onEventPostponed(
+      {
+        email: 'jean@example.com',
+        firstName: 'Jean',
+        eventName: 'Soirée Jazz',
+        announcement,
+        originalDate: 'samedi 24 octobre 2026',
+        newDate: rescheduled ? 'samedi 7 novembre 2026' : undefined,
+        refundDeadline: rescheduled ? '21 novembre 2026' : undefined,
+      },
+      rmqContext,
+    );
+    const [options] = mail.send.mock.calls[0];
+    expect(options).toMatchObject({ to: 'jean@example.com', template: 'event-postponed' });
+    expect(options.subject).toContain(subjectPart);
+    expect(options.context).toMatchObject({ rescheduled, ordersUrl: 'http://localhost:3000/profil/commandes' });
   });
 });

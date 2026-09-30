@@ -22,6 +22,7 @@ export interface PlatformConfig {
   wave_fee_fixed_eur: number;
   stock_reservation_ttl_seconds: number;
   cancel_deadline_hours: number;
+  postponement_refund_days: number;
   agent_invitation_hours: number;
   fill_thresholds: number[];
   platform_legal_name: string;
@@ -82,6 +83,7 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'wave_fee_fixed_eur',             value: '0',             type: 'number',  description: 'Frais fixe Wave par transaction (€)' },
   { key: 'stock_reservation_ttl_seconds',  value: '600',           type: 'number',  description: 'Durée de validité de la réservation de stock (secondes)' },
   { key: 'cancel_deadline_hours',          value: '24',            type: 'number',  description: 'Délai avant l\'événement au-delà duquel l\'annulation est bloquée (heures)' },
+  { key: 'postponement_refund_days',       value: '14',            type: 'number',  description: 'Délai pour demander le remboursement après l’annonce de la nouvelle date d’un événement reporté (jours)' },
   { key: 'agent_invitation_hours',         value: '72',            type: 'number',  description: 'Validité du lien d\'invitation d\'un agent de contrôle (heures)' },
   { key: 'fill_thresholds',               value: '[25,50,75,100]', type: 'json',    description: 'Seuils de remplissage déclenchant une notification organisateur (%)' },
   { key: 'platform_legal_name',            value: 'BilletiX SAS',  type: 'string',  description: 'Raison sociale de la plateforme (en-tête facture)' },
@@ -157,6 +159,7 @@ export class PlatformConfigService implements OnModuleInit {
       wave_fee_fixed_eur:             parseFloat(map.wave_fee_fixed_eur ?? '0'),
       stock_reservation_ttl_seconds:  parseInt(map.stock_reservation_ttl_seconds ?? '600'),
       cancel_deadline_hours:          parseInt(map.cancel_deadline_hours ?? '24'),
+      postponement_refund_days:       parseInt(map.postponement_refund_days ?? '14'),
       agent_invitation_hours:         parseInt(map.agent_invitation_hours ?? '72'),
       fill_thresholds:                JSON.parse(map.fill_thresholds ?? '[25,50,75,100]'),
       platform_legal_name:            map.platform_legal_name ?? 'BilletiX SAS',

@@ -1,6 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { EventService } from './event.service';
+import { RescheduleEventPayload } from '../common/module-payloads';
 import { AdminActionPayload, AdminIdPayload, IdPayload, IdsPayload, OrganizerPayload, OwnedIdPayload, SlugPayload } from '../common/payloads';
 import { CancelEventPayload, CreateEventPayload, ListAllEventsPayload, ListPublishedPayload, RecommendationPayload, RequestInfoPayload, RespondToInfoPayload, UpdateEventPayload, VerifyNonProfitPayload } from './dto/event-payloads';
 
@@ -128,6 +129,11 @@ export class EventController {
   @MessagePattern('event.respond_to_info_request')
   respondToInfoRequest(@Payload() data: RespondToInfoPayload) {
     return this.eventService.respondToInfoRequest(data.request_id, data.organizer_id, data.response);
+  }
+
+  @MessagePattern('event.reschedule')
+  reschedule(@Payload() data: RescheduleEventPayload) {
+    return this.eventService.reschedule(data.id, data.organizer_id, data.start_date, data.end_date);
   }
 
   @MessagePattern('event.duplicate')

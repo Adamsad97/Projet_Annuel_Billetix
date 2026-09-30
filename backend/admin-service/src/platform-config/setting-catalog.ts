@@ -43,7 +43,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
   {
     id: 'events',
     super_admin_only: false,
-    keys: ['event_validation_deadline_hours', 'event_archive_delay_days', 'cancel_deadline_hours', 'fill_thresholds'],
+    keys: ['event_validation_deadline_hours', 'event_archive_delay_days', 'cancel_deadline_hours', 'postponement_refund_days', 'fill_thresholds'],
   },
   {
     id: 'orders',

@@ -866,6 +866,98 @@ export class EventService implements OnApplicationBootstrap {
     return this.repo.save(event);
   }
 
+  /** Report possible : événement publié, pas encore commencé. */
+  assertPostponable(event: Event): void {
+    if (event.status !== EventStatus.PUBLISHED) {
+      throw new RpcException({ statusCode: 400, message: 'Seul un événement publié peut être reporté.' });
+    }
+    if (new Date(event.start_date).getTime() <= Date.now()) {
+      throw new RpcException({ statusCode: 400, message: 'Cet événement a déjà commencé : il ne peut plus être reporté.' });
+    }
+  }
+
+  /**
+   * Nouvelle date d'un report : les deux bornes ou aucune (« date à venir »),
+   * dans le futur, après la date actuelle de l'événement.
+   */
+  parseNewDates(event: Event, start?: string, end?: string): { start: Date; end: Date } | null {
+    if (!start && !end) return null;
+    if (!start || !end) {
+      throw new RpcException({ statusCode: 400, message: 'Indiquez la nouvelle date de début et de fin, ou aucune des deux.' });
+    }
+    this.assertValidDates({ start_date: start, end_date: end });
+    const newStart = new Date(start);
+    if (newStart.getTime() <= new Date(event.start_date).getTime()) {
+      throw new RpcException({ statusCode: 400, message: "La nouvelle date doit être postérieure à la date actuelle de l'événement." });
+    }
+    return { start: newStart, end: new Date(end) };
+  }
+
+  /**
+   * Nouvelles dates appliquées : la date d'origine est conservée (celle de
+   * l'achat), la fin des ventes est décalée d'autant.
+   */
+  private async moveDates(event: Event, start: Date, end: Date): Promise<void> {
+    const delta = start.getTime() - new Date(event.start_date).getTime();
+    if (!event.original_start_date) {
+      event.original_start_date = event.start_date;
+      event.original_end_date = event.end_date;
+    }
+    event.start_date = start;
+    event.end_date = end;
+    if (delta > 0) {
+      event.sales_end_date = new Date(new Date(event.sales_end_date).getTime() + delta);
+      await this.repo.manager.query(
+        `UPDATE events.ticket_categories
+            SET sales_end_date = sales_end_date + ($2 * interval '1 millisecond')
+          WHERE event_id = $1 AND sales_end_date IS NOT NULL`,
+        [event.id, delta],
+      );
+    }
+    event.rescheduled_at = new Date();
+  }
+
+  /**
+   * Report accepté par un admin. Avec une nouvelle date : l'événement reste
+   * publié, à la nouvelle date. Sans : il passe « Reporté », ventes et
+   * contrôle suspendus jusqu'à ce que l'organisateur fixe la date.
+   */
+  async postpone(id: string, reason: string, newDates: { start: Date; end: Date } | null): Promise<Event> {
+    const event = await this.getById(id);
+    this.assertPostponable(event);
+    event.postponed_at = new Date();
+    event.postponement_reason = reason;
+    if (newDates) {
+      await this.moveDates(event, newDates.start, newDates.end);
+    } else {
+      if (!event.original_start_date) {
+        event.original_start_date = event.start_date;
+        event.original_end_date = event.end_date;
+      }
+      event.status = EventStatus.POSTPONED;
+      event.rescheduled_at = null;
+    }
+    return this.repo.save(event);
+  }
+
+  /** L'organisateur fixe la nouvelle date d'un événement reporté : ventes et contrôle reprennent. */
+  async reschedule(id: string, organizerId: string, start: string, end: string): Promise<Event> {
+    const event = await this.getById(id);
+    if (event.organizer_id !== organizerId) {
+      throw new RpcException({ statusCode: 403, message: "Cet événement n'appartient pas à votre compte." });
+    }
+    if (event.status !== EventStatus.POSTPONED) {
+      throw new RpcException({ statusCode: 400, message: "Seul un événement reporté attend une nouvelle date." });
+    }
+    const dates = this.parseNewDates(event, start, end);
+    if (!dates) {
+      throw new RpcException({ statusCode: 400, message: 'La nouvelle date de début et de fin est obligatoire.' });
+    }
+    await this.moveDates(event, dates.start, dates.end);
+    event.status = EventStatus.PUBLISHED;
+    return this.repo.save(event);
+  }
+
   /**
    * Annulation définitive (remboursements déclenchés par la passerelle).
    * Réservée aux admins : un organisateur passe par une demande d'annulation

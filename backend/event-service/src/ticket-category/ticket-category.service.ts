@@ -199,7 +199,9 @@ export class TicketCategoryService {
         message:
           event.status === EventStatus.SUSPENDED
             ? `Les ventes sont suspendues pour cet événement${event.suspension_reason ? ` : ${event.suspension_reason}` : '.'}`
-            : "Cet événement n'est pas en vente.",
+            : event.status === EventStatus.POSTPONED
+              ? 'Cet événement est reporté : les ventes reprendront dès que la nouvelle date sera fixée.'
+              : "Cet événement n'est pas en vente.",
       });
     }
     const salesStart = category.sales_start_date ?? event.sales_start_date;

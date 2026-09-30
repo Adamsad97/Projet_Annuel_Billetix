@@ -110,6 +110,7 @@ export const FIELDS: Record<string, FieldMeta> = {
   event_validation_deadline_hours: { label: "Délai de traitement d'une soumission", unit: "heures" },
   event_archive_delay_days: { label: "Archivage après la fin de l'événement", unit: "jours" },
   cancel_deadline_hours: { label: "Annulation par l'acheteur possible jusqu'à", unit: "heures avant l'événement" },
+  postponement_refund_days: { label: "Remboursement possible après un report pendant", unit: "jours après l'annonce de la nouvelle date" },
   fill_thresholds: { label: "Paliers d'alerte de remplissage", unit: "%", help: "Séparés par des virgules, ex. 25, 50, 75, 100", format: "thresholds" },
   // Commandes
   stock_reservation_ttl_seconds: { label: "Réservation des places pendant l'achat", unit: "secondes" },

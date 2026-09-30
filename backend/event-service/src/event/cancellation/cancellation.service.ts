@@ -6,7 +6,7 @@ import { DataSource, In, Repository } from 'typeorm';
 import { Event, EventStatus } from '../event.entity';
 import { EventService } from '../event.service';
 import { CancellationMessage, CancellationMessageAuthor } from './cancellation-message.entity';
-import { CancellationRequest, CancellationRequestStatus } from './cancellation-request.entity';
+import { CancellationRequest, CancellationRequestStatus, ChangeRequestKind } from './cancellation-request.entity';
 
 // Statuts dans lesquels l'événement peut encore être annulé.
 const CANCELLABLE: EventStatus[] = [
@@ -14,15 +14,18 @@ const CANCELLABLE: EventStatus[] = [
   EventStatus.PENDING_VALIDATION,
   EventStatus.PUBLISHED,
   EventStatus.SUSPENDED,
+  EventStatus.POSTPONED,
 ];
 
 const MESSAGE_MAX_LENGTH = 2000;
 
 /**
- * Demandes d'annulation : l'organisateur demande, l'admin accepte (l'événement
- * est alors annulé, la passerelle rembourse les acheteurs) ou refuse. Tant
- * que la demande est en attente, les deux parties échangent des messages
- * pour trouver un accord.
+ * Demandes d'annulation ou de report : l'organisateur demande, l'admin
+ * accepte ou refuse. Annulation acceptée : événement annulé, la passerelle
+ * rembourse les acheteurs. Report accepté : nouvelle date (ou « date à
+ * venir »), les acheteurs sont prévenus et peuvent demander le
+ * remboursement. Tant que la demande est en attente, les deux parties
+ * échangent des messages pour trouver un accord.
  */
 @Injectable()
 export class CancellationService {
@@ -47,7 +50,7 @@ export class CancellationService {
     const request = isUUID(id)
       ? await this.requests.findOne({ where: { id }, relations: { messages: true }, order: { messages: { created_at: 'ASC' } } })
       : null;
-    if (!request) throw new RpcException({ statusCode: 404, message: "Demande d'annulation introuvable." });
+    if (!request) throw new RpcException({ statusCode: 404, message: 'Demande introuvable.' });
     return request;
   }
 
@@ -57,13 +60,23 @@ export class CancellationService {
     }
   }
 
-  /** L'organisateur demande l'annulation de son événement. */
-  async request(eventId: string, organizerId: string, reason: string | undefined): Promise<CancellationRequest> {
+  /** L'organisateur demande l'annulation ou le report de son événement. */
+  async request(
+    eventId: string,
+    organizerId: string,
+    reason: string | undefined,
+    options: { kind?: ChangeRequestKind; new_start_date?: string; new_end_date?: string } = {},
+  ): Promise<CancellationRequest> {
+    const kind = options.kind ?? ChangeRequestKind.CANCELLATION;
     const event = await this.eventService.getById(eventId);
     if (event.organizer_id !== organizerId) {
       throw new RpcException({ statusCode: 403, message: "Cet événement n'appartient pas à votre compte." });
     }
-    if (!CANCELLABLE.includes(event.status)) {
+    let newDates: { start: Date; end: Date } | null = null;
+    if (kind === ChangeRequestKind.POSTPONEMENT) {
+      this.eventService.assertPostponable(event);
+      newDates = this.eventService.parseNewDates(event, options.new_start_date, options.new_end_date);
+    } else if (!CANCELLABLE.includes(event.status)) {
       throw new RpcException({ statusCode: 400, message: 'Cet événement ne peut plus être annulé.' });
     }
     const text = this.cleanText(reason, 'Le motif');
@@ -71,10 +84,23 @@ export class CancellationService {
       where: { event_id: eventId, status: CancellationRequestStatus.PENDING },
     });
     if (pending) {
-      throw new RpcException({ statusCode: 409, message: "Une demande d'annulation est déjà en cours pour cet événement." });
+      throw new RpcException({
+        statusCode: 409,
+        message:
+          pending.kind === ChangeRequestKind.POSTPONEMENT
+            ? 'Une demande de report est déjà en cours pour cet événement.'
+            : "Une demande d'annulation est déjà en cours pour cet événement.",
+      });
     }
     const saved = await this.requests.save(
-      this.requests.create({ event_id: eventId, organizer_id: organizerId, reason: text }),
+      this.requests.create({
+        event_id: eventId,
+        organizer_id: organizerId,
+        reason: text,
+        kind,
+        new_start_date: newDates?.start ?? null,
+        new_end_date: newDates?.end ?? null,
+      }),
     );
     return this.load(saved.id);
   }
@@ -101,11 +127,15 @@ export class CancellationService {
   /** Liste admin, avec le titre de l'événement. */
   async listForAdmin(filters: {
     status?: CancellationRequestStatus;
+    kind?: ChangeRequestKind;
     limit?: number;
     offset?: number;
   }): Promise<{ data: Array<CancellationRequest & { event_title: string | null; event_start_date: Date | null }>; total: number }> {
     const [rows, total] = await this.requests.findAndCount({
-      where: filters.status ? { status: filters.status } : {},
+      where: {
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(filters.kind ? { kind: filters.kind } : {}),
+      },
       relations: { messages: true },
       order: { created_at: 'DESC', messages: { created_at: 'ASC' } },
       take: Math.min(filters.limit ?? 50, 100),
@@ -187,21 +217,34 @@ export class CancellationService {
   }
 
   /**
-   * L'admin accepte : l'événement est annulé avec le motif de la demande.
-   * Le remboursement des acheteurs est déclenché par la passerelle.
+   * L'admin accepte. Annulation : l'événement est annulé avec le motif de la
+   * demande, la passerelle rembourse les acheteurs. Report : nouvelle date
+   * appliquée (ou « date à venir »), la passerelle prévient les acheteurs.
+   * previous_start_date : date annoncée juste avant le report.
    */
   async approve(
     requestId: string,
     adminId: string,
     message: string | undefined,
-  ): Promise<{ request: CancellationRequest; event: Event }> {
+  ): Promise<{ request: CancellationRequest; event: Event; previous_start_date: Date }> {
     const request = await this.load(requestId);
     this.assertPending(request);
     const note = message?.trim() ? this.cleanText(message, 'Le message') : null;
 
-    // D'abord l'annulation (peut échouer : événement déjà annulé…), puis la
-    // clôture de la demande et la note de l'admin, ensemble.
-    const event = await this.eventService.cancel(request.event_id, adminId, { reason: request.reason }, true);
+    // D'abord la décision sur l'événement (peut échouer : déjà annulé,
+    // déjà commencé…), puis la clôture de la demande et la note de l'admin.
+    const before = await this.eventService.getById(request.event_id);
+    const previousStart = before.start_date;
+    const event =
+      request.kind === ChangeRequestKind.POSTPONEMENT
+        ? await this.eventService.postpone(
+            request.event_id,
+            request.reason,
+            request.new_start_date && request.new_end_date
+              ? { start: new Date(request.new_start_date), end: new Date(request.new_end_date) }
+              : null,
+          )
+        : await this.eventService.cancel(request.event_id, adminId, { reason: request.reason }, true);
     await this.dataSource.transaction(async (manager) => {
       if (note) {
         await manager.save(
@@ -219,6 +262,6 @@ export class CancellationService {
         decided_by: adminId,
       });
     });
-    return { request: await this.load(request.id), event };
+    return { request: await this.load(request.id), event, previous_start_date: previousStart };
   }
 }

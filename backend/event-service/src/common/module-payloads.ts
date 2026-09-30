@@ -16,7 +16,7 @@ import {
 } from 'class-validator';
 import { UpdateCategoryDto } from '../category/dto/update-category.dto';
 import { CancellationMessageAuthor } from '../event/cancellation/cancellation-message.entity';
-import { CancellationRequestStatus } from '../event/cancellation/cancellation-request.entity';
+import { CancellationRequestStatus, ChangeRequestKind } from '../event/cancellation/cancellation-request.entity';
 import { DiscountType } from '../promo-code/promo-code.entity';
 import { CreateTicketCategoryDto } from '../ticket-category/dto/create-ticket-category.dto';
 import { CategoryVisibility } from '../ticket-category/ticket-category.entity';
@@ -84,6 +84,15 @@ export class UpdateTicketTierTypePayload extends IdPayload {
 export class RequestCancellationPayload extends EventIdPayload {
   @IsUUID() organizer_id: string;
   @IsOptional() @IsString() @MaxLength(TEXT_MAX) reason?: string;
+  @IsOptional() @IsEnum(ChangeRequestKind) kind?: ChangeRequestKind;
+  @IsOptional() @IsDateString() new_start_date?: string;
+  @IsOptional() @IsDateString() new_end_date?: string;
+}
+
+export class RescheduleEventPayload extends IdPayload {
+  @IsUUID() organizer_id: string;
+  @IsDateString() start_date: string;
+  @IsDateString() end_date: string;
 }
 
 export class CancellationsByEventPayload extends EventIdPayload {
@@ -92,6 +101,7 @@ export class CancellationsByEventPayload extends EventIdPayload {
 
 export class CancellationsAdminListPayload {
   @IsOptional() @IsEnum(CancellationRequestStatus) status?: CancellationRequestStatus;
+  @IsOptional() @IsEnum(ChangeRequestKind) kind?: ChangeRequestKind;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) offset?: number;
 }
