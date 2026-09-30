@@ -31,6 +31,7 @@ import { OptionalReasonDto } from "../common/dto/common.dto";
 import { CreateOrderDto, ReserveStockDto } from "./dto/order.dto";
 import { UuidPipe } from "../common/pipes/uuid.pipe";
 import { formatEventDate } from "../common/event-date";
+import { assertCanBuyTickets } from "../common/purchase-roles";
 
 @ApiTags("orders")
 @ApiBearerAuth()
@@ -85,11 +86,7 @@ export class OrderController {
     // côté front (nav, page Profil). Rien n'empêchait un admin d'appeler
     // directement cette route. Bloqué dès la réservation de stock (étape 1)
     // pour couper court à tout le tunnel d'achat.
-    if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
-      throw new ForbiddenException(
-        "Un compte administrateur ne peut pas acheter de billets.",
-      );
-    }
+    assertCanBuyTickets(user.role);
     return firstValueFrom(
       this.orderClient.send("order.reserve_stock", {
         buyer_id: user.sub,
@@ -135,11 +132,7 @@ export class OrderController {
     @Body() dto: CreateOrderDto,
   ) {
     // Défense en profondeur : même blocage qu'à l'étape reserve() ci-dessus.
-    if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
-      throw new ForbiddenException(
-        "Un compte administrateur ne peut pas acheter de billets.",
-      );
-    }
+    assertCanBuyTickets(user.role);
 
     // Snapshot événement/organisateur — jamais fourni par le client (bug
     // corrigé : dto.event_name/dto.event_venue_name/etc. n'étaient jamais

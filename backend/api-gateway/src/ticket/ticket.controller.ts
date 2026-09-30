@@ -38,6 +38,7 @@ import { BillingDto } from "../order/dto/order.dto";
 import { UuidPipe } from "../common/pipes/uuid.pipe";
 import { EventOwner } from "../common/guards/event-owner.guard";
 import { findScheduleConflict, type ScheduledEvent } from "./agent-schedule";
+import { assertCanBuyTickets, canHoldTickets } from "../common/purchase-roles";
 
 
 /** Ligne de tickets.ticket_transfers (ticket-service). */
@@ -495,7 +496,8 @@ export class TicketController {
       recipient.is_email_verified &&
       recipient.is_active !== false &&
       !recipient.is_suspended &&
-      !["ADMIN", "SUPER_ADMIN"].includes(recipient.role);
+      // Ni administrateur ni agent de contrôle : comptes sans billets.
+      canHoldTickets(recipient.role);
     if (!recipientEligible) {
       throw new BadRequestException(
         "Aucun compte BilleTix actif et vérifié n'est associé à cet email. " +
@@ -718,9 +720,7 @@ export class TicketController {
     // Même règle que la réservation classique (order.controller.ts) : un
     // compte administrateur n'achète jamais, revente comprise — y compris
     // depuis le mode aperçu du back-office.
-    if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
-      throw new ForbiddenException("Un compte administrateur ne peut pas acheter de billets.");
-    }
+    assertCanBuyTickets(user.role);
     // Créer la commande pour le nouvel acheteur — order-service relit
     // lui-même l'offre de revente (prix, catégorie, événement) et le taux de
     // commission ; le prix n'est jamais accepté depuis ce endpoint.
