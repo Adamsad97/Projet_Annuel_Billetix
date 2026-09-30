@@ -33,3 +33,15 @@ export function inviteEventAgent(eventId: string, input: InviteAgentInput): Prom
 export function removeEventAgent(eventId: string, userId: string): Promise<{ success: boolean }> {
   return apiDelete(`/tickets/event/${eventId}/agents/${userId}`);
 }
+
+export interface BulkInviteResult {
+  email: string;
+  /** invited : compte créé et lien envoyé ; assigned : agent existant affecté. */
+  status: "invited" | "assigned" | "error";
+  message?: string;
+}
+
+/** Plusieurs invitations en un envoi, résultat ligne par ligne. */
+export function inviteEventAgentsBulk(eventId: string, agents: InviteAgentInput[]): Promise<{ results: BulkInviteResult[] }> {
+  return apiPost(`/tickets/event/${eventId}/agents/bulk`, { agents });
+}

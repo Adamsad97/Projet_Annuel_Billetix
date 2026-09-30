@@ -59,6 +59,8 @@ export default function DashboardEventDetailPage({
   const [eventCategories, setEventCategories] = useState<ApiCategory[]>([]);
   const [payout, setPayout] = useState<ApiPayout | undefined>(undefined);
   const [copied, setCopied] = useState(false);
+  // Fenêtre « Assigner des agents » (ouverte depuis l'en-tête ou la section).
+  const [agentsDialogOpen, setAgentsDialogOpen] = useState(false);
   const [cancellations, setCancellations] = useState<ApiCancellationRequest[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notFoundError, setNotFoundError] = useState(false);
@@ -257,6 +259,8 @@ export default function DashboardEventDetailPage({
               const pendingCancellation = cancellations.find((request) => request.status === "PENDING");
               // Demandes à afficher : celle en cours et la dernière décision.
               const shownCancellations = cancellations.slice(0, pendingCancellation ? 2 : 1);
+              // Agents de contrôle : utiles dès la soumission et jusqu'à la fin du contrôle.
+              const canManageAgents = ["PENDING_VALIDATION", "PUBLISHED", "SUSPENDED", "TERMINATED"].includes(event.status);
               const canRequestCancellation =
                 !pendingCancellation &&
                 ["DRAFT", "PENDING_VALIDATION", "PUBLISHED", "SUSPENDED"].includes(event.status);
@@ -284,6 +288,19 @@ export default function DashboardEventDetailPage({
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      {canManageAgents ? (
+                        <button
+                          type="button"
+                          onClick={() => setAgentsDialogOpen(true)}
+                          className="inline-flex items-center gap-2 rounded-full bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-900/30 transition-opacity hover:opacity-90"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <circle cx="9" cy="8" r="3.5" />
+                            <path d="M2.5 20c.6-3.6 3.3-6 6.5-6s5.9 2.4 6.5 6M19 8v6M16 11h6" />
+                          </svg>
+                          Assigner des agents
+                        </button>
+                      ) : null}
                       {event.is_hidden ? (
                         <span
                           title="La page publique est indisponible tant que l'événement est masqué."
@@ -357,6 +374,15 @@ export default function DashboardEventDetailPage({
                       ) : null}
                     </div>
                   </div>
+
+                  {canManageAgents ? (
+                    <EventAgents
+                      eventId={event.id}
+                      eventTitle={event.title}
+                      inviteOpen={agentsDialogOpen}
+                      onInviteOpenChange={setAgentsDialogOpen}
+                    />
+                  ) : null}
 
                   {event.status === "DRAFT" && event.rejection_reason ? (
                     <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-5 py-4 text-sm text-amber-200">
@@ -464,10 +490,6 @@ export default function DashboardEventDetailPage({
                     eventCategory={eventCategories.find((category) => category.code === event.category)}
                     payout={payout}
                   />
-
-                  {["PUBLISHED", "PENDING_VALIDATION", "SUSPENDED", "TERMINATED"].includes(event.status) ? (
-                    <EventAgents eventId={event.id} />
-                  ) : null}
 
                   <h2 className="mb-4 text-lg font-bold text-ink-1">Participants</h2>
                   <AttendeesExplorer
