@@ -1,5 +1,6 @@
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import { PosterViewer } from "@/components/event-detail/poster-viewer";
+import { EventStartCountdown } from "@/components/event-detail/event-start-countdown";
 import type { EventDetail } from "@/lib/constants/event-details";
 
 const priceFormatter = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
@@ -103,6 +104,10 @@ export function EventHeader({ event, purchasable }: { event: EventDetail; purcha
               </div>
             </div>
           </dl>
+
+          {purchasable && event.startAt ? (
+            <EventStartCountdown salesStartIso={event.salesStartAt} startIso={event.startAt} />
+          ) : null}
 
           {purchasable && !soldOut && event.tickets.length > 0 ? (
             <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4 border-t border-white/10 pt-8">

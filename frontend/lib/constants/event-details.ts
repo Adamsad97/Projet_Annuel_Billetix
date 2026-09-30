@@ -42,6 +42,8 @@ export interface EventDetail {
   calendar?: { weekday: string; day: string; month: string };
   /** Ex. "samedi 17 octobre 2026" */
   longDateLabel?: string;
+  /** Début de l'événement (ISO) — compte à rebours de l'en-tête. */
+  startAt?: string;
   /** Ville seule (le nom du lieu est dans venueName). */
   venueCity?: string;
   /** Prix TTC le plus bas des billets en vente, null s'il n'y en a aucun. */

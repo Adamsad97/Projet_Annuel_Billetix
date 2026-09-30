@@ -184,6 +184,7 @@ export function apiEventToDetail(event: ApiEvent, categories: ApiTicketCategory[
       month: "long",
       year: "numeric",
     }),
+    startAt: event.start_date,
     venueCity: event.venue_city,
     fromPrice: tickets.length > 0 ? Math.min(...tickets.map((t) => t.price)) : null,
     remaining: totalRemaining,
