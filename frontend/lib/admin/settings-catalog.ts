@@ -132,6 +132,7 @@ export const FIELDS: Record<string, FieldMeta> = {
   wave_fee_fixed_eur: { label: "Wave — frais fixes", unit: "€ par paiement" },
   // Reversements et litiges
   payout_delay_days: { label: "Délai de reversement après l'événement", unit: "jours" },
+  iban_change_payout_hold_hours: { label: "Reversements suspendus après un changement d'IBAN", unit: "heures" },
   payout_early_request_min_days_after_event: { label: "Reversement anticipé possible après", unit: "jours" },
   dispute_alert_threshold: { label: "Seuil d'alerte des litiges", unit: "litiges" },
   dispute_payout_block_max_days: { label: "Blocage maximal des fonds en litige", unit: "jours" },
@@ -147,6 +148,8 @@ export const FIELDS: Record<string, FieldMeta> = {
   platform_siret: { label: "SIRET", format: "text" },
   platform_vat_number: { label: "Numéro de TVA intracommunautaire", format: "text" },
   platform_address: { label: "Adresse du siège", format: "text" },
+  platform_iban: { label: "IBAN de la plateforme (émetteur des virements)", format: "text" },
+  platform_bic: { label: "BIC de la banque de la plateforme", format: "text" },
 };
 
 /** Libellé lisible d'un réglage (repli : sa description serveur, puis sa clé). */

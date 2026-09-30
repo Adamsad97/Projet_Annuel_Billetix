@@ -12,6 +12,10 @@ export const payoutStatusBadge: Record<ApiPayoutStatus, { label: string; classNa
     label: "🔄 En cours",
     className: "bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30",
   },
+  TO_TRANSFER: {
+    label: "🏦 Virement en préparation",
+    className: "bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30",
+  },
   COMPLETED: {
     label: "✓ Versé",
     className: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30",

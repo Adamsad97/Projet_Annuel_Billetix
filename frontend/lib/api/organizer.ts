@@ -48,7 +48,7 @@ export function getOrganizerDashboard(): Promise<ApiOrganizerDashboard> {
   return apiGet<ApiOrganizerDashboard>("/events/me/dashboard");
 }
 
-export type ApiPayoutStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "BLOCKED" | "FAILED";
+export type ApiPayoutStatus = "PENDING" | "PROCESSING" | "TO_TRANSFER" | "COMPLETED" | "BLOCKED" | "FAILED";
 
 export interface ApiPayout {
   id: string;

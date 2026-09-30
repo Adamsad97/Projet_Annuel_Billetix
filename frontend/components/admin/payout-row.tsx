@@ -8,6 +8,7 @@ import { payoutSettlement } from "@/lib/finance/payout-settlement";
 export const payoutStatusBadge: Record<ApiPayoutStatus, { label: string; className: string }> = {
   PENDING: { label: "⏳ En attente", className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30" },
   PROCESSING: { label: "⏳ Virement en cours", className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30" },
+  TO_TRANSFER: { label: "🏦 À virer", className: "bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30" },
   COMPLETED: { label: "✓ Versé", className: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30" },
   BLOCKED: { label: "⛔ Bloqué", className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
   FAILED: { label: "✕ Échoué", className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
@@ -82,7 +83,7 @@ export function PayoutRow({
           >
             Débloquer
           </button>
-        ) : payout.status === "PENDING" ? (
+        ) : payout.status === "PENDING" && !payout.settled_by_payout_id ? (
           <button
             type="button"
             disabled={busy}

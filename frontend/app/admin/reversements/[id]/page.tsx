@@ -94,7 +94,10 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
     if (!payout) return;
     setDialog({
       title: "Déclencher le virement maintenant ?",
-      message: "Le versement Stripe est initié immédiatement, sans attendre le passage automatique quotidien.",
+      message:
+        payout.payout_method === "BANK_TRANSFER"
+          ? "Le reversement passe « À virer » immédiatement, sans attendre le passage automatique quotidien. Il reste à émettre le virement depuis la liste des reversements."
+          : "Le versement Stripe est initié immédiatement, sans attendre le passage automatique quotidien.",
       confirmLabel: "Déclencher",
       onConfirm: async () => {
         setBusy(true);
@@ -188,13 +191,23 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
               </div>
             </div>
 
-            {payout.bank_owner_name ? (
-              <div className="mt-4 border-t border-hairline-2 pt-4">
-                <p className="text-xs uppercase tracking-wide text-ink-5">Titulaire du compte bancaire</p>
-                <p className="text-sm text-ink-3">{payout.bank_owner_name}</p>
-                <p className="mt-1 text-xs text-ink-6">
-                  L&apos;IBAN est chiffré et utilisé uniquement par Stripe pour le virement — non affiché ici.
+            <div className="mt-4 border-t border-hairline-2 pt-4">
+              <p className="text-xs uppercase tracking-wide text-ink-5">Moyen de reversement</p>
+              <p className="text-sm text-ink-3">
+                {payout.payout_method === "STRIPE" ? "Stripe Connect" : "Virement sur l'IBAN de l'organisateur"}
+              </p>
+              {payout.bank_owner_name ? (
+                <p className="mt-1 font-mono text-xs text-ink-5">
+                  {payout.bank_owner_name}
+                  {payout.iban_masked ? ` · ${payout.iban_masked}` : ""}
                 </p>
+              ) : null}
+            </div>
+
+            {payout.bank_transfer_reference ? (
+              <div className="mt-4 border-t border-hairline-2 pt-4">
+                <p className="text-xs uppercase tracking-wide text-ink-5">Référence du virement bancaire</p>
+                <p className="font-mono text-sm text-ink-3">{payout.bank_transfer_reference}</p>
               </div>
             ) : null}
 
@@ -231,7 +244,7 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
                   onClick={handleProcess}
                   className="rounded-full bg-hairline-1 px-5 py-2.5 text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2 disabled:opacity-50"
                 >
-                  Déclencher le virement maintenant
+                  {payout.payout_method === "BANK_TRANSFER" ? "Préparer le virement maintenant" : "Déclencher le virement maintenant"}
                 </button>
                 <button
                   type="button"

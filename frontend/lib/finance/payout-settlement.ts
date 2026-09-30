@@ -32,6 +32,9 @@ export function payoutSettlement(payout: SettlementSource): PayoutSettlement {
     if (payout.status === "COMPLETED" && payout.settled_by_payout_id) {
       return { badge: SETTLED, detail: "Réglé par déduction sur un reversement suivant." };
     }
+    if (payout.settled_by_payout_id) {
+      return { badge: SETTLED, detail: "Déduit d'un virement en préparation." };
+    }
     return {
       badge: DUE,
       detail:

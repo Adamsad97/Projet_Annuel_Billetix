@@ -3,26 +3,37 @@
 // Bug corrigé : cartes KPI 100% maquette (payoutStats factices) — câblées
 // sur GET /admin/payouts/stats.
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
+import { BankTransfersPanel } from "@/components/admin/bank-transfers-panel";
 import { PayoutsExplorer } from "@/components/admin/payouts-explorer";
 import { getPayoutStats } from "@/lib/api/admin";
 import { euros as currency } from "@/lib/format/money";
 import { cardClass } from "@/components/ui/card";
 
 export default function AdminPayoutsPage() {
-  const [stats, setStats] = useState<{ pending_total: number; paid_this_month_total: number; blocked_total: number } | null>(null);
+  const [stats, setStats] = useState<Awaited<ReturnType<typeof getPayoutStats>> | null>(null);
+  // Virement confirmé ou annulé : KPI et liste rechargés.
+  const [version, setVersion] = useState(0);
 
-  useEffect(() => {
+  const loadStats = useCallback(() => {
     getPayoutStats()
       .then(setStats)
       .catch(() => setStats(null));
   }, []);
 
+  useEffect(loadStats, [loadStats]);
+
   const cards = stats
     ? [
         { id: "pending", label: "En attente", value: currency.format(stats.pending_total), valueClassName: "text-amber-400" },
+        {
+          id: "to-transfer",
+          label: `À virer (${stats.to_transfer_count})`,
+          value: currency.format(stats.to_transfer_total),
+          valueClassName: "text-blue-400",
+        },
         { id: "paid", label: "Versé ce mois", value: currency.format(stats.paid_this_month_total), valueClassName: "text-emerald-400" },
         { id: "blocked", label: "Bloqués", value: currency.format(stats.blocked_total), valueClassName: "text-red-400" },
       ]
@@ -38,15 +49,22 @@ export default function AdminPayoutsPage() {
         </p>
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats === null
-          ? [0, 1, 2].map((i) => (
+          ? [0, 1, 2, 3].map((i) => (
               <div key={i} className={cardClass("h-24 animate-pulse")} />
             ))
           : cards.map((stat) => <AdminStatCard key={stat.id} stat={stat} />)}
       </div>
 
-      <PayoutsExplorer />
+      <BankTransfersPanel
+        onChange={() => {
+          loadStats();
+          setVersion((current) => current + 1);
+        }}
+      />
+
+      <PayoutsExplorer key={version} />
     </AdminShell>
   );
 }

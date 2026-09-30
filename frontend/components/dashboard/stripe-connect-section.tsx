@@ -21,11 +21,11 @@ function badgeFor(status: ApiConnectStatus): Badge {
 }
 
 /**
- * Compte de reversement : l'organisateur renseigne son identité et son
- * compte bancaire sur le formulaire sécurisé de Stripe (Stripe Connect),
- * puis revient ici. Les reversements automatiques en dépendent.
+ * Option Stripe Connect : l'organisateur peut recevoir ses reversements via
+ * Stripe (virements automatiques) plutôt que par virement de la plateforme
+ * sur son IBAN. Identité et compte bancaire saisis chez Stripe.
  */
-export function PayoutAccountSection() {
+export function StripeConnectSection() {
   const [status, setStatus] = useState<ApiConnectStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [redirecting, setRedirecting] = useState(false);
@@ -81,7 +81,9 @@ export function PayoutAccountSection() {
   return (
     <section className={cardClass("p-6")}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-bold text-ink-1">Compte de reversement</h2>
+        <h2 className="text-lg font-bold text-ink-1">
+          Stripe Connect <span className="text-sm font-normal text-ink-5">(facultatif)</span>
+        </h2>
         {badge ? <span className={`rounded-full px-3 py-1 text-xs font-semibold ${badge.className}`}>{badge.label}</span> : null}
       </div>
 
@@ -94,8 +96,8 @@ export function PayoutAccountSection() {
           {status.onboarded ? (
             <>
               <p className="text-sm text-ink-4">
-                Vos reversements sont versés automatiquement sur votre compte bancaire, après la date prévue pour
-                chaque événement.
+                Votre compte Stripe est prêt. Choisissez « Stripe Connect » comme moyen de reversement pour être
+                payé automatiquement par Stripe.
               </p>
               {status.bank ? (
                 <div className="flex items-center gap-3 rounded-xl bg-hairline-1 px-4 py-3 ring-1 ring-inset ring-hairline-2">
@@ -122,8 +124,8 @@ export function PayoutAccountSection() {
             </p>
           ) : (
             <p className="text-sm text-ink-4">
-              Pour recevoir le produit de vos ventes, renseignez votre identité et votre compte bancaire auprès de
-              Stripe, notre prestataire de paiement. Vos coordonnées bancaires ne sont jamais stockées par BilleTix.
+              Si vous le souhaitez, vous pouvez être payé par Stripe, notre prestataire de paiement, plutôt que par
+              virement sur votre IBAN. Votre identité et votre compte bancaire sont alors saisis chez Stripe.
             </p>
           )}
 
@@ -155,7 +157,7 @@ export function PayoutAccountSection() {
                   ? "Redirection vers Stripe…"
                   : status.connected
                     ? "Reprendre l'inscription"
-                    : "Connecter mon compte bancaire"}
+                    : "Connecter un compte Stripe"}
               </button>
             ) : null}
           </div>

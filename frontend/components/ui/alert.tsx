@@ -1,9 +1,10 @@
 // Encadrés de message : bandeau de page (Alert) et erreur de formulaire (FormError).
 
 const TONES = {
-  error: "border-red-500/20 bg-red-500/5 text-red-300",
-  warning: "border-amber-500/20 bg-amber-500/5 text-amber-200",
-  success: "border-emerald-500/20 bg-emerald-500/5 text-emerald-300",
+  // Couleurs d'état du thème : lisibles en clair comme en sombre.
+  error: "border-red-500/20 bg-red-500/5 text-danger",
+  warning: "border-amber-500/20 bg-amber-500/5 text-warning",
+  success: "border-emerald-500/20 bg-emerald-500/5 text-success",
 } as const;
 
 export function Alert({
@@ -30,7 +31,7 @@ export function Alert({
 
 export function FormError({ className = "mb-4", children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div role="alert" className={`rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-inset ring-red-500/30 ${className}`}>
+    <div role="alert" className={`rounded-xl bg-red-500/10 px-4 py-3 text-sm text-danger ring-1 ring-inset ring-red-500/30 ${className}`}>
       {children}
     </div>
   );

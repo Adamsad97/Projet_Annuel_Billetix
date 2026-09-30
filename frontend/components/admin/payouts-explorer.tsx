@@ -29,6 +29,7 @@ const statusFilters: { id: string; label: string }[] = [
   { id: "all", label: "Tous" },
   { id: "PENDING", label: "En attente" },
   { id: "PROCESSING", label: "En cours" },
+  { id: "TO_TRANSFER", label: "À virer" },
   { id: "COMPLETED", label: "Versés" },
   { id: "BLOCKED", label: "Bloqués" },
   { id: "FAILED", label: "Échoués" },

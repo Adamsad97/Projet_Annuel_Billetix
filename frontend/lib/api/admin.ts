@@ -299,7 +299,7 @@ export async function getAuditLogs(filters: AuditLogFilters = {}): Promise<ApiAu
 
 // ─── Reversements ───────────────────────────────────────────────────────────
 
-export type ApiPayoutStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "BLOCKED" | "FAILED";
+export type ApiPayoutStatus = "PENDING" | "PROCESSING" | "TO_TRANSFER" | "COMPLETED" | "BLOCKED" | "FAILED";
 
 export interface ApiPayout {
   id: string;
@@ -314,6 +314,8 @@ export interface ApiPayout {
   payment_fees_amount: number;
   net_amount: number;
   stripe_transfer_id: string | null;
+  /** Virement bancaire : référence saisie par l'admin. */
+  bank_transfer_reference?: string | null;
   /** Événement reporté, nouvelle date à venir : rien n'est versé d'ici là. */
   on_hold_for_postponement?: boolean;
   /** Frais des billets gratuits déduits (à la charge de l'organisateur). */
@@ -333,14 +335,65 @@ export interface ApiPayout {
 
 export interface ApiPayoutDetail extends ApiPayout {
   bank_owner_name: string | null;
+  iban_masked: string | null;
+  payout_method: "BANK_TRANSFER" | "STRIPE" | null;
 }
 
 export function getPayoutStats(): Promise<{
   pending_total: number;
   paid_this_month_total: number;
   blocked_total: number;
+  to_transfer_total: number;
+  to_transfer_count: number;
 }> {
   return apiGet("/admin/payouts/stats");
+}
+
+// ─── Virements bancaires (organisateurs payés par IBAN) ─────────────────────
+
+export interface ApiBankTransfer {
+  id: string;
+  organizer_id: string;
+  organizer_name: string;
+  organizer_email: string | null;
+  event_id: string;
+  event_name: string;
+  net_amount: number;
+  offset_amount: number;
+  /** Montant à virer : net moins les montants dus déduits. */
+  amount: number;
+  bank_owner_name: string | null;
+  iban_masked: string | null;
+  /** IBAN modifié récemment : pas de virement avant cette date. */
+  iban_held_until: string | null;
+  prepared_at: string;
+}
+
+export function listBankTransfers(): Promise<{ data: ApiBankTransfer[]; total: number; platform_account_ready: boolean }> {
+  return apiGet("/admin/bank-transfers");
+}
+
+export function exportSepa(ids: string[]): Promise<{
+  filename: string;
+  message_id: string;
+  xml: string;
+  count: number;
+  total: number;
+  included: string[];
+  skipped: Array<{ id: string; reason: string }>;
+}> {
+  return apiPost("/admin/bank-transfers/sepa", { ids });
+}
+
+export function confirmBankTransfers(
+  ids: string[],
+  reference: string,
+): Promise<{ confirmed: string[]; failed: Array<{ id: string; message: string }> }> {
+  return apiPost("/admin/bank-transfers/confirm", { ids, reference });
+}
+
+export function cancelBankTransfer(id: string, reason: string): Promise<unknown> {
+  return apiPost(`/admin/bank-transfers/${id}/cancel`, { reason });
 }
 
 export type AdminPayoutSort = "scheduled_desc" | "scheduled_asc" | "amount_desc";
