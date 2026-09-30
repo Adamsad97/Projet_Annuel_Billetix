@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{headline}}</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #0f172a; padding: 28px 32px; }
+    .header h1 { color: #fff; margin: 0; font-size: 22px; }
+    .tag { display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: bold; }
+    .tag-cancel { background: #fee2e2; color: #991b1b; }
+    .tag-postpone { background: #fef3c7; color: #92400e; }
+    .body { padding: 32px; color: #333; line-height: 1.6; }
+    .event-box { background: #f1f5f9; border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+    .event-name { font-size: 17px; font-weight: bold; color: #0f172a; }
+    .quote { border-left: 4px solid #cbd5e1; padding: 8px 16px; margin: 16px 0; color: #334155; white-space: pre-line; }
+    .label { font-size: 12px; font-weight: bold; text-transform: uppercase; color: #64748b; margin-top: 20px; }
+    .btn { display: inline-block; margin: 20px 0 8px; padding: 14px 32px; background: #1d4ed8; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; }
+    .note { font-size: 13px; color: #64748b; }
+    .footer { padding: 20px 32px; background: #f9f9f9; color: #999; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>{{headline}}</h1>
+      <span class="tag {{#if postponement}}tag-postpone{{else}}tag-cancel{{/if}}">{{#if postponement}}Report{{else}}Annulation{{/if}}</span>
+    </div>
+    <div class="body">
+      <p>Bonjour {{firstName}},</p>
+      <p>{{intro}}</p>
+      <div class="event-box">
+        <div class="event-name">{{eventName}}</div>
+        <div>📅 {{eventDate}}</div>
+        <div>👤 {{organizerName}}</div>
+        {{#if postponement}}{{#unless isMessage}}
+        <div style="margin-top:8px;"><strong>Nouvelle date proposée :</strong> {{#if newDate}}{{newDate}}{{else}}à venir (fixée plus tard par l'organisateur){{/if}}</div>
+        {{/unless}}{{/if}}
+      </div>
+      <p class="label">{{textLabel}}</p>
+      <div class="quote">{{text}}</div>
+      <a href="{{requestsUrl}}" class="btn">Traiter la demande</a>
+      <p class="note">{{#if postponement}}Rien ne change pour les acheteurs tant que le report n'est pas accepté.{{else}}L'événement reste en vente tant que l'annulation n'est pas acceptée.{{/if}}</p>
+    </div>
+    <div class="footer">© {{year}} BilletiX — Tous droits réservés</div>
+  </div>
+</body>
+</html>

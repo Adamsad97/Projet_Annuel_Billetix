@@ -287,4 +287,28 @@ describe('NotificationController', () => {
     expect(options.subject).toContain(subjectPart);
     expect(options.context).toMatchObject({ rescheduled, ordersUrl: 'http://localhost:3000/profil/commandes' });
   });
+
+  it.each([
+    ['CANCELLATION', 'NEW', "Nouvelle demande d'annulation"],
+    ['POSTPONEMENT', 'NEW', 'Nouvelle demande de report'],
+    ['POSTPONEMENT', 'MESSAGE', "Réponse de l'organisateur"],
+  ] as const)('demande %s (%s) : les admins sont prévenus', async (kind, action, subjectPart) => {
+    await controller.onAdminChangeRequest(
+      {
+        email: 'admin@example.com',
+        firstName: 'Awa',
+        kind,
+        action,
+        eventName: 'Soirée Jazz',
+        eventDate: 'samedi 24 octobre 2026',
+        organizerName: 'Les Nuits',
+        text: 'Salle indisponible',
+      },
+      rmqContext,
+    );
+    const [options] = mail.send.mock.calls[0];
+    expect(options).toMatchObject({ to: 'admin@example.com', template: 'admin-change-request' });
+    expect(options.subject).toContain(subjectPart);
+    expect(options.context.requestsUrl).toBe('http://localhost:3000/admin/annulations');
+  });
 });

@@ -4,6 +4,7 @@ import { Ctx, EventPattern, Payload, RmqContext } from '@nestjs/microservices';
 import { MailAttachment, MailService } from '../mail/mail.service';
 import { AccountActivatedDto } from './dto/account-activated.dto';
 import { EventPostponedDto } from './dto/event-postponed.dto';
+import { AdminChangeRequestDto } from './dto/admin-change-request.dto';
 import { AccountSuspendedDto } from './dto/account-suspended.dto';
 import { AccountUnlockedDto } from './dto/account-unlocked.dto';
 import { AccountUnsuspendedDto } from './dto/account-unsuspended.dto';
@@ -426,6 +427,32 @@ export class NotificationController {
         firstName: data.firstName,
         eventName: data.eventName,
         ordersUrl: `${this.appUrl}/profil/commandes`,
+      },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.admin_change_request')
+  async onAdminChangeRequest(@Payload() data: AdminChangeRequestDto, @Ctx() rmqContext: RmqContext) {
+    const postponement = data.kind === 'POSTPONEMENT';
+    const isMessage = data.action === 'MESSAGE';
+    const what = postponement ? 'de report' : "d'annulation";
+    await this.mail.send({
+      to: data.email,
+      subject: isMessage
+        ? `Réponse de l'organisateur sur une demande ${what} — ${data.eventName}`
+        : `Nouvelle demande ${what} — ${data.eventName}`,
+      template: 'admin-change-request',
+      context: {
+        ...data,
+        postponement,
+        isMessage,
+        headline: isMessage ? "L'organisateur a répondu" : `Nouvelle demande ${what}`,
+        intro: isMessage
+          ? `L'organisateur a ajouté un message à sa demande ${what} :`
+          : `Un organisateur demande ${postponement ? 'le report' : "l'annulation"} de son événement :`,
+        textLabel: isMessage ? 'Message' : 'Motif',
+        requestsUrl: `${this.appUrl}/admin/annulations`,
       },
     });
     this.ack(rmqContext);

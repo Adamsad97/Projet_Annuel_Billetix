@@ -49,7 +49,17 @@ import { CreatePromoCodeDto, CreateTicketCategoryDto, RespondToInfoRequestDto, V
 import { UuidPipe } from "../common/pipes/uuid.pipe";
 import { EventOwner } from "../common/guards/event-owner.guard";
 import { findScheduleConflict, type ScheduledEvent } from "../ticket/agent-schedule";
-import { formatEventDate } from "../common/event-date";
+import { formatEventDate, formatEventSchedule } from "../common/event-date";
+
+/** Demande d'annulation ou de report telle que renvoyée par event-service. */
+interface ChangeRequestSnapshot {
+  id: string;
+  event_id: string;
+  organizer_id: string;
+  reason: string;
+  kind?: "CANCELLATION" | "POSTPONEMENT";
+  new_start_date?: string | null;
+}
 
 // Adresse lisible générée par event-service (cf. event/slug.ts).
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -744,8 +754,8 @@ export class EventController {
         end_date: dto.new_end_date,
       } as UpdateEventDto);
     }
-    return firstValueFrom(
-      this.eventClient.send("event.cancellation.request", {
+    const request = await firstValueFrom(
+      this.eventClient.send<ChangeRequestSnapshot>("event.cancellation.request", {
         event_id: id,
         organizer_id: user.sub,
         reason: dto.reason,
@@ -754,6 +764,52 @@ export class EventController {
         new_end_date: dto.new_end_date,
       }),
     );
+    this.notifyAdminsOfRequest(request, "NEW", request.reason);
+    return request;
+  }
+
+  /**
+   * Admins prévenus par email d'une demande d'annulation ou de report (ou
+   * d'une réponse de l'organisateur) : la demande n'attend plus qu'on pense
+   * à ouvrir la page des demandes. Sans effet sur la réponse en cas d'échec.
+   */
+  private notifyAdminsOfRequest(request: ChangeRequestSnapshot, action: "NEW" | "MESSAGE", text: string): void {
+    (async () => {
+      const [event, organizer, ...adminPages] = await Promise.all([
+        firstValueFrom(
+          this.eventClient.send<{ title: string; start_date: string; timezone?: string | null }>("event.get", {
+            id: request.event_id,
+          }),
+        ),
+        firstValueFrom(
+          this.authClient.send<{ first_name: string; last_name: string } | null>("auth.get_user", { id: request.organizer_id }),
+        ).catch(() => null),
+        ...(["ADMIN", "SUPER_ADMIN"] as const).map((role) =>
+          firstValueFrom(
+            this.authClient.send<{ data: Array<{ email: string; first_name: string }> }>("auth.list_users", {
+              role,
+              status: "active",
+              limit: 100,
+            }),
+          ),
+        ),
+      ]);
+      const recipients = new Map(adminPages.flatMap((page) => page.data).map((admin) => [admin.email.toLowerCase(), admin]));
+      const timezone = event.timezone ?? null;
+      for (const admin of recipients.values()) {
+        this.notifClient.emit("notification.admin_change_request", {
+          email: admin.email,
+          firstName: admin.first_name,
+          kind: request.kind ?? "CANCELLATION",
+          action,
+          eventName: event.title,
+          eventDate: formatEventDate(event.start_date, timezone),
+          organizerName: organizer ? `${organizer.first_name} ${organizer.last_name}` : "L'organisateur",
+          text,
+          newDate: request.new_start_date ? formatEventSchedule(request.new_start_date, timezone) : undefined,
+        });
+      }
+    })().catch((err) => this.logger.error(`Alerte admin de la demande ${request.id} : ${(err as Error)?.message}`));
   }
 
   /** Nouvelle date d'un événement reporté : ventes et contrôle reprennent, détenteurs prévenus. */
@@ -791,19 +847,21 @@ export class EventController {
   @Post("cancellation-requests/:requestId/messages")
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Répondre dans l'échange d'une demande d'annulation (ORGANIZER)" })
-  postCancellationMessage(
+  async postCancellationMessage(
     @CurrentUser() user: JwtPayload,
     @Param("requestId", UuidPipe) requestId: string,
     @Body() dto: MessageDto,
   ) {
-    return firstValueFrom(
-      this.eventClient.send("event.cancellation.message", {
+    const request = await firstValueFrom(
+      this.eventClient.send<ChangeRequestSnapshot>("event.cancellation.message", {
         id: requestId,
         author_id: user.sub,
         author_role: "ORGANIZER",
         message: dto?.message,
       }),
     );
+    this.notifyAdminsOfRequest(request, "MESSAGE", dto.message);
+    return request;
   }
 
   @Post("cancellation-requests/:requestId/withdraw")
