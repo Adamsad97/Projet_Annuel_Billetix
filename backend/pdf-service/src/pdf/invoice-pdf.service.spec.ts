@@ -80,4 +80,45 @@ describe('InvoicePdfService', () => {
       expect(esc('Jean Dupont')).toBe('Jean Dupont');
     });
   });
+
+  describe("buildCreditNoteHtml — avoir", () => {
+    const note = {
+      credit_note_id: '11111111-1111-4111-8111-111111111111',
+      number: 'AV-2026-00042',
+      issued_at: '2026-10-01T10:00:00.000Z',
+      invoice_reference: 'ORD-2026-ABCDE',
+      reason: 'Événement annulé',
+      event_name: 'Soirée <Jazz>',
+      tva_rate: 0.2,
+      billing_first_name: 'Awa',
+      billing_last_name: 'Diallo',
+      billing_email: 'awa@example.com',
+      billing_address_line1: '1 rue de Paris',
+      billing_city: 'Paris',
+      billing_postal_code: '75001',
+      billing_country: 'France',
+      amount_ht: 98,
+      tva_amount: 19.6,
+      fees_amount: 2.4,
+      amount_ttc: 120,
+      platform_legal_name: 'BilletiX SAS',
+      platform_siret: '',
+      platform_vat_number: '',
+      platform_address: '',
+    };
+
+    it("titre, numéro, facture d'origine et montants en négatif", () => {
+      const html = service.buildCreditNoteHtml(note);
+      expect(html).toContain('<h1>AVOIR</h1>');
+      expect(html).toContain('N° AV-2026-00042');
+      expect(html).toContain('Sur facture N° ORD-2026-ABCDE');
+      expect(html).toContain('-120.00 €');
+      expect(html).toContain('-19.60 €');
+      expect(html).toContain('Motif :</strong> Événement annulé');
+    });
+
+    it("échappe les champs saisis (nom d'événement)", () => {
+      expect(service.buildCreditNoteHtml(note)).toContain('Soirée &lt;Jazz&gt;');
+    });
+  });
 });

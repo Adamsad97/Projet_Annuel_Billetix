@@ -159,6 +159,25 @@ export function resendTickets(orderId: string): Promise<{ success: boolean }> {
   return apiPost<{ success: boolean }>(`/orders/${orderId}/resend-tickets`);
 }
 
+/** Avoir d'un remboursement : annule, pour son montant, la facture de la commande. */
+export interface ApiCreditNote {
+  id: string;
+  number: string;
+  amount_ttc: number;
+  reason: string;
+  created_at: string;
+  /** PDF généré (quelques secondes après le remboursement). */
+  pdf_ready: boolean;
+}
+
+export function listCreditNotes(orderId: string): Promise<ApiCreditNote[]> {
+  return apiGet<ApiCreditNote[]>(`/orders/${orderId}/credit-notes`);
+}
+
+export function downloadCreditNote(orderId: string, noteId: string, number: string): Promise<void> {
+  return apiDownload(`/orders/${orderId}/credit-notes/${noteId}/pdf`, `avoir-${number}.pdf`);
+}
+
 /** Facture PDF de la commande, servie uniquement à son titulaire connecté. */
 export function downloadInvoice(orderId: string, reference: string): Promise<void> {
   return apiDownload(`/orders/${orderId}/invoice`, `facture-${reference}.pdf`);

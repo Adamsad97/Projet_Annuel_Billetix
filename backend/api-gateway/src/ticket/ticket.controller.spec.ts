@@ -71,6 +71,7 @@ describe("TicketController — notification de revente (préférences niveau 2)"
       userClient as any,
       adminClient as any,
       {} as TicketsGateway,
+      { issueInBackground: jest.fn() } as any,
     );
   });
 
@@ -184,6 +185,7 @@ describe("TicketController — marketplace de revente (listing enrichi)", () => 
       {} as any,
       {} as any,
       {} as TicketsGateway,
+      { issueInBackground: jest.fn() } as any,
     );
   });
 
@@ -251,6 +253,7 @@ describe("TicketController — consultation restreinte au propriétaire (bug cor
       {} as any,
       {} as any,
       {} as TicketsGateway,
+      { issueInBackground: jest.fn() } as any,
     );
   });
 
@@ -358,6 +361,7 @@ describe("TicketController — QR code sur demande uniquement", () => {
       {} as any,
       adminClient as any,
       {} as TicketsGateway,
+      { issueInBackground: jest.fn() } as any,
     );
   };
   const res = () => ({ set: jest.fn() });
@@ -466,6 +470,7 @@ describe("TicketController — offrir un billet", () => {
       {} as any,
       adminClient as any,
       {} as TicketsGateway,
+      { issueInBackground: jest.fn() } as any,
     );
   };
 
@@ -543,6 +548,7 @@ describe("TicketController — achat en revente", () => {
       {} as any,
       {} as any,
       {} as TicketsGateway,
+      { issueInBackground: jest.fn() } as any,
     );
     for (const role of ["ADMIN", "SUPER_ADMIN"]) {
       await expect(
@@ -588,6 +594,7 @@ describe("TicketController — finalisation d'une revente (remboursement du vend
       userClient as any,
       adminClient as any,
       {} as TicketsGateway,
+      { issueInBackground: jest.fn() } as any,
     );
   }
 

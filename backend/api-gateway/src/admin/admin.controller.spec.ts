@@ -32,6 +32,7 @@ describe("AdminController — newsletter", () => {
       notifClient as any,
       {} as any, // eventRefund
       {} as any, // postponement
+      { issueInBackground: jest.fn() } as any, // creditNotes
     );
   });
 
@@ -141,6 +142,7 @@ describe("AdminController — annulation d'un transfert de billet", () => {
       notifClient as any,
       {} as any, // eventRefund
       {} as any, // postponement
+      { issueInBackground: jest.fn() } as any, // creditNotes
     );
   });
 
@@ -208,6 +210,7 @@ describe("AdminController — reventes", () => {
       {} as any,
       {} as any, // eventRefund
       {} as any, // postponement
+      { issueInBackground: jest.fn() } as any, // creditNotes
     );
 
     const result = await controller.listResales("SOLD", " vendeur ");

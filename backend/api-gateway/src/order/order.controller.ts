@@ -248,6 +248,46 @@ export class OrderController {
     logAccess(this.adminClient, user, req, "INVOICE_DOWNLOADED", { type: "ORDER", id, reference: order.reference });
   }
 
+  /** Avoirs de la commande (remboursements), du plus ancien au plus récent. */
+  @Get(":id/credit-notes")
+  @ApiOperation({ summary: "Avoirs d'une commande remboursée (le titulaire, ou un admin)" })
+  async listCreditNotes(@CurrentUser() user: JwtPayload, @Param("id", UuidPipe) id: string) {
+    await this.getOwnedOrder(id, user);
+    const notes = await firstValueFrom(
+      this.orderClient.send<
+        Array<{ id: string; number: string; amount_ttc: string; reason: string; pdf_url: string | null; created_at: string }>
+      >("order.list_credit_notes", { order_id: id }),
+    );
+    // Le lien de stockage reste côté serveur : seul l'état « PDF prêt » est exposé.
+    return notes.map(({ pdf_url, ...note }) => ({ ...note, amount_ttc: Number(note.amount_ttc), pdf_ready: Boolean(pdf_url) }));
+  }
+
+  /** PDF d'un avoir, servi au titulaire (ou à un admin) — bucket privé des factures. */
+  @Get(":id/credit-notes/:noteId/pdf")
+  @ApiOperation({ summary: "Télécharger un avoir (le titulaire, ou un admin)" })
+  async getCreditNotePdf(
+    @CurrentUser() user: JwtPayload,
+    @Param("id", UuidPipe) id: string,
+    @Param("noteId", UuidPipe) noteId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.getOwnedOrder(id, user);
+    const note = await firstValueFrom(
+      this.orderClient.send<{ order_id: string; number: string; pdf_url: string | null }>("order.get_credit_note", { id: noteId }),
+    );
+    if (note.order_id !== id) throw new ForbiddenException("Cet avoir n'appartient pas à cette commande");
+    if (!note.pdf_url) throw new BadRequestException("Avoir en cours de génération, réessayez dans un instant.");
+    const pdf = await this.uploads.readStoredFile(note.pdf_url);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="avoir-${note.number}.pdf"`,
+      "Cache-Control": "no-store, private",
+    });
+    res.send(pdf);
+    logAccess(this.adminClient, user, req, "INVOICE_DOWNLOADED", { type: "ORDER", id, reference: note.number });
+  }
+
   /**
    * Bug corrigé (CDC §9 : "renvoi de billets") : fonctionnalité totalement
    * absente — un acheteur ayant perdu/pas reçu son email de billets n'avait

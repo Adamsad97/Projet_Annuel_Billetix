@@ -9,6 +9,8 @@ import {
   EventDatesPayload,
   EventIdPayload,
   IdPayload,
+  IssueCreditNotePayload,
+  OrderCreditNotesPayload,
   MarkRefundedPayload,
   PartialRefundPayload,
   RecentRefundsPayload,
@@ -17,12 +19,14 @@ import {
   SetInvoiceUrlPayload,
 } from './dto/order-payloads';
 import { OrderService } from './order.service';
+import { CreditNoteService } from './credit-note.service';
 
 @Controller()
 export class OrderController {
   constructor(
     private readonly orderService: OrderService,
     private readonly reservationService: StockReservationService,
+    private readonly creditNotes: CreditNoteService,
   ) {}
 
   @MessagePattern('order.reserve_stock')
@@ -53,6 +57,26 @@ export class OrderController {
   @MessagePattern('order.list_by_buyer')
   listByBuyer(@Payload() data: BuyerPayload) {
     return this.orderService.getByBuyer(data.buyer_id);
+  }
+
+  @MessagePattern('order.issue_credit_note')
+  issueCreditNote(@Payload() data: IssueCreditNotePayload) {
+    return this.creditNotes.issue(data.order_id, data.amount_ttc, data.reason);
+  }
+
+  @MessagePattern('order.list_credit_notes')
+  listCreditNotes(@Payload() data: OrderCreditNotesPayload) {
+    return this.creditNotes.listByOrder(data.order_id);
+  }
+
+  @MessagePattern('order.get_credit_note')
+  getCreditNote(@Payload() data: IdPayload) {
+    return this.creditNotes.get(data.id);
+  }
+
+  @MessagePattern('order.set_credit_note_url')
+  setCreditNoteUrl(@Payload() data: SetInvoiceUrlPayload) {
+    return this.creditNotes.setPdfUrl(data.id, data.url);
   }
 
   @MessagePattern('order.list_by_event')

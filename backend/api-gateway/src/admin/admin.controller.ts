@@ -35,6 +35,7 @@ import {
   CancellationRequestsQueryDto,
   ChangeRoleDto, CreateCategoryForOrganizerDto, CreateEventForOrganizerDto, ForceRefundDto, OrganizerRefDto, ResolveDisputeDto, SendNewsletterDto, UpdateSettingDto, VerifyNonProfitDto } from "./dto/admin-actions.dto";
 import { UuidPipe } from "../common/pipes/uuid.pipe";
+import { CreditNoteIssuer } from "../credit-notes/credit-note-issuer.service";
 
 /** Annonce de revente renvoyée par le ticket-service. */
 interface AdminResale {
@@ -76,6 +77,7 @@ export class AdminController {
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     private readonly eventRefund: EventRefundService,
     private readonly postponement: EventPostponementService,
+    private readonly creditNotes: CreditNoteIssuer,
   ) {}
 
   private ip(req: Request): string {
@@ -1756,6 +1758,7 @@ export class AdminController {
         amount_cents: dto.amount_cents,
       }),
     )) as { status: string };
+    this.creditNotes.issueInBackground(orderId, dto.amount_cents ? dto.amount_cents / 100 : undefined, dto.reason);
 
     if (result.status === "REFUNDED") {
       this.orderClient

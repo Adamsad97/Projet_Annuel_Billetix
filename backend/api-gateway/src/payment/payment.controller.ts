@@ -30,6 +30,7 @@ import { ReasonDto } from "../common/dto/common.dto";
 import { CreateDisputeDto, OrangeMoneyWebhookDto, RefundAmountDto } from "./dto/payment-actions.dto";
 import { ResolveDisputeDto } from "../admin/dto/admin-actions.dto";
 import { UuidPipe } from "../common/pipes/uuid.pipe";
+import { CreditNoteIssuer } from "../credit-notes/credit-note-issuer.service";
 
 @ApiTags("payments")
 @ApiBearerAuth()
@@ -47,6 +48,7 @@ export class PaymentController {
     @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
     private readonly ticketsGateway: TicketsGateway,
     private readonly fulfillment: PurchaseFulfillmentService,
+    private readonly creditNotes: CreditNoteIssuer,
   ) {}
 
   @Post("intent")
@@ -145,6 +147,12 @@ export class PaymentController {
         amount_cents: dto.amount_cents,
       }),
     )) as { status: string; refunded_amount: number };
+
+    this.creditNotes.issueInBackground(
+      orderId,
+      dto.amount_cents ? dto.amount_cents / 100 : undefined,
+      "Remboursement effectué par le service client",
+    );
 
     // Ne marquer la commande comme remboursée que si le remboursement
     // couvre le solde total — un remboursement partiel laisse les billets

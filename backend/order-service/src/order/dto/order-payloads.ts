@@ -58,6 +58,17 @@ export class PartialRefundPayload extends IdPayload {
   @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0.01) amount_ttc: number;
 }
 
+export class IssueCreditNotePayload {
+  @IsUUID() order_id: string;
+  /** Absent : solde non encore couvert par un avoir (remboursement total). */
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0.01) amount_ttc?: number;
+  @IsString() @MaxLength(500) reason: string;
+}
+
+export class OrderCreditNotesPayload {
+  @IsUUID() order_id: string;
+}
+
 export class SetInvoiceUrlPayload extends IdPayload {
   @IsString() @MaxLength(1000) url: string;
 }

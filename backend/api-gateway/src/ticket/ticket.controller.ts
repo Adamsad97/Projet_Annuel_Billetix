@@ -40,6 +40,7 @@ import { UuidPipe } from "../common/pipes/uuid.pipe";
 import { EventOwner } from "../common/guards/event-owner.guard";
 import { findScheduleConflict, type ScheduledEvent } from "./agent-schedule";
 import { assertCanBuyTickets, canHoldTickets } from "../common/purchase-roles";
+import { CreditNoteIssuer } from "../credit-notes/credit-note-issuer.service";
 
 
 /** Ligne de tickets.ticket_transfers (ticket-service). */
@@ -132,6 +133,7 @@ export class TicketController {
     @Inject("USER_SERVICE") private readonly userClient: ClientProxy,
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
     private readonly ticketsGateway: TicketsGateway,
+    private readonly creditNotes: CreditNoteIssuer,
   ) {}
 
   /**
@@ -803,6 +805,7 @@ export class TicketController {
         await firstValueFrom(
           this.orderClient.send("order.record_partial_refund", { id: originalOrderId, amount_ttc: resaleAmount }),
         );
+        this.creditNotes.issueInBackground(originalOrderId, resaleAmount, "Billet revendu sur la bourse de revente");
       } catch (err) {
         // La revente est déjà actée (billet transféré) : on ne la défait pas,
         // mais le remboursement manquant doit être traité par un admin.

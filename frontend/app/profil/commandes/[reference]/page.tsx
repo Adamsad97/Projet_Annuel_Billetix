@@ -12,6 +12,7 @@ import Link from "next/link";
 import { Elements } from "@stripe/react-stripe-js";
 import { PageShell } from "@/components/layout/page-shell";
 import { PostponementRefund } from "@/components/profile/postponement-refund";
+import { CreditNotes } from "@/components/profile/credit-notes";
 import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
 import { downloadInvoice, getOrder, resendTickets, type ApiOrder, type ApiOrderItem } from "@/lib/api/orders";
 import { getTicketsByOrder, type ApiTicket } from "@/lib/api/tickets";
@@ -274,6 +275,8 @@ export default function OrderDetailPage({
               ) : null}
             </div>
           ) : null}
+
+          <CreditNotes orderId={order.id} refreshKey={postponementRefunded ? 1 : 0} />
 
           <h2 className="mb-3 mt-6 text-sm font-semibold text-ink-2">Billets inclus</h2>
           <div className={cardClass("overflow-hidden")}>

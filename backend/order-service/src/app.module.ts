@@ -5,6 +5,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrderItem } from './order/order-item.entity';
+import { CreditNote } from './order/credit-note.entity';
 import { Order } from './order/order.entity';
 import { OrderModule } from './order/order.module';
 import { OrderCleanupModule } from './scheduler/order-cleanup.module';
@@ -25,7 +26,7 @@ import { validateEnvironment } from './common/env.validation';
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
         schema: 'orders',
-        entities: [Order, OrderItem],
+        entities: [Order, OrderItem, CreditNote],
         synchronize: config.get('NODE_ENV') !== 'production',
         migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
         migrationsRun: config.get('NODE_ENV') === 'production',

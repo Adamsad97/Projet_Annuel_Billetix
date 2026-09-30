@@ -10,6 +10,7 @@ describe("EventPostponementService — remboursement après un report", () => {
   let tickets: Array<Record<string, unknown>>;
   let clients: Record<string, { send: jest.Mock; emit: jest.Mock }>;
   let service: EventPostponementService;
+  let creditNotes: { issueInBackground: jest.Mock };
 
   const client = (answer: (pattern: string, data: unknown) => unknown) => ({
     send: jest.fn((pattern: string, data: unknown) => of(answer(pattern, data))),
@@ -48,6 +49,7 @@ describe("EventPostponementService — remboursement après un report", () => {
       notif: client(() => undefined),
       admin: client(() => ({ postponement_refund_days: 14 })),
     };
+    creditNotes = { issueInBackground: jest.fn() };
     service = new EventPostponementService(
       clients.event as never,
       clients.order as never,
@@ -55,6 +57,7 @@ describe("EventPostponementService — remboursement après un report", () => {
       clients.ticket as never,
       clients.notif as never,
       clients.admin as never,
+      creditNotes as never,
     );
   });
 
@@ -65,6 +68,7 @@ describe("EventPostponementService — remboursement après un report", () => {
     expect(clients.ticket.send).toHaveBeenCalledWith("ticket.cancel_by_order", { order_id: "order-1" });
     expect(clients.order.send).toHaveBeenCalledWith("order.mark_refunded", { id: "order-1" });
     expect(clients.notif.emit).toHaveBeenCalledWith("notification.refund_completed", expect.objectContaining({ amount: "45.00" }));
+    expect(creditNotes.issueInBackground).toHaveBeenCalledWith("order-1", undefined, expect.stringContaining("report"));
   });
 
   it("nouvelle date annoncée : remboursement possible pendant le délai réglé par l'admin", async () => {
@@ -107,6 +111,7 @@ describe("EventPostponementService — remboursement après un report", () => {
     await service.refund("order-1", "buyer-1");
     expect(clients.payment.send).not.toHaveBeenCalled();
     expect(clients.notif.emit).not.toHaveBeenCalled();
+    expect(creditNotes.issueInBackground).not.toHaveBeenCalled();
     expect(clients.ticket.send).toHaveBeenCalledWith("ticket.cancel_by_order", { order_id: "order-1" });
   });
 });

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import puppeteer from 'puppeteer';
 import { MinioService } from '../storage/minio.service';
+import type { CreditNotePdfDto } from './dto/credit-note-pdf.dto';
 
 export interface InvoicePdfItem {
   ticket_category_name: string;
@@ -86,8 +87,25 @@ export class InvoicePdfService {
   ) {}
 
   async generate(data: InvoicePdfData): Promise<string> {
-    const html = this.buildHtml(data);
+    const pdfBuffer = await this.render(this.buildHtml(data));
+    const key = `invoice-${data.reference}.pdf`;
+    const bucket = this.config.get<string>('MINIO_BUCKET_INVOICES', 'invoices');
+    const url = await this.minio.uploadPdf(key, pdfBuffer, bucket);
+    this.logger.log(`Facture générée : ${key}`);
+    return url;
+  }
 
+  /** Avoir : même présentation que la facture, rangé avec elle (bucket privé des factures). */
+  async generateCreditNote(data: CreditNotePdfDto): Promise<string> {
+    const pdfBuffer = await this.render(this.buildCreditNoteHtml(data));
+    const key = `credit-note-${data.number}.pdf`;
+    const bucket = this.config.get<string>('MINIO_BUCKET_INVOICES', 'invoices');
+    const url = await this.minio.uploadPdf(key, pdfBuffer, bucket);
+    this.logger.log(`Avoir généré : ${key}`);
+    return url;
+  }
+
+  private async render(html: string): Promise<Buffer> {
     const browser = await puppeteer.launch({
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH ?? '/usr/bin/chromium',
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
@@ -107,12 +125,110 @@ export class InvoicePdfService {
     } finally {
       await browser.close();
     }
+    return pdfBuffer;
+  }
 
-    const key = `invoice-${data.reference}.pdf`;
-    const bucket = this.config.get<string>('MINIO_BUCKET_INVOICES', 'invoices');
-    const url = await this.minio.uploadPdf(key, pdfBuffer, bucket);
-    this.logger.log(`Facture générée : ${key}`);
-    return url;
+  buildCreditNoteHtml(note: CreditNotePdfDto): string {
+    const issued = new Date(note.issued_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    // Montants de l'avoir en négatif : ils viennent en déduction de la facture.
+    const minus = (amount: number) => (Number(amount) === 0 ? '0.00 €' : '-' + Number(amount).toFixed(2) + ' €');
+    const address = [
+      note.billing_address_line1,
+      note.billing_address_line2,
+      [note.billing_postal_code, note.billing_city].filter(Boolean).join(' '),
+      note.billing_country,
+    ].filter((line) => line && String(line).trim());
+
+    return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: 'Arial', sans-serif; color: #1a1a1a; font-size: 12px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
+    .logo { display: inline-flex; align-items: flex-start; }
+    .logo-text { display: flex; flex-direction: column; align-items: flex-end; line-height: 1; }
+    .logo-word { font-size: 28px; font-weight: 900; letter-spacing: -1.4px; color: #111827; }
+    .logo-word span { color: ${BRAND}; }
+    .logo-tagline { font-size: 9px; font-weight: 700; color: ${BRAND}; margin-top: 1px; padding-right: 2px; letter-spacing: -0.2px; }
+    .logo svg { margin-left: -4px; margin-top: -8px; width: 46px; height: 36px; }
+    .brand-info { font-size: 10px; color: #6b7280; margin-top: 10px; line-height: 1.5; }
+    .invoice-title { text-align: right; }
+    .invoice-title h1 { font-size: 20px; color: #1a1a1a; }
+    .invoice-title .ref { font-size: 11px; color: #6b7280; margin-top: 4px; line-height: 1.5; }
+    .parties { display: flex; justify-content: space-between; margin-bottom: 24px; }
+    .party { font-size: 11px; line-height: 1.6; }
+    .party-label { font-size: 9px; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .reason { background: #fdeee8; border-left: 3px solid ${BRAND}; padding: 10px 12px; font-size: 11px; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    thead th { background: #fdeee8; color: ${BRAND}; font-size: 10px; text-transform: uppercase; text-align: left; padding: 8px 10px; }
+    thead th.num { text-align: right; }
+    tbody td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; font-size: 11px; }
+    tbody td.num { text-align: right; }
+    .totals { margin-left: auto; width: 260px; }
+    .totals-row { display: flex; justify-content: space-between; padding: 6px 10px; font-size: 11px; }
+    .totals-row.total { font-weight: 900; font-size: 14px; border-top: 2px solid ${BRAND}; margin-top: 4px; padding-top: 10px; color: ${BRAND}; }
+    .footer { margin-top: 40px; font-size: 9px; color: #9ca3af; text-align: center; border-top: 1px solid #f3f4f6; padding-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      ${LOGO_HTML}
+      <div class="brand-info">
+        ${this.esc(note.platform_legal_name)}<br/>
+        ${note.platform_address ? this.esc(note.platform_address) + '<br/>' : ''}
+        ${note.platform_siret ? 'SIRET : ' + this.esc(note.platform_siret) + '<br/>' : ''}
+        ${note.platform_vat_number ? 'TVA intracommunautaire : ' + this.esc(note.platform_vat_number) : ''}
+      </div>
+    </div>
+    <div class="invoice-title">
+      <h1>AVOIR</h1>
+      <div class="ref">N° ${this.esc(note.number)}<br/>Émis le ${issued}<br/>Sur facture N° ${this.esc(note.invoice_reference)}</div>
+    </div>
+  </div>
+
+  <div class="parties">
+    <div class="party">
+      <div class="party-label">Client</div>
+      ${this.esc(note.billing_first_name)} ${this.esc(note.billing_last_name)}<br/>
+      ${address.map((line) => this.esc(String(line)) + '<br/>').join('')}
+      ${this.esc(note.billing_email)}
+    </div>
+  </div>
+
+  <div class="reason"><strong>Motif :</strong> ${this.esc(note.reason)}</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Désignation</th>
+        <th class="num">Total HT</th>
+        <th class="num">Total TTC</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Remboursement — ${this.esc(note.event_name)} (commande ${this.esc(note.invoice_reference)})</td>
+        <td class="num">${minus(note.amount_ht)}</td>
+        <td class="num">${minus(note.amount_ttc)}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div class="totals-row"><span>Total HT</span><span>${minus(note.amount_ht)}</span></div>
+    <div class="totals-row"><span>TVA (${(note.tva_rate * 100).toFixed(0)}%)</span><span>${minus(note.tva_amount)}</span></div>
+    ${Number(note.fees_amount) > 0 ? `<div class="totals-row"><span>Frais billets gratuits</span><span>${minus(note.fees_amount)}</span></div>` : ''}
+    <div class="totals-row total"><span>Total TTC</span><span>${minus(note.amount_ttc)}</span></div>
+  </div>
+
+  <div class="footer">
+    Avoir généré automatiquement par BilleTix — il annule, pour le montant indiqué, la facture N° ${this.esc(note.invoice_reference)}. Document à conserver avec cette facture.
+  </div>
+</body>
+</html>`;
   }
 
   private buildHtml(invoiceData: InvoicePdfData): string {

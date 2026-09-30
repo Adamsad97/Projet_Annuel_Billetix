@@ -6,6 +6,7 @@ import { handlePdfGenerationFailure } from '../common/pdf-retry.util';
 import { validatePayload } from '../common/validate-payload.util';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { InvoicePdfDto } from './dto/invoice-pdf.dto';
+import { CreditNotePdfDto } from './dto/credit-note-pdf.dto';
 import { InvoicePdfService } from './invoice-pdf.service';
 
 const QUEUE = 'pdf_queue';
@@ -29,6 +30,42 @@ export class InvoicePdfController {
         port: parseInt(this.config.get('ORDER_SERVICE_PORT', '3004')),
       },
     });
+  }
+
+  @EventPattern('pdf.generate_credit_note')
+  async generateCreditNote(@Payload() rawData: unknown, @Ctx() rmqContext: RmqContext) {
+    const channel = rmqContext.getChannelRef();
+    const rmqMessage = rmqContext.getMessage();
+
+    const result = await validatePayload(CreditNotePdfDto, rawData);
+    if (result.valid === false) {
+      this.logger.error(`Payload pdf.generate_credit_note invalide, message écarté : ${result.message}`);
+      channel.ack(rmqMessage);
+      return;
+    }
+    const data = result.data;
+
+    try {
+      const pdfUrl = await this.pdfService.generateCreditNote(data);
+      await firstValueFrom(this.orderClient.send('order.set_credit_note_url', { id: data.credit_note_id, url: pdfUrl }));
+      channel.ack(rmqMessage);
+      this.logger.log(`Avoir ${data.number} généré et enregistré`);
+    } catch (error) {
+      const { pdf_generation_max_retry_attempts } = await this.platformConfig.get();
+      await handlePdfGenerationFailure({
+        channel,
+        message: rmqMessage,
+        queue: QUEUE,
+        maxAttempts: pdf_generation_max_retry_attempts,
+        adminClient: this.adminClient,
+        logger: this.logger,
+        template: 'avoir',
+        reference: data.number,
+        entityType: 'ORDER',
+        entityId: data.credit_note_id,
+        error,
+      });
+    }
   }
 
   @EventPattern('pdf.generate_invoice')

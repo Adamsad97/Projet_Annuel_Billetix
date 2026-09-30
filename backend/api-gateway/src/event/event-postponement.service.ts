@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, Logger } f
 import { ClientProxy } from "@nestjs/microservices";
 import { firstValueFrom } from "rxjs";
 import { formatEventDate, formatEventSchedule } from "../common/event-date";
+import { CreditNoteIssuer } from "../credit-notes/credit-note-issuer.service";
 
 /** Événement tel que renvoyé par event-service, champs du report compris. */
 export interface PostponedEvent {
@@ -62,6 +63,7 @@ export class EventPostponementService {
     @Inject("TICKET_SERVICE") private readonly ticketClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
+    private readonly creditNotes: CreditNoteIssuer,
   ) {}
 
   /** Fin du délai de remboursement ; null tant que la nouvelle date est à venir (remboursement ouvert). */
@@ -155,6 +157,7 @@ export class EventPostponementService {
     await firstValueFrom(this.ticketClient.send("ticket.cancel_by_order", { order_id: order.id }));
     await firstValueFrom(this.orderClient.send("order.mark_refunded", { id: order.id }));
     if (amount > 0) {
+      this.creditNotes.issueInBackground(order.id, undefined, "Remboursement demandé après le report de l'événement");
       this.notifClient.emit("notification.refund_completed", {
         email: order.buyer_email,
         firstName: order.buyer_first_name,

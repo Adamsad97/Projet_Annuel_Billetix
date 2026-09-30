@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { StockReservationModule } from '../reservation/stock-reservation.module';
+import { CreditNote } from './credit-note.entity';
+import { CreditNoteService } from './credit-note.service';
 import { OrderItem } from './order-item.entity';
 import { Order } from './order.entity';
 import { OrderController } from './order.controller';
@@ -10,7 +12,7 @@ import { OrderService } from './order.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderItem]),
+    TypeOrmModule.forFeature([Order, OrderItem, CreditNote]),
     StockReservationModule,
     ClientsModule.registerAsync([
       {
@@ -40,7 +42,7 @@ import { OrderService } from './order.service';
     ]),
   ],
   controllers: [OrderController],
-  providers: [OrderService],
+  providers: [OrderService, CreditNoteService],
   exports: [OrderService],
 })
 export class OrderModule {}

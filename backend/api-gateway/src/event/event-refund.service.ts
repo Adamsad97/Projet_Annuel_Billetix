@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ClientProxy } from "@nestjs/microservices";
 import { firstValueFrom } from "rxjs";
 import { Order, OrderStatus } from "./types/order-snapshot.type";
+import { CreditNoteIssuer } from "../credit-notes/credit-note-issuer.service";
 
 export interface CancelledEventSnapshot {
   id: string;
@@ -25,6 +26,7 @@ export class EventRefundService {
     @Inject("PAYMENT_SERVICE") private readonly paymentClient: ClientProxy,
     @Inject("TICKET_SERVICE") private readonly ticketClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
+    private readonly creditNotes: CreditNoteIssuer,
   ) {}
 
   /** Lance la cascade sans bloquer la réponse (erreurs journalisées). */
@@ -53,6 +55,11 @@ export class EventRefundService {
       try {
         await firstValueFrom(this.paymentClient.send("payment.refund", { order_id: order.id }));
         await firstValueFrom(this.orderClient.send("order.mark_refunded", { id: order.id }));
+        this.creditNotes.issueInBackground(
+          order.id,
+          undefined,
+          cancellationReason ? `Annulation de l'événement : ${cancellationReason}` : "Annulation de l'événement",
+        );
         this.notifClient.emit("notification.event_canceled", {
           email: order.buyer_email,
           firstName: order.buyer_first_name,
