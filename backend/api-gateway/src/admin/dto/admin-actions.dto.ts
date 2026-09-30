@@ -131,7 +131,7 @@ export class AdminEventsQueryDto extends PaginationQueryDto {
 }
 
 export class AdminPayoutsQueryDto extends PaginationQueryDto {
-  @ApiPropertyOptional() @IsOptional() @IsIn(["PENDING", "PROCESSING", "COMPLETED", "BLOCKED", "FAILED"]) status?: string;
+  @ApiPropertyOptional() @IsOptional() @IsIn(["PENDING", "PROCESSING", "TO_TRANSFER", "COMPLETED", "BLOCKED", "FAILED"]) status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) q?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(40) scheduled_from?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(40) scheduled_to?: string;

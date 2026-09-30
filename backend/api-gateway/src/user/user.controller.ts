@@ -26,7 +26,6 @@ import { Roles } from "../common/decorators/roles.decorator";
 import { CreateOrganizerProfileDto } from "./dto/create-organizer-profile.dto";
 import { SubmitKycDto } from "./dto/submit-kyc.dto";
 import { UpdateBuyerProfileDto } from "./dto/update-buyer-profile.dto";
-import { UpdateIbanDto } from "./dto/update-iban.dto";
 import { UpdateNotificationPrefsDto } from "./dto/update-notification-prefs.dto";
 import { UpdateOrganizerProfileDto } from "./dto/update-organizer-profile.dto";
 import { DeleteAccountDto } from "./dto/delete-account.dto";
@@ -160,17 +159,7 @@ export class UserController {
     );
   }
 
-  @Patch("organizer/iban")
-  @HttpCode(HttpStatus.OK)
-  @Roles("ORGANIZER")
-  @ApiOperation({
-    summary: "Enregistrer ou mettre à jour l'IBAN (chiffré AES-256)",
-  })
-  updateIban(@CurrentUser() user: JwtPayload, @Body() dto: UpdateIbanDto) {
-    return firstValueFrom(
-      this.userClient.send("user.update_iban", { user_id: user.sub, dto }),
-    );
-  }
+  // IBAN et moyen de reversement : PayoutAccountController.
 
   @Post("organizer/kyc")
   @HttpCode(HttpStatus.OK)

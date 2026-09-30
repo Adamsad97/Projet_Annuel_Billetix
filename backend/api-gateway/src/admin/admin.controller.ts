@@ -1396,11 +1396,16 @@ export class AdminController {
 
     const [enriched] = await this.enrichPayouts([payout]);
 
-    const organizerProfile = await firstValueFrom(
-      this.userClient.send("user.get_organizer_profile", { user_id: payout.organizer_id }),
-    ).catch(() => null) as { bank_owner_name: string | null; stripe_connect_account_id: string | null } | null;
+    const account = await firstValueFrom(
+      this.userClient.send("user.get_payout_account", { user_id: payout.organizer_id }),
+    ).catch(() => null) as { bank_owner_name: string | null; iban_masked: string | null; payout_method: string } | null;
 
-    return { ...enriched, bank_owner_name: organizerProfile?.bank_owner_name ?? null };
+    return {
+      ...enriched,
+      bank_owner_name: account?.bank_owner_name ?? null,
+      iban_masked: account?.iban_masked ?? null,
+      payout_method: account?.payout_method ?? null,
+    };
   }
 
   @Post("payouts/:id/block")
@@ -1439,11 +1444,11 @@ export class AdminController {
   }
 
   /**
-   * Déclenchement manuel du virement d'un reversement en attente, sans
-   * attendre le prochain passage du cron quotidien (10h00) — mêmes
-   * vérifications d'éligibilité (Stripe Connect onboardé + KYC validé) que
-   * PayoutSchedulerService.processDuePayouts, dupliquées ici car ce chemin
-   * est déclenché depuis l'admin plutôt que depuis le scheduler.
+   * Déclenchement manuel d'un reversement en attente, sans attendre le
+   * prochain passage du cron quotidien (10h00) — mêmes vérifications que
+   * PayoutSchedulerService.processDuePayouts : KYC validé, puis virement
+   * Stripe, ou passage « À virer » pour un organisateur payé par IBAN
+   * (hors suspension après un changement d'IBAN).
    */
   @Post("payouts/:id/process")
   @HttpCode(HttpStatus.OK)
@@ -1458,17 +1463,34 @@ export class AdminController {
     );
 
     const profile = await firstValueFrom(
-      this.userClient.send("user.get_organizer_profile", {
+      this.userClient.send("user.get_payout_account", {
         user_id: payout.organizer_id,
       }),
     );
-    if (!profile?.stripe_connect_account_id || !profile.stripe_connect_onboarded) {
+    if (profile?.kyc_status !== "VERIFIED") {
+      throw new BadRequestException("KYC non validé pour cet organisateur");
+    }
+    if (profile.payout_method === "BANK_TRANSFER") {
+      if (!profile.has_iban) throw new BadRequestException("Aucun IBAN enregistré pour cet organisateur");
+      const config = await firstValueFrom(
+        this.adminClient.send<{ iban_change_payout_hold_hours: number }>("admin.get_platform_config", {}),
+      );
+      const holdUntil = profile.iban_updated_at
+        ? new Date(profile.iban_updated_at).getTime() + config.iban_change_payout_hold_hours * 3_600_000
+        : 0;
+      if (holdUntil > Date.now()) {
+        throw new BadRequestException(
+          `IBAN modifié récemment : reversements suspendus jusqu'au ${new Date(holdUntil).toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}.`,
+        );
+      }
+      const prepared = await firstValueFrom(this.paymentClient.send("payment.prepare_bank_transfer", { id }));
+      this.audit(user, req, "PAYOUT_PROCESSED_MANUALLY", "PAYOUT", id);
+      return prepared;
+    }
+    if (!profile.stripe_connect_account_id || !profile.stripe_connect_onboarded) {
       throw new BadRequestException(
         "Compte Stripe Connect non configuré pour cet organisateur",
       );
-    }
-    if (profile.kyc_status !== "VERIFIED") {
-      throw new BadRequestException("KYC non validé pour cet organisateur");
     }
 
     const result = await firstValueFrom(
