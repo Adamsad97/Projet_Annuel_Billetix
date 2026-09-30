@@ -60,3 +60,8 @@ async function uploadFile(path: string, file: File, isRetry = false): Promise<{ 
 export function uploadPoster(file: File): Promise<{ url: string }> {
   return uploadFile("/upload/poster", file);
 }
+
+/** Pièce justificative (KYC, but non lucratif) — stockée en privé. */
+export function uploadDocument(file: File): Promise<{ url: string }> {
+  return uploadFile("/upload/document", file);
+}

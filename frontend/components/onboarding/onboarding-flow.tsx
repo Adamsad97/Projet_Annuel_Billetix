@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 
-const steps = ["Type de compte", "Coordonnées bancaires", "Vérification d'identité"];
+// La vérification d'identité est un bloc à part (components/dashboard/kyc-section.tsx).
+const steps = ["Type de compte", "Coordonnées bancaires"];
 const fieldClassName =
   "rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none";
 
@@ -19,7 +20,7 @@ export function OnboardingFlow() {
         </div>
         <h1 className="text-lg font-bold text-ink-1">Vérification en cours</h1>
         <p className="mt-2 text-sm text-ink-5">
-          Votre dossier a été transmis à Stripe pour vérification (KYC). Cela
+          Vos coordonnées bancaires ont été transmises pour vérification. Cela
           prend généralement 24 à 48h. Vous recevrez un email dès que vos
           reversements seront activés.
         </p>
@@ -91,15 +92,6 @@ export function OnboardingFlow() {
             <span className="text-sm font-medium text-accent/80">BIC</span>
             <input type="text" placeholder="AGRIFRPP123" className={fieldClassName} />
           </label>
-        </div>
-      ) : null}
-
-      {stepIndex === 2 ? (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-hairline-2 bg-hairline-1 py-10 text-center">
-          <span className="text-2xl">🪪</span>
-          <span className="text-sm text-ink-5">
-            Glissez une pièce d&apos;identité ou cliquez — JPG/PNG/PDF max 5 Mo
-          </span>
         </div>
       ) : null}
 

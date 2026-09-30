@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AuthHeader } from "@/components/layout/auth-header";
+import { KycSection } from "@/components/dashboard/kyc-section";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
 
 export default function OrganizerPaymentsOnboardingPage() {
@@ -22,7 +23,10 @@ export default function OrganizerPaymentsOnboardingPage() {
           </p>
         </div>
 
-        <OnboardingFlow />
+        <div className="flex flex-col gap-6">
+          <KycSection />
+          <OnboardingFlow />
+        </div>
       </main>
     </div>
   );

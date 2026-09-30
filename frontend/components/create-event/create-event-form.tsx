@@ -23,7 +23,8 @@ import {
   type PricingPolicy,
 } from "@/lib/api/events";
 import { createEventForOrganizer, createCategoryForOrganizer, submitEventForOrganizer } from "@/lib/api/admin";
-import { uploadPoster } from "@/lib/api/upload";
+import { uploadDocument, uploadPoster } from "@/lib/api/upload";
+import { DocumentDropzone } from "@/components/ui/document-dropzone";
 import { ApiError } from "@/lib/api/http-error";
 
 const fieldClassName =
@@ -100,6 +101,8 @@ export function CreateEventForm({
   const [salesEndAt, setSalesEndAt] = useState("");
   const [refundPolicy, setRefundPolicy] = useState<"NON_REFUNDABLE" | "REFUNDABLE">("NON_REFUNDABLE");
   const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [isNonProfit, setIsNonProfit] = useState(false);
+  const [nonProfitFile, setNonProfitFile] = useState<File | null>(null);
   const [tierRows, setTierRows] = useState<TicketTierRow[]>(() =>
     makeInitialTierRows(genId, tierTypes, initial?.ticketTiers),
   );
@@ -121,6 +124,10 @@ export function CreateEventForm({
 
     if (!posterFile) {
       setError("Choisissez une affiche pour votre événement.");
+      return;
+    }
+    if (isNonProfit && !nonProfitFile) {
+      setError("Joignez un justificatif pour la déclaration à but non lucratif.");
       return;
     }
     const validTiers = tierRows.filter((row) => row.name.trim() && row.price && row.quota);
@@ -155,6 +162,8 @@ export function CreateEventForm({
     setSubmitting(true);
     try {
       const { url: posterUrl } = await uploadPoster(posterFile);
+      const nonProfitDocumentUrl =
+        isNonProfit && nonProfitFile ? (await uploadDocument(nonProfitFile)).url : undefined;
 
       const eventDto = {
         title,
@@ -175,6 +184,7 @@ export function CreateEventForm({
         sales_start_date: salesStartIso,
         sales_end_date: salesEndIso,
         refund_policy: refundPolicy,
+        ...(nonProfitDocumentUrl ? { is_non_profit: true, non_profit_document_url: nonProfitDocumentUrl } : {}),
       };
 
       const createdEvent = adminOrganizerId
@@ -363,6 +373,34 @@ export function CreateEventForm({
       <InfoCard icon="🖼️" title="Affiche de l'événement">
         <PosterDropzone onFileSelected={setPosterFile} />
       </InfoCard>
+
+      {/* Dépôt de justificatif réservé à l'organisateur lui-même (pièce privée,
+          rangée à son nom) — absent quand un admin crée pour son compte. */}
+      {!adminOrganizerId ? (
+        <InfoCard icon="🤝" title="Événement à but non lucratif">
+          <div className="flex flex-col gap-4">
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={isNonProfit}
+                onChange={(event) => setIsNonProfit(event.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-blue-600"
+              />
+              <span className="text-sm text-ink-3">
+                Cet événement est organisé à but non lucratif (association, action caritative…). Après vérification
+                du justificatif par un administrateur, la commission de la plateforme ne s&apos;applique pas.
+              </span>
+            </label>
+            {isNonProfit ? (
+              <DocumentDropzone
+                onFileSelected={setNonProfitFile}
+                disabled={submitting}
+                hint="Glissez le justificatif (statuts, récépissé de déclaration…) ou cliquez"
+              />
+            ) : null}
+          </div>
+        </InfoCard>
+      ) : null}
 
       <InfoCard icon="🎟️" title="Billetterie">
         <div className="flex flex-col gap-4">
