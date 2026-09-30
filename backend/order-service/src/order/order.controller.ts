@@ -6,6 +6,7 @@ import {
   BuyerPayload,
   CancelOrderPayload,
   ConfirmPaymentPayload,
+  EventDatesPayload,
   EventIdPayload,
   IdPayload,
   MarkRefundedPayload,
@@ -57,6 +58,11 @@ export class OrderController {
   @MessagePattern('order.list_by_event')
   listByEvent(@Payload() data: EventIdPayload) {
     return this.orderService.getByEvent(data.event_id);
+  }
+
+  @MessagePattern('order.sync_event_dates')
+  syncEventDates(@Payload() data: EventDatesPayload) {
+    return this.orderService.syncEventDates(data.event_id, new Date(data.event_start_at), new Date(data.event_end_at));
   }
 
   @MessagePattern('order.get_revenue_by_event')

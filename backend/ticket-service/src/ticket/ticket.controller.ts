@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { TicketService } from './ticket.service';
-import { BuyerPayload, EventIdPayload, GenerateTicketsPayload, IdPayload, InvalidateTicketPayload, MarkUsedPayload, OrderIdPayload, TransferToNewBuyerPayload, VerifyQrPayload } from '../common/payloads';
+import { BuyerPayload, EventDatesPayload, EventIdPayload, GenerateTicketsPayload, IdPayload, InvalidateTicketPayload, MarkUsedPayload, OrderIdPayload, TransferToNewBuyerPayload, VerifyQrPayload } from '../common/payloads';
 
 @Controller()
 export class TicketController {
@@ -90,5 +90,10 @@ export class TicketController {
   @MessagePattern('ticket.cancel_by_order')
   cancelByOrder(@Payload() data: OrderIdPayload) {
     return this.ticketService.cancelByOrder(data.order_id);
+  }
+
+  @MessagePattern('ticket.sync_event_dates')
+  syncEventDates(@Payload() data: EventDatesPayload) {
+    return this.ticketService.syncEventDates(data.event_id, new Date(data.event_start_at), new Date(data.event_end_at));
   }
 }

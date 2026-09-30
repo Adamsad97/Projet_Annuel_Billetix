@@ -41,6 +41,8 @@ import { UpdateCategoryDto } from "./dto/update-category.dto";
 import { UpdateEventDto } from "./dto/update-event.dto";
 import { UpdateTicketTierTypeDto } from "./dto/update-ticket-tier-type.dto";
 import { CancelledEventSnapshot, EventRefundService } from "./event-refund.service";
+import { EventPostponementService, type PostponedEvent } from "./event-postponement.service";
+import { ChangeRequestDto, ChangeRequestKind, RescheduleEventDto } from "./dto/postponement.dto";
 import { Order, OrderStatus } from "./types/order-snapshot.type";
 import { MessageDto, OptionalReasonDto, ReasonDto } from "../common/dto/common.dto";
 import { CreatePromoCodeDto, CreateTicketCategoryDto, RespondToInfoRequestDto, ValidatePromoCodeDto } from "./dto/event-actions.dto";
@@ -69,6 +71,7 @@ export class EventController {
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
     @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     private readonly eventRefund: EventRefundService,
+    private readonly postponement: EventPostponementService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
   ) {}
@@ -721,21 +724,59 @@ export class EventController {
     return cancelledEvent;
   }
 
-  // --- Demandes d'annulation (organisateur) ---
-  // L'organisateur ne peut pas annuler seul : il demande, un admin accepte
-  // (annulation + remboursements) ou refuse, après échange de messages.
+  // --- Demandes d'annulation ou de report (organisateur) ---
+  // L'organisateur ne peut ni annuler ni reporter seul : il demande, un admin
+  // accepte ou refuse, après échange de messages.
 
   @Post(":id/cancellation-requests")
   @Roles("ORGANIZER")
-  @ApiOperation({ summary: "Demander l'annulation de son événement (ORGANIZER)" })
-  requestCancellation(
+  @ApiOperation({ summary: "Demander l'annulation ou le report de son événement (ORGANIZER)" })
+  async requestCancellation(
     @CurrentUser() user: JwtPayload,
     @Param("id", UuidPipe) id: string,
-    @Body() dto: ReasonDto,
+    @Body() dto: ChangeRequestDto,
   ) {
+    const kind = dto.kind ?? ChangeRequestKind.CANCELLATION;
+    // Report à une date connue : mêmes règles d'agents qu'un changement de dates.
+    if (kind === ChangeRequestKind.POSTPONEMENT && dto.new_start_date && dto.new_end_date) {
+      await this.assertAgentsStillAvailable(id, user.sub, {
+        start_date: dto.new_start_date,
+        end_date: dto.new_end_date,
+      } as UpdateEventDto);
+    }
     return firstValueFrom(
-      this.eventClient.send("event.cancellation.request", { event_id: id, organizer_id: user.sub, reason: dto?.reason }),
+      this.eventClient.send("event.cancellation.request", {
+        event_id: id,
+        organizer_id: user.sub,
+        reason: dto.reason,
+        kind,
+        new_start_date: dto.new_start_date,
+        new_end_date: dto.new_end_date,
+      }),
     );
+  }
+
+  /** Nouvelle date d'un événement reporté : ventes et contrôle reprennent, détenteurs prévenus. */
+  @Post(":id/reschedule")
+  @HttpCode(HttpStatus.OK)
+  @Roles("ORGANIZER")
+  @ApiOperation({ summary: "Fixer la nouvelle date d'un événement reporté (ORGANIZER)" })
+  async reschedule(
+    @CurrentUser() user: JwtPayload,
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: RescheduleEventDto,
+  ) {
+    await this.assertAgentsStillAvailable(id, user.sub, dto as UpdateEventDto);
+    const event = await firstValueFrom(
+      this.eventClient.send<PostponedEvent>("event.reschedule", {
+        id,
+        organizer_id: user.sub,
+        start_date: dto.start_date,
+        end_date: dto.end_date,
+      }),
+    );
+    this.postponement.announceInBackground(event, "RESCHEDULED");
+    return event;
   }
 
   @Get(":id/cancellation-requests")

@@ -18,6 +18,12 @@ export function formatEventDate(value: string | Date, timeZone?: string | null):
   );
 }
 
+/** Date et heure d'un événement (« samedi 7 novembre 2026 à 20:00 »). */
+export function formatEventSchedule(value: string | Date, timeZone?: string | null): string {
+  const time = new Date(value).toLocaleTimeString("fr-FR", inZone(timeZone, { hour: "2-digit", minute: "2-digit" }));
+  return `${formatEventDate(value, timeZone)} à ${time}`;
+}
+
 /** Date et heure d'un fait (« le 30 septembre 2026 à 07:05 »). */
 export function formatEventDateTime(value: string | Date, timeZone?: string | null): string {
   const date = new Date(value);

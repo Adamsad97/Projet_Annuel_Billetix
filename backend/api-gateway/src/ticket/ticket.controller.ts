@@ -611,16 +611,6 @@ export class TicketController {
     );
   }
 
-  @Post(":id/cancel")
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary:
-      "Annuler un billet (bloqué à -24h du spectacle — proposer la revente)",
-  })
-  cancel(@Param("id", UuidPipe) id: string) {
-    return firstValueFrom(this.ticketClient.send("ticket.cancel", { id }));
-  }
-
   // ADMIN : consultation en mode aperçu du back-office (achat toujours bloqué).
   @Roles("BUYER", "ADMIN")
   @Get("resale/event/:eventId")

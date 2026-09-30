@@ -44,19 +44,19 @@
         <p style="margin:0;"><strong>{{newDate}}</strong></p>
       </div>
       <p><strong>Votre billet reste valable pour cette nouvelle date :</strong> vous n'avez rien à faire.</p>
-      {{#if refundDeadline}}
+      {{#if refundable}}{{#if refundDeadline}}
       <p>Si cette date ne vous convient pas, vous pouvez demander le remboursement de votre commande jusqu'au <strong>{{refundDeadline}}</strong>, depuis la page de votre commande.</p>
-      {{/if}}
+      {{/if}}{{/if}}
       {{else}}
       <div class="pending-box">
         <h3>Nouvelle date à venir</h3>
         <p style="margin:0;">L'organisateur l'annoncera dès que possible : vous recevrez alors un email.</p>
       </div>
-      <p><strong>Votre billet reste valable pour la nouvelle date.</strong> Si vous préférez ne pas attendre, vous pouvez dès maintenant demander le remboursement de votre commande depuis sa page.</p>
+      <p><strong>Votre billet reste valable pour la nouvelle date.</strong>{{#if refundable}} Si vous préférez ne pas attendre, vous pouvez dès maintenant demander le remboursement de votre commande depuis sa page.{{/if}}</p>
       {{/if}}
 
       <a href="{{ordersUrl}}" class="btn">Voir mes commandes</a>
-      <p class="note">Le remboursement est versé sur votre moyen de paiement d'origine sous 5 à 10 jours ouvrés.</p>
+      {{#if refundable}}<p class="note">Le remboursement est versé sur votre moyen de paiement d'origine sous 5 à 10 jours ouvrés.</p>{{/if}}
     </div>
     <div class="footer">© {{year}} BilletiX — Tous droits réservés</div>
   </div>

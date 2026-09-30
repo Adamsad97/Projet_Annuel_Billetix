@@ -22,6 +22,7 @@ import {
 } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
 import { CancelledEventSnapshot, EventRefundService } from "../event/event-refund.service";
+import { EventPostponementService, type PostponedEvent } from "../event/event-postponement.service";
 import { formatEventDate } from "../common/event-date";
 import { redactIpUnlessSuperAdmin } from "../common/redact-ip";
 import { RejectTransferRevertDto, RevertTransferDto } from "../ticket/dto/transfer-revert.dto";
@@ -74,6 +75,7 @@ export class AdminController {
     @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     private readonly eventRefund: EventRefundService,
+    private readonly postponement: EventPostponementService,
   ) {}
 
   private ip(req: Request): string {
@@ -1205,8 +1207,12 @@ export class AdminController {
         author_role: "ADMIN",
         message: dto?.message,
       }),
-    )) as { organizer_id: string; event_id: string };
-    this.notifyOrganizerOfEvent({ id: request.event_id }, "CANCELLATION_MESSAGE", dto?.message);
+    )) as { organizer_id: string; event_id: string; kind?: string };
+    this.notifyOrganizerOfEvent(
+      { id: request.event_id },
+      request.kind === "POSTPONEMENT" ? "POSTPONEMENT_MESSAGE" : "CANCELLATION_MESSAGE",
+      dto?.message,
+    );
     const [enriched] = await this.enrichCancellationRequests([request]);
     return enriched;
   }
@@ -1222,16 +1228,31 @@ export class AdminController {
   ) {
     const request = (await firstValueFrom(
       this.eventClient.send("event.cancellation.reject", { id, admin_id: user.sub, message: dto?.message }),
-    )) as { organizer_id: string; event_id: string };
-    this.audit(user, req, "CUSTOM", "EVENT", request.event_id, `Demande d'annulation refusée : ${dto?.message ?? ""}`);
-    this.notifyOrganizerOfEvent({ id: request.event_id }, "CANCELLATION_REJECTED", dto?.message);
+    )) as { organizer_id: string; event_id: string; kind?: string };
+    const postponement = request.kind === "POSTPONEMENT";
+    this.audit(
+      user,
+      req,
+      "CUSTOM",
+      "EVENT",
+      request.event_id,
+      `Demande ${postponement ? "de report" : "d'annulation"} refusée : ${dto?.message ?? ""}`,
+    );
+    this.notifyOrganizerOfEvent(
+      { id: request.event_id },
+      postponement ? "POSTPONEMENT_REJECTED" : "CANCELLATION_REJECTED",
+      dto?.message,
+    );
     const [enriched] = await this.enrichCancellationRequests([request]);
     return enriched;
   }
 
   @Post("cancellation-requests/:id/approve")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Accepter une demande d'annulation : événement annulé, acheteurs remboursés (ADMIN)" })
+  @ApiOperation({
+    summary:
+      "Accepter une demande : annulation (acheteurs remboursés) ou report (acheteurs prévenus, remboursement sur demande) (ADMIN)",
+  })
   async approveCancellation(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
@@ -1240,10 +1261,17 @@ export class AdminController {
   ) {
     const result = (await firstValueFrom(
       this.eventClient.send("event.cancellation.approve", { id, admin_id: user.sub, message: dto?.message }),
-    )) as { request: { organizer_id: string; reason: string }; event: CancelledEventSnapshot };
-    this.eventRefund.refundInBackground(result.event, result.request.reason);
-    this.audit(user, req, "EVENT_CANCELED", "EVENT", result.event.id, `Demande de l'organisateur acceptée : ${result.request.reason}`);
-    this.notifyOrganizerOfEvent(result.event as unknown as { id: string; title: string; organizer_id: string }, "CANCELLATION_APPROVED", dto?.message);
+    )) as { request: { organizer_id: string; reason: string; kind?: string }; event: CancelledEventSnapshot & PostponedEvent };
+    const organizerEvent = result.event as unknown as { id: string; title: string; organizer_id: string };
+    if (result.request.kind === "POSTPONEMENT") {
+      this.postponement.announceInBackground(result.event, "POSTPONED");
+      this.audit(user, req, "CUSTOM", "EVENT", result.event.id, `Report accepté : ${result.request.reason}`);
+      this.notifyOrganizerOfEvent(organizerEvent, "POSTPONEMENT_APPROVED", dto?.message);
+    } else {
+      this.eventRefund.refundInBackground(result.event, result.request.reason);
+      this.audit(user, req, "EVENT_CANCELED", "EVENT", result.event.id, `Demande de l'organisateur acceptée : ${result.request.reason}`);
+      this.notifyOrganizerOfEvent(organizerEvent, "CANCELLATION_APPROVED", dto?.message);
+    }
     const [enriched] = await this.enrichCancellationRequests([result.request]);
     return enriched;
   }

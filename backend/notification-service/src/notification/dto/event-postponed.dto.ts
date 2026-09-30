@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
 
 /**
  * Acheteur prévenu d'un report : POSTPONED à l'acceptation du report (avec
@@ -34,4 +34,9 @@ export class EventPostponedDto {
   @IsOptional()
   @IsString()
   refundDeadline?: string;
+
+  /** Détenteur qui est aussi l'acheteur de la commande : seul lui peut demander le remboursement. */
+  @IsOptional()
+  @IsBoolean()
+  refundable?: boolean;
 }

@@ -371,6 +371,12 @@ export class OrderService {
     return this.orderRepo.find({ where: { buyer_id: buyerId }, order: { created_at: 'DESC' } });
   }
 
+  /** Événement reporté : les commandes suivent la nouvelle date (tri et affichage de « Mes commandes »). */
+  async syncEventDates(eventId: string, startAt: Date, endAt: Date): Promise<{ updated: number }> {
+    const result = await this.orderRepo.update({ event_id: eventId }, { event_start_at: startAt, event_end_at: endAt });
+    return { updated: result.affected ?? 0 };
+  }
+
   async getByEvent(eventId: string): Promise<Order[]> {
     return this.orderRepo.find({ where: { event_id: eventId }, order: { created_at: 'DESC' } });
   }

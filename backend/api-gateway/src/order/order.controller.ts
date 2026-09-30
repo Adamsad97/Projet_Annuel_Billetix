@@ -19,6 +19,7 @@ import { logAccess } from "../common/access-log";
 import { ClientProxy } from "@nestjs/microservices";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
+import { EventPostponementService } from "../event/event-postponement.service";
 import { firstValueFrom } from "rxjs";
 import {
   CurrentUser,
@@ -48,6 +49,7 @@ export class OrderController {
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
     private readonly fulfillment: PurchaseFulfillmentService,
     private readonly uploads: UploadService,
+    private readonly postponement: EventPostponementService,
   ) {}
 
   /**
@@ -305,6 +307,22 @@ export class OrderController {
     });
 
     return { success: true };
+  }
+
+  /** Remboursement possible après le report de l'événement ? (bouton de la page commande) */
+  @Get(":id/postponement-refund")
+  @ApiOperation({ summary: "Remboursement possible après le report de l'événement (acheteur)" })
+  postponementRefundStatus(@CurrentUser() user: JwtPayload, @Param("id", UuidPipe) id: string) {
+    return this.postponement.refundStatus(id, user.sub);
+  }
+
+  /** L'acheteur renonce à la nouvelle date : commande remboursée, billets annulés. */
+  @Post(":id/postponement-refund")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  @ApiOperation({ summary: "Demander le remboursement après le report de l'événement (acheteur)" })
+  requestPostponementRefund(@CurrentUser() user: JwtPayload, @Param("id", UuidPipe) id: string) {
+    return this.postponement.refund(id, user.sub);
   }
 
   @Post(":id/cancel")

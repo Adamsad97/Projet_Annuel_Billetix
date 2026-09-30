@@ -31,6 +31,7 @@ describe("AdminController — newsletter", () => {
       authClient as any,
       notifClient as any,
       {} as any, // eventRefund
+      {} as any, // postponement
     );
   });
 
@@ -139,6 +140,7 @@ describe("AdminController — annulation d'un transfert de billet", () => {
       {} as any,
       notifClient as any,
       {} as any, // eventRefund
+      {} as any, // postponement
     );
   });
 
@@ -205,6 +207,7 @@ describe("AdminController — reventes", () => {
       authClient as any,
       {} as any,
       {} as any, // eventRefund
+      {} as any, // postponement
     );
 
     const result = await controller.listResales("SOLD", " vendeur ");

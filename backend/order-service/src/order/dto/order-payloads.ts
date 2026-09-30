@@ -9,6 +9,13 @@ export class IdPayload {
   @IsUUID() id: string;
 }
 
+/** Nouvelles dates d'un événement reporté, recopiées sur ses billets/commandes. */
+export class EventDatesPayload {
+  @IsUUID() event_id: string;
+  @IsDateString() event_start_at: string;
+  @IsDateString() event_end_at: string;
+}
+
 export class BuyerPayload {
   @IsUUID() buyer_id: string;
 }

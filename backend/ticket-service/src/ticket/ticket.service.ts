@@ -446,6 +446,15 @@ export class TicketService {
     return { cancelled_count: result.affected ?? 0 };
   }
 
+  /**
+   * Événement reporté : les billets suivent la nouvelle date (fenêtre de
+   * contrôle hors ligne, revente, délai d'annulation s'y réfèrent).
+   */
+  async syncEventDates(eventId: string, startAt: Date, endAt: Date): Promise<{ updated: number }> {
+    const result = await this.repo.update({ event_id: eventId }, { event_start_at: startAt, event_end_at: endAt });
+    return { updated: result.affected ?? 0 };
+  }
+
   async cancelByEvent(eventId: string): Promise<{ cancelled_count: number }> {
     const result = await this.repo
       .createQueryBuilder()
