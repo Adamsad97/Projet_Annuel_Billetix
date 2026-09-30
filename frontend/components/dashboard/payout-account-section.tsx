@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import {
   getPayoutAccount,
   setPayoutMethod,
@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/payout-account";
 import { ApiError } from "@/lib/api/http-error";
 import { longDateTime } from "@/lib/format/dates";
+import { formatIban, ibanCaret } from "@/lib/format/iban";
 import { Alert, FormError } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
@@ -104,6 +105,23 @@ export function PayoutAccountSection() {
     }
   }
 
+  /** Groupes de 4 pendant la frappe, curseur conservé (correction au milieu). */
+  function handleIbanChange(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.target;
+    let raw = input.value;
+    let caret = input.selectionStart ?? raw.length;
+    // Effacement d'un espace de séparation : on efface le caractère qui le précède.
+    const compact = (value: string) => value.replace(/[^A-Za-z0-9]/g, "");
+    if (raw.length < iban.length && compact(raw) === compact(iban) && caret > 0) {
+      raw = raw.slice(0, caret - 1) + raw.slice(caret);
+      caret -= 1;
+    }
+    const formatted = formatIban(raw);
+    const nextCaret = ibanCaret(raw, caret, formatted);
+    setIban(formatted);
+    requestAnimationFrame(() => input.setSelectionRange(nextCaret, nextCaret));
+  }
+
   async function chooseMethod(method: PayoutMethod) {
     if (!account || method === account.payout_method) return;
     setSwitching(true);
@@ -161,9 +179,10 @@ export function PayoutAccountSection() {
                 IBAN
                 <input
                   required
-                  maxLength={50}
                   value={iban}
-                  onChange={(event) => setIban(event.target.value.toUpperCase())}
+                  onChange={handleIbanChange}
+                  inputMode="text"
+                  autoCapitalize="characters"
                   placeholder="FR76 3000 6000 0112 3456 7890 189"
                   autoComplete="off"
                   spellCheck={false}
