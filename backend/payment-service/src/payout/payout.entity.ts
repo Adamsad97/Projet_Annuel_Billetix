@@ -9,6 +9,9 @@ import {
 export enum PayoutStatus {
   PENDING = 'PENDING',
   PROCESSING = 'PROCESSING',
+  // Organisateur payé par virement bancaire : montant arrêté (compensation
+  // faite), en attente du virement SEPA émis par un admin.
+  TO_TRANSFER = 'TO_TRANSFER',
   COMPLETED = 'COMPLETED',
   BLOCKED = 'BLOCKED',
   FAILED = 'FAILED',
@@ -73,6 +76,14 @@ export class Payout {
 
   @Column({ nullable: true })
   stripe_transfer_id: string | null;
+
+  // Virement bancaire : référence saisie par l'admin et auteur de la
+  // confirmation (null pour un versement Stripe).
+  @Column({ type: 'varchar', length: 140, nullable: true })
+  bank_transfer_reference: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  transferred_by: string | null;
 
   @Column({ type: 'timestamptz' })
   scheduled_at: Date;

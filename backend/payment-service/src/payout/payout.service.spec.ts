@@ -439,4 +439,52 @@ describe('PayoutService', () => {
       expect(due.status).toBe(PayoutStatus.PENDING);
     });
   });
+
+  describe('virement bancaire', () => {
+    const past = new Date(Date.now() - 86_400_000);
+
+    it('arrête le montant à virer et réserve les montants dus sans les solder', async () => {
+      const due = { id: 'due-1', organizer_id: 'org-1', net_amount: -3, status: PayoutStatus.PENDING, scheduled_at: past };
+      repo.findOne.mockResolvedValue({ id: 'p1', organizer_id: 'org-1', event_id: 'evt-1', net_amount: 50, status: PayoutStatus.PENDING });
+      repo.find.mockResolvedValue([due]);
+      const result = await service.prepareBankTransfer('p1');
+      expect(result).toMatchObject({ status: PayoutStatus.TO_TRANSFER, offset_amount: 3 });
+      expect(due).toMatchObject({ status: PayoutStatus.PENDING, settled_by_payout_id: 'p1' });
+      expect(stripe.createTransfer).not.toHaveBeenCalled();
+    });
+
+    it('rien à virer après compensation : soldé immédiatement', async () => {
+      const due = { id: 'due-1', organizer_id: 'org-1', net_amount: -80, status: PayoutStatus.PENDING, scheduled_at: past };
+      repo.findOne.mockResolvedValue({ id: 'p1', organizer_id: 'org-1', event_id: 'evt-1', net_amount: 50, status: PayoutStatus.PENDING });
+      repo.find.mockResolvedValue([due]);
+      const result = await service.prepareBankTransfer('p1');
+      expect(result).toMatchObject({ status: PayoutStatus.COMPLETED, offset_amount: 50 });
+      expect(due.net_amount).toBe(-30);
+    });
+
+    it('virement confirmé : versé avec la référence, montants dus réservés soldés', async () => {
+      repo.findOne.mockResolvedValue({ id: 'p1', status: PayoutStatus.TO_TRANSFER });
+      const result = await service.confirmBankTransfer('p1', ' VIR-2026-001 ', 'admin-1');
+      expect(result).toMatchObject({ status: PayoutStatus.COMPLETED, bank_transfer_reference: 'VIR-2026-001', transferred_by: 'admin-1' });
+      expect(repo.update).toHaveBeenCalledWith(
+        { settled_by_payout_id: 'p1', status: PayoutStatus.PENDING },
+        expect.objectContaining({ status: PayoutStatus.COMPLETED }),
+      );
+    });
+
+    it('confirmation refusée si le reversement n\'est pas à virer', async () => {
+      repo.findOne.mockResolvedValue({ id: 'p1', status: PayoutStatus.PENDING });
+      await expect(service.confirmBankTransfer('p1', 'VIR-1', 'admin-1')).rejects.toBeInstanceOf(RpcException);
+    });
+
+    it('virement annulé : de nouveau en attente, montants dus libérés', async () => {
+      repo.findOne.mockResolvedValue({ id: 'p1', status: PayoutStatus.TO_TRANSFER, offset_amount: 3 });
+      const result = await service.releaseBankTransfer('p1');
+      expect(result).toMatchObject({ status: PayoutStatus.PENDING, offset_amount: 0 });
+      expect(repo.update).toHaveBeenCalledWith(
+        { settled_by_payout_id: 'p1', status: PayoutStatus.PENDING },
+        { settled_by_payout_id: null },
+      );
+    });
+  });
 });

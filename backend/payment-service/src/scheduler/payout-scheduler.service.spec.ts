@@ -12,6 +12,7 @@ describe('PayoutSchedulerService', () => {
     rescheduleForEvent: jest.Mock;
     getDuePayouts: jest.Mock;
     process: jest.Mock;
+    prepareBankTransfer: jest.Mock;
     getExpiredBlockedPayouts: jest.Mock;
     unblock: jest.Mock;
   };
@@ -34,6 +35,7 @@ describe('PayoutSchedulerService', () => {
     payoutService = {
       getDuePayouts: jest.fn().mockResolvedValue([duePayout]),
       process: jest.fn().mockResolvedValue(completedPayout),
+      prepareBankTransfer: jest.fn().mockResolvedValue({ ...completedPayout, status: PayoutStatus.TO_TRANSFER }),
       getExpiredBlockedPayouts: jest.fn().mockResolvedValue([]),
       unblock: jest.fn(),
       holdForEvent: jest.fn(),
@@ -45,7 +47,7 @@ describe('PayoutSchedulerService', () => {
     };
     eventClient = { send: jest.fn().mockReturnValue(of({ title: 'Festival Test' })) };
     notificationClient = { emit: jest.fn() };
-    platformConfig = { get: jest.fn().mockResolvedValue({ dispute_payout_block_max_days: 30 }) };
+    platformConfig = { get: jest.fn().mockResolvedValue({ dispute_payout_block_max_days: 30, iban_change_payout_hold_hours: 72 }) };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -64,7 +66,7 @@ describe('PayoutSchedulerService', () => {
 
   it("ne traite pas le reversement si le compte Stripe Connect n'est pas onboardé", async () => {
     userClient.send.mockReturnValue(
-      of({ stripe_connect_account_id: null, stripe_connect_onboarded: false, kyc_status: 'VERIFIED' }),
+      of({ payout_method: 'STRIPE', stripe_connect_account_id: null, stripe_connect_onboarded: false, kyc_status: 'VERIFIED' }),
     );
 
     await service.processDuePayouts();
@@ -74,7 +76,7 @@ describe('PayoutSchedulerService', () => {
 
   it('ne traite pas le reversement si le KYC n\'est pas VERIFIED', async () => {
     userClient.send.mockReturnValue(
-      of({ stripe_connect_account_id: 'acct_1', stripe_connect_onboarded: true, kyc_status: 'PENDING' }),
+      of({ payout_method: 'STRIPE', stripe_connect_account_id: 'acct_1', stripe_connect_onboarded: true, kyc_status: 'PENDING' }),
     );
 
     await service.processDuePayouts();
@@ -84,7 +86,7 @@ describe('PayoutSchedulerService', () => {
 
   it('traite le reversement quand Stripe Connect est onboardé et le KYC validé', async () => {
     userClient.send.mockReturnValue(
-      of({ stripe_connect_account_id: 'acct_1', stripe_connect_onboarded: true, kyc_status: 'VERIFIED' }),
+      of({ payout_method: 'STRIPE', stripe_connect_account_id: 'acct_1', stripe_connect_onboarded: true, kyc_status: 'VERIFIED' }),
     );
 
     await service.processDuePayouts();
@@ -94,7 +96,7 @@ describe('PayoutSchedulerService', () => {
 
   it("notifie l'organisateur par email après un reversement effectué avec succès (CDC §9.2)", async () => {
     userClient.send.mockReturnValue(
-      of({ stripe_connect_account_id: 'acct_1', stripe_connect_onboarded: true, kyc_status: 'VERIFIED' }),
+      of({ payout_method: 'STRIPE', stripe_connect_account_id: 'acct_1', stripe_connect_onboarded: true, kyc_status: 'VERIFIED' }),
     );
 
     await service.processDuePayouts();
@@ -110,7 +112,7 @@ describe('PayoutSchedulerService', () => {
 
   it("ne notifie pas si le virement Stripe échoue (statut FAILED)", async () => {
     userClient.send.mockReturnValue(
-      of({ stripe_connect_account_id: 'acct_1', stripe_connect_onboarded: true, kyc_status: 'VERIFIED' }),
+      of({ payout_method: 'STRIPE', stripe_connect_account_id: 'acct_1', stripe_connect_onboarded: true, kyc_status: 'VERIFIED' }),
     );
     payoutService.process.mockResolvedValue({ ...completedPayout, status: PayoutStatus.FAILED });
 
@@ -170,6 +172,38 @@ describe('PayoutSchedulerService', () => {
       eventClient.send.mockReturnValue(throwError(() => new Error('timeout')));
       await service.processDuePayouts();
       expect(payoutService.process).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('organisateur payé par virement bancaire', () => {
+    const bankAccount = (overrides: object = {}) =>
+      of({ payout_method: 'BANK_TRANSFER', has_iban: true, iban_updated_at: null, kyc_status: 'VERIFIED', ...overrides });
+
+    it('passe le reversement « À virer » sans virement Stripe', async () => {
+      userClient.send.mockReturnValue(bankAccount());
+      await service.processDuePayouts();
+      expect(payoutService.prepareBankTransfer).toHaveBeenCalledWith('payout-1');
+      expect(payoutService.process).not.toHaveBeenCalled();
+    });
+
+    it('IBAN modifié récemment : reversement suspendu', async () => {
+      userClient.send.mockReturnValue(bankAccount({ iban_updated_at: new Date(Date.now() - 3_600_000).toISOString() }));
+      await service.processDuePayouts();
+      expect(payoutService.prepareBankTransfer).not.toHaveBeenCalled();
+    });
+
+    it('délai écoulé depuis le changement : reversement préparé', async () => {
+      userClient.send.mockReturnValue(bankAccount({ iban_updated_at: new Date(Date.now() - 73 * 3_600_000).toISOString() }));
+      await service.processDuePayouts();
+      expect(payoutService.prepareBankTransfer).toHaveBeenCalledWith('payout-1');
+    });
+
+    it('sans IBAN ou sans KYC validé : rien n\'est préparé', async () => {
+      userClient.send.mockReturnValue(bankAccount({ has_iban: false }));
+      await service.processDuePayouts();
+      userClient.send.mockReturnValue(bankAccount({ kyc_status: 'SUBMITTED' }));
+      await service.processDuePayouts();
+      expect(payoutService.prepareBankTransfer).not.toHaveBeenCalled();
     });
   });
 });

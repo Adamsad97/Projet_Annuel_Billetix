@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, In, LessThanOrEqual, Repository } from 'typeorm';
+import { Brackets, In, IsNull, LessThanOrEqual, Repository } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { StripeService } from '../stripe/stripe.service';
 import { Payout, PayoutStatus } from './payout.entity';
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
+
+type Settlement = { debt: Payout; covered: number };
 
 @Injectable()
 export class PayoutService {
@@ -162,7 +164,7 @@ export class PayoutService {
   }> {
     const payouts = await this.repo.find({ where: { organizer_id: organizerId } });
     const pending_balance = payouts
-      .filter((payout) => payout.status === PayoutStatus.PENDING || payout.status === PayoutStatus.PROCESSING)
+      .filter((payout) => [PayoutStatus.PENDING, PayoutStatus.PROCESSING, PayoutStatus.TO_TRANSFER].includes(payout.status))
       .reduce((sum, payout) => sum + Number(payout.net_amount), 0);
     const total_earned = payouts
       .filter((payout) => payout.status === PayoutStatus.COMPLETED)
@@ -182,7 +184,7 @@ export class PayoutService {
     const row = await this.repo
       .createQueryBuilder('payout')
       .select(
-        "COALESCE(SUM(payout.net_amount) FILTER (WHERE payout.status IN ('PENDING', 'PROCESSING')), 0)",
+        "COALESCE(SUM(payout.net_amount) FILTER (WHERE payout.status IN ('PENDING', 'PROCESSING', 'TO_TRANSFER')), 0)",
         'pending_balance',
       )
       .addSelect(
@@ -213,13 +215,20 @@ export class PayoutService {
     pending_total: number;
     paid_this_month_total: number;
     blocked_total: number;
+    to_transfer_total: number;
+    to_transfer_count: number;
   }> {
     const row = await this.repo
       .createQueryBuilder('payout')
       .select(
-        "COALESCE(SUM(payout.net_amount) FILTER (WHERE payout.status IN ('PENDING', 'PROCESSING')), 0)",
+        "COALESCE(SUM(payout.net_amount) FILTER (WHERE payout.status IN ('PENDING', 'PROCESSING', 'TO_TRANSFER')), 0)",
         'pending_total',
       )
+      .addSelect(
+        "COALESCE(SUM(payout.net_amount - payout.offset_amount) FILTER (WHERE payout.status = 'TO_TRANSFER'), 0)",
+        'to_transfer_total',
+      )
+      .addSelect("COUNT(*) FILTER (WHERE payout.status = 'TO_TRANSFER')", 'to_transfer_count')
       .addSelect(
         "COALESCE(SUM(payout.net_amount) FILTER (WHERE payout.status = 'COMPLETED' AND date_trunc('month', payout.processed_at) = date_trunc('month', now())), 0)",
         'paid_this_month_total',
@@ -234,6 +243,8 @@ export class PayoutService {
       pending_total: parseFloat(row?.pending_total ?? '0'),
       paid_this_month_total: parseFloat(row?.paid_this_month_total ?? '0'),
       blocked_total: parseFloat(row?.blocked_total ?? '0'),
+      to_transfer_total: parseFloat(row?.to_transfer_total ?? '0'),
+      to_transfer_count: parseInt(row?.to_transfer_count ?? '0', 10),
     };
   }
 
@@ -305,7 +316,12 @@ export class PayoutService {
    */
   async getOutstandingDebts(organizerId: string): Promise<Payout[]> {
     const pending = await this.repo.find({
-      where: { organizer_id: organizerId, status: PayoutStatus.PENDING, on_hold_for_postponement: false },
+      where: {
+        organizer_id: organizerId,
+        status: PayoutStatus.PENDING,
+        on_hold_for_postponement: false,
+        settled_by_payout_id: IsNull(),
+      },
       order: { created_at: 'ASC' },
     });
     const now = Date.now();
@@ -324,16 +340,7 @@ export class PayoutService {
       throw new RpcException({ statusCode: 400, message: 'Reversement non éligible au traitement' });
     }
 
-    const net = Number(payout.net_amount);
-    let available = net;
-    const settlements: Array<{ debt: Payout; covered: number }> = [];
-    for (const debt of await this.getOutstandingDebts(payout.organizer_id)) {
-      if (available <= 0) break;
-      const covered = round2(Math.min(available, -Number(debt.net_amount)));
-      settlements.push({ debt, covered });
-      available = round2(available - covered);
-    }
-    payout.offset_amount = round2(net - available);
+    const { available, settlements } = await this.computeOffset(payout);
     payout.status = PayoutStatus.PROCESSING;
     await this.repo.save(payout);
 
@@ -359,12 +366,104 @@ export class PayoutService {
     return saved;
   }
 
-  private async settleDebts(settlements: Array<{ debt: Payout; covered: number }>, by: Payout): Promise<void> {
+  /** Montants dus imputés sur ce reversement, du plus ancien au plus récent. */
+  private async computeOffset(payout: Payout): Promise<{ available: number; settlements: Settlement[] }> {
+    const net = Number(payout.net_amount);
+    let available = net;
+    const settlements: Settlement[] = [];
+    for (const debt of await this.getOutstandingDebts(payout.organizer_id)) {
+      if (available <= 0) break;
+      const covered = round2(Math.min(available, -Number(debt.net_amount)));
+      settlements.push({ debt, covered });
+      available = round2(available - covered);
+    }
+    payout.offset_amount = round2(net - available);
+    return { available, settlements };
+  }
+
+  /**
+   * Organisateur payé par virement bancaire : le montant à virer est arrêté
+   * (compensation faite) et le reversement passe « À virer ». Les montants
+   * dus imputés sont réservés à ce reversement et soldés à la confirmation
+   * du virement. Rien à virer après compensation : soldé immédiatement.
+   */
+  async prepareBankTransfer(id: string): Promise<Payout> {
+    const payout = await this.getById(id);
+    if (payout.status !== PayoutStatus.PENDING) {
+      throw new RpcException({ statusCode: 400, message: 'Reversement non éligible au traitement' });
+    }
+    const { available, settlements } = await this.computeOffset(payout);
+    if (available <= 0) {
+      payout.status = PayoutStatus.COMPLETED;
+      payout.processed_at = new Date();
+      const saved = await this.repo.save(payout);
+      await this.settleDebts(settlements, saved);
+      return saved;
+    }
+    payout.status = PayoutStatus.TO_TRANSFER;
+    const saved = await this.repo.save(payout);
+    await this.settleDebts(settlements, saved, false);
+    return saved;
+  }
+
+  /** Reversements « À virer » (fichier de virements SEPA de l'admin). */
+  async getToTransfer(ids?: string[]): Promise<Payout[]> {
+    return this.repo.find({
+      where: { status: PayoutStatus.TO_TRANSFER, ...(ids?.length ? { id: In(ids) } : {}) },
+      order: { created_at: 'ASC' },
+    });
+  }
+
+  /** Virement émis par l'admin : reversement versé, montants dus réservés soldés. */
+  async confirmBankTransfer(id: string, reference: string, adminId: string): Promise<Payout> {
+    const payout = await this.getById(id);
+    if (payout.status !== PayoutStatus.TO_TRANSFER) {
+      throw new RpcException({ statusCode: 400, message: "Ce reversement n'est pas en attente de virement." });
+    }
     const now = new Date();
+    payout.status = PayoutStatus.COMPLETED;
+    payout.processed_at = now;
+    payout.bank_transfer_reference = reference.trim();
+    payout.transferred_by = adminId;
+    const saved = await this.repo.save(payout);
+    await this.repo.update(
+      { settled_by_payout_id: id, status: PayoutStatus.PENDING },
+      { status: PayoutStatus.COMPLETED, processed_at: now },
+    );
+    return saved;
+  }
+
+  /**
+   * Virement rejeté par la banque ou annulé : le reversement redevient
+   * « En attente » et les montants dus réservés sont libérés.
+   */
+  async releaseBankTransfer(id: string): Promise<Payout> {
+    const payout = await this.getById(id);
+    if (payout.status !== PayoutStatus.TO_TRANSFER) {
+      throw new RpcException({ statusCode: 400, message: "Ce reversement n'est pas en attente de virement." });
+    }
+    payout.status = PayoutStatus.PENDING;
+    payout.offset_amount = 0;
+    const saved = await this.repo.save(payout);
+    await this.repo.update(
+      { settled_by_payout_id: id, status: PayoutStatus.PENDING },
+      { settled_by_payout_id: null },
+    );
+    return saved;
+  }
+
+  /**
+   * Solde les montants dus imputés sur `by`. `completed = false` : réservés
+   * seulement (restent dus tant que le virement n'est pas confirmé).
+   */
+  private async settleDebts(settlements: Settlement[], by: Payout, completed = true): Promise<void> {
+    const now = new Date();
+    const status = completed ? PayoutStatus.COMPLETED : PayoutStatus.PENDING;
+    const processedAt = completed ? now : null;
     for (const { debt, covered } of settlements) {
       if (covered >= -Number(debt.net_amount) - 0.001) {
-        debt.status = PayoutStatus.COMPLETED;
-        debt.processed_at = now;
+        debt.status = status;
+        debt.processed_at = processedAt;
         debt.settled_by_payout_id = by.id;
         await this.repo.save(debt);
         continue;
@@ -383,9 +482,9 @@ export class PayoutService {
           payment_fees_amount: 0,
           free_ticket_fees_amount: 0,
           net_amount: -covered,
-          status: PayoutStatus.COMPLETED,
+          status,
           scheduled_at: now,
-          processed_at: now,
+          processed_at: processedAt,
           settled_by_payout_id: by.id,
         }),
       );
@@ -394,6 +493,9 @@ export class PayoutService {
 
   async block(id: string, adminId: string, reason: string): Promise<Payout> {
     const payout = await this.getById(id);
+    if (payout.settled_by_payout_id) {
+      throw new RpcException({ statusCode: 400, message: "Montant déjà déduit d'un autre reversement : blocage impossible." });
+    }
     payout.status = PayoutStatus.BLOCKED;
     payout.blocked_at = new Date();
     payout.blocked_by = adminId;

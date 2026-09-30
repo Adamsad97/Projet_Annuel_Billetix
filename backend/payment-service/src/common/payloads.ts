@@ -16,6 +16,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
 } from 'class-validator';
 import { DisputeReason, DisputeStatus } from '../dispute/dispute.entity';
 import { PayoutStatus } from '../payout/payout.entity';
@@ -122,6 +123,14 @@ export class OwnedPayoutPayload extends IdPayload {
 
 export class AdminPayoutPayload extends IdPayload {
   @IsUUID() admin_id: string;
+}
+
+export class ToTransferPayoutsPayload {
+  @IsOptional() @IsArray() @IsUUID('all', { each: true }) ids?: string[];
+}
+
+export class ConfirmBankTransferPayload extends AdminPayoutPayload {
+  @IsString() @MinLength(3) @MaxLength(140) reference: string;
 }
 
 export class ListPayoutsPayload {

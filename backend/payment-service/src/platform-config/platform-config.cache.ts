@@ -26,6 +26,7 @@ export interface PlatformConfig {
   event_archive_delay_days: number;
   dispute_payout_block_max_days: number;
   payout_early_request_min_days_after_event: number;
+  iban_change_payout_hold_hours: number;
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -50,6 +51,7 @@ const FALLBACK: PlatformConfig = {
   event_archive_delay_days: 30,
   dispute_payout_block_max_days: 30,
   payout_early_request_min_days_after_event: 2,
+  iban_change_payout_hold_hours: 72,
 };
 
 @Injectable()

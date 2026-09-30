@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PayoutService } from './payout.service';
-import { AdminPayoutPayload, BlockPayoutPayload, CreatePayoutPayload, EventPayoutsPayload, RescheduleEventPayoutsPayload, IdPayload, ListPayoutsPayload, OrganizerPayload, OwnedPayoutPayload, ProcessPayoutPayload } from '../common/payloads';
+import { AdminPayoutPayload, BlockPayoutPayload, ConfirmBankTransferPayload, ToTransferPayoutsPayload, CreatePayoutPayload, EventPayoutsPayload, RescheduleEventPayoutsPayload, IdPayload, ListPayoutsPayload, OrganizerPayload, OwnedPayoutPayload, ProcessPayoutPayload } from '../common/payloads';
 
 @Controller()
 export class PayoutController {
@@ -55,6 +55,26 @@ export class PayoutController {
   @MessagePattern('payment.process_payout')
   process(@Payload() data: ProcessPayoutPayload) {
     return this.payoutService.process(data.id, data.stripe_account_id);
+  }
+
+  @MessagePattern('payment.prepare_bank_transfer')
+  prepareBankTransfer(@Payload() data: IdPayload) {
+    return this.payoutService.prepareBankTransfer(data.id);
+  }
+
+  @MessagePattern('payment.get_payouts_to_transfer')
+  getToTransfer(@Payload() data: ToTransferPayoutsPayload) {
+    return this.payoutService.getToTransfer(data.ids);
+  }
+
+  @MessagePattern('payment.confirm_bank_transfer')
+  confirmBankTransfer(@Payload() data: ConfirmBankTransferPayload) {
+    return this.payoutService.confirmBankTransfer(data.id, data.reference, data.admin_id);
+  }
+
+  @MessagePattern('payment.release_bank_transfer')
+  releaseBankTransfer(@Payload() data: IdPayload) {
+    return this.payoutService.releaseBankTransfer(data.id);
   }
 
   @MessagePattern('payment.block_payout')

@@ -6,7 +6,10 @@ import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { PayoutService } from '../payout/payout.service';
 import { PayoutStatus } from '../payout/payout.entity';
 
-interface OrganizerProfile {
+interface PayoutAccount {
+  payout_method: 'BANK_TRANSFER' | 'STRIPE';
+  has_iban: boolean;
+  iban_updated_at: string | null;
   stripe_connect_account_id: string | null;
   stripe_connect_onboarded: boolean;
   kyc_status: string;
@@ -38,6 +41,7 @@ export class PayoutSchedulerService {
     if (duePayouts.length === 0) return;
 
     this.logger.log(`Reversements à échéance : ${duePayouts.length}`);
+    const config = await this.platformConfig.get();
 
     // État réel de chaque événement, lu une fois par cycle : un événement
     // reporté n'est jamais reversé, et une fin déplacée plus tard reprogramme
@@ -71,27 +75,46 @@ export class PayoutSchedulerService {
           continue;
         }
 
-        const profile = await firstValueFrom(
-          this.userClient.send<OrganizerProfile>('user.get_organizer_profile', {
+        const account = await firstValueFrom(
+          this.userClient.send<PayoutAccount>('user.get_payout_account', {
             user_id: payout.organizer_id,
           }),
         );
 
-        if (!profile?.stripe_connect_account_id || !profile.stripe_connect_onboarded) {
-          this.logger.warn(
-            `Reversement ${payout.id} suspendu : compte Stripe Connect non configuré (organisateur ${payout.organizer_id})`,
-          );
-          continue;
-        }
-
-        if (profile.kyc_status !== 'VERIFIED') {
+        if (account?.kyc_status !== 'VERIFIED') {
           this.logger.warn(
             `Reversement ${payout.id} suspendu : KYC non validé (organisateur ${payout.organizer_id})`,
           );
           continue;
         }
 
-        const processed = await this.payoutService.process(payout.id, profile.stripe_connect_account_id);
+        if (account.payout_method === 'BANK_TRANSFER') {
+          if (!account.has_iban) {
+            this.logger.warn(`Reversement ${payout.id} suspendu : aucun IBAN (organisateur ${payout.organizer_id})`);
+            continue;
+          }
+          // IBAN modifié récemment : on laisse à l'organisateur le temps de
+          // réagir à l'email d'alerte avant tout virement vers ce compte.
+          const holdUntil = account.iban_updated_at
+            ? new Date(account.iban_updated_at).getTime() + config.iban_change_payout_hold_hours * 3_600_000
+            : 0;
+          if (holdUntil > Date.now()) {
+            this.logger.warn(`Reversement ${payout.id} suspendu : IBAN modifié récemment (organisateur ${payout.organizer_id})`);
+            continue;
+          }
+          const prepared = await this.payoutService.prepareBankTransfer(payout.id);
+          this.logger.log(`Reversement ${payout.id} : ${prepared.status === PayoutStatus.TO_TRANSFER ? 'à virer' : 'soldé par compensation'}`);
+          continue;
+        }
+
+        if (!account.stripe_connect_account_id || !account.stripe_connect_onboarded) {
+          this.logger.warn(
+            `Reversement ${payout.id} suspendu : compte Stripe Connect non configuré (organisateur ${payout.organizer_id})`,
+          );
+          continue;
+        }
+
+        const processed = await this.payoutService.process(payout.id, account.stripe_connect_account_id);
 
         if (processed.status !== PayoutStatus.COMPLETED) {
           this.logger.warn(`Reversement ${payout.id} en échec (virement Stripe refusé)`);
