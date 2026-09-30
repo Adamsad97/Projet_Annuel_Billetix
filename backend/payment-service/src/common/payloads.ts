@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsArray,
   IsDateString,
   IsEmail,
@@ -141,6 +142,15 @@ export class CreateDisputePayload extends OrderIdPayload {
   @IsEnum(DisputeReason) reason: DisputeReason;
   @IsOptional() @IsString() @MaxLength(TEXT_MAX) description?: string;
   @IsOptional() @IsString() @MaxLength(100) stripe_dispute_id?: string;
+}
+
+export class CloseStripeDisputePayload {
+  @IsString() @MaxLength(100) stripe_dispute_id: string;
+  @IsBoolean() won: boolean;
+}
+
+export class ChargebackPayload extends OrderIdPayload {
+  @Type(() => Number) @IsNumber() @Min(0.01) amount: number;
 }
 
 export class UpdateDisputeStatusPayload extends IdPayload {

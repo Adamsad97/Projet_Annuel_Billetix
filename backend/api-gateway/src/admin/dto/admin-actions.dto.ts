@@ -1,19 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
-import {
-  IsBoolean,
-  IsIn,
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Length,
-  MaxLength,
-  Min,
-  ValidateIf,
-  ValidateNested,
-} from "class-validator";
+import { IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Length, MaxLength, Min, ValidateIf, ValidateNested } from "class-validator";
 import { PaginationQueryDto, TEXT_MAX_LENGTH } from "../../common/dto/common.dto";
 import { CreateEventDto } from "../../event/dto/create-event.dto";
 import { CreateTicketCategoryDto } from "../../event/dto/event-actions.dto";
@@ -72,6 +59,19 @@ export class ResolveDisputeDto {
   @IsString()
   @MaxLength(TEXT_MAX_LENGTH)
   resolution_notes?: string;
+
+  /** Acheteur dans son droit (LOST) : remboursement total de la commande. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  refund_full?: boolean;
+
+  /** Acheteur dans son droit (LOST) : remboursement partiel, en centimes. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  refund_amount_cents?: number;
 }
 
 export class UpdateSettingDto {

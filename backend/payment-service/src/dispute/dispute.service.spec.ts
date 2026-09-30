@@ -72,4 +72,42 @@ describe('DisputeService', () => {
       expect(payoutService.unblockByOrder).not.toHaveBeenCalled();
     });
   });
+
+  describe('un seul litige actif par commande', () => {
+    it("refuse un second litige tant que le premier n'est pas tranché", async () => {
+      repo.findOne.mockResolvedValue({ id: 'dispute-1', order_id: 'order-1', status: DisputeStatus.OPEN });
+      await expect(
+        service.create({ payment_id: 'pay-1', order_id: 'order-1', buyer_id: 'buyer-1', reason: DisputeReason.GENERAL }),
+      ).rejects.toMatchObject({ error: { statusCode: 409 } });
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('rattache une contestation bancaire au litige déjà ouvert', async () => {
+      const active = { id: 'dispute-1', order_id: 'order-1', status: DisputeStatus.UNDER_REVIEW, stripe_dispute_id: null };
+      repo.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(active);
+      repo.save.mockImplementation(async (value: object) => value);
+      const result = await service.create({
+        payment_id: 'pay-1', order_id: 'order-1', buyer_id: 'buyer-1', reason: DisputeReason.FRAUDULENT, stripe_dispute_id: 'dp_1',
+      });
+      expect(result).toMatchObject({ id: 'dispute-1', stripe_dispute_id: 'dp_1' });
+      expect(payoutService.blockByOrder).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('prise en charge et contestation bancaire', () => {
+    it('ouvert → en cours d\'examen, une seule fois', async () => {
+      repo.findOne.mockResolvedValue({ id: 'dispute-1', status: DisputeStatus.OPEN });
+      repo.save.mockImplementation(async (value: object) => value);
+      await expect(service.startReview('dispute-1')).resolves.toMatchObject({ status: DisputeStatus.UNDER_REVIEW });
+      repo.findOne.mockResolvedValue({ id: 'dispute-1', status: DisputeStatus.UNDER_REVIEW });
+      await expect(service.startReview('dispute-1')).rejects.toMatchObject({ error: { statusCode: 400 } });
+    });
+
+    it('contestation perdue : litige perdu, reversement débloqué pour ajustement', async () => {
+      repo.findOne.mockResolvedValue({ id: 'dispute-1', order_id: 'order-1', status: DisputeStatus.OPEN });
+      repo.save.mockImplementation(async (value: object) => value);
+      await expect(service.closeFromStripe('dp_1', false)).resolves.toMatchObject({ status: DisputeStatus.LOST });
+      expect(payoutService.unblockByOrder).toHaveBeenCalledWith('order-1');
+    });
+  });
 });

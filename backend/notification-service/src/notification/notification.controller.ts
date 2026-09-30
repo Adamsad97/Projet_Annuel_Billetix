@@ -6,6 +6,7 @@ import { AccountActivatedDto } from './dto/account-activated.dto';
 import { EventPostponedDto } from './dto/event-postponed.dto';
 import { AdminChangeRequestDto } from './dto/admin-change-request.dto';
 import { AdminNoticeDto } from './dto/admin-notice.dto';
+import { DisputeResolvedBuyerDto } from './dto/dispute-resolved-buyer.dto';
 import { AccountSuspendedDto } from './dto/account-suspended.dto';
 import { AccountUnlockedDto } from './dto/account-unlocked.dto';
 import { AccountUnsuspendedDto } from './dto/account-unsuspended.dto';
@@ -642,6 +643,23 @@ export class NotificationController {
       context: {
         ...data,
         dashboardUrl: `${this.appUrl}/dashboard`,
+      },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.dispute_resolved_buyer')
+  async onDisputeResolvedBuyer(@Payload() data: DisputeResolvedBuyerDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Votre réclamation — commande ${data.orderReference}`,
+      template: 'dispute-resolved-buyer',
+      context: {
+        ...data,
+        isWon: data.status === 'WON',
+        isLost: data.status === 'LOST',
+        isClosed: data.status === 'CLOSED',
+        ordersUrl: `${this.appUrl}/profil/commandes`,
       },
     });
     this.ack(rmqContext);

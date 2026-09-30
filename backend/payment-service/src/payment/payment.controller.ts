@@ -5,9 +5,18 @@ import { PaypalProvider } from '../providers/paypal.provider';
 import { WaveProvider } from '../providers/wave.provider';
 import { StripeService } from '../stripe/stripe.service';
 import { PaymentService } from './payment.service';
-import { ConnectAccountPayload, ConnectOnboardingPayload, CreateIntentPayload, OrangeMoneyCallbackPayload, OrderIdPayload, PaypalWebhookPayload, RefundPayload, StripeWebhookPayload, WaveWebhookPayload } from '../common/payloads';
+import { ChargebackPayload, ConnectAccountPayload, ConnectOnboardingPayload, CreateIntentPayload, OrangeMoneyCallbackPayload, OrderIdPayload, PaypalWebhookPayload, RefundPayload, StripeWebhookPayload, WaveWebhookPayload } from '../common/payloads';
 import type Stripe from 'stripe';
 import { connectAccountStatus } from '../stripe/connect-status';
+
+// Motifs de contestation Stripe → motifs de litige de la plateforme.
+const STRIPE_DISPUTE_REASONS: Record<string, string> = {
+  fraudulent: 'FRAUDULENT',
+  duplicate: 'DUPLICATE',
+  product_not_received: 'PRODUCT_NOT_RECEIVED',
+  product_unacceptable: 'PRODUCT_UNACCEPTABLE',
+  subscription_canceled: 'SUBSCRIPTION_CANCELED',
+};
 
 @Controller()
 export class PaymentController {
@@ -93,6 +102,26 @@ export class PaymentController {
         }),
       );
       return { received: true };
+    }
+
+    // Contestation bancaire (chargeback) : la passerelle ouvre ou clôt le
+    // litige correspondant (elle seule connaît l'acheteur de la commande).
+    if (event.type === 'charge.dispute.created' || event.type === 'charge.dispute.closed') {
+      const dispute = event.data.object as Stripe.Dispute;
+      const intentId = typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id;
+      const payment = intentId ? await this.paymentService.findByProviderPaymentId(intentId) : null;
+      return {
+        received: true,
+        dispute: {
+          event: event.type === 'charge.dispute.created' ? 'created' : 'closed',
+          stripe_dispute_id: dispute.id,
+          order_id: payment?.order_id ?? null,
+          payment_id: payment?.id ?? null,
+          reason: STRIPE_DISPUTE_REASONS[dispute.reason] ?? 'GENERAL',
+          won: dispute.status === 'won',
+          amount: dispute.amount / 100,
+        },
+      };
     }
 
     if (event.type === 'payment_intent.payment_failed') {
@@ -240,6 +269,11 @@ export class PaymentController {
       payment_intent_id: payment.provider_payment_id,
       already_processed: payment._wasAlreadyPaid,
     };
+  }
+
+  @MessagePattern('payment.record_chargeback')
+  recordChargeback(@Payload() data: ChargebackPayload) {
+    return this.paymentService.recordChargeback(data.order_id, data.amount);
   }
 
   @MessagePattern('payment.get_by_order')

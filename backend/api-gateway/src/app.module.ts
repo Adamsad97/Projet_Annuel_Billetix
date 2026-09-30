@@ -5,6 +5,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { AdminModule } from "./admin/admin.module";
 import { AuthModule } from "./auth/auth.module";
+import { DisputesModule } from "./disputes/disputes.module";
 import { AdminAlertsModule } from "./admin-alerts/admin-alerts.module";
 import { CreditNotesModule } from "./credit-notes/credit-notes.module";
 import { MicroserviceClientsModule } from "./microservice-clients.module";
@@ -38,6 +39,7 @@ import { TimeoutInterceptor } from "./common/interceptors/timeout.interceptor";
     MicroserviceClientsModule,
     CreditNotesModule,
     AdminAlertsModule,
+    DisputesModule,
 
     AuthModule,
     UserModule,

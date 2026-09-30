@@ -330,4 +330,14 @@ describe('NotificationController', () => {
     expect(options).toMatchObject({ to: 'admin@example.com', template: 'admin-notice', subject: "Nouvelle vérification d'identité — Les Nuits" });
     expect(options.context.ctaUrl).toBe('http://localhost:3000/admin/utilisateurs/abc');
   });
+
+  it("litige tranché : l'acheteur reçoit l'issue et le montant remboursé", async () => {
+    await controller.onDisputeResolvedBuyer(
+      { email: 'jean@example.com', firstName: 'Jean', eventName: 'Soirée Jazz', orderReference: 'ORD-1', status: 'LOST', refundAmount: '45.00' },
+      rmqContext,
+    );
+    const [options] = mail.send.mock.calls[0];
+    expect(options).toMatchObject({ to: 'jean@example.com', template: 'dispute-resolved-buyer' });
+    expect(options.context).toMatchObject({ isLost: true, refundAmount: '45.00', ordersUrl: 'http://localhost:3000/profil/commandes' });
+  });
 });

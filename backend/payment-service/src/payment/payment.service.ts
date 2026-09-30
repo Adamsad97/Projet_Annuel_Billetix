@@ -274,6 +274,36 @@ export class PaymentService {
     return this.repo.save(payment);
   }
 
+  findByProviderPaymentId(paymentIntentId: string): Promise<Payment | null> {
+    return this.repo.findOne({ where: { provider_payment_id: paymentIntentId } });
+  }
+
+  /**
+   * Contestation bancaire perdue : la banque a repris le montant. Enregistré
+   * comme un remboursement (sans appel au prestataire, déjà débité) ; le
+   * reversement de l'organisateur est ajusté d'autant.
+   */
+  async recordChargeback(orderId: string, amount: number): Promise<Payment> {
+    return this.dataSource.transaction(async (manager) => {
+      const payment = await manager
+        .createQueryBuilder(Payment, 'payment')
+        .setLock('pessimistic_write')
+        .where('payment.order_id = :orderId', { orderId })
+        .getOne();
+      if (!payment) throw new RpcException({ statusCode: 404, message: 'Paiement introuvable' });
+      const already = Number(payment.refunded_amount ?? 0);
+      const taken = parseFloat(Math.min(amount, Number(payment.amount) - already).toFixed(2));
+      if (taken <= 0) return payment;
+      payment.refunded_amount = parseFloat((already + taken).toFixed(2));
+      payment.refunded_at = new Date();
+      payment.status =
+        payment.refunded_amount >= Number(payment.amount) - 0.01 ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED;
+      const saved = await manager.save(payment);
+      await this.payoutService.recalculateForRefund(orderId, taken, Number(payment.amount)).catch(() => undefined);
+      return saved;
+    });
+  }
+
   async getByOrder(orderId: string): Promise<Payment> {
     const payment = await this.repo.findOne({ where: { order_id: orderId } });
     if (!payment) throw new RpcException({ statusCode: 404, message: 'Paiement introuvable' });

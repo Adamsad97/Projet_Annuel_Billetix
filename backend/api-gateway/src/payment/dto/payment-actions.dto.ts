@@ -29,7 +29,6 @@ export enum DisputeReason {
 }
 
 export class CreateDisputeDto {
-  @ApiProperty() @IsUUID("all", { message: "Paiement invalide." }) payment_id: string;
   @ApiProperty() @IsUUID("all", { message: "Commande invalide." }) order_id: string;
   @ApiProperty({ enum: DisputeReason }) @IsEnum(DisputeReason) reason: DisputeReason;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(TEXT_MAX_LENGTH) description?: string;

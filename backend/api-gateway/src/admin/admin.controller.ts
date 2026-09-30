@@ -36,6 +36,7 @@ import {
   ChangeRoleDto, CreateCategoryForOrganizerDto, CreateEventForOrganizerDto, ForceRefundDto, OrganizerRefDto, ResolveDisputeDto, SendNewsletterDto, UpdateSettingDto, VerifyNonProfitDto } from "./dto/admin-actions.dto";
 import { UuidPipe } from "../common/pipes/uuid.pipe";
 import { CreditNoteIssuer } from "../credit-notes/credit-note-issuer.service";
+import { DisputeWorkflow } from "../disputes/dispute-workflow.service";
 
 /** Annonce de revente renvoyée par le ticket-service. */
 interface AdminResale {
@@ -78,6 +79,7 @@ export class AdminController {
     private readonly eventRefund: EventRefundService,
     private readonly postponement: EventPostponementService,
     private readonly creditNotes: CreditNoteIssuer,
+    private readonly disputes: DisputeWorkflow,
   ) {}
 
   private ip(req: Request): string {
@@ -1500,36 +1502,43 @@ export class AdminController {
   // ─── Gestion des litiges ──────────────────────────────────────────────────────
 
   @Get("disputes")
-  @ApiOperation({ summary: "Tous les litiges" })
+  @ApiOperation({ summary: "Tous les litiges, avec commande, événement et acheteur" })
   getAllDisputes(@Query("order_id") order_id?: string) {
     if (order_id) {
-      return firstValueFrom(
-        this.paymentClient.send("payment.get_disputes_by_order", { order_id }),
-      );
+      return firstValueFrom(this.paymentClient.send("payment.get_disputes_by_order", { order_id }));
     }
-    return firstValueFrom(
-      this.paymentClient.send("payment.get_all_disputes", {}),
-    );
+    return this.disputes.listForAdmin();
+  }
+
+  @Get("disputes/:id")
+  @ApiOperation({ summary: "Fiche d'un litige : commande, billets, paiement, avoirs" })
+  getDispute(@Param("id", UuidPipe) id: string) {
+    return this.disputes.detail(id);
+  }
+
+  @Post("disputes/:id/review")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Prendre un litige en charge" })
+  async reviewDispute(@CurrentUser() user: JwtPayload, @Req() req: Request, @Param("id", UuidPipe) id: string) {
+    const result = await this.disputes.startReview(id);
+    this.audit(user, req, "CUSTOM", "DISPUTE", id, "Litige pris en charge");
+    return result;
   }
 
   @Post("disputes/:id/resolve")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Résoudre un litige" })
+  @ApiOperation({ summary: "Trancher un litige, avec remboursement éventuel de l'acheteur" })
   async resolveDispute(
     @CurrentUser() user: JwtPayload,
     @Req() req: Request,
     @Param("id", UuidPipe) id: string,
     @Body() dto: ResolveDisputeDto,
   ) {
-    const result = await firstValueFrom(
-      this.paymentClient.send("payment.resolve_dispute", {
-        id,
-        ...dto,
-        resolved_by: user.sub,
-      }),
-    );
-    this.audit(user, req, "DISPUTE_RESOLVED", "DISPUTE", id, undefined, {
+    const result = await this.disputes.resolve(user.sub, id, dto);
+    this.audit(user, req, "DISPUTE_RESOLVED", "DISPUTE", id, dto.resolution_notes, {
       status: dto.status,
+      refund_full: dto.refund_full ?? false,
+      refund_amount_cents: dto.refund_amount_cents ?? null,
     });
     return result;
   }
@@ -1779,23 +1788,11 @@ export class AdminController {
     @Param("orderId", UuidPipe) orderId: string,
     @Body() dto: ForceRefundDto,
   ) {
-    const result = (await firstValueFrom(
-      this.paymentClient.send("payment.refund", {
-        order_id: orderId,
-        amount_cents: dto.amount_cents,
-      }),
-    )) as { status: string };
-    this.creditNotes.issueInBackground(orderId, dto.amount_cents ? dto.amount_cents / 100 : undefined, dto.reason);
-
-    if (result.status === "REFUNDED") {
-      this.orderClient
-        .send("order.mark_refunded", { id: orderId })
-        .subscribe();
-    }
-
+    const result = await this.disputes.refundOrder(orderId, dto.amount_cents, dto.reason);
     this.audit(user, req, "REFUND_FORCED", "ORDER", orderId, dto.reason, {
       amount_cents: dto.amount_cents,
     });
     return result;
   }
+
 }

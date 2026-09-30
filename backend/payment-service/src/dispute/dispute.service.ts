@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { PayoutService } from '../payout/payout.service';
 import { Dispute, DisputeStatus, DisputeReason } from './dispute.entity';
 
@@ -20,6 +20,24 @@ export class DisputeService {
     description?: string;
     stripe_dispute_id?: string;
   }): Promise<Dispute> {
+    // Contestation bancaire déjà reçue (webhook rejoué) : rien de nouveau.
+    if (data.stripe_dispute_id) {
+      const known = await this.repo.findOne({ where: { stripe_dispute_id: data.stripe_dispute_id } });
+      if (known) return known;
+    }
+    // Un seul litige actif par commande ; une contestation bancaire sur une
+    // commande déjà en litige est rattachée à ce litige.
+    const active = await this.repo.findOne({
+      where: { order_id: data.order_id, status: In([DisputeStatus.OPEN, DisputeStatus.UNDER_REVIEW]) },
+    });
+    if (active) {
+      if (data.stripe_dispute_id) {
+        active.stripe_dispute_id = data.stripe_dispute_id;
+        return this.repo.save(active);
+      }
+      throw new RpcException({ statusCode: 409, message: 'Un litige est déjà en cours pour cette commande.' });
+    }
+
     const dispute = await this.repo.save(this.repo.create(data));
 
     // CDC §7.2 : « litige en cours → fonds bloqués jusqu'à résolution ».
@@ -65,6 +83,34 @@ export class DisputeService {
     const dispute = await this.getById(id);
     dispute.status = status;
     return this.repo.save(dispute);
+  }
+
+  /** Un admin prend le litige en charge : ouvert → en cours d'examen. */
+  async startReview(id: string): Promise<Dispute> {
+    const dispute = await this.getById(id);
+    if (dispute.status !== DisputeStatus.OPEN) {
+      throw new RpcException({ statusCode: 400, message: "Ce litige n'est plus en attente de prise en charge." });
+    }
+    dispute.status = DisputeStatus.UNDER_REVIEW;
+    return this.repo.save(dispute);
+  }
+
+  /**
+   * Contestation bancaire clôturée par la banque (webhook Stripe) : gagnée,
+   * les fonds restent acquis ; perdue, ils sont repris par la banque.
+   */
+  async closeFromStripe(stripeDisputeId: string, won: boolean): Promise<Dispute | null> {
+    const dispute = await this.repo.findOne({ where: { stripe_dispute_id: stripeDisputeId } });
+    if (!dispute) return null;
+    if (dispute.status === DisputeStatus.WON || dispute.status === DisputeStatus.LOST) return dispute;
+    dispute.status = won ? DisputeStatus.WON : DisputeStatus.LOST;
+    dispute.resolved_at = new Date();
+    dispute.resolution_notes = won
+      ? 'Contestation bancaire rejetée par la banque : le paiement reste acquis.'
+      : 'Contestation bancaire acceptée par la banque : le montant a été repris au vendeur.';
+    const saved = await this.repo.save(dispute);
+    await this.payoutService.unblockByOrder(dispute.order_id);
+    return saved;
   }
 
   async resolve(id: string, data: {

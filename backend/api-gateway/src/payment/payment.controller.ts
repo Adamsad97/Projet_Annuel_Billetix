@@ -31,6 +31,7 @@ import { CreateDisputeDto, OrangeMoneyWebhookDto, RefundAmountDto } from "./dto/
 import { ResolveDisputeDto } from "../admin/dto/admin-actions.dto";
 import { UuidPipe } from "../common/pipes/uuid.pipe";
 import { CreditNoteIssuer } from "../credit-notes/credit-note-issuer.service";
+import { DisputeWorkflow, type StripeDisputeEvent } from "../disputes/dispute-workflow.service";
 
 @ApiTags("payments")
 @ApiBearerAuth()
@@ -49,6 +50,7 @@ export class PaymentController {
     private readonly ticketsGateway: TicketsGateway,
     private readonly fulfillment: PurchaseFulfillmentService,
     private readonly creditNotes: CreditNoteIssuer,
+    private readonly disputes: DisputeWorkflow,
   ) {}
 
   @Post("intent")
@@ -137,74 +139,12 @@ export class PaymentController {
   @HttpCode(HttpStatus.OK)
   @Roles("ADMIN")
   @ApiOperation({ summary: "Rembourser une commande (ADMIN)" })
-  async refund(
-    @Param("orderId", UuidPipe) orderId: string,
-    @Body() dto: RefundAmountDto,
-  ) {
-    const result = (await firstValueFrom(
-      this.paymentClient.send("payment.refund", {
-        order_id: orderId,
-        amount_cents: dto.amount_cents,
-      }),
-    )) as { status: string; refunded_amount: number };
-
-    this.creditNotes.issueInBackground(
-      orderId,
-      dto.amount_cents ? dto.amount_cents / 100 : undefined,
-      "Remboursement effectué par le service client",
-    );
-
-    // Ne marquer la commande comme remboursée que si le remboursement
-    // couvre le solde total — un remboursement partiel laisse les billets
-    // valides, la commande reste CONFIRMED/TICKETS_SENT.
-    if (result.status === "REFUNDED") {
-      this.orderClient
-        .send("order.mark_refunded", { id: orderId })
-        .subscribe();
-      // Bug corrigé : les billets de la commande n'étaient jamais invalidés
-      // après un remboursement complet — un acheteur remboursé pouvait
-      // encore se présenter à l'événement avec un billet valide et
-      // scannable. order.mark_refunded restaure déjà le quota de son côté.
-      this.ticketClient
-        .send("ticket.cancel_by_order", { order_id: orderId })
-        .subscribe();
-    }
-
-    // Notification acheteur (CDC §9.1 : « Remboursement effectué ») — ne
-    // bloque jamais la réponse de l'endpoint en cas d'échec de notification.
-    this.notifyRefundCompleted(orderId, result.status, result.refunded_amount).catch(
-      (err) => this.logger.error(`Échec notification remboursement ${orderId}: ${err?.message}`),
-    );
-
+  async refund(@Param("orderId", UuidPipe) orderId: string, @Body() dto: RefundAmountDto) {
+    const result = await this.disputes.refundOrder(orderId, dto.amount_cents, "Remboursement effectué par le service client");
     this.checkRefundAlert().catch(() => undefined);
     return result;
   }
 
-  private async notifyRefundCompleted(
-    orderId: string,
-    status: string,
-    refundedAmount: number,
-  ): Promise<void> {
-    const { order } = (await firstValueFrom(
-      this.orderClient.send("order.get", { id: orderId }),
-    )) as {
-      order: {
-        buyer_email: string;
-        buyer_first_name: string;
-        reference: string;
-        event_name: string;
-      };
-    };
-
-    this.notifClient.emit("notification.refund_completed", {
-      email: order.buyer_email,
-      firstName: order.buyer_first_name,
-      orderReference: order.reference,
-      eventName: order.event_name,
-      amount: Number(refundedAmount).toFixed(2),
-      refundType: status === "REFUNDED" ? "Remboursement total" : "Remboursement partiel",
-    });
-  }
 
   // ─── Reversements ───────────────────────────────────────────────────────────
 
@@ -302,49 +242,11 @@ export class PaymentController {
 
   @Post("disputes")
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: "Ouvrir un litige" })
-  async createDispute(
-    @CurrentUser() user: JwtPayload,
-    @Body()
-    dto: CreateDisputeDto,
-  ) {
-    const result = await firstValueFrom(
-      this.paymentClient.send("payment.create_dispute", {
-        ...dto,
-        buyer_id: user.sub,
-      }),
-    );
-
-    // Notification organisateur (CDC §9.2 : « Litige ouvert ») — ne bloque
-    // jamais la réponse de l'endpoint en cas d'échec de notification.
-    this.notifyDisputeOpened(dto.order_id, dto.reason).catch((err) =>
-      this.logger.error(`Échec notification litige ouvert (order ${dto.order_id}): ${err?.message}`),
-    );
-
+  @ApiOperation({ summary: "Signaler un problème sur sa commande payée (acheteur)" })
+  async createDispute(@CurrentUser() user: JwtPayload, @Body() dto: CreateDisputeDto) {
+    const result = await this.disputes.openByBuyer(user.sub, dto);
     this.checkDisputeAlert().catch(() => undefined);
     return result;
-  }
-
-  private async notifyDisputeOpened(orderId: string, reason: string): Promise<void> {
-    const { order } = (await firstValueFrom(
-      this.orderClient.send("order.get", { id: orderId }),
-    )) as {
-      order: { organizer_id?: string; event_name: string; reference: string };
-    };
-    if (!order.organizer_id) return;
-
-    const organizer = (await firstValueFrom(
-      this.authClient.send("auth.get_user", { id: order.organizer_id }),
-    )) as { email: string; first_name: string } | null;
-    if (!organizer?.email) return;
-
-    this.notifClient.emit("notification.dispute_opened", {
-      email: organizer.email,
-      firstName: organizer.first_name,
-      eventName: order.event_name,
-      orderReference: order.reference,
-      reason,
-    });
   }
 
   @Get("disputes/me")
@@ -372,56 +274,10 @@ export class PaymentController {
   @HttpCode(HttpStatus.OK)
   @Roles("ADMIN")
   @ApiOperation({ summary: "Résoudre un litige (ADMIN)" })
-  async resolveDispute(
-    @CurrentUser() user: JwtPayload,
-    @Param("id", UuidPipe) id: string,
-    @Body() dto: ResolveDisputeDto,
-  ) {
-    const dispute = (await firstValueFrom(
-      this.paymentClient.send("payment.resolve_dispute", {
-        id,
-        ...dto,
-        resolved_by: user.sub,
-      }),
-    )) as { order_id: string };
-
-    // Bug corrigé (CDC §9.2) : le template dispute-opened promettait déjà
-    // "vous serez notifié dès sa résolution", mais aucune notification
-    // n'était jamais émise à la résolution — l'organisateur ne l'apprenait
-    // qu'en constatant lui-même le déblocage de son reversement.
-    this.notifyDisputeResolved(dispute.order_id, dto.status, dto.resolution_notes).catch((err) =>
-      this.logger.error(`Échec notification litige résolu (order ${dispute.order_id}): ${err?.message}`),
-    );
-
-    return dispute;
+  resolveDispute(@CurrentUser() user: JwtPayload, @Param("id", UuidPipe) id: string, @Body() dto: ResolveDisputeDto) {
+    return this.disputes.resolve(user.sub, id, dto);
   }
 
-  private async notifyDisputeResolved(
-    orderId: string,
-    status: string,
-    resolutionNotes?: string,
-  ): Promise<void> {
-    const { order } = (await firstValueFrom(
-      this.orderClient.send("order.get", { id: orderId }),
-    )) as {
-      order: { organizer_id?: string; event_name: string; reference: string };
-    };
-    if (!order.organizer_id) return;
-
-    const organizer = (await firstValueFrom(
-      this.authClient.send("auth.get_user", { id: order.organizer_id }),
-    )) as { email: string; first_name: string } | null;
-    if (!organizer?.email) return;
-
-    this.notifClient.emit("notification.dispute_resolved", {
-      email: organizer.email,
-      firstName: organizer.first_name,
-      eventName: order.event_name,
-      orderReference: order.reference,
-      status,
-      resolutionNotes: resolutionNotes ?? null,
-    });
-  }
 
   // ─── Webhook Stripe ─────────────────────────────────────────────────────────
 
@@ -448,7 +304,15 @@ export class PaymentController {
       already_processed?: boolean;
       failed?: boolean;
       failure_reason?: string;
+      dispute?: StripeDisputeEvent;
     };
+
+    if (confirmed.dispute) {
+      this.disputes
+        .handleStripeDispute(confirmed.dispute)
+        .catch((err) => this.logger.error(`Contestation bancaire ${confirmed.dispute?.stripe_dispute_id} : ${err?.message}`));
+      return { received: true };
+    }
 
     if (!confirmed.order_id || confirmed.already_processed) {
       return { received: true };

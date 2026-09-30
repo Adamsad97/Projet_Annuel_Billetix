@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { DisputeService } from './dispute.service';
-import { BuyerPayload, CreateDisputePayload, IdPayload, OrderIdPayload, ResolveDisputePayload, UpdateDisputeStatusPayload } from '../common/payloads';
+import { BuyerPayload, CloseStripeDisputePayload, CreateDisputePayload, IdPayload, OrderIdPayload, ResolveDisputePayload, UpdateDisputeStatusPayload } from '../common/payloads';
 
 @Controller()
 export class DisputeController {
@@ -40,6 +40,16 @@ export class DisputeController {
   @MessagePattern('payment.update_dispute_status')
   updateStatus(@Payload() data: UpdateDisputeStatusPayload) {
     return this.disputeService.updateStatus(data.id, data.status);
+  }
+
+  @MessagePattern('payment.start_dispute_review')
+  startReview(@Payload() data: IdPayload) {
+    return this.disputeService.startReview(data.id);
+  }
+
+  @MessagePattern('payment.close_stripe_dispute')
+  closeFromStripe(@Payload() data: CloseStripeDisputePayload) {
+    return this.disputeService.closeFromStripe(data.stripe_dispute_id, data.won);
   }
 
   @MessagePattern('payment.resolve_dispute')
