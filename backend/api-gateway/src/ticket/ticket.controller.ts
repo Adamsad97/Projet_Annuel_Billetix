@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Body,
   Controller,
   Delete,
@@ -1105,37 +1106,104 @@ export class TicketController {
    * événement précis — un organisateur pouvait assigner/lister/révoquer les
    * agents de contrôle de n'importe quel autre organisateur.
    */
+  /**
+   * Invite un agent de contrôle par son email : compte agent créé au besoin
+   * (lien pour choisir son mot de passe), puis affecté à l'événement. Une
+   * adresse de compte acheteur/organisateur est refusée par auth-service.
+   */
   @Post("event/:eventId/agents")
   @Roles("ORGANIZER")
   @EventOwner({ param: "eventId" })
-  @ApiOperation({ summary: "Assigner un agent à l'événement (ORGANIZER)" })
+  @ApiOperation({ summary: "Inviter un agent de contrôle par email (ORGANIZER)" })
   async assignAgent(
     @CurrentUser() user: JwtPayload,
     @Param("eventId", UuidPipe) eventId: string,
     @Body() dto: AssignAgentDto,
   ) {
-    return firstValueFrom(
-      this.ticketClient.send("ticket.assign_agent", {
-        ...dto,
-        event_id: eventId,
-        assigned_by: user.sub,
+    // Déjà affecté : refus avant tout email.
+    const existing = await firstValueFrom(
+      this.authClient.send<{ id: string } | null>("auth.find_by_email", { email: dto.email }),
+    );
+    if (existing) {
+      const agents = await firstValueFrom(
+        this.ticketClient.send<Array<{ user_id: string }>>("ticket.get_agents", { event_id: eventId }),
+      );
+      if (agents.some((agent) => agent.user_id === existing.id)) {
+        throw new ConflictException("Cet agent est déjà affecté à l'événement.");
+      }
+    }
+
+    const [event, organizerProfile, organizer] = await Promise.all([
+      firstValueFrom(
+        this.eventClient.send<{ title: string; start_date: string; timezone?: string }>("event.get", { id: eventId }),
+      ),
+      firstValueFrom(
+        this.userClient.send<{ display_name?: string } | null>("user.get_organizer_profile", { user_id: user.sub }),
+      ).catch(() => null),
+      firstValueFrom(
+        this.authClient.send<{ first_name: string; last_name: string }>("auth.get_user", { id: user.sub }),
+      ).catch(() => null),
+    ]);
+
+    const invited = await firstValueFrom(
+      this.authClient.send<{ user_id: string; created: boolean }>("auth.invite_agent", {
+        email: dto.email,
+        first_name: dto.first_name,
+        last_name: dto.last_name,
+        event_name: event.title,
+        event_date: formatEventDate(event.start_date, event.timezone),
+        organizer_name:
+          organizerProfile?.display_name ?? (organizer ? `${organizer.first_name} ${organizer.last_name}` : "L'organisateur"),
       }),
     );
+
+    await firstValueFrom(
+      this.ticketClient.send("ticket.assign_agent", {
+        user_id: invited.user_id,
+        event_id: eventId,
+        assigned_by: user.sub,
+        is_supervisor: dto.is_supervisor,
+      }),
+    );
+    return { user_id: invited.user_id, account_created: invited.created };
   }
 
+  /** Agents de l'événement, avec nom, email et état de l'invitation. */
   @Get("event/:eventId/agents")
   @Roles("ORGANIZER", "ADMIN")
   @EventOwner({ param: "eventId" })
   @ApiOperation({
     summary: "Liste des agents d'un événement (ORGANIZER/ADMIN)",
   })
-  async getAgents(
-    @CurrentUser() user: JwtPayload,
-    @Param("eventId", UuidPipe) eventId: string,
-  ) {
-    return firstValueFrom(
-      this.ticketClient.send("ticket.get_agents", { event_id: eventId }),
+  async getAgents(@Param("eventId", UuidPipe) eventId: string) {
+    const agents = await firstValueFrom(
+      this.ticketClient.send<Array<{ user_id: string; created_at: string; is_supervisor: boolean; last_activity_at: string | null }>>(
+        "ticket.get_agents",
+        { event_id: eventId },
+      ),
     );
+    if (agents.length === 0) return [];
+    const accounts = await firstValueFrom(
+      this.authClient.send<Array<{ id: string; email: string; first_name: string; last_name: string; is_email_verified: boolean }>>(
+        "auth.get_users_by_ids",
+        { ids: agents.map((agent) => agent.user_id) },
+      ),
+    );
+    const byId = new Map(accounts.map((account) => [account.id, account]));
+    return agents.map((agent) => {
+      const account = byId.get(agent.user_id);
+      return {
+        user_id: agent.user_id,
+        email: account?.email ?? null,
+        first_name: account?.first_name ?? null,
+        last_name: account?.last_name ?? null,
+        // Compte créé par invitation, mot de passe pas encore choisi.
+        invitation_pending: account ? !account.is_email_verified : false,
+        is_supervisor: agent.is_supervisor,
+        assigned_at: agent.created_at,
+        last_activity_at: agent.last_activity_at,
+      };
+    });
   }
 
   @Delete("event/:eventId/agents/:userId")
