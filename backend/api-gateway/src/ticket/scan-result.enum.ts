@@ -12,4 +12,6 @@ export enum ScanResult {
   // Hors de la fenêtre de contrôle (réglages admin).
   TOO_EARLY = "TOO_EARLY",
   TOO_LATE = "TOO_LATE",
+  // Billet mis en revente par son titulaire.
+  FOR_RESALE = "FOR_RESALE",
 }
