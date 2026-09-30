@@ -14,8 +14,8 @@ export const IBAN_LENGTHS: Record<string, number> = {
   NO: 15, OM: 23, PK: 24, PL: 28, PS: 29, PT: 25, QA: 29, RO: 24, RS: 22, RU: 33, SA: 24, SC: 31,
   SD: 18, SE: 24, SI: 19, SK: 24, SM: 27, SO: 23, ST: 25, SV: 28, TL: 23, TN: 24, TR: 26, UA: 29,
   VA: 22, VG: 24, XK: 20, YE: 30,
-  // Hors registre SWIFT (UEMOA, CEMAC, Maghreb…)
-  AO: 25, BF: 28, BJ: 28, CF: 27, CG: 27, CI: 28, CM: 27, CV: 25, DZ: 26, GA: 27, GQ: 27, GW: 25,
+  // Hors registre SWIFT (UEMOA, CEMAC, Maghreb, Iran, Honduras…)
+  AO: 25, HN: 28, IR: 26, BF: 28, BJ: 28, CF: 27, CG: 27, CI: 28, CM: 27, CV: 25, DZ: 26, GA: 27, GQ: 27, GW: 25,
   KM: 27, MA: 28, MG: 27, ML: 28, MZ: 25, NE: 28, SN: 28, TD: 27, TG: 28,
 };
 
@@ -30,8 +30,38 @@ export function ibanLength(value: string): number {
   return value.replace(/[^A-Za-z0-9]/g, "").length;
 }
 
-export function formatIban(value: string): string {
-  const max = ibanExpectedLength(value) ?? IBAN_MAX_LENGTH;
+/** Pays proposés dans la liste, par nom français (« Allemagne », « France »…). */
+export function ibanCountries(): Array<{ code: string; name: string; length: number }> {
+  const names = new Intl.DisplayNames(["fr"], { type: "region" });
+  return Object.entries(IBAN_LENGTHS)
+    .map(([code, length]) => ({ code, name: names.of(code) ?? code, length }))
+    .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+}
+
+/** Nom français d'un pays (« France »). */
+export function countryName(code: string): string {
+  return new Intl.DisplayNames(["fr"], { type: "region" }).of(code) ?? code;
+}
+
+/** Gabarit de saisie montrant la longueur : « FRxx xxxx xxxx xxxx xxxx xxxx xxx ». */
+export function ibanPlaceholder(country: string): string {
+  const length = IBAN_LENGTHS[country] ?? IBAN_MAX_LENGTH;
+  return `${country}${"x".repeat(length - 2)}`.replace(/(.{4})(?=.)/g, "$1 ");
+}
+
+/** Remplace le code pays en tête de l'IBAN saisi (ou l'ajoute). */
+export function withCountry(value: string, country: string): string {
+  const compact = value.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  const rest = /^[A-Z]{2}/.test(compact) ? compact.slice(2) : compact;
+  return formatIban(country + rest, country);
+}
+
+/**
+ * Groupes de 4, limités à la longueur du pays : celui tapé en tête de l'IBAN
+ * s'il est connu, sinon celui choisi dans la liste.
+ */
+export function formatIban(value: string, country?: string): string {
+  const max = ibanExpectedLength(value) ?? (country ? IBAN_LENGTHS[country] : undefined) ?? IBAN_MAX_LENGTH;
   const compact = value.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, max);
   return compact.replace(/(.{4})(?=.)/g, "$1 ");
 }

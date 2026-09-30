@@ -10,11 +10,22 @@ import {
 } from "@/lib/api/payout-account";
 import { ApiError } from "@/lib/api/http-error";
 import { longDateTime } from "@/lib/format/dates";
-import { formatIban, ibanCaret, ibanExpectedLength, ibanLength } from "@/lib/format/iban";
+import {
+  IBAN_LENGTHS,
+  countryName,
+  formatIban,
+  ibanCaret,
+  ibanCountries,
+  ibanLength,
+  ibanPlaceholder,
+  withCountry,
+} from "@/lib/format/iban";
 import { Alert, FormError } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
+
+const COUNTRIES = ibanCountries();
 import { PasswordInput } from "@/components/ui/password-input";
 
 const METHODS: Array<{ value: PayoutMethod; label: string; hint: string }> = [
@@ -34,6 +45,8 @@ export function PayoutAccountSection() {
   const [editing, setEditing] = useState(false);
   const [owner, setOwner] = useState("");
   const [iban, setIban] = useState("");
+  // Pays du compte : fixe la longueur de l'IBAN (France par défaut).
+  const [country, setCountry] = useState("FR");
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -49,6 +62,8 @@ export function PayoutAccountSection() {
         setAccount(result);
         setEditing(!result.has_iban);
         setOwner(result.bank_owner_name ?? "");
+        const savedCountry = result.iban_masked?.slice(0, 2);
+        if (savedCountry && IBAN_LENGTHS[savedCountry]) setCountry(savedCountry);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -116,8 +131,12 @@ export function PayoutAccountSection() {
       raw = raw.slice(0, caret - 1) + raw.slice(caret);
       caret -= 1;
     }
-    const formatted = formatIban(raw);
+    // IBAN collé ou tapé avec un autre code pays : la liste suit.
+    const typedCountry = compact(raw).slice(0, 2).toUpperCase();
+    const nextCountry = IBAN_LENGTHS[typedCountry] ? typedCountry : country;
+    const formatted = formatIban(raw, nextCountry);
     const nextCaret = ibanCaret(raw, caret, formatted);
+    setCountry(nextCountry);
     setIban(formatted);
     requestAnimationFrame(() => input.setSelectionRange(nextCaret, nextCaret));
   }
@@ -176,6 +195,24 @@ export function PayoutAccountSection() {
                 />
               </label>
               <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">
+                Pays du compte
+                <select
+                  value={country}
+                  onChange={(event) => {
+                    const code = event.target.value;
+                    setCountry(code);
+                    setIban(withCountry(iban, code));
+                  }}
+                  className={fieldClass("px-4 py-3")}
+                >
+                  {COUNTRIES.map((option) => (
+                    <option key={option.code} value={option.code}>
+                      {option.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">
                 IBAN
                 <input
                   required
@@ -183,13 +220,13 @@ export function PayoutAccountSection() {
                   onChange={handleIbanChange}
                   inputMode="text"
                   autoCapitalize="characters"
-                  placeholder="FR76 3000 6000 0112 3456 7890 189"
+                  placeholder={ibanPlaceholder(country)}
                   autoComplete="off"
                   spellCheck={false}
                   aria-describedby="iban-length"
                   className={fieldClass("px-4 py-3 font-mono")}
                 />
-                <IbanLengthHint value={iban} />
+                <IbanLengthHint value={iban} country={country} />
               </label>
               {account.has_password ? (
                 <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">
@@ -298,20 +335,22 @@ export function PayoutAccountSection() {
   );
 }
 
-/** « IBAN FR : 27 caractères — 21 / 27 », vert une fois la longueur atteinte. */
-function IbanLengthHint({ value }: { value: string }) {
-  const expected = ibanExpectedLength(value);
+/** « IBAN France : 27 caractères — 21 / 27 », vert une fois la longueur atteinte. */
+function IbanLengthHint({ value, country }: { value: string; country: string }) {
+  const typedCountry = value.replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase();
+  const code = typedCountry.length === 2 && /^[A-Z]{2}$/.test(typedCountry) ? typedCountry : country;
+  const expected = IBAN_LENGTHS[code];
   const typed = ibanLength(value);
   if (!expected) {
     return (
       <span id="iban-length" className="text-xs font-normal text-ink-5">
-        {typed >= 2 ? `${typed} caractères` : "Commence par le code du pays, ex. FR76 pour la France."}
+        Code pays « {code} » inconnu : vérifiez les 2 premières lettres de votre IBAN.
       </span>
     );
   }
   return (
     <span id="iban-length" className={`text-xs font-normal ${typed === expected ? "text-success" : "text-ink-5"}`}>
-      IBAN {value.slice(0, 2)} : {expected} caractères — {typed} / {expected}
+      IBAN {countryName(code)} : {expected} caractères — {typed} / {expected}
     </span>
   );
 }
