@@ -1026,4 +1026,27 @@ describe("AuthService", () => {
       await expect(service.resendAgentInvitation(resend)).rejects.toMatchObject({ error: { statusCode: 404 } });
     });
   });
+
+  describe("verifyPassword — confirmation d'une action sensible", () => {
+    it('mot de passe correct : confirmé', async () => {
+      queryBuilder.getOne.mockResolvedValue({ ...baseUser, password_hash: await bcrypt.hash("Secret123!", 4) });
+      await expect(service.verifyPassword("user-1", "Secret123!")).resolves.toEqual({ valid: true, has_password: true });
+    });
+
+    it("mot de passe incorrect : refusé et compté pour le verrouillage", async () => {
+      queryBuilder.getOne.mockResolvedValue({ ...baseUser, password_hash: await bcrypt.hash("Secret123!", 4), failed_login_attempts: 0 });
+      await expect(service.verifyPassword("user-1", "mauvais")).rejects.toMatchObject({ error: { statusCode: 400 } });
+    });
+
+    it("mot de passe vide : demandé, sans compter d'échec", async () => {
+      queryBuilder.getOne.mockResolvedValue({ ...baseUser, password_hash: "hash" });
+      await expect(service.verifyPassword("user-1", "")).rejects.toMatchObject({ error: { statusCode: 400 } });
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("compte sans mot de passe (connexion Google/Facebook) : signalé à l'appelant", async () => {
+      queryBuilder.getOne.mockResolvedValue({ ...baseUser, password_hash: null });
+      await expect(service.verifyPassword("user-1", "x")).resolves.toEqual({ valid: true, has_password: false });
+    });
+  });
 });

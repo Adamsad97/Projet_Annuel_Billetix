@@ -9,7 +9,8 @@ import { RegisterDto } from "./dto/register.dto";
 import { ResendVerificationDto } from "./dto/resend-verification.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
 import { AdminActionOnUserPayload, ChangePasswordPayload, ChangeRolePayload, CodePayload, DeleteAccountPayload, EmailPayload, InviteAgentPayload,
-  ResendAgentInvitationPayload, IdPayload, IdsPayload, ListUsersPayload, OAuthBirthDatePayload, OAuthExchangePayload, OAuthLoginPayload, OAuthTwoFactorPayload, ResetTwoFactorByAdminPayload, SuspendUserPayload, TokenPayload, TwoFactorCodePayload, UserIdPayload } from '../common/payloads';
+  ResendAgentInvitationPayload,
+  VerifyPasswordPayload, IdPayload, IdsPayload, ListUsersPayload, OAuthBirthDatePayload, OAuthExchangePayload, OAuthLoginPayload, OAuthTwoFactorPayload, ResetTwoFactorByAdminPayload, SuspendUserPayload, TokenPayload, TwoFactorCodePayload, UserIdPayload } from '../common/payloads';
 
 @Controller()
 export class AuthController {
@@ -153,6 +154,16 @@ export class AuthController {
   @MessagePattern("auth.get_user")
   getUser(@Payload() data: IdPayload) {
     return this.authService.getUserById(data.id);
+  }
+
+  @MessagePattern("auth.has_password")
+  hasPassword(@Payload() data: UserIdPayload) {
+    return this.authService.hasPassword(data.user_id);
+  }
+
+  @MessagePattern("auth.verify_password")
+  verifyPassword(@Payload() data: VerifyPasswordPayload) {
+    return this.authService.verifyPassword(data.user_id, data.password);
   }
 
   @MessagePattern("auth.invite_agent")

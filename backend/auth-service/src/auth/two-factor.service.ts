@@ -4,7 +4,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
 import { randomInt } from "crypto";
 import { Redis } from "ioredis";
-import { firstValueFrom } from "rxjs";
 import { IsNull, Repository } from "typeorm";
 import { authenticator } from "otplib";
 import * as QRCode from "qrcode";
@@ -185,25 +184,9 @@ export class TwoFactorService {
       });
     }
 
-    // CDC §2.3 : 2FA obligatoire tant qu'un IBAN organisateur est enregistré.
-    // Déjà appliqué à l'écriture de l'IBAN (organizer.service.ts updateIban()
-    // refuse si la 2FA n'est pas active) mais pas ici — bug corrigé : sans ce
-    // contrôle miroir, un organisateur pouvait activer la 2FA, enregistrer
-    // son IBAN, puis désactiver la 2FA, laissant l'IBAN sans la protection
-    // exigée. user.get_iban lève une 404 (capturée ici) s'il n'y a pas d'IBAN.
-    const hasIban = await firstValueFrom(
-      this.userClient.send("user.get_iban", { user_id: userId }),
-    )
-      .then(() => true)
-      .catch(() => false);
-    if (hasIban) {
-      throw new RpcException({
-        statusCode: 409,
-        message:
-          "Impossible de désactiver la 2FA tant qu'un IBAN est enregistré sur votre compte organisateur (CDC §2.3).",
-      });
-    }
-
+    // La 2FA reste un choix personnel, y compris pour un organisateur payé par
+    // virement : son IBAN est protégé par le mot de passe, un email d'alerte
+    // et la suspension des reversements après un changement (user-service).
     await this.userRepo
       .createQueryBuilder()
       .update(User)

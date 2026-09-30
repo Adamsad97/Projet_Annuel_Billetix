@@ -55,6 +55,10 @@ export class InviteAgentPayload extends EmailPayload {
   @IsString() @MaxLength(200) organizer_name: string;
 }
 
+export class VerifyPasswordPayload extends UserIdPayload {
+  @IsString() @MaxLength(200) password: string;
+}
+
 export class ResendAgentInvitationPayload extends UserIdPayload {
   @IsString() @MaxLength(200) event_name: string;
   @IsString() @MaxLength(100) event_date: string;

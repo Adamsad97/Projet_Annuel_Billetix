@@ -184,6 +184,48 @@ export class AuthService {
     };
   }
 
+  /**
+   * Confirmation d'une action sensible (ex. changement d'IBAN) par le mot de
+   * passe du compte. Mêmes protections qu'à la connexion : un compte
+   * verrouillé reste bloqué, chaque échec compte dans le verrouillage.
+   * Compte sans mot de passe (connexion Google/Facebook) : { has_password:
+   * false }, l'appelant exige alors une connexion récente.
+   */
+  /** Le compte a-t-il un mot de passe (sinon connexion Google/Facebook uniquement) ? */
+  async hasPassword(userId: string): Promise<{ has_password: boolean }> {
+    const user = await this.userRepo
+      .createQueryBuilder("u")
+      .addSelect("u.password_hash")
+      .where("u.id = :id", { id: userId })
+      .getOne();
+    if (!user) throw new RpcException({ statusCode: 404, message: "Compte introuvable" });
+    return { has_password: Boolean(user.password_hash) };
+  }
+
+  async verifyPassword(userId: string, password: string): Promise<{ valid: true; has_password: boolean }> {
+    const user = await this.userRepo
+      .createQueryBuilder("u")
+      .addSelect("u.password_hash")
+      .where("u.id = :id", { id: userId })
+      .getOne();
+    if (!user) throw new RpcException({ statusCode: 404, message: "Compte introuvable" });
+    if (!user.password_hash) return { valid: true, has_password: false };
+    if (!password) throw new RpcException({ statusCode: 400, message: "Saisissez le mot de passe de votre compte." });
+    if (user.locked_until && user.locked_until > new Date()) {
+      const remainingMinutes = Math.ceil((user.locked_until.getTime() - Date.now()) / 60000);
+      throw new RpcException({
+        statusCode: 429,
+        message: `Compte temporairement verrouillé suite à trop de tentatives échouées — réessayez dans ${remainingMinutes} min`,
+      });
+    }
+    if (!(await bcrypt.compare(password, user.password_hash))) {
+      await this.registerFailedLoginAttempt(user);
+      // 400 et non 401 : le site traiterait un 401 comme une session expirée.
+      throw new RpcException({ statusCode: 400, message: "Mot de passe incorrect." });
+    }
+    return { valid: true, has_password: true };
+  }
+
   async login(dto: LoginDto) {
     const user = await this.userRepo
       .createQueryBuilder("u")
