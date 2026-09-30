@@ -17,7 +17,7 @@ describe('ScanService', () => {
     resolveTicketId: jest.Mock;
     getOfflinePack: jest.Mock;
   };
-  let controlAgentService: { isAssigned: jest.Mock };
+  let controlAgentService: { isAssigned: jest.Mock; recordActivity: jest.Mock };
   let eventClient: { send: jest.Mock };
 
   const HOUR = 3600_000;
@@ -55,7 +55,7 @@ describe('ScanService', () => {
     };
     // Par défaut : agent bien affecté à l'événement — les tests d'affectation
     // (CDC §6.2) surchargent explicitement quand ils testent le rejet.
-    controlAgentService = { isAssigned: jest.fn().mockResolvedValue(true) };
+    controlAgentService = { isAssigned: jest.fn().mockResolvedValue(true), recordActivity: jest.fn() };
     eventClient = { send: jest.fn().mockReturnValue(of(liveEvent())) };
 
     const module = await Test.createTestingModule({

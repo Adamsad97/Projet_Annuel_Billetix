@@ -37,7 +37,6 @@ export const SETTING_SECTIONS: SettingSection[] = [
       'ticket_transfer_max_per_ticket',
       'ticket_transfer_cutoff_hours',
       'resale_reservation_minutes',
-      'agent_session_hours',
       'agent_invitation_hours',
     ],
   },

@@ -105,7 +105,6 @@ export const FIELDS: Record<string, FieldMeta> = {
   ticket_transfer_max_per_ticket: { label: "Transferts maximum par billet", unit: "transfert(s)", help: "0 désactive le don de billets" },
   ticket_transfer_cutoff_hours: { label: "Fermeture des transferts", unit: "heures avant l'événement" },
   resale_reservation_minutes: { label: "Réservation d'un billet en revente", unit: "minutes", help: "Le temps pour l'acheteur de payer" },
-  agent_session_hours: { label: "Session d'un agent de contrôle", unit: "heures" },
   agent_invitation_hours: { label: "Validité de l'invitation d'un agent", unit: "heures", help: "Délai pour choisir son mot de passe" },
   // Événements
   event_validation_deadline_hours: { label: "Délai de traitement d'une soumission", unit: "heures" },

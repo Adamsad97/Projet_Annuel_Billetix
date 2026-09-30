@@ -23,15 +23,7 @@ export class ControlAgent {
   @Column({ default: false })
   is_supervisor: boolean;
 
-  @Column({ nullable: true })
-  session_token: string | null;
-
-  @Column({ nullable: true })
-  session_started_at: Date | null;
-
-  @Column({ nullable: true })
-  session_expires_at: Date | null;
-
+  /** Dernier scan de l'agent pour cet événement. */
   @Column({ nullable: true })
   last_activity_at: Date | null;
 

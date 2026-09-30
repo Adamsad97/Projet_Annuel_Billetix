@@ -22,7 +22,6 @@ export interface PlatformConfig {
   wave_fee_fixed_eur: number;
   stock_reservation_ttl_seconds: number;
   cancel_deadline_hours: number;
-  agent_session_hours: number;
   agent_invitation_hours: number;
   fill_thresholds: number[];
   platform_legal_name: string;
@@ -63,7 +62,8 @@ export interface PlatformConfig {
 // apparaître dans l'administration.
 //  - ticket_qr_rotation_enabled : le QR est toujours éphémère (BTX2), il
 //    n'existe plus de QR fixe à autoriser.
-const OBSOLETE_KEYS = ['ticket_qr_rotation_enabled'];
+// agent_session_hours : la « session » d'agent n'a jamais servi à l'écran de scan.
+const OBSOLETE_KEYS = ['ticket_qr_rotation_enabled', 'agent_session_hours'];
 
 const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'tva_rate',                       value: '0.20',          type: 'number',  description: 'Taux de TVA applicable (ex: 0.20 = 20%)' },
@@ -82,7 +82,6 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'wave_fee_fixed_eur',             value: '0',             type: 'number',  description: 'Frais fixe Wave par transaction (€)' },
   { key: 'stock_reservation_ttl_seconds',  value: '600',           type: 'number',  description: 'Durée de validité de la réservation de stock (secondes)' },
   { key: 'cancel_deadline_hours',          value: '24',            type: 'number',  description: 'Délai avant l\'événement au-delà duquel l\'annulation est bloquée (heures)' },
-  { key: 'agent_session_hours',            value: '12',            type: 'number',  description: 'Durée maximale d\'une session agent de contrôle (heures)' },
   { key: 'agent_invitation_hours',         value: '72',            type: 'number',  description: 'Validité du lien d\'invitation d\'un agent de contrôle (heures)' },
   { key: 'fill_thresholds',               value: '[25,50,75,100]', type: 'json',    description: 'Seuils de remplissage déclenchant une notification organisateur (%)' },
   { key: 'platform_legal_name',            value: 'BilletiX SAS',  type: 'string',  description: 'Raison sociale de la plateforme (en-tête facture)' },
@@ -158,7 +157,6 @@ export class PlatformConfigService implements OnModuleInit {
       wave_fee_fixed_eur:             parseFloat(map.wave_fee_fixed_eur ?? '0'),
       stock_reservation_ttl_seconds:  parseInt(map.stock_reservation_ttl_seconds ?? '600'),
       cancel_deadline_hours:          parseInt(map.cancel_deadline_hours ?? '24'),
-      agent_session_hours:            parseInt(map.agent_session_hours ?? '12'),
       agent_invitation_hours:         parseInt(map.agent_invitation_hours ?? '72'),
       fill_thresholds:                JSON.parse(map.fill_thresholds ?? '[25,50,75,100]'),
       platform_legal_name:            map.platform_legal_name ?? 'BilletiX SAS',

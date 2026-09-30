@@ -186,6 +186,9 @@ export class ScanService {
         is_offline: dto.is_offline ?? false,
       }),
     );
+    if (!dto.is_organizer) {
+      await this.controlAgentService.recordActivity(dto.agent_id, dto.event_id, scannedAt);
+    }
 
     return { result, ticket_id: ticketId, ticket: scannedTicket };
   }

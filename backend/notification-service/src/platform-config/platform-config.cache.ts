@@ -17,7 +17,6 @@ export interface PlatformConfig {
   stripe_fee_fixed_eur: number;
   stock_reservation_ttl_seconds: number;
   cancel_deadline_hours: number;
-  agent_session_hours: number;
   fill_thresholds: number[];
   email_max_retry_attempts: number;
   email_retry_delay_minutes: number;
@@ -38,7 +37,6 @@ const FALLBACK: PlatformConfig = {
   stripe_fee_fixed_eur: 0.30,
   stock_reservation_ttl_seconds: 600,
   cancel_deadline_hours: 24,
-  agent_session_hours: 12,
   fill_thresholds: [25, 50, 75, 100],
   email_max_retry_attempts: 3,
   email_retry_delay_minutes: 10,

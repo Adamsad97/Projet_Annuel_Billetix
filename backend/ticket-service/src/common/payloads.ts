@@ -126,10 +126,6 @@ export class AssignAgentPayload extends AgentEventPayload {
   @IsOptional() @IsBoolean() is_supervisor?: boolean;
 }
 
-export class AgentSessionPayload {
-  @IsString() @MaxLength(200) session_token: string;
-}
-
 // ─── Billets ────────────────────────────────────────────────────────────────
 
 export class VerifyQrPayload {
