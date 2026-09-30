@@ -1069,6 +1069,21 @@ export class TicketController {
     );
   }
 
+  /** Entrées de l'événement, tous agents confondus (écran de scan). */
+  @Get("event/:eventId/entry-stats")
+  @Roles("AGENT", "ORGANIZER")
+  @EventOwner({ param: "eventId" })
+  @ApiOperation({ summary: "Entrées d'un événement : billets scannés sur billets attendus (AGENT/ORGANIZER)" })
+  entryStats(@CurrentUser() user: JwtPayload, @Param("eventId", UuidPipe) eventId: string) {
+    return firstValueFrom(
+      this.ticketClient.send("ticket.entry_stats", {
+        event_id: eventId,
+        requester_id: user.sub,
+        is_organizer: user.role === "ORGANIZER",
+      }),
+    );
+  }
+
   @Post("sync-offline")
   @EventOwner({ body: "event_id" })
   @HttpCode(HttpStatus.OK)

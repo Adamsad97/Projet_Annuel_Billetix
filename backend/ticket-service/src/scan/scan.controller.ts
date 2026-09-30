@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ScanService } from './scan.service';
-import { EventIdPayload, OfflinePackPayload, ScanPayload } from '../common/payloads';
+import { ControlAccessPayload, EventIdPayload, ScanPayload } from '../common/payloads';
 
 @Controller()
 export class ScanController {
@@ -13,8 +13,13 @@ export class ScanController {
   }
 
   @MessagePattern('ticket.offline_pack')
-  getOfflinePack(@Payload() data: OfflinePackPayload) {
+  getOfflinePack(@Payload() data: ControlAccessPayload) {
     return this.scanService.getOfflinePack(data.event_id, data.requester_id, data.is_organizer);
+  }
+
+  @MessagePattern('ticket.entry_stats')
+  getEntryStats(@Payload() data: ControlAccessPayload) {
+    return this.scanService.getEntryStats(data.event_id, data.requester_id, data.is_organizer);
   }
 
   @MessagePattern('ticket.get_scan_logs')

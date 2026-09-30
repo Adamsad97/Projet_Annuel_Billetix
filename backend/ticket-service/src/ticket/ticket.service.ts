@@ -62,6 +62,30 @@ export class TicketService {
   }
 
   /**
+   * Entrées d'un événement, tous appareils confondus : billets déjà scannés
+   * sur l'ensemble des billets valables (hors annulés et remboursés ; un
+   * billet en revente reste attendu à l'entrée).
+   */
+  async getEntryStats(eventId: string): Promise<{ admitted: number; expected: number }> {
+    const rows: Array<{ status: TicketStatus; count: string }> = await this.repo
+      .createQueryBuilder('t')
+      .select('t.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .where('t.event_id = :eventId', { eventId })
+      .andWhere('t.status NOT IN (:...excluded)', { excluded: [TicketStatus.CANCELLED, TicketStatus.REFUNDED] })
+      .groupBy('t.status')
+      .getRawMany();
+    let admitted = 0;
+    let expected = 0;
+    for (const row of rows) {
+      const count = Number(row.count);
+      expected += count;
+      if (row.status === TicketStatus.USED) admitted += count;
+    }
+    return { admitted, expected };
+  }
+
+  /**
    * Paquet hors ligne d'un événement, téléchargé par l'appareil de contrôle
    * avant l'ouverture des portes : clé publique de vérification, réglages de
    * validité, et pour chaque billet son empreinte de porteur et son statut.

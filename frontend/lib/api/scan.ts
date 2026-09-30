@@ -63,6 +63,16 @@ export function scanTicket(eventId: string, qrToken: string, deviceInfo?: string
   return apiPost<ApiScanResponse>("/tickets/scan", { event_id: eventId, qr_token: qrToken, device_info: deviceInfo });
 }
 
+/** Entrées de l'événement, tous agents confondus. */
+export interface EntryStats {
+  admitted: number;
+  expected: number;
+}
+
+export function getEntryStats(eventId: string): Promise<EntryStats> {
+  return apiGet<EntryStats>(`/tickets/event/${eventId}/entry-stats`);
+}
+
 export function getOfflinePack(eventId: string): Promise<OfflinePack> {
   return apiGet<OfflinePack>(`/tickets/event/${eventId}/offline-pack`);
 }

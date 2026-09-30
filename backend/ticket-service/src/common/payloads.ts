@@ -89,7 +89,8 @@ export class GenerateTicketsPayload {
 
 // ─── Contrôle d'accès ───────────────────────────────────────────────────────
 
-export class OfflinePackPayload extends EventIdPayload {
+/** Accès aux données de contrôle d'un événement (paquet hors ligne, entrées). */
+export class ControlAccessPayload extends EventIdPayload {
   @IsUUID() requester_id: string;
   @IsBoolean() is_organizer: boolean;
 }

@@ -16,6 +16,7 @@ describe('ScanService', () => {
     markUsed: jest.Mock;
     resolveTicketId: jest.Mock;
     getOfflinePack: jest.Mock;
+    getEntryStats: jest.Mock;
   };
   let controlAgentService: { isAssigned: jest.Mock; recordActivity: jest.Mock };
   let eventClient: { send: jest.Mock };
@@ -52,6 +53,7 @@ describe('ScanService', () => {
       markUsed: jest.fn(),
       resolveTicketId: jest.fn().mockResolvedValue('ticket-1'),
       getOfflinePack: jest.fn().mockResolvedValue({ algorithm: 'Ed25519', public_key: 'cle', tickets: [] }),
+      getEntryStats: jest.fn().mockResolvedValue({ admitted: 342, expected: 500 }),
     };
     // Par défaut : agent bien affecté à l'événement — les tests d'affectation
     // (CDC §6.2) surchargent explicitement quand ils testent le rejet.
@@ -210,6 +212,19 @@ describe('ScanService', () => {
       eventClient.send.mockReturnValue(throwError(() => new Error('connexion refusée')));
 
       expect((await service.scan(baseDto)).result).toBe(ScanResult.TOO_EARLY);
+    });
+  });
+
+  describe("entrées de l'événement", () => {
+    it('organisateur ou agent affecté : entrées sur billets attendus', async () => {
+      await expect(service.getEntryStats('event-1', 'agent-1', false)).resolves.toEqual({ admitted: 342, expected: 500 });
+      expect(ticketService.getEntryStats).toHaveBeenCalledWith('event-1');
+    });
+
+    it("refuse un agent non affecté à l'événement", async () => {
+      controlAgentService.isAssigned.mockResolvedValue(false);
+      await expect(service.getEntryStats('event-1', 'agent-1', false)).rejects.toMatchObject({ error: { statusCode: 403 } });
+      expect(ticketService.getEntryStats).not.toHaveBeenCalled();
     });
   });
 

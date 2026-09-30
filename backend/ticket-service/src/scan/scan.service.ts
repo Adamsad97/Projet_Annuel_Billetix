@@ -87,9 +87,7 @@ export class ScanService {
    * fenêtre de contrôle). Réservé à l'organisateur et aux agents affectés.
    */
   async getOfflinePack(eventId: string, requesterId: string, isOrganizer: boolean) {
-    if (!isOrganizer && !(await this.controlAgentService.isAssigned(requesterId, eventId))) {
-      throw new RpcException({ statusCode: 403, message: 'Agent non assigné à cet événement (ou révoqué)' });
-    }
+    await this.assertCanControl(eventId, requesterId, isOrganizer);
     const [pack, event, config] = await Promise.all([
       this.ticketService.getOfflinePack(eventId),
       firstValueFrom(
@@ -112,6 +110,19 @@ export class ScanService {
       scan_opens_before_minutes: config.scan_opens_before_minutes,
       scan_closes_after_minutes: config.scan_closes_after_minutes,
     };
+  }
+
+  /** Entrées de l'événement, tous agents confondus (écran de scan). */
+  async getEntryStats(eventId: string, requesterId: string, isOrganizer: boolean) {
+    await this.assertCanControl(eventId, requesterId, isOrganizer);
+    return this.ticketService.getEntryStats(eventId);
+  }
+
+  /** Organisateur de l'événement (vérifié par la passerelle) ou agent affecté. */
+  private async assertCanControl(eventId: string, requesterId: string, isOrganizer: boolean): Promise<void> {
+    if (!isOrganizer && !(await this.controlAgentService.isAssigned(requesterId, eventId))) {
+      throw new RpcException({ statusCode: 403, message: 'Agent non assigné à cet événement (ou révoqué)' });
+    }
   }
 
   async scan(dto: ScanDto): Promise<ScanResponse> {

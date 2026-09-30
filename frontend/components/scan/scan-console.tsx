@@ -8,9 +8,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CameraScanner } from "@/components/scan/camera-scanner";
+import { EntryProgress } from "@/components/scan/entry-progress";
 import { getEvent } from "@/lib/api/events";
 import {
   getAgentEvents,
+  getEntryStats,
   getOrganizerScanEvents,
   getOfflinePack,
   scanTicket,
@@ -34,6 +36,11 @@ const SAME_CODE_IGNORE_MS = 4000;
 const VERDICT_DISPLAY_MS = 2200;
 // Nombre de scans gardés dans l'historique affiché.
 const HISTORY_SIZE = 30;
+// Entrées de l'événement relues pendant que la page est affichée, pour
+// suivre aussi les scans des autres agents.
+const ENTRY_STATS_REFRESH_MS = 30_000;
+// Billets qui ne sont plus attendus à l'entrée.
+const NOT_EXPECTED = new Set(["CANCELLED", "REFUNDED"]);
 
 type Tone = "success" | "warning" | "danger";
 
@@ -198,6 +205,8 @@ export function ScanConsole() {
   const [historyFilter, setHistoryFilter] = useState<Tone | null>(null);
   const [pending, setPending] = useState(0);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  // Entrées de l'événement selon le serveur (tous agents), avec l'heure de lecture.
+  const [liveStats, setLiveStats] = useState<{ admitted: number; expected: number; at: Date } | null>(null);
   const lastCode = useRef<{ text: string; at: number } | null>(null);
   const syncing = useRef(false);
 
@@ -269,6 +278,15 @@ export function ScanConsole() {
     }
   }, []);
 
+  const refreshStats = useCallback(async (id: string) => {
+    try {
+      const stats = await getEntryStats(id);
+      setLiveStats({ ...stats, at: new Date() });
+    } catch {
+      // Sans réseau : chiffres de la liste enregistrée sur le téléphone.
+    }
+  }, []);
+
   const syncQueue = useCallback(
     async (id: string) => {
       const queue = loadQueue(id);
@@ -286,13 +304,14 @@ export function ScanConsole() {
             ".",
         );
         await refreshPack(id);
+        void refreshStats(id);
       } catch {
         // Réseau encore instable : nouvel essai au prochain retour en ligne.
       } finally {
         syncing.current = false;
       }
     },
-    [refreshPack],
+    [refreshPack, refreshStats],
   );
 
   // --- Changement d'événement : paquet local puis mise à jour, file d'attente
@@ -307,12 +326,23 @@ export function ScanConsole() {
     setVerdict(null);
     setSyncMessage(null);
     setDetails(null);
+    setLiveStats(null);
     void refreshPack(eventId);
+    void refreshStats(eventId);
     void syncQueue(eventId);
     getEvent(eventId)
       .then((e) => setDetails({ poster_url: e.poster_url, end_date: e.end_date }))
       .catch(() => undefined);
-  }, [eventId, refreshPack, syncQueue]);
+  }, [eventId, refreshPack, refreshStats, syncQueue]);
+
+  // --- Entrées de l'événement relues régulièrement (scans des autres agents)
+  useEffect(() => {
+    if (!eventId) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible" && navigator.onLine) void refreshStats(eventId);
+    }, ENTRY_STATS_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [eventId, refreshStats]);
 
   // --- Liste des billets tenue à jour sans bouton : au retour sur la page
   // (téléphone déverrouillé, autre application quittée) et au retour du réseau.
@@ -380,6 +410,7 @@ export function ScanConsole() {
         const updated = markUsedInPack(eventId, response.ticket_id);
         if (updated) setPack(updated);
       }
+      if (response.result === "SUCCESS") void refreshStats(eventId);
       show({
         ...VERDICTS[response.result],
         code: response.result,
@@ -407,6 +438,18 @@ export function ScanConsole() {
   const toCheck = judged.filter((item) => item.tone === "warning").length;
   const poster = details?.poster_url ?? selected?.poster_url ?? null;
   const checkpoint = checkpointState(pack);
+  // En ligne : chiffres du serveur ; sinon, liste enregistrée sur ce téléphone.
+  const entryStats =
+    liveStats && online
+      ? { admitted: liveStats.admitted, expected: liveStats.expected, live: true, at: liveStats.at }
+      : pack
+        ? {
+            admitted: pack.tickets.filter((t) => t.status === "USED").length,
+            expected: pack.tickets.filter((t) => !NOT_EXPECTED.has(t.status)).length,
+            live: false,
+            at: new Date(pack.generated_at),
+          }
+        : null;
   const selectedStatus = selected ? scanEventStatus({ ...selected, end_date: details?.end_date ?? selected.end_date }) : null;
   const closedNotice = selected && selectedStatus ? closedEventNotice(selectedStatus.key, selected.reason) : null;
 
@@ -715,6 +758,15 @@ export function ScanConsole() {
               </MutedMessage>
             )}
           </div>
+
+          {entryStats ? (
+            <EntryProgress
+              admitted={entryStats.admitted}
+              expected={entryStats.expected}
+              live={entryStats.live}
+              updatedAt={entryStats.at}
+            />
+          ) : null}
 
           {/* Bilan de l'appareil : entrées, refus, cas à vérifier */}
           <div>
