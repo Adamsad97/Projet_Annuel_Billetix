@@ -29,9 +29,9 @@
         <div class="event-name">{{eventName}}</div>
         <div class="detail">📅 {{eventDate}}</div>
         <div class="detail">📍 {{venueName}} — {{eventCity}}</div>
-        <div class="detail">🎭 {{artistName}}</div>
+        {{#if artistName}}<div class="detail">🎭 {{artistName}}</div>{{/if}}
         <div class="detail">🎫 {{categoryName}} — {{holderName}}</div>
-        <div class="scan-time">Validé le {{scannedAt}}</div>
+        <div class="scan-time">Validé {{scannedAt}}</div>
       </div>
       <p>Profitez bien du spectacle !</p>
     </div>
