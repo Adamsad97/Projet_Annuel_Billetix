@@ -92,7 +92,10 @@ export function CatalogueExplorer() {
   async function fetchPage(pageNumber: number) {
     const { data, total: count } = await listPublishedEvents({ ...apiParams, page: pageNumber });
     const cards = await Promise.all(
-      data.map(async (event) => apiEventToCard(event, await getEventCategories(event.id).catch(() => []))),
+      data.map(async (event) => ({
+        ...apiEventToCard(event, await getEventCategories(event.id).catch(() => [])),
+        categoryCode: event.category,
+      })),
     );
     return { cards, count };
   }
@@ -412,7 +415,14 @@ export function CatalogueExplorer() {
           {events.length > 0 ? (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {events.map((event) => (
-                <EventCard key={event.id} event={event} />
+                <EventCard
+                  key={event.id}
+                  event={{
+                    ...event,
+                    // Libellé du référentiel admin (chargé en parallèle des événements).
+                    categoryLabel: categories.find((c) => c.code === event.categoryCode)?.label,
+                  }}
+                />
               ))}
             </div>
           ) : (

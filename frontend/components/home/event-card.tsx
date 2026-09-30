@@ -6,12 +6,36 @@ export function EventCard({ event }: { event: MockEvent }) {
   return (
     <Link
       href={`/evenements/${event.id}`}
-      className="block overflow-hidden rounded-2xl border border-hairline-1 bg-card transition-transform hover:-translate-y-0.5 hover:border-hairline-2"
+      className="group block overflow-hidden rounded-2xl border border-hairline-1 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-hairline-2 hover:shadow-xl"
     >
       <div
-        className={`relative flex h-44 items-center justify-center ${event.band}`}
+        className={`relative flex items-center justify-center overflow-hidden ${
+          event.posterUrl ? "aspect-[4/5] bg-slate-950" : `h-44 ${event.band}`
+        }`}
       >
-        <span className="text-5xl opacity-90">{event.emoji}</span>
+        {event.posterUrl ? (
+          <>
+            {/* Affiche entière (jamais recadrée : elle porte souvent du
+                texte), sur un fond tiré d'elle-même, flouté. */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- fond décoratif, affiche hébergée sur MinIO */}
+            <img
+              src={event.posterUrl}
+              alt=""
+              aria-hidden="true"
+              loading="lazy"
+              className="absolute inset-0 h-full w-full scale-125 object-cover opacity-60 blur-2xl saturate-150"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element -- affiche hébergée sur MinIO, hors domaines gérés par next/image */}
+            <img
+              src={event.posterUrl}
+              alt={`Affiche : ${event.title}`}
+              loading="lazy"
+              className="relative h-full w-full object-contain p-2.5 drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)] transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+            />
+          </>
+        ) : (
+          <span className="text-5xl opacity-90">{event.emoji}</span>
+        )}
 
         {/* Bug corrigé : badges sur fond fixe (dégradé de catégorie +
             pastille bg-black/50), jamais liés au thème — leur texte
@@ -61,9 +85,9 @@ export function EventCard({ event }: { event: MockEvent }) {
             {event.priceLabel}
           </span>
           <span
-            className={`rounded-full px-2.5 py-1 text-xs font-medium ${categoryPillStyles[event.category]}`}
+            className={`rounded-full px-2.5 py-1 text-xs font-medium ${categoryPillStyles[event.category] ?? categoryPillStyles.Autre}`}
           >
-            {event.category}
+            {event.categoryLabel ?? event.category}
           </span>
         </div>
       </div>

@@ -66,6 +66,7 @@ export function apiEventToCard(event: ApiEvent, categories: ApiTicketCategory[])
         : "Tarifs à venir",
     free: isFree,
     suspendedNotice: suspended ? event.suspension_reason ?? "" : null,
+    posterUrl: event.poster_url,
   };
 }
 

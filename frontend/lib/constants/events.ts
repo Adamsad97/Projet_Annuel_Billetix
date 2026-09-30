@@ -24,6 +24,12 @@ export interface MockEvent {
   free?: boolean;
   /** Ventes suspendues par l'administration : message affiché sur la carte. */
   suspendedNotice?: string | null;
+  /** Affiche de l'événement ; à défaut, bandeau de couleur et emoji. */
+  posterUrl?: string | null;
+  /** Code de la catégorie (référentiel admin). */
+  categoryCode?: string;
+  /** Libellé défini dans le référentiel admin (prioritaire sur `category`). */
+  categoryLabel?: string;
 }
 
 // Bug corrigé (demande produit) : "Concert" et "Danse" utilisaient du
