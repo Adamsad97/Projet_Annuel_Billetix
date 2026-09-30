@@ -3,14 +3,15 @@ import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes, randomUUID } from 'crypto';
 import * as QRCode from 'qrcode';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { GenerateTicketsDto } from './dto/generate-tickets.dto';
 import { QrDisplayCode } from './qr-display-code.entity';
+import { QrSigner, tokenFingerprint } from './qr-signer';
 import { QrTokenHistory } from './qr-token-history.entity';
 import { Ticket, TicketStatus } from './ticket.entity';
 
-/** Préfixe du contenu des QR codes éphémères (format du texte scanné). */
+/** Ancien format de QR éphémère (code aléatoire), remplacé par le QR signé BTX3. */
 export const DISPLAY_CODE_PREFIX = 'BTX2';
 
 /** Jeton interne d'un billet : valeur aléatoire pure (cf. generateOpaqueToken). */
@@ -28,44 +29,68 @@ export class TicketService {
     private readonly displayCodeRepo: Repository<QrDisplayCode>,
     private readonly platformConfig: PlatformConfigCache,
     private readonly dataSource: DataSource,
+    private readonly qrSigner: QrSigner,
   ) {}
 
   /**
-   * QR à afficher dans l'espace acheteur. Contenu : `BTX2.<code>`, où code
-   * est une valeur aléatoire de 128 bits propre à la période en cours —
-   * aucune donnée du billet (jeton, référence, porteur, événement) n'y
-   * figure. Un même code est servi pendant toute la période (plusieurs
-   * affichages simultanés, rafraîchissements), un nouveau à la suivante.
+   * QR à afficher dans l'espace acheteur : `BTX3.<données>.<signature>`,
+   * signé Ed25519 par ticket-service. Il atteste le billet, l'événement,
+   * la période de validité et l'empreinte du jeton du porteur — aucune
+   * donnée personnelle, et impossible à fabriquer sans la clé privée.
+   * Vérifiable hors ligne par l'appareil de contrôle (clé publique).
+   * Signature déterministe : même code pendant toute la période.
    */
   async getDisplayQr(id: string): Promise<{ qr_code_url: string; refresh_in_seconds: number }> {
     const ticket = await this.getById(id);
     const { ticket_qr_rotation_seconds: period } = await this.platformConfig.get();
-    const periodMs = period * 1000;
     const now = Date.now();
-    const validFrom = new Date(Math.floor(now / periodMs) * periodMs);
-    const validUntil = new Date(validFrom.getTime() + periodMs);
+    const periodMs = period * 1000;
+    const validFromMs = Math.floor(now / periodMs) * periodMs;
 
-    let display = await this.displayCodeRepo.findOne({
-      where: { ticket_id: ticket.id, ticket_token: ticket.qr_code_token, valid_from: validFrom },
+    const text = this.qrSigner.sign({
+      ticketId: ticket.id,
+      eventId: ticket.event_id,
+      validFrom: Math.floor(validFromMs / 1000),
+      validSeconds: period,
+      tokenFingerprint: tokenFingerprint(ticket.qr_code_token),
     });
-    if (!display) {
-      display = await this.displayCodeRepo.save(
-        this.displayCodeRepo.create({
-          code: randomBytes(16).toString('base64url'),
-          ticket_id: ticket.id,
-          ticket_token: ticket.qr_code_token,
-          valid_from: validFrom,
-          valid_until: validUntil,
-        }),
-      );
-    }
 
     return {
-      qr_code_url: await QRCode.toDataURL(`${DISPLAY_CODE_PREFIX}.${display.code}`, {
-        errorCorrectionLevel: 'M',
-        width: 300,
-      }),
-      refresh_in_seconds: Math.max(1, Math.ceil((validUntil.getTime() - now) / 1000)),
+      qr_code_url: await QRCode.toDataURL(text, { errorCorrectionLevel: 'M', width: 320 }),
+      refresh_in_seconds: Math.max(1, Math.ceil((validFromMs + periodMs - now) / 1000)),
+    };
+  }
+
+  /**
+   * Paquet hors ligne d'un événement, téléchargé par l'appareil de contrôle
+   * avant l'ouverture des portes : clé publique de vérification, réglages de
+   * validité, et pour chaque billet son empreinte de porteur et son statut.
+   * Aucun jeton, aucune donnée personnelle.
+   */
+  async getOfflinePack(eventId: string): Promise<{
+    algorithm: 'Ed25519';
+    public_key: string;
+    rotation_seconds: number;
+    tolerance_steps: number;
+    generated_at: string;
+    tickets: Array<{ id: string; fingerprint: string; status: TicketStatus }>;
+  }> {
+    const { ticket_qr_rotation_seconds: period, ticket_qr_rotation_tolerance_steps: tolerance } =
+      await this.platformConfig.get();
+    const tickets = await this.repo.find({
+      where: { event_id: eventId, status: In([TicketStatus.GENERATED, TicketStatus.SENT, TicketStatus.USED]) },
+    });
+    return {
+      algorithm: 'Ed25519',
+      public_key: this.qrSigner.publicKeyBase64Url,
+      rotation_seconds: period,
+      tolerance_steps: tolerance,
+      generated_at: new Date().toISOString(),
+      tickets: tickets.map((ticket) => ({
+        id: ticket.id,
+        fingerprint: tokenFingerprint(ticket.qr_code_token),
+        status: ticket.status,
+      })),
     };
   }
 
@@ -182,13 +207,15 @@ export class TicketService {
   }
 
   /**
-   * Retrouve l'ID du billet visé par un QR scanné — code éphémère
-   * (qr_display_codes) ou ancien QR fixe (jeton, qr_token_history), ce
-   * dernier étant ensuite refusé par verifyQr(). Utilisé par ScanService
+   * Retrouve l'ID du billet visé par un QR scanné — QR signé (BTX3), ancien
+   * code éphémère (BTX2, qr_display_codes) ou ancien QR fixe (jeton,
+   * qr_token_history), ces deux derniers étant ensuite refusés par verifyQr(). Utilisé par ScanService
    * pour journaliser le bon billet même quand le scan échoue ensuite (déjà
    * utilisé, expiré…), sans dépendre d'un texte d'erreur.
    */
   async resolveTicketId(raw: string): Promise<string> {
+    const claims = this.qrSigner.verify(raw);
+    if (claims) return claims.ticketId;
     const code = this.parseDisplayCode(raw);
     const ticketId = code
       ? (await this.displayCodeRepo.findOne({ where: { code } }))?.ticket_id
@@ -200,16 +227,25 @@ export class TicketService {
   }
 
   /**
-   * @param raw contenu du QR scanné (`BTX2.<code>`, texte envoyé tel quel
-   *            par l'application de contrôle)
+   * Vérification d'un QR scanné, dans l'ordre : signature (cryptographique),
+   * période de validité, billet (porteur actuel, statut).
+   *
+   * @param raw contenu du QR scanné (texte envoyé tel quel par l'application de contrôle)
    * @param at  heure du scan — celle du scan hors ligne lors d'une
    *            synchronisation, pour juger si le code était valable.
    */
   async verifyQr(raw: string, at: Date = new Date()): Promise<{ valid: boolean; ticket: Ticket }> {
-    const ticketId = await this.resolveTicketId(raw);
-    const code = this.parseDisplayCode(raw);
-    if (!code) {
-      // Jeton connu (resolveTicketId a réussi) mais présenté en QR fixe.
+    const claims = this.qrSigner.verify(raw);
+    if (!claims) {
+      await this.resolveTicketId(raw); // INVALID si le texte ne désigne aucun billet
+      if (this.parseDisplayCode(raw)) {
+        // Ancien QR éphémère non signé (BTX2) : plus accepté.
+        throw new RpcException({
+          statusCode: 409,
+          code: 'EXPIRED',
+          message: "QR code expiré — le porteur doit afficher son billet en direct depuis l'application",
+        });
+      }
       throw new RpcException({
         statusCode: 409,
         code: 'STATIC_REFUSED',
@@ -217,15 +253,11 @@ export class TicketService {
       });
     }
 
-    const display = await this.displayCodeRepo.findOne({ where: { code } });
-    const { ticket_qr_rotation_seconds: period, ticket_qr_rotation_tolerance_steps: tolerance } =
-      await this.platformConfig.get();
-    const toleranceMs = tolerance * period * 1000;
-    if (
-      !display ||
-      at.getTime() < display.valid_from.getTime() - toleranceMs ||
-      at.getTime() >= display.valid_until.getTime() + toleranceMs
-    ) {
+    const { ticket_qr_rotation_tolerance_steps: tolerance } = await this.platformConfig.get();
+    const periodMs = claims.validSeconds * 1000;
+    const toleranceMs = tolerance * periodMs;
+    const validFromMs = claims.validFrom * 1000;
+    if (at.getTime() < validFromMs - toleranceMs || at.getTime() >= validFromMs + periodMs + toleranceMs) {
       throw new RpcException({
         statusCode: 409,
         code: 'EXPIRED',
@@ -233,19 +265,14 @@ export class TicketService {
       });
     }
 
-    const ticket = await this.repo.findOne({ where: { id: ticketId } });
-    if (!ticket) {
-      throw new RpcException({
-        statusCode: 404,
-        code: 'INVALID',
-        message: 'QR code invalide',
-      });
+    const ticket = await this.repo.findOne({ where: { id: claims.ticketId } });
+    if (!ticket || ticket.event_id !== claims.eventId) {
+      throw new RpcException({ statusCode: 404, code: 'INVALID', message: 'QR code invalide' });
     }
 
-    // Code émis avant une revente (transferToNewBuyer a changé le jeton
-    // interne) : billet réel mais plus à ce porteur — résultat distinct
-    // d'un code inconnu pour l'agent au contrôle.
-    if (ticket.qr_code_token !== display.ticket_token) {
+    // Code émis avant une revente ou un transfert (jeton interne changé) :
+    // billet réel mais plus à ce porteur.
+    if (tokenFingerprint(ticket.qr_code_token) !== claims.tokenFingerprint) {
       throw new RpcException({
         statusCode: 409,
         code: 'SUPERSEDED',
@@ -254,25 +281,13 @@ export class TicketService {
     }
 
     if (ticket.status === TicketStatus.USED) {
-      throw new RpcException({
-        statusCode: 409,
-        code: 'ALREADY_USED',
-        message: 'Billet déjà utilisé',
-      });
+      throw new RpcException({ statusCode: 409, code: 'ALREADY_USED', message: 'Billet déjà utilisé' });
     }
     if (ticket.status === TicketStatus.CANCELLED || ticket.status === TicketStatus.REFUNDED) {
-      throw new RpcException({
-        statusCode: 400,
-        code: 'CANCELLED',
-        message: 'Billet annulé ou remboursé',
-      });
+      throw new RpcException({ statusCode: 400, code: 'CANCELLED', message: 'Billet annulé ou remboursé' });
     }
     if (ticket.status === TicketStatus.FOR_RESALE) {
-      throw new RpcException({
-        statusCode: 400,
-        code: 'INVALID',
-        message: 'Billet en cours de revente',
-      });
+      throw new RpcException({ statusCode: 400, code: 'INVALID', message: 'Billet en cours de revente' });
     }
 
     return { valid: true, ticket };

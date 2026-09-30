@@ -89,6 +89,11 @@ export class GenerateTicketsPayload {
 
 // ─── Contrôle d'accès ───────────────────────────────────────────────────────
 
+export class OfflinePackPayload extends EventIdPayload {
+  @IsUUID() requester_id: string;
+  @IsBoolean() is_organizer: boolean;
+}
+
 export class ScanPayload extends EventIdPayload {
   @IsString() @MaxLength(512) qr_token: string;
   @IsUUID() agent_id: string;

@@ -7,6 +7,8 @@ import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, validateSync }
  */
 class TicketServiceEnvironment {
   @IsString() @IsNotEmpty() DATABASE_URL: string;
+  // Clé privée Ed25519 (PKCS#8, DER, base64) qui signe les QR codes.
+  @IsString() @IsNotEmpty() QR_SIGNING_PRIVATE_KEY: string;
 
   @IsOptional() @IsIn(['development', 'production', 'test']) NODE_ENV?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(65535) PORT?: number;

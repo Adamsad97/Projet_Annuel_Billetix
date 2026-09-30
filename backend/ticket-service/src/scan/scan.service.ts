@@ -80,6 +80,40 @@ export class ScanService {
     return null;
   }
 
+  /**
+   * Paquet hors ligne de l'appareil de contrôle : de quoi vérifier un QR
+   * signé sans réseau (clé publique, empreintes et statuts des billets) et
+   * appliquer les mêmes règles qu'en ligne (état et dates de l'événement,
+   * fenêtre de contrôle). Réservé à l'organisateur et aux agents affectés.
+   */
+  async getOfflinePack(eventId: string, requesterId: string, isOrganizer: boolean) {
+    if (!isOrganizer && !(await this.controlAgentService.isAssigned(requesterId, eventId))) {
+      throw new RpcException({ statusCode: 403, message: 'Agent non assigné à cet événement (ou révoqué)' });
+    }
+    const [pack, event, config] = await Promise.all([
+      this.ticketService.getOfflinePack(eventId),
+      firstValueFrom(
+        this.eventClient
+          .send<EventSnapshot & { timezone?: string }>('event.get', { id: eventId })
+          .pipe(timeout(EVENT_LOOKUP_TIMEOUT_MS)),
+      ),
+      this.platformConfig.get(),
+    ]);
+    return {
+      ...pack,
+      event: {
+        id: eventId,
+        status: event.status,
+        is_hidden: event.is_hidden ?? false,
+        start_date: event.start_date,
+        end_date: event.end_date,
+        timezone: event.timezone ?? null,
+      },
+      scan_opens_before_minutes: config.scan_opens_before_minutes,
+      scan_closes_after_minutes: config.scan_closes_after_minutes,
+    };
+  }
+
   async scan(dto: ScanDto): Promise<ScanResponse> {
     // Bug corrigé : n'importe quel utilisateur avec le rôle global AGENT
     // pouvait scanner les billets de N'IMPORTE QUEL événement, y compris un

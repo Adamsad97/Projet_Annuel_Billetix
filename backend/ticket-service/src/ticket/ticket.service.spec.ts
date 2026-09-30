@@ -1,14 +1,23 @@
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
+import { generateKeyPairSync } from 'crypto';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { QrDisplayCode } from './qr-display-code.entity';
+import { QrSigner } from './qr-signer';
 import { QrTokenHistory } from './qr-token-history.entity';
 import { Ticket, TicketStatus } from './ticket.entity';
 import { TicketService } from './ticket.service';
 
+// Clé de test Ed25519 (PKCS#8 DER base64), comme QR_SIGNING_PRIVATE_KEY.
+const TEST_QR_KEY = generateKeyPairSync('ed25519').privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64');
+const TICKET_ID = '11111111-1111-4111-8111-111111111111';
+const EVENT_ID = '22222222-2222-4222-8222-222222222222';
+
 describe('TicketService', () => {
   let service: TicketService;
+  let signer: QrSigner;
   let repo: { createQueryBuilder: jest.Mock; findOne: jest.Mock };
   let qrHistoryRepo: {
     findOne: jest.Mock;
@@ -83,17 +92,20 @@ describe('TicketService', () => {
         { provide: getRepositoryToken(QrDisplayCode), useValue: displayCodeRepo },
         { provide: PlatformConfigCache, useValue: platformConfig },
         { provide: DataSource, useValue: dataSource },
+        QrSigner,
+        { provide: ConfigService, useValue: { getOrThrow: () => TEST_QR_KEY } },
       ],
     }).compile();
 
     service = module.get(TicketService);
+    signer = module.get(QrSigner);
   });
 
   afterEach(() => jest.restoreAllMocks());
 
   const ticketRow = (overrides: Partial<Ticket> = {}) => ({
-    id: 'ticket-123',
-    event_id: 'event-1',
+    id: TICKET_ID,
+    event_id: EVENT_ID,
     qr_code_token: 'jeton-courant',
     status: TicketStatus.SENT,
     ...overrides,
@@ -101,27 +113,29 @@ describe('TicketService', () => {
 
   /** Fait afficher le QR à l'instant `now` et renvoie le texte qu'il contient. */
   async function displayedQrText(now = Date.now()): Promise<string> {
+    const signSpy = jest.spyOn(signer, 'sign');
     jest.spyOn(Date, 'now').mockReturnValue(now);
-    await service.getDisplayQr('ticket-123');
+    await service.getDisplayQr(TICKET_ID);
     jest.spyOn(Date, 'now').mockRestore();
-    return `BTX2.${displayCodes[displayCodes.length - 1].code}`;
+    const text = signSpy.mock.results[signSpy.mock.results.length - 1].value as string;
+    signSpy.mockRestore();
+    return text;
   }
 
-  describe('QR éphémère BTX2 — aucune donnée du billet dans le QR', () => {
+  describe('QR signé BTX3 — vérification cryptographique', () => {
     beforeEach(() => {
       repo.findOne.mockResolvedValue(ticketRow());
     });
 
-    it('le QR ne contient que BTX2 + un code aléatoire de 128 bits — ni jeton, ni identifiant', async () => {
+    it('le QR est signé et ne contient ni le jeton du porteur ni donnée personnelle', async () => {
       const text = await displayedQrText();
-      expect(text).toMatch(/^BTX2\.[A-Za-z0-9_-]{22}$/);
+      expect(text).toMatch(/^BTX3\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
       expect(text).not.toContain('jeton-courant');
-      expect(text).not.toContain('ticket-123');
-      expect(displayCodes[0]).toMatchObject({ ticket_id: 'ticket-123', ticket_token: 'jeton-courant' });
+      expect(signer.verify(text)).toMatchObject({ ticketId: TICKET_ID, eventId: EVENT_ID });
     });
 
     it('renvoie une image et le délai avant le code suivant (période réglée par l’admin)', async () => {
-      const display = await service.getDisplayQr('ticket-123');
+      const display = await service.getDisplayQr(TICKET_ID);
       expect(display.qr_code_url).toMatch(/^data:image\/png;base64,/);
       expect(display.refresh_in_seconds).toBeGreaterThan(0);
       expect(display.refresh_in_seconds).toBeLessThanOrEqual(5);
@@ -137,18 +151,31 @@ describe('TicketService', () => {
     });
 
     it('accepte le code de la période en cours', async () => {
-      const text = await displayedQrText();
-      const result = await service.verifyQr(text);
-      expect(result).toMatchObject({ valid: true, ticket: { id: 'ticket-123' } });
+      const result = await service.verifyQr(await displayedQrText());
+      expect(result).toMatchObject({ valid: true, ticket: { id: TICKET_ID } });
+    });
+
+    it('refuse (INVALID) un QR dont une donnée a été modifiée : la signature ne correspond plus', async () => {
+      const [prefix, payload, signature] = (await displayedQrText()).split('.');
+      const bytes = Buffer.from(payload, 'base64url');
+      bytes.writeUInt16BE(3600, 37); // allonge la durée de validité
+      await expect(service.verifyQr(`${prefix}.${bytes.toString('base64url')}.${signature}`)).rejects.toMatchObject({
+        error: { code: 'INVALID' },
+      });
+    });
+
+    it('refuse (INVALID) un QR signé par une autre clé', async () => {
+      const foreignKey = generateKeyPairSync('ed25519').privateKey.export({ format: 'der', type: 'pkcs8' }).toString('base64');
+      const forger = new QrSigner({ getOrThrow: () => foreignKey } as unknown as ConfigService);
+      const forged = forger.sign({ ticketId: TICKET_ID, eventId: EVENT_ID, validFrom: Math.floor(Date.now() / 1000), validSeconds: 5, tokenFingerprint: '0011223344556677' });
+      await expect(service.verifyQr(forged)).rejects.toMatchObject({ error: { code: 'INVALID' } });
     });
 
     it("accepte le code jusqu'à une période après son expiration (tolérance 1), puis EXPIRED", async () => {
       const start = 1_800_000_000_000;
       const text = await displayedQrText(start);
       await expect(service.verifyQr(text, new Date(start + 9_999))).resolves.toMatchObject({ valid: true });
-      await expect(service.verifyQr(text, new Date(start + 10_000))).rejects.toMatchObject({
-        error: { code: 'EXPIRED' },
-      });
+      await expect(service.verifyQr(text, new Date(start + 10_000))).rejects.toMatchObject({ error: { code: 'EXPIRED' } });
     });
 
     it("refuse (EXPIRED) une capture d'écran ancienne", async () => {
@@ -163,21 +190,19 @@ describe('TicketService', () => {
       await expect(service.verifyQr(text)).rejects.toMatchObject({ error: { code: 'EXPIRED' } });
     });
 
-    it('refuse (INVALID) un code inventé ou un texte quelconque', async () => {
-      await expect(service.verifyQr('BTX2.AAAAAAAAAAAAAAAAAAAAAA')).rejects.toMatchObject({
-        error: { code: 'INVALID' },
-      });
+    it('refuse (INVALID) un texte quelconque, (EXPIRED) un ancien code BTX2', async () => {
       await expect(service.verifyQr('n-importe-quoi')).rejects.toMatchObject({ error: { code: 'INVALID' } });
+      displayCodes.push({ code: 'AAAAAAAAAAAAAAAAAAAAAA', ticket_id: TICKET_ID } as QrDisplayCode);
+      await expect(service.verifyQr('BTX2.AAAAAAAAAAAAAAAAAAAAAA')).rejects.toMatchObject({ error: { code: 'EXPIRED' } });
     });
 
     it("refuse (STATIC_REFUSED) un ancien QR fixe contenant le jeton du billet", async () => {
-      qrHistoryRepo.findOne.mockResolvedValue({ token: 'jeton-courant', ticket_id: 'ticket-123', is_current: true });
+      qrHistoryRepo.findOne.mockResolvedValue({ token: 'jeton-courant', ticket_id: TICKET_ID, is_current: true });
       await expect(service.verifyQr('jeton-courant')).rejects.toMatchObject({ error: { code: 'STATIC_REFUSED' } });
     });
 
-    it('resolveTicketId retrouve le billet depuis le code affiché (journal des scans refusés)', async () => {
-      const text = await displayedQrText();
-      await expect(service.resolveTicketId(text)).resolves.toBe('ticket-123');
+    it('resolveTicketId retrouve le billet depuis le QR signé (journal des scans refusés)', async () => {
+      await expect(service.resolveTicketId(await displayedQrText())).resolves.toBe(TICKET_ID);
     });
 
     it('refuse (SUPERSEDED) un code affiché avant la revente du billet', async () => {
@@ -212,9 +237,15 @@ describe('TicketService', () => {
       const hourStart = 1_800_000_000_000 - (1_800_000_000_000 % 3_600_000);
       const text = await displayedQrText(hourStart + 60_000);
       await expect(service.verifyQr(text, new Date(hourStart + 3_000_000))).resolves.toMatchObject({ valid: true });
-      await expect(service.verifyQr(text, new Date(hourStart + 3_600_000))).rejects.toMatchObject({
-        error: { code: 'EXPIRED' },
-      });
+      await expect(service.verifyQr(text, new Date(hourStart + 3_600_000))).rejects.toMatchObject({ error: { code: 'EXPIRED' } });
+    });
+
+    it('paquet hors ligne : clé publique, empreintes et statuts — jamais le jeton', async () => {
+      (repo as unknown as { find: jest.Mock }).find = jest.fn().mockResolvedValue([ticketRow()]);
+      const pack = await service.getOfflinePack(EVENT_ID);
+      expect(pack).toMatchObject({ algorithm: 'Ed25519', public_key: signer.publicKeyBase64Url, rotation_seconds: 5 });
+      expect(pack.tickets).toEqual([{ id: TICKET_ID, fingerprint: expect.stringMatching(/^[0-9a-f]{16}$/), status: TicketStatus.SENT }]);
+      expect(JSON.stringify(pack)).not.toContain('jeton-courant');
     });
   });
 
@@ -223,7 +254,7 @@ describe('TicketService', () => {
       const ticket = Object.assign(new Ticket(), ticketRow({ reference: 'TKT-1' }));
       const sent = JSON.parse(JSON.stringify(ticket));
       expect(sent).not.toHaveProperty('qr_code_token');
-      expect(sent).toMatchObject({ id: 'ticket-123', reference: 'TKT-1' });
+      expect(sent).toMatchObject({ id: TICKET_ID, reference: 'TKT-1' });
     });
   });
 
@@ -248,7 +279,7 @@ describe('TicketService', () => {
         buyer_email: 'jean@test.com',
         buyer_first_name: 'Jean',
         buyer_last_name: 'Dupont',
-        event_id: 'event-1',
+        event_id: EVENT_ID,
         event_name: 'Concert',
         event_start_at: new Date().toISOString(),
         event_venue_name: 'Zenith',
@@ -291,7 +322,7 @@ describe('TicketService', () => {
         buyer_email: 'jean@test.com',
         buyer_first_name: 'Jean',
         buyer_last_name: 'Dupont',
-        event_id: 'event-1',
+        event_id: EVENT_ID,
         event_name: 'Concert',
         event_start_at: new Date().toISOString(),
         event_venue_name: 'Zenith',

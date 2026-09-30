@@ -523,6 +523,8 @@ services:
       # Statut et dates de l'événement vérifiés à chaque scan.
       EVENT_SERVICE_HOST: event-service
       EVENT_SERVICE_PORT: 3003
+      # Signature Ed25519 des QR codes (jamais transmise à un autre service).
+      QR_SIGNING_PRIVATE_KEY: ${QR_SIGNING_PRIVATE_KEY:?QR_SIGNING_PRIVATE_KEY manquante dans .env}
     depends_on:
       ticket-db:
         condition: service_healthy

@@ -15,6 +15,7 @@ describe('ScanService', () => {
     verifyQr: jest.Mock;
     markUsed: jest.Mock;
     resolveTicketId: jest.Mock;
+    getOfflinePack: jest.Mock;
   };
   let controlAgentService: { isAssigned: jest.Mock };
   let eventClient: { send: jest.Mock };
@@ -50,6 +51,7 @@ describe('ScanService', () => {
       verifyQr: jest.fn(),
       markUsed: jest.fn(),
       resolveTicketId: jest.fn().mockResolvedValue('ticket-1'),
+      getOfflinePack: jest.fn().mockResolvedValue({ algorithm: 'Ed25519', public_key: 'cle', tickets: [] }),
     };
     // Par défaut : agent bien affecté à l'événement — les tests d'affectation
     // (CDC §6.2) surchargent explicitement quand ils testent le rejet.
@@ -208,6 +210,25 @@ describe('ScanService', () => {
       eventClient.send.mockReturnValue(throwError(() => new Error('connexion refusée')));
 
       expect((await service.scan(baseDto)).result).toBe(ScanResult.TOO_EARLY);
+    });
+  });
+
+  describe('paquet hors ligne', () => {
+    it("refuse un agent non affecté à l'événement", async () => {
+      controlAgentService.isAssigned.mockResolvedValue(false);
+      await expect(service.getOfflinePack('event-1', 'agent-1', false)).rejects.toMatchObject({ error: { statusCode: 403 } });
+      expect(ticketService.getOfflinePack).not.toHaveBeenCalled();
+    });
+
+    it("fournit clé publique, billets, état et dates de l'événement, fenêtre de contrôle", async () => {
+      const pack = await service.getOfflinePack('event-1', 'orga-1', true);
+      expect(pack).toMatchObject({
+        algorithm: 'Ed25519',
+        public_key: 'cle',
+        event: { id: 'event-1', status: 'PUBLISHED' },
+        scan_opens_before_minutes: 180,
+        scan_closes_after_minutes: 60,
+      });
     });
   });
 });
