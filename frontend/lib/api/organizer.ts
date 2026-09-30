@@ -62,6 +62,8 @@ export interface ApiPayout {
   commission_amount: number;
   payment_fees_amount: number;
   net_amount: number;
+  /** Événement reporté, nouvelle date à venir : rien n'est versé d'ici là. */
+  on_hold_for_postponement?: boolean;
   scheduled_at: string;
   processed_at: string | null;
   blocked_reason: string | null;

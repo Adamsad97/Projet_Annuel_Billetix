@@ -45,7 +45,8 @@ const PAID_ORDER_STATUSES = ["CONFIRMED", "TICKETS_SENT"];
 const DAY_MS = 24 * 3600 * 1000;
 
 /**
- * Conséquences d'un report accepté : billets et commandes à la nouvelle date,
+ * Conséquences d'un report accepté : billets, commandes et reversements à la
+ * nouvelle date (reversements en attente tant qu'elle est à venir),
  * détenteurs prévenus ; puis remboursement d'une commande à la demande de
  * son acheteur, tant que la date est à venir ou pendant le délai réglé par
  * l'admin (postponement_refund_days) après l'annonce de la nouvelle date.
@@ -80,11 +81,18 @@ export class EventPostponementService {
   }
 
   private async announce(event: PostponedEvent, announcement: "POSTPONED" | "RESCHEDULED"): Promise<void> {
-    if (event.status !== "POSTPONED") {
+    if (event.status === "POSTPONED") {
+      // Date à venir : rien n'est reversé à l'organisateur avant la nouvelle date.
+      await firstValueFrom(this.paymentClient.send("payment.hold_event_payouts", { event_id: event.id }));
+    } else {
       const dates = { event_id: event.id, event_start_at: event.start_date, event_end_at: event.end_date };
       await Promise.all([
         firstValueFrom(this.ticketClient.send("ticket.sync_event_dates", dates)),
         firstValueFrom(this.orderClient.send("order.sync_event_dates", dates)),
+        // Reversement programmé sur la nouvelle fin d'événement.
+        firstValueFrom(
+          this.paymentClient.send("payment.reschedule_event_payouts", { event_id: event.id, event_end_at: event.end_date }),
+        ),
       ]);
     }
 

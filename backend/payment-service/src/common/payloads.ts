@@ -106,6 +106,14 @@ export class BlockPayoutPayload extends IdPayload {
   @IsString() @MaxLength(TEXT_MAX) reason: string;
 }
 
+export class EventPayoutsPayload {
+  @IsUUID() event_id: string;
+}
+
+export class RescheduleEventPayoutsPayload extends EventPayoutsPayload {
+  @IsDateString() event_end_at: string;
+}
+
 export class OwnedPayoutPayload extends IdPayload {
   @IsUUID() organizer_id: string;
 }

@@ -36,6 +36,11 @@ export function PayoutRow({
             {payout.event_name} — {payout.organizer_name}
           </p>
           <Badge tone={badge.className}>{badge.label}</Badge>
+          {payout.on_hold_for_postponement ? (
+            <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
+              Événement reporté
+            </span>
+          ) : null}
           {awaitingEarlyApproval ? (
             <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-xs font-medium text-accent ring-1 ring-inset ring-blue-500/30">
               Demande anticipée
@@ -43,7 +48,9 @@ export function PayoutRow({
           ) : null}
         </div>
         <p className="mt-0.5 text-xs text-ink-5">
-          Prévu le {dateFormatter.format(new Date(payout.scheduled_at))}
+          {payout.on_hold_for_postponement
+            ? "En attente de la nouvelle date de l'événement reporté"
+            : `Prévu le ${dateFormatter.format(new Date(payout.scheduled_at))}`}
           {payout.blocked_reason ? ` · ${payout.blocked_reason}` : ""}
         </p>
       </div>

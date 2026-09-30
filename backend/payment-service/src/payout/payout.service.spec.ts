@@ -23,7 +23,7 @@ function addBusinessDays(date: Date, days: number): Date {
 
 describe('PayoutService', () => {
   let service: PayoutService;
-  let repo: { save: jest.Mock; create: jest.Mock; findOne: jest.Mock; find: jest.Mock; createQueryBuilder: jest.Mock };
+  let repo: { save: jest.Mock; create: jest.Mock; findOne: jest.Mock; find: jest.Mock; update: jest.Mock; createQueryBuilder: jest.Mock };
   let queryBuilder: { where: jest.Mock; andWhere: jest.Mock; getMany: jest.Mock };
   let stripe: { createTransfer: jest.Mock };
 
@@ -38,6 +38,7 @@ describe('PayoutService', () => {
       create: jest.fn().mockImplementation((payout) => payout),
       findOne: jest.fn(),
       find: jest.fn(),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
       createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
     };
     stripe = { createTransfer: jest.fn() };
@@ -358,6 +359,34 @@ describe('PayoutService', () => {
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({ gross_amount: -100, commission_amount: -10, net_amount: -90 }),
       );
+    });
+  });
+
+  describe('report d\'événement', () => {
+    it("date à venir : reversements en attente, jamais dus", async () => {
+      await expect(service.holdForEvent('evt-1')).resolves.toEqual({ held: 1 });
+      expect(repo.update).toHaveBeenCalledWith(expect.objectContaining({ event_id: 'evt-1' }), { on_hold_for_postponement: true });
+      await service.getDuePayouts();
+      expect(queryBuilder.andWhere).toHaveBeenCalledWith('payout.on_hold_for_postponement = false');
+    });
+
+    it('demande anticipée refusée pendant le report', async () => {
+      repo.findOne.mockResolvedValue({
+        id: 'p1', organizer_id: 'org-1', status: PayoutStatus.PENDING, event_end_at: new Date('2020-01-01'), on_hold_for_postponement: true,
+      });
+      await expect(service.requestEarly('p1', 'org-1')).rejects.toThrow(RpcException);
+    });
+
+    it('nouvelle date : reprogrammé sur la nouvelle fin, attente et demande anticipée levées', async () => {
+      const payout = {
+        id: 'p1', event_id: 'evt-1', net_amount: 90, status: PayoutStatus.PENDING,
+        on_hold_for_postponement: true, requested_early_at: new Date(), early_request_approved_by: 'admin-1',
+      };
+      repo.find.mockResolvedValue([payout, { id: 'adj', net_amount: -10, status: PayoutStatus.PENDING }]);
+      const end = new Date('2030-03-01T22:00:00.000Z');
+      await expect(service.rescheduleForEvent('evt-1', end)).resolves.toEqual({ rescheduled: 1 });
+      expect(payout).toMatchObject({ event_end_at: end, on_hold_for_postponement: false, requested_early_at: null, early_request_approved_by: null });
+      expect((payout as { scheduled_at?: Date }).scheduled_at!.getTime()).toBeGreaterThan(end.getTime());
     });
   });
 });

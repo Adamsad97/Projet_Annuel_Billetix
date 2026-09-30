@@ -15,7 +15,7 @@ export function FinanceRow({
   busy: boolean;
 }) {
   const badge = payoutStatusBadge[payout.status];
-  const canRequestEarly = payout.status === "PENDING" && !payout.requested_early_at;
+  const canRequestEarly = payout.status === "PENDING" && !payout.requested_early_at && !payout.on_hold_for_postponement;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 last:border-b-0">
@@ -25,6 +25,11 @@ export function FinanceRow({
           <Badge tone={badge.className}>
             {badge.label}
           </Badge>
+          {payout.on_hold_for_postponement ? (
+            <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
+              Événement reporté
+            </span>
+          ) : null}
           {payout.requested_early_at ? (
             <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-xs font-medium text-accent ring-1 ring-inset ring-blue-500/30">
               Anticipé demandé
@@ -32,7 +37,9 @@ export function FinanceRow({
           ) : null}
         </div>
         <p className="mt-0.5 text-xs text-ink-5">
-          Prévu le {dateFormatter.format(new Date(payout.scheduled_at))}
+          {payout.on_hold_for_postponement
+            ? "Versé après la nouvelle date de l'événement, dès qu'elle sera fixée"
+            : `Prévu le ${dateFormatter.format(new Date(payout.scheduled_at))}`}
           {payout.processed_at ? ` · versé le ${dateFormatter.format(new Date(payout.processed_at))}` : ""}
         </p>
         {payout.status === "BLOCKED" && payout.blocked_reason ? (

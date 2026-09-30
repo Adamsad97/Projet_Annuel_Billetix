@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, Repository, Brackets } from 'typeorm';
+import { Brackets, In, LessThanOrEqual, Repository } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { StripeService } from '../stripe/stripe.service';
 import { Payout, PayoutStatus } from './payout.entity';
@@ -111,6 +111,41 @@ export class PayoutService {
         scheduled_at: new Date(),
       }),
     );
+  }
+
+  /** Report sans nouvelle date : reversements de l'événement mis en attente. */
+  async holdForEvent(eventId: string): Promise<{ held: number }> {
+    const result = await this.repo.update(
+      { event_id: eventId, status: In([PayoutStatus.PENDING, PayoutStatus.BLOCKED]) },
+      { on_hold_for_postponement: true },
+    );
+    return { held: result.affected ?? 0 };
+  }
+
+  /**
+   * Nouvelle date d'un événement reporté : reversements reprogrammés sur la
+   * nouvelle fin (+ payout_delay_days ouvrés), attente levée, demande
+   * anticipée éventuelle annulée (elle portait sur l'ancienne date).
+   */
+  async rescheduleForEvent(eventId: string, eventEndAt: Date): Promise<{ rescheduled: number }> {
+    const config = await this.platformConfig.get();
+    const payouts = await this.repo.find({
+      where: { event_id: eventId, status: In([PayoutStatus.PENDING, PayoutStatus.BLOCKED]) },
+    });
+    const targets = payouts.filter((payout) => Number(payout.net_amount) > 0);
+    for (const payout of targets) {
+      payout.event_end_at = eventEndAt;
+      payout.scheduled_at = this.addBusinessDays(eventEndAt, config.payout_delay_days);
+      payout.on_hold_for_postponement = false;
+      payout.requested_early_at = null;
+      payout.early_request_approved_by = null;
+    }
+    if (targets.length) await this.repo.save(targets);
+    await this.repo.update(
+      { event_id: eventId, on_hold_for_postponement: true },
+      { on_hold_for_postponement: false },
+    );
+    return { rescheduled: targets.length };
   }
 
   async getOrganizerBalance(organizerId: string): Promise<{
@@ -252,6 +287,7 @@ export class PayoutService {
       .where('payout.status = :status', { status: PayoutStatus.PENDING })
       .andWhere('payout.scheduled_at <= :now', { now: new Date() })
       .andWhere('payout.net_amount > 0')
+      .andWhere('payout.on_hold_for_postponement = false')
       .getMany();
   }
 
@@ -358,6 +394,9 @@ export class PayoutService {
         message: 'Ce reversement n\'est pas éligible à une demande anticipée dans son état actuel',
       });
     }
+    if (payout.on_hold_for_postponement) {
+      throw new RpcException({ statusCode: 400, message: "Événement reporté : ce reversement attend la nouvelle date de l'événement." });
+    }
     if (!payout.event_end_at) {
       throw new RpcException({
         statusCode: 400,
@@ -386,6 +425,9 @@ export class PayoutService {
         statusCode: 400,
         message: 'Aucune demande de reversement anticipé en attente pour ce reversement',
       });
+    }
+    if (payout.on_hold_for_postponement) {
+      throw new RpcException({ statusCode: 400, message: "Événement reporté : ce reversement attend la nouvelle date de l'événement." });
     }
     payout.early_request_approved_by = adminId;
     payout.scheduled_at = new Date();

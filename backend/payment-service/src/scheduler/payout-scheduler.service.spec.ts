@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { PayoutService } from '../payout/payout.service';
 import { PayoutStatus } from '../payout/payout.entity';
@@ -8,6 +8,8 @@ import { PayoutSchedulerService } from './payout-scheduler.service';
 describe('PayoutSchedulerService', () => {
   let service: PayoutSchedulerService;
   let payoutService: {
+    holdForEvent: jest.Mock;
+    rescheduleForEvent: jest.Mock;
     getDuePayouts: jest.Mock;
     process: jest.Mock;
     getExpiredBlockedPayouts: jest.Mock;
@@ -34,6 +36,8 @@ describe('PayoutSchedulerService', () => {
       process: jest.fn().mockResolvedValue(completedPayout),
       getExpiredBlockedPayouts: jest.fn().mockResolvedValue([]),
       unblock: jest.fn(),
+      holdForEvent: jest.fn(),
+      rescheduleForEvent: jest.fn(),
     };
     userClient = { send: jest.fn() };
     authClient = {
@@ -142,6 +146,30 @@ describe('PayoutSchedulerService', () => {
       await service.unblockExpiredDisputePayouts();
 
       expect(payoutService.unblock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('événement reporté', () => {
+    it("date à venir : rien n'est versé, les reversements de l'événement sont mis en attente", async () => {
+      payoutService.getDuePayouts.mockResolvedValue([{ ...duePayout, event_id: 'evt-1' }]);
+      eventClient.send.mockReturnValue(of({ status: 'POSTPONED', title: 'Festival Test' }));
+      await service.processDuePayouts();
+      expect(payoutService.process).not.toHaveBeenCalled();
+      expect(payoutService.holdForEvent).toHaveBeenCalledWith('evt-1');
+    });
+
+    it('fin déplacée plus tard : reprogrammé au lieu d\'être versé', async () => {
+      payoutService.getDuePayouts.mockResolvedValue([{ ...duePayout, event_id: 'evt-1', event_end_at: new Date('2026-01-01') }]);
+      eventClient.send.mockReturnValue(of({ status: 'PUBLISHED', end_date: '2026-03-01T22:00:00.000Z' }));
+      await service.processDuePayouts();
+      expect(payoutService.process).not.toHaveBeenCalled();
+      expect(payoutService.rescheduleForEvent).toHaveBeenCalledWith('evt-1', new Date('2026-03-01T22:00:00.000Z'));
+    });
+
+    it('événement injoignable : versement différé au prochain cycle', async () => {
+      eventClient.send.mockReturnValue(throwError(() => new Error('timeout')));
+      await service.processDuePayouts();
+      expect(payoutService.process).not.toHaveBeenCalled();
     });
   });
 });

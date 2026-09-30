@@ -80,6 +80,11 @@ export class Payout {
   @Column({ nullable: true })
   early_request_approved_by: string | null;
 
+  // Événement reporté, nouvelle date à venir : rien n'est versé (ni à
+  // échéance, ni par anticipation) avant que la nouvelle date soit fixée.
+  @Column({ default: false })
+  on_hold_for_postponement: boolean;
+
   @CreateDateColumn()
   created_at: Date;
 

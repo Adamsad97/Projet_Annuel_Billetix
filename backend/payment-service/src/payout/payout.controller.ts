@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { PayoutService } from './payout.service';
-import { AdminPayoutPayload, BlockPayoutPayload, CreatePayoutPayload, IdPayload, ListPayoutsPayload, OrganizerPayload, OwnedPayoutPayload, ProcessPayoutPayload } from '../common/payloads';
+import { AdminPayoutPayload, BlockPayoutPayload, CreatePayoutPayload, EventPayoutsPayload, RescheduleEventPayoutsPayload, IdPayload, ListPayoutsPayload, OrganizerPayload, OwnedPayoutPayload, ProcessPayoutPayload } from '../common/payloads';
 
 @Controller()
 export class PayoutController {
@@ -10,6 +10,16 @@ export class PayoutController {
   @MessagePattern('payment.create_payout')
   create(@Payload() data: CreatePayoutPayload) {
     return this.payoutService.create(data);
+  }
+
+  @MessagePattern('payment.hold_event_payouts')
+  holdForEvent(@Payload() data: EventPayoutsPayload) {
+    return this.payoutService.holdForEvent(data.event_id);
+  }
+
+  @MessagePattern('payment.reschedule_event_payouts')
+  rescheduleForEvent(@Payload() data: RescheduleEventPayoutsPayload) {
+    return this.payoutService.rescheduleForEvent(data.event_id, new Date(data.event_end_at));
   }
 
   @MessagePattern('payment.get_organizer_balance')

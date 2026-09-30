@@ -39,8 +39,38 @@ export class PayoutSchedulerService {
 
     this.logger.log(`Reversements à échéance : ${duePayouts.length}`);
 
+    // État réel de chaque événement, lu une fois par cycle : un événement
+    // reporté n'est jamais reversé, et une fin déplacée plus tard reprogramme
+    // le reversement, même si la passerelle n'a pas pu le faire.
+    const events = new Map<string, { status?: string; end_date?: string } | null>();
     for (const payout of duePayouts) {
       try {
+        if (!events.has(payout.event_id)) {
+          const event = await firstValueFrom(
+            this.eventClient.send<{ status?: string; end_date?: string }>('event.get', { id: payout.event_id }),
+          ).catch(() => null);
+          events.set(payout.event_id, event);
+        }
+        const event = events.get(payout.event_id);
+        if (!event) {
+          this.logger.warn(`Reversement ${payout.id} différé : événement ${payout.event_id} injoignable`);
+          continue;
+        }
+        if (event.status === 'POSTPONED') {
+          await this.payoutService.holdForEvent(payout.event_id);
+          this.logger.warn(`Reversement ${payout.id} suspendu : événement ${payout.event_id} reporté`);
+          continue;
+        }
+        if (
+          event.end_date &&
+          payout.event_end_at &&
+          new Date(event.end_date).getTime() > new Date(payout.event_end_at).getTime()
+        ) {
+          await this.payoutService.rescheduleForEvent(payout.event_id, new Date(event.end_date));
+          this.logger.warn(`Reversement ${payout.id} reprogrammé : l'événement ${payout.event_id} a changé de date`);
+          continue;
+        }
+
         const profile = await firstValueFrom(
           this.userClient.send<OrganizerProfile>('user.get_organizer_profile', {
             user_id: payout.organizer_id,
