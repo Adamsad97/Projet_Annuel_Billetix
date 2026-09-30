@@ -31,6 +31,8 @@ export const SETTING_SECTIONS: SettingSection[] = [
     keys: [
       'ticket_qr_rotation_seconds',
       'ticket_qr_rotation_tolerance_steps',
+      'scan_opens_before_minutes',
+      'scan_closes_after_minutes',
       'ticket_qr_display_seconds',
       'ticket_transfer_max_per_ticket',
       'ticket_transfer_cutoff_hours',

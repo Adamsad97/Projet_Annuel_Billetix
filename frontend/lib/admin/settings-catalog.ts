@@ -99,6 +99,8 @@ export const FIELDS: Record<string, FieldMeta> = {
   // Billets
   ticket_qr_rotation_seconds: { label: "Renouvellement du QR code", unit: "secondes", help: "Une capture d'écran n'est plus acceptée après ce délai" },
   ticket_qr_rotation_tolerance_steps: { label: "Tolérance du QR code au scan", unit: "période(s)", help: "Décalage d'horloge toléré" },
+  scan_opens_before_minutes: { label: "Ouverture du contrôle", unit: "min avant le début", help: "Avant, un billet scanné est refusé (trop tôt)" },
+  scan_closes_after_minutes: { label: "Fermeture du contrôle", unit: "min après la fin", help: "Après, un billet scanné est refusé (trop tard)" },
   ticket_qr_display_seconds: { label: "Affichage du QR code", unit: "secondes", help: "Masqué automatiquement ensuite" },
   ticket_transfer_max_per_ticket: { label: "Transferts maximum par billet", unit: "transfert(s)", help: "0 désactive le don de billets" },
   ticket_transfer_cutoff_hours: { label: "Fermeture des transferts", unit: "heures avant l'événement" },

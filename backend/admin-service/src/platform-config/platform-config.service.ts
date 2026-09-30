@@ -54,6 +54,8 @@ export interface PlatformConfig {
   sensitive_action_reauth_minutes: number;
   ticket_qr_rotation_seconds: number;
   ticket_qr_rotation_tolerance_steps: number;
+  scan_opens_before_minutes: number;
+  scan_closes_after_minutes: number;
 }
 
 // Réglages retirés du produit : supprimés au démarrage pour ne plus
@@ -102,6 +104,8 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'pdf_generation_max_retry_attempts', value: '5',          type: 'number',  description: 'Nombre de tentatives de génération PDF (billet/facture) avant abandon définitif et alerte admin' },
   { key: 'ticket_qr_rotation_seconds',     value: '5',             type: 'number',  description: 'Période de renouvellement du QR code dynamique (secondes)' },
   { key: 'ticket_qr_rotation_tolerance_steps', value: '1',         type: 'number',  description: 'Nombre de périodes précédentes/suivantes encore acceptées au scan (décalage d\'horloge, lenteur du contrôle)' },
+  { key: 'scan_opens_before_minutes',      value: '180',           type: 'number',  description: 'Ouverture du contrôle des billets avant le début de l\'événement (minutes)' },
+  { key: 'scan_closes_after_minutes',      value: '60',            type: 'number',  description: 'Fermeture du contrôle des billets après la fin de l\'événement (minutes)' },
   { key: 'ticket_qr_display_seconds',      value: '60',            type: 'number',  description: 'Durée d\'affichage du QR code d\'un billet dans l\'espace acheteur avant masquage automatique (secondes)' },
   { key: 'ticket_transfer_max_per_ticket', value: '1',             type: 'number',  description: 'Nombre maximum de fois qu\'un même billet peut être offert à un autre compte (0 = transferts désactivés)' },
   { key: 'ticket_transfer_cutoff_hours',   value: '2',             type: 'number',  description: 'Fermeture des transferts de billets avant le début de l\'événement (heures)' },
@@ -184,6 +188,8 @@ export class PlatformConfigService implements OnModuleInit {
       sensitive_action_reauth_minutes: parseInt(map.sensitive_action_reauth_minutes ?? '5'),
       ticket_qr_rotation_seconds:     parseInt(map.ticket_qr_rotation_seconds ?? '5'),
       ticket_qr_rotation_tolerance_steps: parseInt(map.ticket_qr_rotation_tolerance_steps ?? '1'),
+      scan_opens_before_minutes:      parseInt(map.scan_opens_before_minutes ?? '180'),
+      scan_closes_after_minutes:      parseInt(map.scan_closes_after_minutes ?? '60'),
     };
   }
 
