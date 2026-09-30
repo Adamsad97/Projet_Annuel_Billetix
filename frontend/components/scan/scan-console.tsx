@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CameraScanner } from "@/components/scan/camera-scanner";
+import { getEvent } from "@/lib/api/events";
 import { getOrganizerDashboard } from "@/lib/api/organizer";
 import {
   getAgentEvents,
@@ -52,7 +53,44 @@ interface ScanEvent {
   id: string;
   title: string;
   start_date: string;
+  end_date?: string | null;
   venue: string;
+  poster_url?: string | null;
+}
+
+const HOUR = 3600_000;
+
+/**
+ * Événement présenté d'office à un agent : celui en cours, sinon le prochain,
+ * sinon le plus récent. L'agent ne choisit pas : il contrôle l'événement
+ * auquel il est affecté.
+ */
+function currentEvent(list: ScanEvent[], now = Date.now()): ScanEvent | undefined {
+  const endOf = (e: ScanEvent) => new Date(e.end_date ?? e.start_date).getTime() || new Date(e.start_date).getTime() + 6 * HOUR;
+  const ongoing = list.find((e) => new Date(e.start_date).getTime() <= now && now <= endOf(e));
+  if (ongoing) return ongoing;
+  const upcoming = list.filter((e) => new Date(e.start_date).getTime() > now);
+  if (upcoming.length) return upcoming[0];
+  return list[list.length - 1];
+}
+
+/** État du contrôle selon la fenêtre du paquet hors ligne (réglages admin). */
+function checkpointState(pack: OfflinePack | null, now = Date.now()): { label: string; tone: "open" | "soon" | "closed" } | null {
+  if (!pack) return null;
+  if (pack.event.is_hidden || !["PUBLISHED", "TERMINATED"].includes(pack.event.status)) {
+    return { label: "Événement fermé au public", tone: "closed" };
+  }
+  const opens = new Date(pack.event.start_date).getTime() - pack.scan_opens_before_minutes * 60_000;
+  const closes = new Date(pack.event.end_date ?? pack.event.start_date).getTime() + pack.scan_closes_after_minutes * 60_000;
+  if (now < opens) {
+    const sameDay = new Date(opens).toDateString() === new Date(now).toDateString();
+    return {
+      label: `Contrôle ouvert ${sameDay ? `à ${timeOnly.format(new Date(opens))}` : `le ${dateTime.format(new Date(opens))}`}`,
+      tone: "soon",
+    };
+  }
+  if (now > closes) return { label: "Contrôle terminé", tone: "closed" };
+  return { label: "Contrôle ouvert", tone: "open" };
 }
 
 interface Verdict {
@@ -85,6 +123,10 @@ function storeSelectedEvent(id: string): void {
 
 export function ScanConsole() {
   const [events, setEvents] = useState<ScanEvent[] | null>(null);
+  const [isAgent, setIsAgent] = useState(false);
+  // Détails de l'événement contrôlé (affiche, fin), lus sur sa page publique.
+  const [details, setDetails] = useState<{ poster_url: string | null; end_date: string | null } | null>(null);
+  const [flash, setFlash] = useState(false);
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [eventId, setEventId] = useState<string | null>(null);
   const [pack, setPack] = useState<OfflinePack | null>(null);
@@ -103,10 +145,19 @@ export function ScanConsole() {
   // --- Événements à contrôler (organisateur : les siens ; agent : ses affectations)
   useEffect(() => {
     const role = getStoredUser()?.role;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- rôle lu dans la session après le montage
+    setIsAgent(role === "AGENT");
     const load: Promise<ScanEvent[]> =
       role === "AGENT"
         ? getAgentEvents().then((list) =>
-            list.map((e) => ({ id: e.id, title: e.title, start_date: e.start_date, venue: `${e.venue_name}, ${e.venue_city}` })),
+            list.map((e) => ({
+              id: e.id,
+              title: e.title,
+              start_date: e.start_date,
+              end_date: e.end_date,
+              venue: `${e.venue_name}, ${e.venue_city}`,
+              poster_url: e.poster_url,
+            })),
           )
         : getOrganizerDashboard().then((dashboard) =>
             dashboard.events
@@ -117,6 +168,11 @@ export function ScanConsole() {
       .then((list) => {
         const sorted = [...list].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
         setEvents(sorted);
+        if (role === "AGENT") {
+          // L'agent ne choisit pas : son événement s'ouvre directement.
+          setEventId(currentEvent(sorted)?.id ?? null);
+          return;
+        }
         const remembered = readSelectedEvent();
         if (remembered && sorted.some((e) => e.id === remembered)) setEventId(remembered);
       })
@@ -189,8 +245,12 @@ export function ScanConsole() {
     setValidated(0);
     setVerdict(null);
     setSyncMessage(null);
+    setDetails(null);
     void refreshPack(eventId);
     void syncQueue(eventId);
+    getEvent(eventId)
+      .then((e) => setDetails({ poster_url: e.poster_url, end_date: e.end_date }))
+      .catch(() => undefined);
   }, [eventId, refreshPack, syncQueue]);
 
   // --- Retour du réseau : synchronisation automatique
@@ -201,6 +261,8 @@ export function ScanConsole() {
 
   function show(next: Verdict) {
     setVerdict(next);
+    setFlash(true);
+    setTimeout(() => setFlash(false), VERDICT_DISPLAY_MS - 200);
     if (typeof navigator.vibrate === "function") navigator.vibrate(next.tone === "success" ? 120 : [90, 60, 90]);
     setTimeout(() => setPaused(false), VERDICT_DISPLAY_MS);
   }
@@ -260,118 +322,217 @@ export function ScanConsole() {
   }
 
   const selected = events?.find((e) => e.id === eventId) ?? null;
+  const poster = details?.poster_url ?? selected?.poster_url ?? null;
+  const checkpoint = checkpointState(pack);
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-link">Contrôle d&apos;accès</p>
-          <h1 className="text-xl font-bold text-ink-1">Scan des billets</h1>
-        </div>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-            online ? "bg-emerald-500/15 text-emerald-600" : "bg-amber-500/20 text-amber-600"
-          }`}
-        >
-          {online ? "● En ligne" : "● Hors ligne"}
-        </span>
-      </div>
+    <div className="mx-auto flex max-w-md flex-col gap-4">
+      {/* Keyframes du trait de visée */}
+      <style>{`@keyframes btx-scanline { 0%, 100% { top: 12%; } 50% { top: 84%; } }`}</style>
 
-      {/* Événement */}
-      <section className="rounded-2xl border border-hairline-1 bg-card p-4">
-        {eventsError ? (
-          <p className="text-sm text-danger">{eventsError}</p>
-        ) : events === null ? (
-          <p className="text-sm text-ink-5">Chargement de vos événements…</p>
-        ) : events.length === 0 ? (
-          <p className="text-sm text-ink-5">Aucun événement à contrôler pour le moment.</p>
-        ) : (
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">Événement contrôlé</span>
+      {/* En-tête : événement contrôlé */}
+      <section className="relative isolate overflow-hidden rounded-3xl bg-slate-950 text-white shadow-xl">
+        {poster ? (
+          // eslint-disable-next-line @next/next/no-img-element -- fond décoratif, affiche hébergée sur MinIO
+          <img src={poster} alt="" aria-hidden="true" className="absolute inset-0 -z-10 h-full w-full scale-125 object-cover opacity-50 blur-2xl" />
+        ) : null}
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-br from-slate-950/60 via-slate-950/80 to-blue-950/90" />
+
+        <div className="flex items-center justify-between gap-3 px-5 pt-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Contrôle d&apos;accès</p>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+              online ? "bg-emerald-400/15 text-emerald-300" : "bg-amber-400/20 text-amber-200"
+            }`}
+          >
+            <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${online ? "bg-emerald-400" : "bg-amber-300 animate-pulse"}`} />
+            {online ? "En ligne" : "Hors ligne"}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-4 px-5 pb-5 pt-3">
+          <div className="h-20 w-16 shrink-0 overflow-hidden rounded-xl bg-white/10 ring-1 ring-white/20">
+            {poster ? (
+              // eslint-disable-next-line @next/next/no-img-element -- affiche hébergée sur MinIO
+              <img src={poster} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-2xl" aria-hidden="true">🎫</span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            {selected ? (
+              <>
+                <h1 className="truncate text-lg font-bold leading-tight">{selected.title}</h1>
+                <p className="mt-0.5 truncate text-sm text-white/70">
+                  {dateTime.format(new Date(selected.start_date))} · {selected.venue}
+                </p>
+                {checkpoint ? (
+                  <span
+                    className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      checkpoint.tone === "open"
+                        ? "bg-emerald-500 text-white"
+                        : checkpoint.tone === "soon"
+                          ? "bg-amber-400 text-slate-950"
+                          : "bg-white/15 text-white/80"
+                    }`}
+                  >
+                    {checkpoint.label}
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              <h1 className="text-lg font-bold">Scan des billets</h1>
+            )}
+          </div>
+        </div>
+
+        {/* Organisateur : choix parmi ses événements (l'agent, lui, n'a que le sien) */}
+        {!isAgent && events && events.length > 0 ? (
+          <div className="border-t border-white/10 px-5 py-3">
+            <label className="sr-only" htmlFor="scan-event">Événement contrôlé</label>
             <select
+              id="scan-event"
               value={eventId ?? ""}
               onChange={(e) => setEventId(e.target.value || null)}
-              className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white focus:border-white/40 focus:outline-none"
             >
-              <option value="" className="bg-card">Choisir un événement…</option>
+              <option value="" className="text-slate-900">Choisir l&apos;événement à contrôler…</option>
               {events.map((e) => (
-                <option key={e.id} value={e.id} className="bg-card">
+                <option key={e.id} value={e.id} className="text-slate-900">
                   {e.title} — {dateTime.format(new Date(e.start_date))}
                 </option>
               ))}
             </select>
-          </label>
-        )}
-
-        {selected ? (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-5">
-            <span>
-              {pack
-                ? `Paquet hors ligne : ${pack.tickets.length} billet${pack.tickets.length > 1 ? "s" : ""}, mis à jour à ${timeOnly.format(new Date(pack.generated_at))}`
-                : "Paquet hors ligne non téléchargé"}
-            </span>
-            <button
-              type="button"
-              disabled={packLoading || !online}
-              onClick={() => eventId && refreshPack(eventId)}
-              className="font-medium text-link hover:text-link-hover disabled:opacity-50"
-            >
-              {packLoading ? "Mise à jour…" : "Mettre à jour"}
-            </button>
-            {packError ? <p className="w-full text-amber-600">{packError}</p> : null}
           </div>
         ) : null}
       </section>
 
-      {selected ? (
+      {eventsError ? (
+        <p className="rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-danger">{eventsError}</p>
+      ) : events === null ? (
+        <div className="aspect-square w-full animate-pulse rounded-3xl bg-hairline-1" />
+      ) : events.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-hairline-2 bg-card px-6 py-12 text-center">
+          <span className="text-4xl" aria-hidden="true">🛡️</span>
+          <p className="font-semibold text-ink-1">
+            {isAgent ? "Aucun événement ne vous est assigné" : "Aucun événement à contrôler"}
+          </p>
+          <p className="text-sm text-ink-5">
+            {isAgent
+              ? "L'organisateur doit vous assigner à son événement pour que vous puissiez scanner les billets."
+              : "Vos événements publiés apparaîtront ici."}
+          </p>
+        </div>
+      ) : selected ? (
         <>
-          {cameraOn ? (
-            <CameraScanner onCode={(text) => void handleCode(text)} paused={paused} />
-          ) : (
-            <button
-              type="button"
-              onClick={() => setCameraOn(true)}
-              className="flex aspect-square w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-hairline-3 bg-card text-ink-3 transition-colors hover:border-hairline-5"
-            >
-              <span className="text-5xl" aria-hidden="true">📷</span>
-              <span className="text-sm font-semibold">Démarrer le scan</span>
-            </button>
-          )}
-
-          {/* Verdict */}
-          <div
-            role="status"
-            aria-live="assertive"
-            className={`rounded-2xl px-5 py-5 text-center transition-colors ${
-              verdict ? TONE_STYLES[verdict.tone] : "border border-hairline-1 bg-card text-ink-4"
-            }`}
-          >
-            {verdict ? (
-              <>
-                <p className="text-2xl font-extrabold">{verdict.label}</p>
-                {verdict.holder ? <p className="mt-1 text-base font-semibold">{verdict.holder}</p> : null}
-                <p className="mt-1 text-sm opacity-90">{verdict.hint}</p>
-                {verdict.offline ? <p className="mt-2 text-xs font-semibold uppercase tracking-wide opacity-80">Vérifié hors ligne</p> : null}
-              </>
+          {/* Caméra */}
+          <div className="relative">
+            {cameraOn ? (
+              <CameraScanner onCode={(text) => void handleCode(text)} paused={paused} />
             ) : (
-              <p className="text-sm">Présentez le QR code du billet devant la caméra.</p>
+              <button
+                type="button"
+                onClick={() => setCameraOn(true)}
+                className="group flex aspect-square w-full flex-col items-center justify-center gap-4 rounded-3xl bg-slate-900 text-white shadow-xl transition-transform active:scale-[0.99]"
+              >
+                <span className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-600 shadow-lg shadow-blue-900/50 transition-transform group-hover:scale-105">
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M7 12h10" />
+                  </svg>
+                </span>
+                <span className="text-base font-semibold">Démarrer le scan</span>
+                <span className="text-xs text-white/60">La caméra arrière de l&apos;appareil s&apos;ouvre</span>
+              </button>
+            )}
+
+            {cameraOn && !paused ? (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-[20%] h-0.5 rounded-full bg-blue-400 shadow-[0_0_12px_3px_rgba(96,165,250,0.8)]"
+                style={{ animation: "btx-scanline 2.4s ease-in-out infinite" }}
+              />
+            ) : null}
+
+            {/* Verdict plein cadre pendant son affichage */}
+            {verdict && flash ? (
+              <div
+                className={`absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-3xl px-6 text-center shadow-2xl ${TONE_STYLES[verdict.tone]}`}
+              >
+                <span className="flex h-20 w-20 items-center justify-center rounded-full bg-white/20 text-5xl font-black" aria-hidden="true">
+                  {verdict.tone === "success" ? "✓" : verdict.tone === "warning" ? "!" : "✕"}
+                </span>
+                <p className="text-3xl font-extrabold leading-tight">{verdict.label}</p>
+                {verdict.holder ? <p className="text-lg font-semibold">{verdict.holder}</p> : null}
+                <p className="text-sm opacity-90">{verdict.hint}</p>
+                {verdict.offline ? (
+                  <span className="rounded-full bg-black/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">Vérifié hors ligne</span>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          {/* Dernier verdict (rappel discret) */}
+          <div role="status" aria-live="assertive" className="rounded-2xl border border-hairline-1 bg-card px-4 py-3">
+            {verdict ? (
+              <div className="flex items-center gap-3">
+                <span
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base font-black ${TONE_STYLES[verdict.tone]}`}
+                  aria-hidden="true"
+                >
+                  {verdict.tone === "success" ? "✓" : verdict.tone === "warning" ? "!" : "✕"}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-ink-1">
+                    {verdict.label}
+                    {verdict.holder ? ` — ${verdict.holder}` : ""}
+                  </p>
+                  <p className="truncate text-xs text-ink-5">
+                    {verdict.offline ? "Vérifié hors ligne · " : ""}
+                    {verdict.hint}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-center text-sm text-ink-5">Présentez le QR code du billet devant la caméra.</p>
             )}
           </div>
 
+          {/* Compteurs */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-hairline-1 bg-card p-4 text-center">
-              <p className="text-2xl font-bold text-ink-1">{validated}</p>
-              <p className="text-xs text-ink-5">Entrée{validated > 1 ? "s" : ""} validée{validated > 1 ? "s" : ""} (cette session)</p>
+            <div className="rounded-2xl border border-hairline-1 bg-card p-4">
+              <p className="text-3xl font-extrabold text-emerald-600">{validated}</p>
+              <p className="text-xs font-medium text-ink-5">Entrée{validated > 1 ? "s" : ""} validée{validated > 1 ? "s" : ""} (session)</p>
             </div>
-            <div className="rounded-2xl border border-hairline-1 bg-card p-4 text-center">
-              <p className="text-2xl font-bold text-ink-1">{pending}</p>
-              <p className="text-xs text-ink-5">En attente de synchronisation</p>
+            <div className="rounded-2xl border border-hairline-1 bg-card p-4">
+              <p className={`text-3xl font-extrabold ${pending > 0 ? "text-amber-500" : "text-ink-1"}`}>{pending}</p>
+              <p className="text-xs font-medium text-ink-5">À synchroniser</p>
               {pending > 0 && online ? (
-                <button type="button" onClick={() => eventId && syncQueue(eventId)} className="mt-1 text-xs font-medium text-link hover:text-link-hover">
-                  Synchroniser
+                <button type="button" onClick={() => eventId && syncQueue(eventId)} className="mt-1 text-xs font-semibold text-link hover:text-link-hover">
+                  Synchroniser maintenant
                 </button>
               ) : null}
             </div>
+          </div>
+
+          {/* Paquet hors ligne */}
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-hairline-1 bg-card px-4 py-3 text-xs">
+            <div className="min-w-0">
+              <p className="font-semibold text-ink-2">Mode hors ligne</p>
+              <p className="truncate text-ink-5">
+                {pack
+                  ? `Prêt · ${pack.tickets.length} billet${pack.tickets.length > 1 ? "s" : ""} · mis à jour à ${timeOnly.format(new Date(pack.generated_at))}`
+                  : "Paquet non téléchargé"}
+              </p>
+              {packError ? <p className="mt-0.5 text-amber-600">{packError}</p> : null}
+            </div>
+            <button
+              type="button"
+              disabled={packLoading || !online}
+              onClick={() => eventId && refreshPack(eventId)}
+              className="shrink-0 rounded-full border border-hairline-3 px-3 py-1.5 font-semibold text-ink-2 transition-colors hover:border-hairline-5 disabled:opacity-50"
+            >
+              {packLoading ? "Mise à jour…" : "Mettre à jour"}
+            </button>
           </div>
 
           {syncMessage ? <p className="text-center text-xs text-ink-4">{syncMessage}</p> : null}
@@ -380,13 +541,17 @@ export function ScanConsole() {
             <button
               type="button"
               onClick={() => setCameraOn(false)}
-              className="rounded-full border border-hairline-3 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+              className="rounded-full border border-hairline-3 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
             >
               Arrêter la caméra
             </button>
           ) : null}
         </>
-      ) : null}
+      ) : (
+        <p className="rounded-2xl border border-hairline-1 bg-card px-4 py-6 text-center text-sm text-ink-5">
+          Choisissez l&apos;événement à contrôler.
+        </p>
+      )}
     </div>
   );
 }
