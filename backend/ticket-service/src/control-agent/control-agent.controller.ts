@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { ControlAgentService } from './control-agent.service';
-import { AgentEventPayload, AgentSessionPayload, AssignAgentPayload, EventIdPayload } from '../common/payloads';
+import { AgentEventPayload, AgentSessionPayload, AssignAgentPayload, EventIdPayload, UserIdPayload } from '../common/payloads';
 
 @Controller()
 export class ControlAgentController {
@@ -15,6 +15,11 @@ export class ControlAgentController {
   @MessagePattern('ticket.get_agents')
   getByEvent(@Payload() data: EventIdPayload) {
     return this.service.getByEvent(data.event_id);
+  }
+
+  @MessagePattern('ticket.get_agent_events')
+  getAgentEvents(@Payload() data: UserIdPayload) {
+    return this.service.getEventIdsForAgent(data.user_id);
   }
 
   @MessagePattern('ticket.start_session')
