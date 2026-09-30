@@ -55,6 +55,12 @@ export class InviteAgentPayload extends EmailPayload {
   @IsString() @MaxLength(200) organizer_name: string;
 }
 
+export class ResendAgentInvitationPayload extends UserIdPayload {
+  @IsString() @MaxLength(200) event_name: string;
+  @IsString() @MaxLength(100) event_date: string;
+  @IsString() @MaxLength(200) organizer_name: string;
+}
+
 /** Résolution par lot : les identifiants mal formés sont tolérés puis ignorés. */
 export class IdsPayload {
   @IsArray() @IsString({ each: true }) @MaxLength(100, { each: true }) ids: string[];

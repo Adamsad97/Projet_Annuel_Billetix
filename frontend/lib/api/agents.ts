@@ -12,6 +12,7 @@ export interface ApiEventAgent {
   invitation_pending: boolean;
   is_supervisor: boolean;
   assigned_at: string;
+  /** Dernier scan de l'agent pour cet événement. */
   last_activity_at: string | null;
 }
 
@@ -39,6 +40,11 @@ export interface BulkInviteResult {
   /** invited : compte créé et lien envoyé ; assigned : agent existant affecté. */
   status: "invited" | "assigned" | "error";
   message?: string;
+}
+
+/** Nouveau lien d'activation pour un agent qui n'a pas encore choisi son mot de passe. */
+export function resendAgentInvitation(eventId: string, userId: string): Promise<{ success: true }> {
+  return apiPost(`/tickets/event/${eventId}/agents/${userId}/resend-invitation`, {});
 }
 
 /** Plusieurs invitations en un envoi, résultat ligne par ligne. */

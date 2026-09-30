@@ -8,6 +8,7 @@ import {
   inviteEventAgentsBulk,
   listEventAgents,
   removeEventAgent,
+  resendAgentInvitation,
   type ApiEventAgent,
   type BulkInviteResult,
 } from "@/lib/api/agents";
@@ -334,6 +335,8 @@ export function EventAgents({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [dialog, setDialog] = useState<ActionDialogState | null>(null);
+  // Agent dont l'invitation est en cours de renvoi.
+  const [resending, setResending] = useState<string | null>(null);
 
   const load = useCallback(() => {
     listEventAgents(eventId)
@@ -352,7 +355,7 @@ export function EventAgents({
     const name = [agent.first_name, agent.last_name].filter(Boolean).join(" ") || agent.email || "cet agent";
     setDialog({
       title: "Retirer l'agent",
-      message: `${name} ne pourra plus contrôler les billets de cet événement, ni télécharger son paquet hors ligne.`,
+      message: `${name} ne pourra plus contrôler les billets de cet événement, ni utiliser la liste des billets enregistrée sur son téléphone.`,
       confirmLabel: "Retirer",
       danger: true,
       onConfirm: async () => {
@@ -365,6 +368,20 @@ export function EventAgents({
         }
       },
     });
+  }
+
+  async function resend(agent: ApiEventAgent) {
+    const name = [agent.first_name, agent.last_name].filter(Boolean).join(" ") || agent.email || "L'agent";
+    setResending(agent.user_id);
+    try {
+      await resendAgentInvitation(eventId, agent.user_id);
+      setInfo(`Nouvelle invitation envoyée à ${agent.email ?? name}.`);
+    } catch (err) {
+      setInfo(err instanceof ApiError ? err.message : "L'envoi a échoué, veuillez réessayer.");
+      load();
+    } finally {
+      setResending(null);
+    }
   }
 
   const count = agents?.length ?? 0;
@@ -456,10 +473,20 @@ export function EventAgents({
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-600">
                         <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        {agent.last_activity_at ? `Actif · ${dateTime.format(new Date(agent.last_activity_at))}` : "Compte actif"}
+                        {agent.last_activity_at ? `Dernier scan · ${dateTime.format(new Date(agent.last_activity_at))}` : "Compte actif · aucun scan"}
                       </span>
                     )}
                   </p>
+                  {agent.invitation_pending ? (
+                    <button
+                      type="button"
+                      disabled={resending === agent.user_id}
+                      onClick={() => resend(agent)}
+                      className="mt-1.5 text-xs font-medium text-link transition-colors hover:text-link-hover disabled:opacity-50"
+                    >
+                      {resending === agent.user_id ? "Envoi…" : "Renvoyer l'invitation"}
+                    </button>
+                  ) : null}
                 </div>
                 <button
                   type="button"

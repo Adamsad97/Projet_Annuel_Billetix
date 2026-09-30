@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  NotFoundException,
   Body,
   Controller,
   Delete,
@@ -33,7 +34,7 @@ import { RequestTransferRevertDto } from "./dto/transfer-revert.dto";
 import { ScanResult } from "./scan-result.enum";
 import { ReasonDto } from "../common/dto/common.dto";
 import { AssignAgentDto,
-  AssignAgentsBulkDto, EventRefDto, OrderRefDto, RequestResaleDto, ScanTicketDto, SyncOfflineScansDto } from "./dto/ticket-actions.dto";
+  AssignAgentsBulkDto, OrderRefDto, RequestResaleDto, ScanTicketDto, SyncOfflineScansDto } from "./dto/ticket-actions.dto";
 import { BillingDto } from "../order/dto/order.dto";
 import { UuidPipe } from "../common/pipes/uuid.pipe";
 import { EventOwner } from "../common/guards/event-owner.guard";
@@ -1281,6 +1282,37 @@ export class TicketController {
     });
   }
 
+  /**
+   * Nouveau lien d'activation pour un agent qui n'a pas encore choisi son
+   * mot de passe (invitation expirée ou égarée).
+   */
+  @Post("event/:eventId/agents/:userId/resend-invitation")
+  @HttpCode(HttpStatus.OK)
+  @Roles("ORGANIZER")
+  @EventOwner({ param: "eventId" })
+  @ApiOperation({ summary: "Renvoyer l'invitation d'un agent pas encore activé (ORGANIZER)" })
+  async resendAgentInvitation(
+    @CurrentUser() user: JwtPayload,
+    @Param("eventId", UuidPipe) eventId: string,
+    @Param("userId", UuidPipe) userId: string,
+  ) {
+    const agents = await firstValueFrom(
+      this.ticketClient.send<Array<{ user_id: string }>>("ticket.get_agents", { event_id: eventId }),
+    );
+    if (!agents.some((agent) => agent.user_id === userId)) {
+      throw new NotFoundException("Cet agent n'est pas affecté à l'événement.");
+    }
+    const context = await this.agentInvitationContext(user.sub, eventId);
+    return firstValueFrom(
+      this.authClient.send("auth.resend_agent_invitation", {
+        user_id: userId,
+        event_name: context.event_name,
+        event_date: context.event_date,
+        organizer_name: context.organizer_name,
+      }),
+    );
+  }
+
   @Delete("event/:eventId/agents/:userId")
   @HttpCode(HttpStatus.OK)
   @Roles("ORGANIZER")
@@ -1309,40 +1341,6 @@ export class TicketController {
     );
     if (ids.length === 0) return [];
     return firstValueFrom(this.eventClient.send("event.get_by_ids", { ids }));
-  }
-
-  // ─── Agent : session mobile ──────────────────────────────────────────────────
-
-  @Post("session/start")
-  @HttpCode(HttpStatus.OK)
-  @Roles("AGENT", "ORGANIZER")
-  @ApiOperation({ summary: "Démarrer une session de scan mobile" })
-  startSession(
-    @CurrentUser() user: JwtPayload,
-    @Body() dto: EventRefDto,
-  ) {
-    return firstValueFrom(
-      this.ticketClient.send("ticket.start_session", {
-        user_id: user.sub,
-        event_id: dto.event_id,
-      }),
-    );
-  }
-
-  @Post("session/end")
-  @HttpCode(HttpStatus.OK)
-  @Roles("AGENT", "ORGANIZER")
-  @ApiOperation({ summary: "Terminer la session de scan" })
-  endSession(
-    @CurrentUser() user: JwtPayload,
-    @Body() dto: EventRefDto,
-  ) {
-    return firstValueFrom(
-      this.ticketClient.send("ticket.end_session", {
-        user_id: user.sub,
-        event_id: dto.event_id,
-      }),
-    );
   }
 
   // ─── Admin ───────────────────────────────────────────────────────────────────

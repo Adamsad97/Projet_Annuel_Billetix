@@ -953,7 +953,7 @@ describe("AuthService", () => {
     const notif = () => (service as unknown as { notifClient: { emit: jest.Mock } }).notifClient;
 
     it("adresse inconnue : crée un compte AGENT sans mot de passe et envoie le lien pour le choisir", async () => {
-      repo.findOne.mockResolvedValue(null);
+      queryBuilder.getOne.mockResolvedValue(null);
       repo.create.mockImplementation((u: object) => u);
       repo.save.mockImplementation((u: object) => Promise.resolve({ id: "agent-1", ...u }));
       platformConfig.get.mockResolvedValue({ agent_invitation_hours: 72 });
@@ -969,8 +969,10 @@ describe("AuthService", () => {
       );
     });
 
-    it("compte agent existant : affecté et prévenu, sans nouveau lien", async () => {
-      repo.findOne.mockResolvedValue({ id: "agent-2", email: "agent.porte@example.com", first_name: "Awa", role: UserRole.AGENT });
+    it("compte agent actif : affecté et prévenu, sans nouveau lien", async () => {
+      queryBuilder.getOne.mockResolvedValue({
+        id: "agent-2", email: "agent.porte@example.com", first_name: "Awa", role: UserRole.AGENT, password_hash: "hash",
+      });
 
       await expect(service.inviteAgent(invite)).resolves.toEqual({ user_id: "agent-2", created: false });
       expect(repo.save).not.toHaveBeenCalled();
@@ -979,10 +981,49 @@ describe("AuthService", () => {
       expect(sent).not.toHaveProperty("token");
     });
 
+    it("compte agent jamais activé (lien expiré) : nouveau lien envoyé", async () => {
+      queryBuilder.getOne.mockResolvedValue({ id: "agent-3", email: "agent.porte@example.com", first_name: "Awa", role: UserRole.AGENT, password_hash: null });
+      platformConfig.get.mockResolvedValue({ agent_invitation_hours: 72 });
+
+      await expect(service.inviteAgent(invite)).resolves.toEqual({ user_id: "agent-3", created: false });
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(redis.set).toHaveBeenCalledWith(expect.stringMatching(/^reset_password:/), "agent-3", "EX", 72 * 3600);
+      const [, sent] = notif().emit.mock.calls.find(([pattern]) => pattern === "notification.agent_invitation")!;
+      expect(sent).toHaveProperty("token");
+    });
+
     it("refuse l'adresse d'un compte acheteur ou organisateur", async () => {
-      repo.findOne.mockResolvedValue({ id: "buyer-1", role: UserRole.BUYER });
+      queryBuilder.getOne.mockResolvedValue({ id: "buyer-1", role: UserRole.BUYER });
       await expect(service.inviteAgent(invite)).rejects.toMatchObject({ error: { statusCode: 409 } });
       expect(repo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("resendAgentInvitation — renvoi du lien d'activation", () => {
+    const resend = { user_id: "agent-3", event_name: "Concert", event_date: "samedi 24 octobre 2026", organizer_name: "Les Nuits" };
+    const notif = () => (service as unknown as { notifClient: { emit: jest.Mock } }).notifClient;
+
+    it("agent pas encore activé : nouveau lien, valable agent_invitation_hours", async () => {
+      queryBuilder.getOne.mockResolvedValue({ id: "agent-3", email: "a@x.fr", first_name: "Awa", role: UserRole.AGENT, password_hash: null });
+      platformConfig.get.mockResolvedValue({ agent_invitation_hours: 48 });
+
+      await expect(service.resendAgentInvitation(resend)).resolves.toEqual({ success: true });
+      expect(redis.set).toHaveBeenCalledWith(expect.stringMatching(/^reset_password:/), "agent-3", "EX", 48 * 3600);
+      expect(notif().emit).toHaveBeenCalledWith(
+        "notification.agent_invitation",
+        expect.objectContaining({ token: expect.any(String), validHours: 48, eventName: "Concert" }),
+      );
+    });
+
+    it("compte déjà activé : refusé, aucun lien", async () => {
+      queryBuilder.getOne.mockResolvedValue({ id: "agent-3", role: UserRole.AGENT, password_hash: "hash" });
+      await expect(service.resendAgentInvitation(resend)).rejects.toMatchObject({ error: { statusCode: 409 } });
+      expect(redis.set).not.toHaveBeenCalled();
+    });
+
+    it("compte d'un autre rôle : introuvable", async () => {
+      queryBuilder.getOne.mockResolvedValue({ id: "agent-3", role: UserRole.BUYER, password_hash: null });
+      await expect(service.resendAgentInvitation(resend)).rejects.toMatchObject({ error: { statusCode: 404 } });
     });
   });
 });

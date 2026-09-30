@@ -699,9 +699,10 @@ export class AuthService {
 
   /**
    * Agent de contrôle invité par un organisateur, par son adresse email.
-   * Compte agent existant : simplement prévenu de sa nouvelle affectation.
-   * Adresse inconnue : compte AGENT créé sans mot de passe, et lien pour le
-   * choisir (le suivre prouve aussi la maîtrise de l'adresse). Adresse d'un
+   * Compte agent actif : simplement prévenu de sa nouvelle affectation.
+   * Adresse inconnue, ou compte dont le mot de passe n'a jamais été choisi
+   * (lien précédent expiré) : lien pour le choisir (le suivre prouve aussi
+   * la maîtrise de l'adresse). Adresse d'un
    * compte d'un autre rôle : refusée — un agent a un compte dédié, pour ne
    * jamais mêler droits de contrôle et compte acheteur/organisateur.
    */
@@ -714,7 +715,7 @@ export class AuthService {
     organizer_name: string;
   }): Promise<{ user_id: string; created: boolean }> {
     const email = data.email.trim().toLowerCase();
-    let user = await this.userRepo.findOne({ where: { email } });
+    let user = await this.findWithPasswordState("u.email = :email", { email });
     if (user && user.role !== UserRole.AGENT) {
       throw new RpcException({
         statusCode: 409,
@@ -724,8 +725,6 @@ export class AuthService {
     }
 
     const created = !user;
-    let setPasswordToken: string | undefined;
-    let validHours: number | undefined;
     if (!user) {
       const firstName = data.first_name.trim();
       const lastName = data.last_name.trim();
@@ -742,21 +741,66 @@ export class AuthService {
           is_email_verified: false,
         }),
       );
-      validHours = (await this.platformConfig.get()).agent_invitation_hours;
-      setPasswordToken = randomUUID();
-      await this.redis.set(`reset_password:${setPasswordToken}`, user.id, "EX", validHours * 3600);
     }
 
+    const link = user.password_hash ? null : await this.issueAgentPasswordLink(user.id);
+    this.emitAgentInvitation(user, data, link);
+    return { user_id: user.id, created };
+  }
+
+  /**
+   * Nouveau lien pour un agent qui n'a pas encore choisi son mot de passe
+   * (invitation expirée ou égarée). Refusé si le compte est déjà activé.
+   */
+  async resendAgentInvitation(data: {
+    user_id: string;
+    event_name: string;
+    event_date: string;
+    organizer_name: string;
+  }): Promise<{ success: true }> {
+    const user = await this.findWithPasswordState("u.id = :id", { id: data.user_id });
+    if (!user || user.role !== UserRole.AGENT) {
+      throw new RpcException({ statusCode: 404, message: "Agent introuvable." });
+    }
+    if (user.password_hash) {
+      throw new RpcException({
+        statusCode: 409,
+        message: "Cet agent a déjà activé son compte : il se connecte avec son mot de passe.",
+      });
+    }
+    this.emitAgentInvitation(user, data, await this.issueAgentPasswordLink(user.id));
+    return { success: true };
+  }
+
+  /**
+   * Compte avec son mot de passe haché : exclu des lectures par défaut
+   * (select: false), il dit ici si l'agent a déjà activé son compte.
+   */
+  private findWithPasswordState(where: string, params: Record<string, string>): Promise<User | null> {
+    return this.userRepo.createQueryBuilder("u").addSelect("u.password_hash").where(where, params).getOne();
+  }
+
+  /** Lien « choisir mon mot de passe », valable agent_invitation_hours. */
+  private async issueAgentPasswordLink(userId: string): Promise<{ token: string; validHours: number }> {
+    const validHours = (await this.platformConfig.get()).agent_invitation_hours;
+    const token = randomUUID();
+    await this.redis.set(`reset_password:${token}`, userId, "EX", validHours * 3600);
+    return { token, validHours };
+  }
+
+  private emitAgentInvitation(
+    user: User,
+    data: { event_name: string; event_date: string; organizer_name: string },
+    link: { token: string; validHours: number } | null,
+  ): void {
     this.notifClient.emit("notification.agent_invitation", {
       email: user.email,
       firstName: user.first_name,
       eventName: data.event_name,
       eventDate: data.event_date,
       organizerName: data.organizer_name,
-      ...(setPasswordToken ? { token: setPasswordToken, validHours } : {}),
+      ...(link ? { token: link.token, validHours: link.validHours } : {}),
     });
-
-    return { user_id: user.id, created };
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
