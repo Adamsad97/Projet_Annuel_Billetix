@@ -26,6 +26,8 @@ const SELECTED_EVENT_KEY = "billetix_scan_event";
 // Même QR relu par la caméra pendant l'affichage du verdict : ignoré.
 const SAME_CODE_IGNORE_MS = 4000;
 const VERDICT_DISPLAY_MS = 2200;
+// Nombre de scans gardés dans l'historique affiché.
+const HISTORY_SIZE = 30;
 
 type Tone = "success" | "warning" | "danger";
 
@@ -48,6 +50,17 @@ const TONE_STYLES: Record<Tone, string> = {
   warning: "bg-amber-500 text-slate-950",
   danger: "bg-red-600 text-white",
 };
+
+/** Icône du verdict, dessinée (les symboles ✓ ✕ ne sont pas dans toutes les polices). */
+function VerdictIcon({ tone, className = "" }: { tone: Tone; className?: string }) {
+  const path =
+    tone === "success" ? "m5 12.5 4.5 4.5L19 7.5" : tone === "warning" ? "M12 6v8M12 18.5v.01" : "M6.5 6.5l11 11M17.5 6.5l-11 11";
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
+      <path d={path} />
+    </svg>
+  );
+}
 
 interface ScanEvent {
   id: string;
@@ -104,6 +117,7 @@ interface Verdict {
 
 const dateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
 const timeOnly = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" });
+const timeWithSeconds = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
 function readSelectedEvent(): string | null {
   try {
@@ -136,7 +150,8 @@ export function ScanConsole() {
   const [cameraOn, setCameraOn] = useState(false);
   const [verdict, setVerdict] = useState<Verdict | null>(null);
   const [paused, setPaused] = useState(false);
-  const [validated, setValidated] = useState(0);
+  // Scans de cet appareil depuis l'ouverture de la page (le plus récent en tête).
+  const [history, setHistory] = useState<Array<Verdict & { at: number }>>([]);
   const [pending, setPending] = useState(0);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const lastCode = useRef<{ text: string; at: number } | null>(null);
@@ -242,7 +257,7 @@ export function ScanConsole() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- paquet local lu après le montage
     setPack(loadPack(eventId));
     setPending(loadQueue(eventId).length);
-    setValidated(0);
+    setHistory([]);
     setVerdict(null);
     setSyncMessage(null);
     setDetails(null);
@@ -261,6 +276,7 @@ export function ScanConsole() {
 
   function show(next: Verdict) {
     setVerdict(next);
+    setHistory((current) => [{ ...next, at: Date.now() }, ...current].slice(0, HISTORY_SIZE));
     setFlash(true);
     setTimeout(() => setFlash(false), VERDICT_DISPLAY_MS - 200);
     if (typeof navigator.vibrate === "function") navigator.vibrate(next.tone === "success" ? 120 : [90, 60, 90]);
@@ -282,7 +298,6 @@ export function ScanConsole() {
     if (verdictOffline.result === "SUCCESS" && verdictOffline.ticketId) {
       setPending(enqueue(id, { qr_token: text, ticket_id: verdictOffline.ticketId, scanned_at_offline: now.toISOString(), device_info: navigator.userAgent.slice(0, 300) }).length);
       setPack(markUsedInPack(id, verdictOffline.ticketId));
-      setValidated((n) => n + 1);
     }
     show({ ...VERDICTS[verdictOffline.result], code: verdictOffline.result, offline: true });
   }
@@ -304,7 +319,6 @@ export function ScanConsole() {
         const updated = markUsedInPack(eventId, response.ticket_id);
         if (updated) setPack(updated);
       }
-      if (response.result === "SUCCESS") setValidated((n) => n + 1);
       show({
         ...VERDICTS[response.result],
         code: response.result,
@@ -322,6 +336,11 @@ export function ScanConsole() {
   }
 
   const selected = events?.find((e) => e.id === eventId) ?? null;
+  // Erreurs techniques (réseau, navigateur) hors bilan : ce ne sont pas des billets refusés.
+  const judged = history.filter((item) => item.code !== "ERROR");
+  const entered = judged.filter((item) => item.tone === "success").length;
+  const refused = judged.filter((item) => item.tone === "danger").length;
+  const toCheck = judged.filter((item) => item.tone === "warning").length;
   const poster = details?.poster_url ?? selected?.poster_url ?? null;
   const checkpoint = checkpointState(pack);
 
@@ -459,7 +478,7 @@ export function ScanConsole() {
                 className={`absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-3xl px-6 text-center shadow-2xl ${TONE_STYLES[verdict.tone]}`}
               >
                 <span className="flex h-20 w-20 items-center justify-center rounded-full bg-white/20 text-5xl font-black" aria-hidden="true">
-                  {verdict.tone === "success" ? "✓" : verdict.tone === "warning" ? "!" : "✕"}
+                  <VerdictIcon tone={verdict.tone} className="h-3/5 w-3/5" />
                 </span>
                 <p className="text-3xl font-extrabold leading-tight">{verdict.label}</p>
                 {verdict.holder ? <p className="text-lg font-semibold">{verdict.holder}</p> : null}
@@ -479,7 +498,7 @@ export function ScanConsole() {
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base font-black ${TONE_STYLES[verdict.tone]}`}
                   aria-hidden="true"
                 >
-                  {verdict.tone === "success" ? "✓" : verdict.tone === "warning" ? "!" : "✕"}
+                  <VerdictIcon tone={verdict.tone} className="h-3/5 w-3/5" />
                 </span>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-ink-1">
@@ -501,44 +520,83 @@ export function ScanConsole() {
             )}
           </div>
 
-          {/* Bilan de l'appareil */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-hairline-1 bg-card p-4">
-              <p className="text-3xl font-extrabold text-emerald-600">{validated}</p>
-              <p className="text-sm font-semibold text-ink-1">
-                {validated > 1 ? "personnes entrées" : "personne entrée"}
-              </p>
-              <p className="mt-0.5 text-xs text-ink-5">avec cet appareil, depuis l&apos;ouverture de la page</p>
+          {/* Bilan de l'appareil : entrées, refus, cas à vérifier */}
+          <div>
+            <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-ink-5">
+              Bilan de cet appareil
+            </p>
+            <div className="grid grid-cols-3 gap-2.5">
+              {(
+                [
+                  { tone: "success", label: entered > 1 ? "Entrées" : "Entrée", value: entered, color: "text-emerald-600", ring: "border-emerald-500/30" },
+                  { tone: "danger", label: refused > 1 ? "Refusés" : "Refusé", value: refused, color: "text-red-600", ring: "border-red-500/30" },
+                  { tone: "warning", label: "À vérifier", value: toCheck, color: "text-amber-500", ring: "border-amber-500/30" },
+                ] as const
+              ).map((item) => (
+                <div key={item.tone} className={`rounded-2xl border bg-card px-3 py-3 text-center ${item.value > 0 ? item.ring : "border-hairline-1"}`}>
+                  <p className={`text-2xl font-extrabold ${item.value > 0 ? item.color : "text-ink-4"}`}>{item.value}</p>
+                  <p className="text-xs font-semibold text-ink-2">{item.label}</p>
+                </div>
+              ))}
             </div>
-            {pending > 0 ? (
-              <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4">
-                <p className="text-3xl font-extrabold text-amber-500">{pending}</p>
-                <p className="text-sm font-semibold text-ink-1">{pending > 1 ? "entrées à envoyer" : "entrée à envoyer"}</p>
-                <p className="mt-0.5 text-xs text-ink-5">
-                  Validées sans réseau : envoyées automatiquement au retour de la connexion.
-                </p>
-                {online ? (
-                  <button
-                    type="button"
-                    onClick={() => eventId && syncQueue(eventId)}
-                    className="mt-2 text-xs font-semibold text-link hover:text-link-hover"
-                  >
-                    Envoyer maintenant
-                  </button>
-                ) : null}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-hairline-1 bg-card p-4">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600" aria-hidden="true">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m5 12.5 4.5 4.5L19 7.5" />
-                  </svg>
-                </span>
-                <p className="text-sm font-semibold text-ink-1">Tout est envoyé</p>
-                <p className="mt-0.5 text-xs text-ink-5">Aucune entrée en attente d&apos;envoi au serveur.</p>
-              </div>
-            )}
           </div>
+
+          {/* Envoi au serveur des entrées validées sans réseau */}
+          {pending > 0 ? (
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/5 px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink-1">
+                  {pending} {pending > 1 ? "entrées à envoyer" : "entrée à envoyer"}
+                </p>
+                <p className="text-xs text-ink-5">Validées sans réseau : envoyées automatiquement au retour de la connexion.</p>
+              </div>
+              {online ? (
+                <button
+                  type="button"
+                  onClick={() => eventId && syncQueue(eventId)}
+                  className="shrink-0 rounded-full bg-amber-500 px-3 py-1.5 text-xs font-semibold text-slate-950"
+                >
+                  Envoyer
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <p className="flex items-center justify-center gap-1.5 text-xs text-ink-5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-emerald-600">
+                <path d="m5 12.5 4.5 4.5L19 7.5" />
+              </svg>
+              Toutes les entrées sont enregistrées sur le serveur.
+            </p>
+          )}
+
+          {/* Historique des scans */}
+          {history.length > 0 ? (
+            <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+              <p className="border-b border-hairline-1 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-5">
+                Derniers scans
+              </p>
+              <ul className="max-h-80 divide-y divide-hairline-1 overflow-y-auto">
+                {history.map((item, index) => (
+                  <li key={`${item.at}-${index}`} className="flex items-center gap-3 px-4 py-2.5">
+                    <span
+                      aria-hidden="true"
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black ${TONE_STYLES[item.tone]}`}
+                    >
+                      <VerdictIcon tone={item.tone} className="h-3.5 w-3.5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-ink-1">{item.label}</p>
+                      <p className="truncate text-xs text-ink-5">
+                        {item.holder ?? item.hint}
+                        {item.offline ? " · sans réseau" : ""}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-xs tabular-nums text-ink-5">{timeWithSeconds.format(new Date(item.at))}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           {/* Paquet hors ligne */}
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-hairline-1 bg-card px-4 py-3 text-xs">
