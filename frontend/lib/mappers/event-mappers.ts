@@ -173,5 +173,19 @@ export function apiEventToDetail(event: ApiEvent, categories: ApiTicketCategory[
       return from === to ? from : `${from} → ${to}`;
     })(),
     timeRangeLabel: `de ${formatInZone(event.start_date, event.timezone, TIME)} à ${formatInZone(event.end_date, event.timezone, TIME)}`,
+    calendar: {
+      weekday: formatInZone(event.start_date, event.timezone, { weekday: "short" }),
+      day: formatInZone(event.start_date, event.timezone, { day: "numeric" }),
+      month: formatInZone(event.start_date, event.timezone, { month: "short" }),
+    },
+    longDateLabel: formatInZone(event.start_date, event.timezone, {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+    venueCity: event.venue_city,
+    fromPrice: tickets.length > 0 ? Math.min(...tickets.map((t) => t.price)) : null,
+    remaining: totalRemaining,
   };
 }

@@ -38,5 +38,15 @@ export interface EventDetail {
   dateRangeLabel?: string;
   /** Ex. "de 14:00 à 23:00" */
   timeRangeLabel?: string;
+  /** Pavé calendrier de l'en-tête : "sam.", "17", "oct." (fuseau de l'événement). */
+  calendar?: { weekday: string; day: string; month: string };
+  /** Ex. "samedi 17 octobre 2026" */
+  longDateLabel?: string;
+  /** Ville seule (le nom du lieu est dans venueName). */
+  venueCity?: string;
+  /** Prix TTC le plus bas des billets en vente, null s'il n'y en a aucun. */
+  fromPrice?: number | null;
+  /** Places encore disponibles, toutes catégories confondues. */
+  remaining?: number;
 }
 
