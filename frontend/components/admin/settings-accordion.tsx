@@ -10,6 +10,8 @@ import { useEffect, useMemo, useState } from "react";
 import { listPlatformSettings, updatePlatformSetting, type ApiPlatformSetting } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
 import { FIELDS, fromInput, SECTION_ORDER, SECTIONS, settingLabel, toInput } from "@/lib/admin/settings-catalog";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
 interface SectionGroup {
   id: string;
@@ -51,7 +53,7 @@ export function SettingsAccordion() {
   }
 
   if (settings === null) {
-    return <p className="rounded-2xl border border-hairline-1 bg-card px-5 py-6 text-sm text-ink-5">{error ?? "Chargement…"}</p>;
+    return <p className={cardClass("px-5 py-6 text-sm text-ink-5")}>{error ?? "Chargement…"}</p>;
   }
 
   return (
@@ -126,7 +128,7 @@ function SectionPanel({
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+    <section className={cardClass("overflow-hidden")}>
       <button
         type="button"
         onClick={onToggle}
@@ -178,7 +180,7 @@ function SectionPanel({
                       inputMode={isText ? undefined : "decimal"}
                       value={values[setting.key] ?? ""}
                       onChange={(event) => setValues((current) => ({ ...current, [setting.key]: event.target.value }))}
-                      className="w-full rounded-xl border border-hairline-2 bg-hairline-1 px-3.5 py-2.5 text-sm text-ink-1 focus:border-blue-500 focus:outline-none"
+                      className={fieldClass("w-full px-3.5 py-2.5")}
                     />
                     {field?.unit ? <span className="shrink-0 text-xs text-ink-5">{field.unit}</span> : null}
                   </span>

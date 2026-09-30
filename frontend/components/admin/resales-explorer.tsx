@@ -11,10 +11,13 @@ import { DetailDialog, DetailSection } from "@/components/ui/detail-dialog";
 import { listResales, type ApiAdminResale } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
 import { resaleStatusBadge } from "@/lib/mappers/resale-mappers";
+import { euros as currency } from "@/lib/format/money";
+import { dateTime as dateTimeFormatter } from "@/lib/format/dates";
+import { cardClass } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Pagination } from "@/components/ui/pagination";
 
 const PAGE_SIZE = 20;
-const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 const statusFilters = [
   { id: "all", label: "Toutes" },
   { id: "LISTED", label: "En vente" },
@@ -85,7 +88,7 @@ export function ResalesExplorer() {
         {total} annonce{total > 1 ? "s" : ""}
       </p>
 
-      <div className="overflow-x-auto rounded-2xl border border-hairline-1 bg-card">
+      <div className={cardClass("overflow-x-auto")}>
         {resales === null ? (
           <p className="px-5 py-4 text-sm text-ink-5">{error ?? "Chargement…"}</p>
         ) : resales.length === 0 ? (
@@ -110,9 +113,9 @@ export function ResalesExplorer() {
                     <td className="whitespace-nowrap px-5 py-3 font-medium text-ink-1">{resale.ticket_reference ?? "—"}</td>
                     <td className="px-5 py-3 text-ink-3">{resale.event_name ?? "—"}</td>
                     <td className="px-5 py-3">
-                      <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${badge.className}`}>
+                      <Badge tone={badge.className} size="md" className="whitespace-nowrap ring-1 ring-inset">
                         {badge.label}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="px-5 py-3 text-right">
                       <button
@@ -131,29 +134,7 @@ export function ResalesExplorer() {
         )}
       </div>
 
-      {pageCount > 1 ? (
-        <div className="flex items-center justify-center gap-3 text-sm">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((current) => current - 1)}
-            className="rounded-full border border-hairline-3 px-4 py-1.5 text-ink-3 disabled:opacity-40"
-          >
-            ← Précédent
-          </button>
-          <span className="text-ink-5">
-            Page {page} / {pageCount}
-          </span>
-          <button
-            type="button"
-            disabled={page >= pageCount}
-            onClick={() => setPage((current) => current + 1)}
-            className="rounded-full border border-hairline-3 px-4 py-1.5 text-ink-3 disabled:opacity-40"
-          >
-            Suivant →
-          </button>
-        </div>
-      ) : null}
+      <Pagination page={page} pageCount={pageCount} onChange={setPage} />
 
       <DetailDialog
         open={selected !== null}

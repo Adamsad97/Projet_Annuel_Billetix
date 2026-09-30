@@ -1,8 +1,9 @@
 import { payoutStatusBadge } from "@/lib/constants/dashboard-finances";
 import type { ApiPayout } from "@/lib/api/organizer";
-
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+import { euros as currency } from "@/lib/format/money";
+import { longDate as dateFormatter } from "@/lib/format/dates";
+import { buttonClass } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export function FinanceRow({
   payout,
@@ -21,9 +22,9 @@ export function FinanceRow({
       <div>
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-bold text-ink-1">{payout.event_title ?? "Événement"}</p>
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}>
+          <Badge tone={badge.className}>
             {badge.label}
-          </span>
+          </Badge>
           {payout.requested_early_at ? (
             <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-xs font-medium text-accent ring-1 ring-inset ring-blue-500/30">
               Anticipé demandé
@@ -57,7 +58,7 @@ export function FinanceRow({
             type="button"
             onClick={() => onRequestEarly(payout.id)}
             disabled={busy}
-            className="rounded-full border border-hairline-3 px-3 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-50"
+            className={buttonClass("secondary", "rounded-full px-3 py-1.5 text-xs disabled:opacity-50")}
           >
             Demander un versement anticipé
           </button>

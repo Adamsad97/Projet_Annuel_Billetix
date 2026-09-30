@@ -2,8 +2,7 @@ import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import { PosterViewer } from "@/components/event-detail/poster-viewer";
 import { EventStartCountdown } from "@/components/event-detail/event-start-countdown";
 import type { EventDetail } from "@/lib/constants/event-details";
-
-const priceFormatter = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+import { euros as priceFormatter } from "@/lib/format/money";
 
 /** Libellé du prix d'appel : « Entrée gratuite », « 25,00 € », ou rien. */
 export function fromPriceLabel(price: number | null | undefined): string | null {

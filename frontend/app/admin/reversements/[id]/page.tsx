@@ -5,7 +5,6 @@
 // défaut — select: false) — câblée sur GET /admin/payouts/:id.
 
 import { use, useEffect, useState } from "react";
-import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { payoutStatusBadge } from "@/components/admin/payout-row";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
@@ -18,9 +17,13 @@ import {
   type ApiPayoutDetail,
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
-
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+import { euros as currency } from "@/lib/format/money";
+import { longDate as dateFormatter } from "@/lib/format/dates";
+import { Alert } from "@/components/ui/alert";
+import { BackLink } from "@/components/ui/back-link";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { cardClass } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -129,21 +132,16 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
 
   return (
     <AdminShell active="/admin/reversements">
-      <Link
-        href="/admin/reversements"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
-      >
-        ← Reversements
-      </Link>
+      <BackLink href="/admin/reversements">Reversements</BackLink>
 
       {error ? (
-        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">{error}</div>
+        <Alert className="mb-6">{error}</Alert>
       ) : null}
 
       {payout === undefined ? (
-        <p className="text-center text-sm text-ink-5">Chargement…</p>
+        <MutedMessage />
       ) : payout === null ? (
-        <div className="rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+        <div className={cardClass("p-8 text-center")}>
           <div className="mb-3 text-4xl">💸</div>
           <h1 className="text-lg font-bold text-ink-1">Reversement introuvable</h1>
         </div>
@@ -157,9 +155,9 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
               <p className="text-sm text-ink-5">
                 {payout.organizer_email} · Prévu le {dateFormatter.format(new Date(payout.scheduled_at))}
               </p>
-              <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${payoutStatusBadge[payout.status].className}`}>
+              <Badge tone={payoutStatusBadge[payout.status].className} className="mt-2 inline-block">
                 {payoutStatusBadge[payout.status].label}
-              </span>
+              </Badge>
               {payout.requested_early_at && !payout.early_request_approved_by ? (
                 <span className="ml-2 inline-block rounded-full bg-blue-500/15 px-2.5 py-0.5 text-xs font-medium text-accent ring-1 ring-inset ring-blue-500/30">
                   Demande de reversement anticipé en attente
@@ -169,7 +167,7 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
             <span className="text-2xl font-bold text-ink-1">{currency.format(payout.net_amount)}</span>
           </div>
 
-          <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+          <div className={cardClass("p-5")}>
             <h2 className="mb-3 text-sm font-semibold text-ink-2">Détail du calcul</h2>
             <div className="flex flex-col gap-2 text-sm">
               <div className="flex items-center justify-between">

@@ -1,0 +1,33 @@
+import { buttonClass } from "@/components/ui/button";
+
+// Bouton « Afficher plus » sous une liste chargée par pages.
+
+export function LoadMoreButton({
+  onClick,
+  loading = false,
+  remaining,
+  label = "Afficher plus",
+}: {
+  onClick: () => void;
+  loading?: boolean;
+  /** Nombre d'éléments pas encore affichés, si connu. */
+  remaining?: number;
+  label?: string;
+}) {
+  return (
+    <div className="flex justify-center">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={loading}
+        className={buttonClass("secondary", "rounded-full px-6 py-2.5 text-sm disabled:opacity-50")}
+      >
+        {loading
+          ? "Chargement…"
+          : remaining !== undefined
+            ? `${label} (${remaining} restant${remaining > 1 ? "s" : ""})`
+            : label}
+      </button>
+    </div>
+  );
+}

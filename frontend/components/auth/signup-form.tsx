@@ -13,6 +13,10 @@ import {
 } from "@/lib/auth/password-policy";
 import { ageInYears, underageMessage } from "@/lib/auth/age";
 import { useRegistrationPolicy } from "@/lib/auth/use-registration-policy";
+import { FormError } from "@/components/ui/alert";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
 // Même mécanisme que login-form.tsx : oauthLogin() (auth-service) crée le
 // compte s'il n'existe pas déjà — inscription et connexion partagent le
@@ -110,7 +114,7 @@ export function SignupForm() {
 
   if (success) {
     return (
-      <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+      <div className={cardClass("w-full max-w-md p-8 text-center")}>
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">
           ✓
         </div>
@@ -121,7 +125,7 @@ export function SignupForm() {
         </p>
         <Link
           href="/connexion"
-          className="mt-5 inline-block rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
+          className={buttonClass("primary", "mt-5 inline-block rounded-full px-5 py-2.5 text-sm")}
         >
           Aller à la connexion →
         </Link>
@@ -130,7 +134,7 @@ export function SignupForm() {
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8">
+    <div className={cardClass("w-full max-w-md p-8")}>
       <div className="mb-6 text-center">
         <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">
           Créer un compte <span>✨</span>
@@ -195,9 +199,9 @@ export function SignupForm() {
       </div>
 
       {error ? (
-        <div className="mb-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-inset ring-red-500/30">
+        <FormError>
           {error}
-        </div>
+        </FormError>
       ) : null}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -213,7 +217,7 @@ export function SignupForm() {
               value={firstName}
               onChange={(event) => setFirstName(event.target.value)}
               placeholder="Jean"
-              className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+              className={fieldClass("px-4 py-3")}
             />
           </label>
           <label className="flex flex-col gap-1.5">
@@ -227,7 +231,7 @@ export function SignupForm() {
               value={lastName}
               onChange={(event) => setLastName(event.target.value)}
               placeholder="Dupont"
-              className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+              className={fieldClass("px-4 py-3")}
             />
           </label>
         </div>
@@ -245,7 +249,7 @@ export function SignupForm() {
             onChange={(event) => setBirthDate(event.target.value)}
             aria-invalid={underage}
             aria-describedby={underage ? "underage-message" : undefined}
-            className={`rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none ${underage ? "border-danger" : ""}`}
+            className={fieldClass(`px-4 py-3 ${underage ? "border-danger" : ""}`)}
           />
           {underage ? (
             <p
@@ -268,7 +272,7 @@ export function SignupForm() {
             name="email"
             required
             placeholder="jean@email.com"
-            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+            className={fieldClass("px-4 py-3")}
           />
         </label>
 
@@ -283,7 +287,7 @@ export function SignupForm() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder={`${minLength} caractères minimum`}
-            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+            className={fieldClass("px-4 py-3")}
           />
         </label>
 
@@ -298,7 +302,7 @@ export function SignupForm() {
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             placeholder="••••••••••••"
-            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+            className={fieldClass("px-4 py-3")}
           />
         </label>
 
@@ -311,7 +315,7 @@ export function SignupForm() {
         <button
           type="submit"
           disabled={loading || underage || !passwordValid || password !== confirmPassword}
-          className="mt-1 w-full rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className={buttonClass("primary", "mt-1 w-full rounded-xl py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
         >
           {loading ? "Création du compte…" : "Créer mon compte →"}
         </button>

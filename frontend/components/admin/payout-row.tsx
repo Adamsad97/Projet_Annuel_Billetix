@@ -1,5 +1,8 @@
 import Link from "next/link";
 import type { ApiPayout, ApiPayoutStatus } from "@/lib/api/admin";
+import { euros as currency } from "@/lib/format/money";
+import { longDate as dateFormatter } from "@/lib/format/dates";
+import { Badge } from "@/components/ui/badge";
 
 export const payoutStatusBadge: Record<ApiPayoutStatus, { label: string; className: string }> = {
   PENDING: { label: "⏳ En attente", className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30" },
@@ -8,9 +11,6 @@ export const payoutStatusBadge: Record<ApiPayoutStatus, { label: string; classNa
   BLOCKED: { label: "⛔ Bloqué", className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
   FAILED: { label: "✕ Échoué", className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
 };
-
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
 export function PayoutRow({
   payout,
@@ -35,7 +35,7 @@ export function PayoutRow({
           <p className="text-sm font-bold text-ink-1">
             {payout.event_name} — {payout.organizer_name}
           </p>
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}>{badge.label}</span>
+          <Badge tone={badge.className}>{badge.label}</Badge>
           {awaitingEarlyApproval ? (
             <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-xs font-medium text-accent ring-1 ring-inset ring-blue-500/30">
               Demande anticipée

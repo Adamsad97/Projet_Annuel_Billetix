@@ -5,7 +5,8 @@
 // montré qu'à la demande. Même habillage qu'ActionDialog ; Échap ou un clic
 // à l'extérieur ferme la fenêtre.
 
-import { useEffect, useId, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
+import { Modal } from "@/components/ui/modal";
 
 export function DetailDialog({
   open,
@@ -24,27 +25,9 @@ export function DetailDialog({
 }) {
   const titleId = useId();
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/70 p-4 sm:p-6"
-    >
+    <Modal open={open} onClose={onClose} labelledBy={titleId} className="cursor-pointer bg-black/70 p-4 sm:p-6">
       <div
-        onClick={(event) => event.stopPropagation()}
         className="flex max-h-full w-full max-w-lg cursor-auto flex-col rounded-2xl border border-hairline-2 bg-card shadow-2xl"
       >
         <div className="flex items-start justify-between gap-4 border-b border-hairline-1 px-6 py-4">
@@ -66,7 +49,7 @@ export function DetailDialog({
         <div className="overflow-y-auto px-6 py-4">{children}</div>
         {footer ? <div className="flex flex-wrap justify-end gap-2 border-t border-hairline-1 px-6 py-4">{footer}</div> : null}
       </div>
-    </div>
+    </Modal>
   );
 }
 

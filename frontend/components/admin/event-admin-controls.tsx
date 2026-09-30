@@ -23,6 +23,8 @@ import {
   type ApiCancellationRequest,
 } from "@/lib/api/cancellation";
 import { ApiError } from "@/lib/api/http-error";
+import { Alert } from "@/components/ui/alert";
+import { cardClass } from "@/components/ui/card";
 
 const buttonClass =
   "rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-50";
@@ -143,7 +145,7 @@ export function EventAdminControls({ event, onChanged }: { event: ApiAdminEvent;
   return (
     <>
       {error ? (
-        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">{error}</div>
+        <Alert className="mb-6">{error}</Alert>
       ) : null}
 
       {event.status === "SUSPENDED" ? (
@@ -159,7 +161,7 @@ export function EventAdminControls({ event, onChanged }: { event: ApiAdminEvent;
         </div>
       ) : null}
 
-      <section className="mb-6 rounded-2xl border border-hairline-1 bg-card p-5">
+      <section className={cardClass("mb-6 p-5")}>
         <h2 className="mb-1 text-sm font-semibold text-ink-2">Gestion de l&apos;événement</h2>
         <p className="mb-4 text-xs text-ink-5">
           {isClosed ? "Cet événement est clos : aucune action n'est possible." : "Chaque action est enregistrée dans le journal d'audit."}

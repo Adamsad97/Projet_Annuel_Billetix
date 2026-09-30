@@ -1,6 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { FileDropzone } from "@/components/ui/file-dropzone";
+
+const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
+const MAX_SIZE = 5 * 1024 * 1024; // aligné sur la passerelle (POST /upload/image)
 
 export function PosterDropzone({
   onFileSelected,
@@ -9,59 +13,42 @@ export function PosterDropzone({
   onFileSelected: (file: File) => void;
   initialPreviewUrl?: string | null;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(initialPreviewUrl ?? null);
-  const [isDragging, setIsDragging] = useState(false);
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
 
-  function handleFiles(files: FileList | null) {
-    const file = files?.[0];
-    if (!file) return;
-    setFileName(file.name);
-    setPreviewUrl(URL.createObjectURL(file));
-    onFileSelected(file);
-  }
+  // Libère l'aperçu local précédent quand un autre fichier est choisi.
+  useEffect(() => () => {
+    if (localPreview) URL.revokeObjectURL(localPreview);
+  }, [localPreview]);
+
+  const previewUrl = localPreview ?? initialPreviewUrl ?? null;
 
   return (
-    <div
-      onClick={() => inputRef.current?.click()}
-      onDragOver={(event) => {
-        event.preventDefault();
-        setIsDragging(true);
+    <FileDropzone
+      accept={ACCEPTED}
+      maxBytes={MAX_SIZE}
+      formatsLabel="JPEG, PNG ou WebP"
+      className="py-10"
+      onFileSelected={(file) => {
+        if (!file) return;
+        setLocalPreview(URL.createObjectURL(file));
+        onFileSelected(file);
       }}
-      onDragLeave={() => setIsDragging(false)}
-      onDrop={(event) => {
-        event.preventDefault();
-        setIsDragging(false);
-        handleFiles(event.dataTransfer.files);
-      }}
-      className={
-        isDragging
-          ? "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-blue-500 bg-blue-500/5 py-10 text-center"
-          : "flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-hairline-2 bg-hairline-1 py-10 text-center transition-colors hover:border-hairline-4"
-      }
     >
-      {previewUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- aperçu local (blob:) avant upload, next/image ne le gère pas
-        <img src={previewUrl} alt="Aperçu de l'affiche" className="mb-2 max-h-32 rounded-lg object-contain" />
-      ) : (
-        <span className="text-2xl">🖼️</span>
+      {(file) => (
+        <>
+          {previewUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- aperçu local (blob:) avant upload, next/image ne le gère pas
+            <img src={previewUrl} alt="Aperçu de l'affiche" className="mb-2 max-h-32 rounded-lg object-contain" />
+          ) : (
+            <span className="text-2xl">🖼️</span>
+          )}
+          {file ? (
+            <span className="text-sm font-medium text-accent">{file.name}</span>
+          ) : (
+            <span className="text-sm text-ink-5">Glissez votre affiche ou cliquez — JPG, PNG ou WebP, 5 Mo max</span>
+          )}
+        </>
       )}
-      {fileName ? (
-        <span className="text-sm font-medium text-accent">{fileName}</span>
-      ) : (
-        <span className="text-sm text-ink-5">
-          Glissez votre affiche ou cliquez — JPG/PNG max 5 Mo
-        </span>
-      )}
-
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={(event) => handleFiles(event.target.files)}
-      />
-    </div>
+    </FileDropzone>
   );
 }

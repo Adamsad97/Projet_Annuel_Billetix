@@ -1,6 +1,8 @@
 import type { ApiEvent, ApiTicketCategory } from "@/lib/api/events";
 import { apiCategoryMeta, type MockEvent } from "@/lib/constants/events";
 import type { EventDetail, TicketOption } from "@/lib/constants/event-details";
+import { euros as currency } from "@/lib/format/money";
+import { time as timeFormatter } from "@/lib/format/dates";
 
 const dayFormatter = new Intl.DateTimeFormat("fr-FR", { day: "2-digit" });
 const monthFormatter = new Intl.DateTimeFormat("fr-FR", { month: "short" });
@@ -10,12 +12,6 @@ const fullDateFormatter = new Intl.DateTimeFormat("fr-FR", {
   month: "long",
   year: "numeric",
 });
-const timeFormatter = new Intl.DateTimeFormat("fr-FR", {
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 
 function lowestPrice(categories: ApiTicketCategory[]): number | null {
   const activePrices = categories

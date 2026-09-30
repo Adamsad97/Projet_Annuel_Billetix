@@ -15,6 +15,7 @@ import { getEventDashboardDetail } from "@/lib/api/events";
 import { listCategories, type ApiCategory } from "@/lib/api/categories";
 import type { ApiEvent } from "@/lib/api/events";
 import { ApiError } from "@/lib/api/http-error";
+import { MutedMessage } from "@/components/ui/muted-message";
 
 export default function ModifierEvenementPage({
   params,
@@ -64,11 +65,11 @@ export default function ModifierEvenementPage({
         ) : null}
 
         {event === undefined ? (
-          <p className="text-center text-sm text-ink-5">Chargement…</p>
+          <MutedMessage />
         ) : event === null ? (
-          <p className="text-center text-sm text-ink-5">
+          <MutedMessage>
             Cet événement n&apos;existe pas ou n&apos;appartient pas à votre compte.
-          </p>
+          </MutedMessage>
         ) : (
           <EditEventForm event={event} categories={categories} />
         )}

@@ -8,6 +8,10 @@ import { resetPassword } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/http-error";
 import { evaluatePassword } from "@/lib/auth/password-policy";
 import { useRegistrationPolicy } from "@/lib/auth/use-registration-policy";
+import { FormError } from "@/components/ui/alert";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
 export function ResetPasswordForm({ token }: { token: string | null }) {
   const [done, setDone] = useState(false);
@@ -53,7 +57,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
 
   if (done) {
     return (
-      <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+      <div className={cardClass("w-full max-w-md p-8 text-center")}>
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">
           ✓
         </div>
@@ -63,7 +67,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
         </p>
         <Link
           href="/connexion"
-          className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
+          className={buttonClass("primary", "mt-6 inline-flex w-full items-center justify-center rounded-xl py-3 text-sm")}
         >
           Se connecter
         </Link>
@@ -72,7 +76,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8">
+    <div className={cardClass("w-full max-w-md p-8")}>
       <div className="mb-6 text-center">
         <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">
           Nouveau mot de passe <span>🔑</span>
@@ -83,19 +87,19 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
       </div>
 
       {!token ? (
-        <div className="mb-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-inset ring-red-500/30">
-          Ce lien est invalide ou incomplet — redemande un email depuis{" "}
+        <FormError>
+          Ce lien est invalide ou incomplet — demandez un nouvel email depuis{" "}
           <Link href="/mot-de-passe-oublie" className="font-medium underline">
             mot de passe oublié
           </Link>
           .
-        </div>
+        </FormError>
       ) : null}
 
       {error ? (
-        <div className="mb-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-inset ring-red-500/30">
+        <FormError>
           {error}
-        </div>
+        </FormError>
       ) : null}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -110,7 +114,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder={`${minLength} caractères minimum`}
-            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+            className={fieldClass("px-4 py-3")}
           />
         </label>
 
@@ -125,7 +129,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             placeholder="••••••••••••"
-            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+            className={fieldClass("px-4 py-3")}
           />
         </label>
 
@@ -138,7 +142,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
         <button
           type="submit"
           disabled={loading || !token || !passwordValid || password !== confirmPassword}
-          className="mt-1 w-full rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className={buttonClass("primary", "mt-1 w-full rounded-xl py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
         >
           {loading ? "Réinitialisation…" : "Réinitialiser le mot de passe →"}
         </button>

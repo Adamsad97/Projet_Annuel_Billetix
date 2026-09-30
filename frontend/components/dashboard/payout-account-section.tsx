@@ -8,6 +8,8 @@ import {
   type ApiConnectStatus,
 } from "@/lib/api/stripe-connect";
 import { ApiError } from "@/lib/api/http-error";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
 
 type Badge = { label: string; className: string };
 
@@ -77,7 +79,7 @@ export function PayoutAccountSection() {
   const badge = status ? badgeFor(status) : null;
 
   return (
-    <section className="rounded-2xl border border-hairline-1 bg-card p-6">
+    <section className={cardClass("p-6")}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold text-ink-1">Compte de reversement</h2>
         {badge ? <span className={`rounded-full px-3 py-1 text-xs font-semibold ${badge.className}`}>{badge.label}</span> : null}
@@ -137,7 +139,7 @@ export function PayoutAccountSection() {
                 type="button"
                 disabled={redirecting}
                 onClick={() => goTo(openConnectDashboard)}
-                className="rounded-full border border-hairline-3 px-5 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-50"
+                className={buttonClass("secondary", "rounded-full px-5 py-2.5 text-sm disabled:opacity-50")}
               >
                 {redirecting ? "Redirection…" : "Gérer sur Stripe ↗"}
               </button>
@@ -147,7 +149,7 @@ export function PayoutAccountSection() {
                 type="button"
                 disabled={redirecting}
                 onClick={() => goTo(startConnectOnboarding)}
-                className="rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className={buttonClass("primary", "rounded-full px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50")}
               >
                 {redirecting
                   ? "Redirection vers Stripe…"

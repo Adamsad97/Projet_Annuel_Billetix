@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ApiPendingEvent } from "@/lib/api/admin";
-
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+import { longDate as dateFormatter } from "@/lib/format/dates";
 
 export function ValidationRow({
   event,

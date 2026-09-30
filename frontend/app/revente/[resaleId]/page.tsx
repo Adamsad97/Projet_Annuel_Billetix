@@ -9,6 +9,8 @@ import { use, useEffect, useState } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { ResaleCheckoutFlow } from "@/components/resale/resale-checkout-flow";
 import { getResaleListing, type ApiResaleListing } from "@/lib/api/resale";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { cardClass } from "@/components/ui/card";
 
 export default function ResaleCheckoutPage({
   params,
@@ -48,9 +50,9 @@ export default function ResaleCheckoutPage({
         </div>
 
         {listing === undefined ? (
-          <p className="text-center text-sm text-ink-5">Chargement de l&apos;annonce…</p>
+          <MutedMessage>Chargement de l&apos;annonce…</MutedMessage>
         ) : !listing ? (
-          <div className="mx-auto max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+          <div className={cardClass("mx-auto max-w-md p-8 text-center")}>
             <div className="mb-3 text-4xl">🎫</div>
             <h1 className="text-lg font-bold text-ink-1">Annonce introuvable</h1>
             <p className="mt-2 text-sm text-ink-5">
@@ -58,7 +60,7 @@ export default function ResaleCheckoutPage({
             </p>
           </div>
         ) : listing.status !== "LISTED" ? (
-          <div className="mx-auto max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+          <div className={cardClass("mx-auto max-w-md p-8 text-center")}>
             <div className="mb-3 text-4xl">🎫</div>
             <h1 className="text-lg font-bold text-ink-1">Cette annonce n&apos;est plus disponible</h1>
             <p className="mt-2 text-sm text-ink-5">

@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { AuthHeader } from "@/components/layout/auth-header";
 import { CreateEventForm } from "@/components/create-event/create-event-form";
 import { listCategories } from "@/lib/api/categories";
 import { listTicketTierTypes } from "@/lib/api/ticket-tier-types";
+import { BackLink } from "@/components/ui/back-link";
 
 // Bug corrigé : sans ça, `next build` fige cette page au moment du build,
 // API injoignable → liste vide servie à tout le monde, indéfiniment.
@@ -20,12 +20,7 @@ export default async function CreerEvenementPage() {
       <AuthHeader />
 
       <main className="flex-1 px-6 py-10">
-        <Link
-          href="/dashboard"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
-        >
-          ← Dashboard
-        </Link>
+        <BackLink href="/dashboard">Dashboard</BackLink>
 
         <div className="mb-10 text-center">
           <h1 className="text-2xl font-bold text-ink-1">Créer un événement</h1>

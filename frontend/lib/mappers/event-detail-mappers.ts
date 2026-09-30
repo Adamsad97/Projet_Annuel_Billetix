@@ -3,6 +3,7 @@
 // et AttendeesExplorer.
 
 import type { ApiTicket } from "@/lib/api/tickets";
+import { longDate as dateFormatter } from "@/lib/format/dates";
 
 export interface Attendee {
   id: string;
@@ -14,8 +15,6 @@ export interface Attendee {
   purchasedLabel: string;
   purchasedAt: string;
 }
-
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
 export function apiTicketToAttendee(ticket: ApiTicket): Attendee {
   let status: Attendee["status"] = "pending";

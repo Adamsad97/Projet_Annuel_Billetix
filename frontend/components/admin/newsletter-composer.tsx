@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import { getNewsletterRecipientsCount, sendNewsletter } from "@/lib/api/admin-newsletter";
 import { ApiError } from "@/lib/api/http-error";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
+import { Alert } from "@/components/ui/alert";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
 export function NewsletterComposer() {
   const [recipientsCount, setRecipientsCount] = useState<number | null>(null);
@@ -86,7 +90,7 @@ export function NewsletterComposer() {
     <div className="flex flex-col gap-6">
       <ActionDialog state={dialog} onClose={() => setDialog(null)} />
 
-      <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+      <div className={cardClass("p-5")}>
         <p className="text-xs uppercase tracking-wide text-ink-5">Destinataires</p>
         <p className="mt-1 text-2xl font-bold text-ink-1">
           {recipientsCount === null ? "…" : recipientsCount}
@@ -97,20 +101,20 @@ export function NewsletterComposer() {
       </div>
 
       {result ? (
-        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-5 py-4 text-sm text-emerald-300">
+        <Alert tone="success">
           ✓ Newsletter envoyée à {result.sent} destinataire{result.sent === 1 ? "" : "s"}.
-        </div>
+        </Alert>
       ) : null}
 
       {error ? (
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">
+        <Alert>
           {error}
-        </div>
+        </Alert>
       ) : null}
 
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col gap-4 rounded-2xl border border-hairline-1 bg-card p-6"
+        className={cardClass("flex flex-col gap-4 p-6")}
       >
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-accent/80">Sujet</span>
@@ -120,7 +124,7 @@ export function NewsletterComposer() {
             value={subject}
             onChange={(event) => setSubject(event.target.value)}
             placeholder="Les nouveautés BilletiX du mois"
-            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+            className={fieldClass("px-4 py-3")}
           />
         </label>
 
@@ -132,14 +136,14 @@ export function NewsletterComposer() {
             value={body}
             onChange={(event) => setBody(event.target.value)}
             placeholder="Écrivez le contenu de votre newsletter ici…"
-            className="resize-none rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+            className={fieldClass("resize-none px-4 py-3")}
           />
         </label>
 
         <button
           type="submit"
           disabled={sending || !subject.trim() || !body.trim() || recipientsCount === 0}
-          className="mt-1 w-full rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className={buttonClass("primary", "mt-1 w-full rounded-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-40")}
         >
           {sending ? "Envoi en cours…" : "Envoyer la newsletter →"}
         </button>

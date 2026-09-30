@@ -8,8 +8,8 @@ import { AdminShell } from "@/components/layout/admin-shell";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { PayoutsExplorer } from "@/components/admin/payouts-explorer";
 import { getPayoutStats } from "@/lib/api/admin";
-
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+import { euros as currency } from "@/lib/format/money";
+import { cardClass } from "@/components/ui/card";
 
 export default function AdminPayoutsPage() {
   const [stats, setStats] = useState<{ pending_total: number; paid_this_month_total: number; blocked_total: number } | null>(null);
@@ -41,7 +41,7 @@ export default function AdminPayoutsPage() {
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats === null
           ? [0, 1, 2].map((i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl border border-hairline-1 bg-card" />
+              <div key={i} className={cardClass("h-24 animate-pulse")} />
             ))
           : cards.map((stat) => <AdminStatCard key={stat.id} stat={stat} />)}
       </div>

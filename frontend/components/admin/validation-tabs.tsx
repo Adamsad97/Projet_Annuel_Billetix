@@ -16,6 +16,8 @@ import {
 } from "@/lib/api/admin";
 import { auditLogToValidationHistoryEntry, type ValidationHistoryEntry } from "@/lib/mappers/admin-mappers";
 import { ApiError } from "@/lib/api/http-error";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { cardClass } from "@/components/ui/card";
 
 async function loadHistory(
   action: "EVENT_APPROVED" | "EVENT_REJECTED",
@@ -132,12 +134,12 @@ export function ValidationTabs() {
         <p className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-300">{error}</p>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+      <div className={cardClass("overflow-hidden")}>
         {tab === "pending" ? (
           pending === undefined ? (
-            <p className="px-5 py-8 text-center text-sm text-ink-5">Chargement…</p>
+            <MutedMessage variant="list" />
           ) : pending.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-ink-5">Aucun événement en attente.</p>
+            <MutedMessage variant="list">Aucun événement en attente.</MutedMessage>
           ) : (
             pending.map((event) => (
               <ValidationRow
@@ -155,9 +157,9 @@ export function ValidationTabs() {
 
         {tab === "approved" ? (
           approved === undefined ? (
-            <p className="px-5 py-8 text-center text-sm text-ink-5">Chargement…</p>
+            <MutedMessage variant="list" />
           ) : approved.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-ink-5">Aucun événement validé récemment.</p>
+            <MutedMessage variant="list">Aucun événement validé récemment.</MutedMessage>
           ) : (
             approved.map((entry) => <ValidationHistoryRow key={entry.id} entry={entry} outcome="approved" />)
           )
@@ -165,9 +167,9 @@ export function ValidationTabs() {
 
         {tab === "rejected" ? (
           rejected === undefined ? (
-            <p className="px-5 py-8 text-center text-sm text-ink-5">Chargement…</p>
+            <MutedMessage variant="list" />
           ) : rejected.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-ink-5">Aucun événement rejeté récemment.</p>
+            <MutedMessage variant="list">Aucun événement rejeté récemment.</MutedMessage>
           ) : (
             rejected.map((entry) => <ValidationHistoryRow key={entry.id} entry={entry} outcome="rejected" />)
           )

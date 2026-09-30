@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
+import { buttonClass } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
@@ -16,7 +17,7 @@ export default function NotFound() {
         </p>
         <Link
           href="/"
-          className="mt-2 rounded-full bg-blue-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
+          className={buttonClass("primary", "mt-2 rounded-full px-6 py-3 text-sm")}
         >
           Retour à l&apos;accueil
         </Link>

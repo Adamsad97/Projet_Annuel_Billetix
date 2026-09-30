@@ -13,9 +13,14 @@ import {
   type CancellationStatus,
 } from "@/lib/api/cancellation";
 import { ApiError } from "@/lib/api/http-error";
+import { dateTime } from "@/lib/format/dates";
+import { Alert } from "@/components/ui/alert";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { cardClass } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { LoadMoreButton } from "@/components/ui/load-more-button";
 
 const PAGE_SIZE = 50;
-const dateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
 
 const statusFilters: { id: "all" | CancellationStatus; label: string }[] = [
   { id: "PENDING", label: "En attente" },
@@ -64,7 +69,7 @@ export function CancellationRequestsExplorer() {
       <FilterPills options={statusFilters} active={status} onChange={(id) => setStatus(id as "all" | CancellationStatus)} />
 
       {error ? (
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">{error}</div>
+        <Alert>{error}</Alert>
       ) : null}
 
       {requests ? (
@@ -73,13 +78,13 @@ export function CancellationRequestsExplorer() {
         </p>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+      <div className={cardClass("overflow-hidden")}>
         {requests === null ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-5">Chargement…</p>
+          <MutedMessage variant="list" />
         ) : requests.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-5">
+          <MutedMessage variant="list">
             {status === "PENDING" ? "Aucune demande en attente." : "Aucune demande dans cette catégorie."}
-          </p>
+          </MutedMessage>
         ) : (
           requests.map((request) => {
             const badge = cancellationStatusLabels[request.status];
@@ -92,7 +97,7 @@ export function CancellationRequestsExplorer() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-bold text-ink-1">{request.event_title ?? "Événement"}</p>
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.className}`}>{badge.label}</span>
+                    <Badge tone={badge.className}>{badge.label}</Badge>
                   </div>
                   <p className="mt-0.5 text-xs text-ink-5">
                     {request.organizer_name ?? "Organisateur"} · demandée le {dateTime.format(new Date(request.created_at))} ·{" "}
@@ -117,16 +122,7 @@ export function CancellationRequestsExplorer() {
       </div>
 
       {requests && requests.length < total ? (
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={loadMore}
-            disabled={loadingMore}
-            className="rounded-full border border-hairline-3 px-6 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-50"
-          >
-            {loadingMore ? "Chargement…" : "Afficher plus"}
-          </button>
-        </div>
+        <LoadMoreButton onClick={loadMore} loading={loadingMore} />
       ) : null}
     </div>
   );

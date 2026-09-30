@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import type { FaqCategory } from "@/lib/constants/faq";
+import { cardClass } from "@/components/ui/card";
 
 export function FaqAccordion({ category }: { category: FaqCategory }) {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <div className="rounded-2xl border border-hairline-1 bg-card">
+    <div className={cardClass()}>
       <h2 className="flex items-center gap-2 border-b border-hairline-1 px-5 py-4 text-sm font-semibold text-ink-2">
         <span>{category.emoji}</span>
         {category.title}

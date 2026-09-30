@@ -17,6 +17,9 @@ import { listCategories, type ApiCategory } from "@/lib/api/categories";
 import { approveEvent, getAdminDashboard, getPendingEvents, rejectEvent, type ApiAdminDashboard, type ApiPendingEvent } from "@/lib/api/admin";
 import { apiDashboardToAdminStats } from "@/lib/mappers/admin-mappers";
 import { ApiError } from "@/lib/api/http-error";
+import { Alert } from "@/components/ui/alert";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { cardClass } from "@/components/ui/card";
 
 export default function AdminDashboardPage() {
   const [dashboard, setDashboard] = useState<ApiAdminDashboard | undefined>(undefined);
@@ -91,13 +94,13 @@ export default function AdminDashboardPage() {
       </div>
 
       {error ? (
-        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">
+        <Alert className="mb-6">
           {error}
-        </div>
+        </Alert>
       ) : null}
 
       {dashboard === undefined ? (
-        <p className="text-center text-sm text-ink-5">Chargement…</p>
+        <MutedMessage />
       ) : (
         <>
           {dashboard.alerts.length > 0 ? (
@@ -137,11 +140,11 @@ export default function AdminDashboardPage() {
         </Link>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+      <div className={cardClass("overflow-hidden")}>
         {pending === undefined ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-5">Chargement…</p>
+          <MutedMessage variant="list" />
         ) : pending.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-5">Aucun événement en attente.</p>
+          <MutedMessage variant="list">Aucun événement en attente.</MutedMessage>
         ) : (
           pending
             .slice(0, 5)

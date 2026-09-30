@@ -20,9 +20,11 @@ import { updateEvent, type ApiEvent, type UpdateEventDto } from "@/lib/api/event
 import { uploadPoster } from "@/lib/api/upload";
 import { ApiError } from "@/lib/api/http-error";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
+import { Alert } from "@/components/ui/alert";
+import { buttonClass } from "@/components/ui/button";
+import { fieldClass } from "@/components/ui/field";
 
-const fieldClassName =
-  "rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50";
+const fieldClassName = fieldClass("px-4 py-3 disabled:cursor-not-allowed disabled:opacity-50");
 
 function toDatetimeLocal(iso: string): string {
   const date = new Date(iso);
@@ -175,20 +177,20 @@ export function EditEventForm({
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       {!isDraft ? (
-        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-5 py-4 text-sm text-amber-200">
+        <Alert tone="warning">
           Cet événement est {event.status === "PUBLISHED" ? "publié" : "en attente de validation"} — seuls
           la description, l&apos;affiche et les conditions d&apos;accès restent modifiables, pour ne pas
           changer les informations sur lesquelles les acheteurs se sont déjà engagés.
-        </div>
+        </Alert>
       ) : null}
 
       {error ? (
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">{error}</div>
+        <Alert>{error}</Alert>
       ) : null}
       {saved ? (
-        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-5 py-4 text-sm text-emerald-300">
+        <Alert tone="success">
           ✓ Modifications enregistrées.
-        </div>
+        </Alert>
       ) : null}
 
       <InfoCard icon="📝" title="Informations générales">
@@ -325,7 +327,7 @@ export function EditEventForm({
         <button
           type="button"
           onClick={() => router.push(`/dashboard/evenements/${event.id}`)}
-          className="rounded-full border border-hairline-3 px-5 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+          className={buttonClass("secondary", "rounded-full px-5 py-2.5 text-sm")}
         >
           ← Retour
         </button>
@@ -333,7 +335,7 @@ export function EditEventForm({
           type="button"
           onClick={handleSubmit}
           disabled={submitting}
-          className="rounded-full bg-blue-700 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
+          className={buttonClass("primary", "rounded-full px-6 py-2.5 text-sm disabled:opacity-50")}
         >
           {submitting ? "Enregistrement…" : "Enregistrer les modifications"}
         </button>

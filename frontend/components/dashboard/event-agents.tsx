@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
-import { createPortal } from "react-dom";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
+import { Modal } from "@/components/ui/modal";
+import { initialsOf } from "@/components/ui/avatar";
 import {
   inviteEventAgentsBulk,
   listEventAgents,
@@ -11,20 +12,19 @@ import {
   type BulkInviteResult,
 } from "@/lib/api/agents";
 import { ApiError } from "@/lib/api/http-error";
+import { dateTime } from "@/lib/format/dates";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
 // Plafond d'un envoi — même valeur que AGENTS_BULK_MAX côté passerelle.
 const MAX_ROWS = 20;
 
-const fieldClassName =
-  "w-full rounded-xl border border-hairline-2 bg-hairline-1 px-3.5 py-2.5 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none";
+const fieldClassName = fieldClass("w-full px-3.5 py-2.5");
 
 const AVATAR_COLORS = ["bg-blue-600", "bg-emerald-600", "bg-violet-600", "bg-amber-600", "bg-rose-600", "bg-cyan-600"];
 
-const dateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
-
 function initials(agent: ApiEventAgent): string {
-  const letters = `${agent.first_name?.[0] ?? ""}${agent.last_name?.[0] ?? ""}`.toUpperCase();
-  return letters || (agent.email?.[0]?.toUpperCase() ?? "?");
+  return initialsOf(agent.first_name, agent.last_name, agent.email?.[0]?.toUpperCase() ?? "?");
 }
 
 function avatarColor(seed: string): string {
@@ -86,19 +86,6 @@ function AssignAgentsDialog({
   const [partial, setPartial] = useState(false);
   const [done, setDone] = useState<BulkInviteResult[] | null>(null);
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !sending) onClose();
-    };
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = previous;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [onClose, sending]);
-
   function update(key: string, field: "first_name" | "last_name" | "email", value: string) {
     setRows((current) => current.map((row) => (row.key === key ? { ...row, [field]: value, result: undefined } : row)));
   }
@@ -142,16 +129,16 @@ function AssignAgentsDialog({
     }
   }
 
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={`${idPrefix}-title`}
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-6"
-      onClick={() => !sending && onClose()}
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      dismissible={!sending}
+      labelledBy={`${idPrefix}-title`}
+      sheetOnMobile
+      className="bg-slate-950/60 p-0 backdrop-blur-sm sm:p-6"
     >
       <div
-        onClick={(event) => event.stopPropagation()}
         className="flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-card shadow-2xl sm:rounded-3xl"
       >
         <div className="relative bg-gradient-to-br from-blue-700 to-indigo-700 px-6 pb-6 pt-6 text-white">
@@ -322,8 +309,7 @@ function AssignAgentsDialog({
           </form>
         )}
       </div>
-    </div>,
-    document.body,
+    </Modal>
   );
 }
 
@@ -384,7 +370,7 @@ export function EventAgents({
   const count = agents?.length ?? 0;
 
   return (
-    <section id="agents" className="mb-8 scroll-mt-24 overflow-hidden rounded-2xl border border-hairline-1 bg-card shadow-sm">
+    <section id="agents" className={cardClass("mb-8 scroll-mt-24 overflow-hidden shadow-sm")}>
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-hairline-1 bg-gradient-to-r from-blue-600/10 via-indigo-500/5 to-transparent px-5 py-4">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-900/25">

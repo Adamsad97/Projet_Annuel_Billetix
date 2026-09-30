@@ -2,6 +2,7 @@
 // synchronisation avec l'URL (lien partageable, retour arrière conservé).
 
 import type { ListEventsParams } from "@/lib/api/events";
+import { dayMonth as shortDate } from "@/lib/format/dates";
 
 export type WhenFilter = "all" | "today" | "tomorrow" | "weekend" | "week" | "month" | "custom";
 export type PriceFilter = "all" | "free" | "custom";
@@ -120,8 +121,6 @@ export function toApiParams(filters: CatalogueFilters): ListEventsParams {
     sort: filters.sort,
   };
 }
-
-const shortDate = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
 
 export function whenLabel(filters: CatalogueFilters): string {
   if (filters.when === "custom") {

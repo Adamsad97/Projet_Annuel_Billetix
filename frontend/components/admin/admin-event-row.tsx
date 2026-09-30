@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { ApiAdminEvent } from "@/lib/api/admin";
+import { shortDate as dateFormatter } from "@/lib/format/dates";
+import { Badge } from "@/components/ui/badge";
 
 // Bug corrigé : reposait sur lib/constants/admin-events.ts (emoji/couleur/libellé
 // de statut figés) — la catégorie et le statut viennent désormais du vrai
@@ -35,8 +37,6 @@ const statusBadge: Record<string, { label: string; className: string }> = {
   },
 };
 
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" });
-
 export function AdminEventRow({ event }: { event: ApiAdminEvent }) {
   const badge = statusBadge[event.status] ?? statusBadge.DRAFT;
   const ticketsLabel =
@@ -60,7 +60,7 @@ export function AdminEventRow({ event }: { event: ApiAdminEvent }) {
 
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm text-ink-4">{ticketsLabel}</span>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${badge.className}`}>{badge.label}</span>
+        <Badge tone={badge.className} size="md">{badge.label}</Badge>
         <Link
           href={`/admin/evenements/${event.id}`}
           className="rounded-lg bg-hairline-1 px-3 py-1.5 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"

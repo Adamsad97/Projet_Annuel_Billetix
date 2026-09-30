@@ -11,10 +11,12 @@ import type { ApiCategory } from "@/lib/api/categories";
 import { ticketVisibilityLabels, type ApiEventDashboardDetail, type ApiTicketCategory } from "@/lib/api/events";
 import type { ApiPayout } from "@/lib/api/organizer";
 import { payoutStatusBadge } from "@/lib/constants/dashboard-finances";
+import { euros as currency } from "@/lib/format/money";
+import { dateTime as shortDateTime } from "@/lib/format/dates";
+import { cardClass } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 const dateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "full", timeStyle: "short" });
-const shortDateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
 const shortDate = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long" });
 
 function Section({ title, children, aside }: { title: string; children: ReactNode; aside?: ReactNode }) {
@@ -124,7 +126,7 @@ export function EventOrganizerOverview({
 
       <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Section title="Finances">
-          <dl className="divide-y divide-hairline-1 overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+          <dl className={cardClass("divide-y divide-hairline-1 overflow-hidden")}>
             <div className="flex justify-between px-5 py-3 text-sm"><dt className="text-ink-4">Chiffre d&apos;affaires TTC</dt><dd className="font-medium text-ink-1">{currency.format(revenue.revenue_ttc)}</dd></div>
             <div className="flex justify-between px-5 py-3 text-sm"><dt className="text-ink-4">dont TVA</dt><dd className="text-ink-3">− {currency.format(vat)}</dd></div>
             <div className="flex justify-between px-5 py-3 text-sm"><dt className="text-ink-4">Chiffre d&apos;affaires HT</dt><dd className="text-ink-1">{currency.format(revenue.revenue_ht)}</dd></div>
@@ -135,14 +137,14 @@ export function EventOrganizerOverview({
         </Section>
 
         <Section title="Reversement">
-          <div className="rounded-2xl border border-hairline-1 bg-card px-5 py-4 text-sm">
+          <div className={cardClass("px-5 py-4 text-sm")}>
             {payout ? (
               <div className="flex flex-col gap-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-2xl font-bold text-ink-1">{currency.format(Number(payout.net_amount))}</span>
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${payoutStatusBadge[payout.status].className}`}>
+                  <Badge tone={payoutStatusBadge[payout.status].className}>
                     {payoutStatusBadge[payout.status].label}
-                  </span>
+                  </Badge>
                 </div>
                 <p className="text-ink-4">
                   {payout.status === "COMPLETED" && payout.processed_at
@@ -167,7 +169,7 @@ export function EventOrganizerOverview({
       </div>
 
       <Section title="Billets">
-        <div className="overflow-x-auto rounded-2xl border border-hairline-1 bg-card">
+        <div className={cardClass("overflow-x-auto")}>
           <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-hairline-1 text-left text-xs font-medium uppercase tracking-wide text-ink-5">

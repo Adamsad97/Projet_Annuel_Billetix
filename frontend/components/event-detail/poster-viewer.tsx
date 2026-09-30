@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
+import { Modal } from "@/components/ui/modal";
 
 /**
  * Affiche de l'événement, présentée comme un tirage (proportions d'origine,
@@ -9,20 +9,6 @@ import { createPortal } from "react-dom";
  */
 export function PosterViewer({ src, title }: { src: string; title: string }) {
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
 
   return (
     <>
@@ -51,19 +37,15 @@ export function PosterViewer({ src, title }: { src: string; title: string }) {
         </span>
       </button>
 
-      {/* Portail vers <body> : l'en-tête crée son propre contexte d'empilement,
-          qui laisserait la barre de navigation passer au-dessus. */}
-      {open
-        ? createPortal(
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Affiche : ${title}`}
-          onClick={() => setOpen(false)}
-          className="fixed inset-0 z-[100] flex cursor-zoom-out items-center justify-center bg-black/90 p-4 backdrop-blur-sm sm:p-10"
-        >
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        label={`Affiche : ${title}`}
+        className="cursor-zoom-out bg-black/90 p-4 backdrop-blur-sm sm:p-10"
+      >
           {/* eslint-disable-next-line @next/next/no-img-element -- affiche hébergée sur MinIO */}
           <img
+            onClick={() => setOpen(false)}
             src={src}
             alt={`Affiche : ${title}`}
             className="max-h-[calc(100dvh-2rem)] max-w-full rounded-xl object-contain shadow-2xl sm:max-h-[calc(100dvh-5rem)]"
@@ -78,10 +60,7 @@ export function PosterViewer({ src, title }: { src: string; title: string }) {
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
           </button>
-        </div>,
-            document.body,
-          )
-        : null}
+      </Modal>
     </>
   );
 }

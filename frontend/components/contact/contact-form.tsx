@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
 export function ContactForm() {
   const [sent, setSent] = useState(false);
 
   if (sent) {
     return (
-      <div className="rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+      <div className={cardClass("p-8 text-center")}>
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">
           ✓
         </div>
@@ -25,7 +28,7 @@ export function ContactForm() {
         event.preventDefault();
         setSent(true);
       }}
-      className="flex flex-col gap-4 rounded-2xl border border-hairline-1 bg-card p-8"
+      className={cardClass("flex flex-col gap-4 p-8")}
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
@@ -34,7 +37,7 @@ export function ContactForm() {
             type="text"
             required
             placeholder="Jean Dupont"
-            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+            className={fieldClass("px-4 py-3")}
           />
         </label>
         <label className="flex flex-col gap-1.5">
@@ -43,14 +46,14 @@ export function ContactForm() {
             type="email"
             required
             placeholder="jean.dupont@email.com"
-            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+            className={fieldClass("px-4 py-3")}
           />
         </label>
       </div>
 
       <label className="flex flex-col gap-1.5">
         <span className="text-sm font-medium text-accent/80">Sujet</span>
-        <select className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 focus:border-blue-500 focus:outline-none">
+        <select className={fieldClass("px-4 py-3")}>
           <option>Question sur une commande</option>
           <option>Problème avec un billet</option>
           <option>Devenir organisateur</option>
@@ -64,13 +67,13 @@ export function ContactForm() {
           required
           rows={5}
           placeholder="Expliquez-nous votre demande…"
-          className="resize-none rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+          className={fieldClass("resize-none px-4 py-3")}
         />
       </label>
 
       <button
         type="submit"
-        className="mt-1 w-full rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
+        className={buttonClass("primary", "mt-1 w-full rounded-full py-3 text-sm")}
       >
         Envoyer le message →
       </button>

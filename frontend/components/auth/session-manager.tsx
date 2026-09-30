@@ -19,6 +19,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { getSessionPolicy } from "@/lib/api/auth";
 import { refreshAccessToken } from "@/lib/api/client";
+import { Modal } from "@/components/ui/modal";
 import { logout } from "@/lib/auth/logout";
 import {
   SESSION_ENDED_EVENT,
@@ -158,7 +159,7 @@ export function SessionManager() {
   if (secondsLeft === null) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-6" role="alertdialog" aria-modal="true" aria-labelledby="session-warning-title">
+    <Modal open role="alertdialog" dismissible={false} onClose={() => undefined} labelledBy="session-warning-title" className="bg-black/50 px-6">
       <div className="w-full max-w-sm rounded-2xl border border-hairline-2 bg-card p-6 text-center shadow-2xl">
         <h2 id="session-warning-title" className="text-lg font-bold text-ink-1">
           Votre session va expirer
@@ -191,6 +192,6 @@ export function SessionManager() {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

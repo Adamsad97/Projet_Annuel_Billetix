@@ -8,8 +8,9 @@ import { ResaleStripePaymentForm } from "@/components/resale/resale-stripe-payme
 import { getStripe } from "@/lib/stripe/client";
 import { getStoredUser } from "@/lib/auth/session";
 import type { ApiResaleListing } from "@/lib/api/resale";
-
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+import { euros as currency } from "@/lib/format/money";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { cardClass } from "@/components/ui/card";
 
 type Step = "billing" | "payment";
 
@@ -33,12 +34,12 @@ export function ResaleCheckoutFlow({ listing }: { listing: ApiResaleListing }) {
   }
 
   if (isOwnListing === undefined) {
-    return <p className="text-center text-sm text-ink-5">Chargement…</p>;
+    return <MutedMessage />;
   }
 
   if (isOwnListing) {
     return (
-      <div className="mx-auto max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+      <div className={cardClass("mx-auto max-w-md p-8 text-center")}>
         <div className="mb-3 text-4xl">🎫</div>
         <h1 className="text-lg font-bold text-ink-1">C&apos;est votre propre annonce</h1>
         <p className="mt-2 text-sm text-ink-5">

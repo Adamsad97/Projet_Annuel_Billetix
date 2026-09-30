@@ -8,9 +8,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ApiResaleListing } from "@/lib/api/resale";
 import { getStoredUser } from "@/lib/auth/session";
-
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" });
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+import { euros as currency } from "@/lib/format/money";
+import { shortDate as dateFormatter } from "@/lib/format/dates";
+import { cardClass } from "@/components/ui/card";
 
 // Initiales seulement (comme la maquette d'origine : "L. T.") — le nom
 // complet du vendeur n'a pas à être exposé publiquement sur la marketplace.
@@ -29,7 +29,7 @@ export function ResaleCard({ listing }: { listing: ApiResaleListing }) {
   }, [listing.original_buyer_id]);
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+    <article className={cardClass("overflow-hidden")}>
       <div className="flex h-24 items-center justify-center bg-slate-800">
         <span className="text-3xl opacity-90">🎫</span>
       </div>

@@ -8,7 +8,6 @@
 // change-role/kyc approve-reject).
 
 import { use, useEffect, useState } from "react";
-import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { getStoredUser } from "@/lib/auth/session";
 import type { AuthUser } from "@/lib/api/auth";
@@ -38,6 +37,15 @@ import { requestPasswordReset } from "@/lib/api/auth";
 import type { ApiOrder } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/http-error";
 import { resaleStatusBadge } from "@/lib/mappers/resale-mappers";
+import { euros } from "@/lib/format/money";
+import { dateTime, longDate as dateFormatter } from "@/lib/format/dates";
+import { Alert } from "@/components/ui/alert";
+import { BackLink } from "@/components/ui/back-link";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
 const orderStatusLabel: Record<ApiOrder["status"], string> = {
   PENDING_PAYMENT: "En attente de paiement",
@@ -69,8 +77,6 @@ const kycStatusBadge: Record<string, { label: string; className: string }> = {
   PENDING: { label: "Aucun document soumis", className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
   REJECTED: { label: "✕ Document rejeté", className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
 };
-
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
 export default function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -335,21 +341,16 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <AdminShell active="/admin/utilisateurs">
-      <Link
-        href="/admin/utilisateurs"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
-      >
-        ← Utilisateurs
-      </Link>
+      <BackLink href="/admin/utilisateurs">Utilisateurs</BackLink>
 
       {error ? (
-        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">{error}</div>
+        <Alert className="mb-6">{error}</Alert>
       ) : null}
 
       {user === undefined ? (
-        <p className="text-center text-sm text-ink-5">Chargement…</p>
+        <MutedMessage />
       ) : user === null ? (
-        <div className="rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+        <div className={cardClass("p-8 text-center")}>
           <div className="mb-3 text-4xl">👤</div>
           <h1 className="text-lg font-bold text-ink-1">Utilisateur introuvable</h1>
         </div>
@@ -357,9 +358,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
         <>
           <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">
-                {`${user.first_name[0] ?? ""}${user.last_name[0] ?? ""}`.toUpperCase()}
-              </div>
+              <Avatar firstName={user.first_name} lastName={user.last_name} size="md" />
               <div>
                 <h1 className="text-xl font-bold text-ink-1">
                   {user.first_name} {user.last_name}
@@ -368,9 +367,9 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                   {user.email} · Membre depuis {dateFormatter.format(new Date(user.created_at))}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${roleStyles[user.role]}`}>
+                  <Badge tone={roleStyles[user.role]}>
                     {roleLabels[user.role]}
-                  </span>
+                  </Badge>
                   {user.is_suspended ? (
                     <span className="rounded-full bg-red-500/15 px-2.5 py-0.5 text-xs font-medium text-red-300 ring-1 ring-inset ring-red-500/30">
                       Suspendu{user.suspension_reason ? ` — ${user.suspension_reason}` : ""}
@@ -432,7 +431,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                   type="button"
                   disabled={busy || resetSent}
                   onClick={handleResetPassword}
-                  className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-50"
+                  className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm disabled:opacity-50")}
                 >
                   {resetSent ? "✓ Lien envoyé" : "Réinitialiser le mot de passe"}
                 </button>
@@ -496,7 +495,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
           </div>
 
           {user.role === "ORGANIZER" ? (
-            <div className="mb-6 rounded-2xl border border-hairline-1 bg-card p-5">
+            <div className={cardClass("mb-6 p-5")}>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold text-ink-2">
                   Vérification d&apos;identité (KYC){organizerProfile ? ` — ${organizerProfile.display_name}` : ""}
@@ -550,7 +549,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             </div>
           ) : null}
 
-          <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+          <div className={cardClass("p-5")}>
             <h2 className="mb-4 text-sm font-semibold text-ink-2">Billets offerts et reçus</h2>
             {transfers === null ? (
               <p className="text-sm text-ink-5">Chargement…</p>
@@ -574,7 +573,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                         {transfer.to_holder_first_name} {transfer.to_holder_last_name}
                       </p>
                       <p className="text-xs text-ink-6">
-                        {new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(transfer.created_at))}
+                        {dateTime.format(new Date(transfer.created_at))}
                       </p>
                     </div>
                   );
@@ -583,7 +582,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             )}
           </div>
 
-          <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+          <div className={cardClass("p-5")}>
             <h2 className="mb-4 text-sm font-semibold text-ink-2">Reventes</h2>
             {resales === null ? (
               <p className="text-sm text-ink-5">Chargement…</p>
@@ -602,15 +601,15 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                           {selling ? "🔄 Vendeur" : "🛒 Acheteur"} · {resale.ticket_reference ?? "—"} · {resale.event_name ?? "—"}
                         </p>
                         <p className="text-xs text-ink-5">
-                          {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(resale.resale_price))}
+                          {euros.format(Number(resale.resale_price))}
                           {" · "}mis en vente le{" "}
                           {new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(resale.listed_at))}
                           {other ? ` · ${selling ? "acheté par" : "vendu par"} ${other.email}` : ""}
                         </p>
                       </div>
-                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${badge.className}`}>
+                      <Badge tone={badge.className} size="md" className="shrink-0 ring-1 ring-inset">
                         {badge.label}
-                      </span>
+                      </Badge>
                     </div>
                   );
                 })}
@@ -618,7 +617,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
             )}
           </div>
 
-          <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+          <div className={cardClass("p-5")}>
             <h2 className="mb-4 text-sm font-semibold text-ink-2">Commandes</h2>
             {orders === null ? (
               <p className="text-sm text-ink-5">Chargement…</p>
@@ -638,7 +637,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                           {order.reference} · {order.event_name ?? "—"}
                         </p>
                         <p className="text-xs text-ink-5">
-                          {orderStatusLabel[order.status]} · {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(Number(order.total_amount_ttc))}
+                          {orderStatusLabel[order.status]} · {euros.format(Number(order.total_amount_ttc))}
                         </p>
                       </div>
                       {canResend ? (

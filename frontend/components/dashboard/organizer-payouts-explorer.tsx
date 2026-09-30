@@ -9,6 +9,8 @@ import { FinanceRow } from "@/components/dashboard/finance-row";
 import { SearchField } from "@/components/ui/search-field";
 import type { ApiPayout, ApiPayoutStatus } from "@/lib/api/organizer";
 import { matchesSearch } from "@/lib/format/search";
+import { cardClass } from "@/components/ui/card";
+import { filterSelectClass } from "@/components/ui/field";
 
 type SortOrder = "scheduled_desc" | "scheduled_asc" | "amount";
 
@@ -61,7 +63,7 @@ export function OrganizerPayoutsExplorer({
 
   if (payouts.length === 0) {
     return (
-      <div className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
+      <div className={cardClass("px-5 py-10 text-center text-sm text-ink-5")}>
         Aucun reversement pour le moment.
       </div>
     );
@@ -76,7 +78,7 @@ export function OrganizerPayoutsExplorer({
           <select
             value={sort}
             onChange={(event) => setSort(event.target.value as SortOrder)}
-            className="h-10 rounded-full border border-hairline-3 bg-card px-4 text-sm font-medium text-ink-2 focus:border-blue-500 focus:outline-none"
+            className={filterSelectClass}
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.id} value={option.id}>
@@ -89,7 +91,7 @@ export function OrganizerPayoutsExplorer({
 
       <FilterPills options={statusOptions} active={status} onChange={(id) => setStatus(id as "all" | ApiPayoutStatus)} />
 
-      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+      <div className={cardClass("overflow-hidden")}>
         {filtered.length > 0 ? (
           filtered.map((payout) => (
             <FinanceRow key={payout.id} payout={payout} onRequestEarly={onRequestEarly} busy={busyId === payout.id} />

@@ -11,11 +11,9 @@ import { isPreviewActive, PREVIEW_READ_ONLY_MESSAGE } from "@/lib/auth/preview";
 import { getAccessToken, getStoredUser } from "@/lib/auth/session";
 import { CountdownDigits } from "@/components/event-detail/sales-countdown";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
-
-const currency = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "EUR",
-});
+import { euros as currency } from "@/lib/format/money";
+import { longDateTime as saleDateFormatter } from "@/lib/format/dates";
+import { buttonClass } from "@/components/ui/button";
 
 /** Quantité maximale réservable : places restantes, plafonnées par commande. */
 function maxQuantity(ticket: TicketOption): number {
@@ -27,11 +25,6 @@ function maxQuantity(ticket: TicketOption): number {
 function isSoldOut(ticket: TicketOption): boolean {
   return ticket.remaining === 0;
 }
-
-const saleDateFormatter = new Intl.DateTimeFormat("fr-FR", {
-  dateStyle: "long",
-  timeStyle: "short",
-});
 
 export function TicketSelector({
   eventId,
@@ -219,7 +212,7 @@ export function TicketSelector({
         ) : null}
         <Link
           href="/admin"
-          className="mt-4 block rounded-full border border-hairline-3 px-4 py-2.5 text-center text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+          className={buttonClass("secondary", "mt-4 block rounded-full px-4 py-2.5 text-center text-sm")}
         >
           Retour au back-office →
         </Link>
@@ -242,7 +235,7 @@ export function TicketSelector({
         ) : null}
         <Link
           href={`/dashboard/evenements/${eventId}`}
-          className="mt-4 block rounded-full border border-hairline-3 px-4 py-2.5 text-center text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+          className={buttonClass("secondary", "mt-4 block rounded-full px-4 py-2.5 text-center text-sm")}
         >
           Gérer cet événement →
         </Link>
@@ -488,7 +481,7 @@ function ShareButton() {
       <button
         type="button"
         onClick={handleShare}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-hairline-3 bg-card py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+        className={buttonClass("secondary", "flex w-full items-center justify-center gap-2 rounded-xl bg-card py-2.5 text-sm")}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <circle cx="18" cy="5" r="3" />

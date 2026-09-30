@@ -8,11 +8,13 @@ import { ApiError } from "@/lib/api/http-error";
 import { getStoredUser } from "@/lib/auth/session";
 import type { AuthUser } from "@/lib/api/auth";
 import { BillingAddressFields } from "@/components/checkout/billing-address-fields";
+import { euros as currency } from "@/lib/format/money";
+import { FormError } from "@/components/ui/alert";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
-
-const fieldClassName =
-  "rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none";
+const fieldClassName = fieldClass("px-4 py-3");
 
 export function BillingForm({
   cart,
@@ -84,7 +86,7 @@ export function BillingForm({
   }
 
   return (
-    <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+    <div className={cardClass("p-5")}>
       <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-ink-2">
         <span>👤</span>
         {isFree ? "Vos coordonnées" : "Coordonnées de facturation"}
@@ -103,9 +105,9 @@ export function BillingForm({
       </div>
 
       {error ? (
-        <div className="mb-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-inset ring-red-500/30">
+        <FormError>
           {error}
-        </div>
+        </FormError>
       ) : null}
 
       <form
@@ -159,7 +161,7 @@ export function BillingForm({
         <button
           type="submit"
           disabled={loading}
-          className="mt-1 w-full rounded-full bg-blue-700 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className={buttonClass("primary", "mt-1 w-full rounded-full py-3.5 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
         >
           {loading
             ? isFree

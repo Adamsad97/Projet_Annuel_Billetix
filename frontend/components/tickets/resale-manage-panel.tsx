@@ -8,8 +8,8 @@ import { useEffect, useState } from "react";
 import { getActiveResaleForTicket, withdrawResale, type ApiResaleListing } from "@/lib/api/resale";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import { ApiError } from "@/lib/api/http-error";
-
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+import { euros as currency } from "@/lib/format/money";
+import { buttonClass } from "@/components/ui/button";
 
 export function ResaleManagePanel({
   ticketId,
@@ -87,7 +87,7 @@ export function ResaleManagePanel({
         type="button"
         onClick={handleWithdraw}
         disabled={withdrawing}
-        className="w-full rounded-full border border-hairline-3 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:cursor-not-allowed disabled:opacity-50"
+        className={buttonClass("secondary", "w-full rounded-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50")}
       >
         {withdrawing ? "Retrait…" : "↩️ Retirer de la vente"}
       </button>

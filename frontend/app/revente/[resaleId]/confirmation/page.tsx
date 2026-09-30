@@ -12,6 +12,10 @@ import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
 import { completeResale } from "@/lib/api/resale";
 import { ApiError } from "@/lib/api/http-error";
+import { Alert } from "@/components/ui/alert";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
 
 export default function ResaleConfirmationPage({
   params,
@@ -49,13 +53,13 @@ export default function ResaleConfirmationPage({
 
       <main className="flex-1 px-6 py-10">
         {status === "loading" ? (
-          <p className="text-center text-sm text-ink-5">Finalisation de votre achat…</p>
+          <MutedMessage>Finalisation de votre achat…</MutedMessage>
         ) : status === "error" ? (
-          <div className="mx-auto max-w-lg rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-6 text-center text-sm text-red-300">
+          <Alert centered className="mx-auto max-w-lg">
             {error}
-          </div>
+          </Alert>
         ) : (
-          <div className="mx-auto flex max-w-lg flex-col items-center gap-5 rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+          <div className={cardClass("mx-auto flex max-w-lg flex-col items-center gap-5 p-8 text-center")}>
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-3xl">
               ✓
             </div>
@@ -69,13 +73,13 @@ export default function ResaleConfirmationPage({
             <div className="flex w-full flex-col gap-3 sm:flex-row">
               <Link
                 href="/profil/billets"
-                className="flex-1 rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
+                className={buttonClass("primary", "flex-1 rounded-full py-3 text-sm")}
               >
                 Voir mes billets
               </Link>
               <Link
                 href="/revente"
-                className="flex-1 rounded-full border border-hairline-3 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+                className={buttonClass("secondary", "flex-1 rounded-full py-3 text-sm")}
               >
                 Retour à la marketplace
               </Link>

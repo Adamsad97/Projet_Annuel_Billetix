@@ -21,9 +21,11 @@ import {
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
 import { describeDevice, formatIp } from "@/lib/format/device";
+import { dateTime as dateTimeFormatter } from "@/lib/format/dates";
+import { cardClass } from "@/components/ui/card";
+import { Pagination } from "@/components/ui/pagination";
 
 const PAGE_SIZE = 20;
-const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
 const views = [
   { id: "all", label: "Tous les transferts" },
   { id: "pending", label: "Demandes d'annulation" },
@@ -170,7 +172,7 @@ export function TransfersExplorer() {
         <p className="rounded-xl bg-danger/10 px-4 py-2.5 text-sm text-danger ring-1 ring-inset ring-danger/30">{error}</p>
       ) : null}
 
-      <div className="overflow-x-auto rounded-2xl border border-hairline-1 bg-card">
+      <div className={cardClass("overflow-x-auto")}>
         {transfers === null ? (
           <p className="px-5 py-4 text-sm text-ink-5">{error ?? "Chargement…"}</p>
         ) : transfers.length === 0 ? (
@@ -211,29 +213,7 @@ export function TransfersExplorer() {
         )}
       </div>
 
-      {pageCount > 1 ? (
-        <div className="flex items-center justify-center gap-3 text-sm">
-          <button
-            type="button"
-            disabled={page <= 1}
-            onClick={() => setPage((current) => current - 1)}
-            className="rounded-full border border-hairline-3 px-4 py-1.5 text-ink-3 disabled:opacity-40"
-          >
-            ← Précédent
-          </button>
-          <span className="text-ink-5">
-            Page {page} / {pageCount}
-          </span>
-          <button
-            type="button"
-            disabled={page >= pageCount}
-            onClick={() => setPage((current) => current + 1)}
-            className="rounded-full border border-hairline-3 px-4 py-1.5 text-ink-3 disabled:opacity-40"
-          >
-            Suivant →
-          </button>
-        </div>
-      ) : null}
+      <Pagination page={page} pageCount={pageCount} onChange={setPage} />
 
       <DetailDialog
         open={selected !== null}

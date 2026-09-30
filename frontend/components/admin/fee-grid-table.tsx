@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { listPlatformSettings, type ApiPlatformSetting } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
+import { euros as euro } from "@/lib/format/money";
+import { cardClass } from "@/components/ui/card";
 
 const PROVIDERS = [
   { id: "stripe", label: "Carte bancaire (Stripe)", emoji: "💳" },
@@ -16,7 +18,6 @@ const PROVIDERS = [
 ];
 
 const number = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
-const euro = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 
 function formatPercent(value: string | undefined): string {
   return value === undefined ? "—" : `${number.format(Number(value))} %`;
@@ -37,12 +38,12 @@ export function FeeGridTable() {
   }, []);
 
   if (settings === null) {
-    return <p className="rounded-2xl border border-hairline-1 bg-card px-5 py-6 text-sm text-ink-5">{error ?? "Chargement…"}</p>;
+    return <p className={cardClass("px-5 py-6 text-sm text-ink-5")}>{error ?? "Chargement…"}</p>;
   }
 
   if (settings.commission_standard_percent === undefined) {
     return (
-      <p className="rounded-2xl border border-hairline-1 bg-card px-5 py-6 text-sm text-ink-5">
+      <p className={cardClass("px-5 py-6 text-sm text-ink-5")}>
         Le barème des commissions est réservé au super admin.
       </p>
     );
@@ -66,7 +67,7 @@ export function FeeGridTable() {
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+      <div className={cardClass("overflow-hidden")}>
         <div className="hidden grid-cols-[1fr_120px_140px] gap-4 border-b border-hairline-1 px-5 py-3 text-xs font-medium uppercase tracking-wide text-ink-5 sm:grid">
           <span>Moyen de paiement</span>
           <span>Frais %</span>

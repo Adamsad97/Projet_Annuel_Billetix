@@ -19,6 +19,11 @@ import {
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
 import { getStoredUser } from "@/lib/auth/session";
+import { Alert } from "@/components/ui/alert";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { cardClass } from "@/components/ui/card";
+import { filterSelectClass } from "@/components/ui/field";
+import { LoadMoreButton } from "@/components/ui/load-more-button";
 
 const PAGE_SIZE = 50;
 
@@ -190,7 +195,7 @@ export function UsersExplorer() {
             <select
               value={sort}
               onChange={(event) => setSort(event.target.value as AdminUserSort)}
-              className="h-10 rounded-full border border-hairline-3 bg-card px-4 text-sm font-medium text-ink-2 focus:border-blue-500 focus:outline-none"
+              className={filterSelectClass}
             >
               {sortOptions.map((option) => (
                 <option key={option.id} value={option.id}>
@@ -212,7 +217,7 @@ export function UsersExplorer() {
       </div>
 
       {error ? (
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">{error}</div>
+        <Alert>{error}</Alert>
       ) : null}
 
       {users ? (
@@ -221,9 +226,9 @@ export function UsersExplorer() {
         </p>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+      <div className={cardClass("overflow-hidden")}>
         {users === null ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-5">Chargement…</p>
+          <MutedMessage variant="list" />
         ) : users.length > 0 ? (
           users.map((user) => (
             <UserRow
@@ -237,21 +242,12 @@ export function UsersExplorer() {
             />
           ))
         ) : (
-          <p className="px-5 py-8 text-center text-sm text-ink-5">Aucun utilisateur ne correspond à ces critères.</p>
+          <MutedMessage variant="list">Aucun utilisateur ne correspond à ces critères.</MutedMessage>
         )}
       </div>
 
       {users && users.length < total ? (
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={loadMore}
-            disabled={loadingMore}
-            className="rounded-full border border-hairline-3 px-6 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-50"
-          >
-            {loadingMore ? "Chargement…" : `Afficher plus (${total - users.length} restants)`}
-          </button>
-        </div>
+        <LoadMoreButton onClick={loadMore} loading={loadingMore} remaining={total - users.length} />
       ) : null}
 
       <ActionDialog state={dialog} onClose={() => setDialog(null)} />

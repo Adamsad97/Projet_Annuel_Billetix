@@ -13,6 +13,10 @@ import {
   type TwoFactorSetup,
 } from "@/lib/api/two-factor";
 import { ApiError } from "@/lib/api/http-error";
+import { Alert } from "@/components/ui/alert";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
 
 type Step =
   | "loading"
@@ -91,20 +95,20 @@ export function TwoFactorManager() {
   }
 
   if (step === "loading") {
-    return <p className="text-center text-sm text-ink-5">Chargement…</p>;
+    return <MutedMessage />;
   }
 
   if (step === "load-error") {
     return (
-      <p className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">
+      <Alert>
         Impossible de charger l&apos;état de la 2FA.
-      </p>
+      </Alert>
     );
   }
 
   if (step === "on") {
     return (
-      <div className="rounded-2xl border border-hairline-1 bg-card p-6">
+      <div className={cardClass("p-6")}>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold text-ink-1">Authentification 2FA</h1>
@@ -131,7 +135,7 @@ export function TwoFactorManager() {
 
   if (step === "disabling") {
     return (
-      <div className="rounded-2xl border border-hairline-1 bg-card p-6">
+      <div className={cardClass("p-6")}>
         <h1 className="text-lg font-bold text-ink-1">Désactiver la 2FA</h1>
         <p className="mt-1 text-sm text-ink-5">
           Saisissez un code de votre application TOTP (ou un code de secours) pour confirmer.
@@ -174,7 +178,7 @@ export function TwoFactorManager() {
 
   if (step === "backup-codes") {
     return (
-      <div className="rounded-2xl border border-hairline-1 bg-card p-6">
+      <div className={cardClass("p-6")}>
         <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">
           ✓
         </div>
@@ -192,7 +196,7 @@ export function TwoFactorManager() {
         <button
           type="button"
           onClick={() => setStep("on")}
-          className="mt-5 w-full rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
+          className={buttonClass("primary", "mt-5 w-full rounded-full py-3 text-sm")}
         >
           J&apos;ai noté mes codes
         </button>
@@ -202,7 +206,7 @@ export function TwoFactorManager() {
 
   if (step === "setup" && setupData) {
     return (
-      <div className="rounded-2xl border border-hairline-1 bg-card p-6">
+      <div className={cardClass("p-6")}>
         <h1 className="text-lg font-bold text-ink-1">Activer la 2FA</h1>
         <p className="mt-1 text-sm text-ink-5">
           Scannez ce code avec Google Authenticator ou une app TOTP équivalente.
@@ -231,7 +235,7 @@ export function TwoFactorManager() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className={buttonClass("primary", "w-full rounded-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
           >
             {submitting ? "Vérification…" : "Confirmer et activer"}
           </button>
@@ -242,7 +246,7 @@ export function TwoFactorManager() {
 
   // step === "off"
   return (
-    <div className="rounded-2xl border border-hairline-1 bg-card p-6 text-center">
+    <div className={cardClass("p-6 text-center")}>
       <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-amber-500/15 text-2xl">
         ⚠️
       </div>
@@ -255,7 +259,7 @@ export function TwoFactorManager() {
         type="button"
         onClick={handleStartSetup}
         disabled={submitting}
-        className="mt-4 w-full rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        className={buttonClass("primary", "mt-4 w-full rounded-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
       >
         {submitting ? "Chargement…" : "Activer la 2FA"}
       </button>

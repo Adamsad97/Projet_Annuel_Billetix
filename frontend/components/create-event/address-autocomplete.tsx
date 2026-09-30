@@ -10,9 +10,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { searchAddress, type AddressSuggestion } from "@/lib/geo/photon";
+import { fieldClass } from "@/components/ui/field";
 
-const fieldClassName =
-  "rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50";
+const fieldClassName = fieldClass("px-4 py-3 disabled:cursor-not-allowed disabled:opacity-50");
 
 export function AddressAutocomplete({
   value,

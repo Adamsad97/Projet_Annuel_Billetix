@@ -12,8 +12,11 @@ import { CheckoutStepper } from "@/components/checkout/checkout-stepper";
 import { getOrder, type ApiOrder, type ApiOrderItem } from "@/lib/api/orders";
 import { syncOrderPayment } from "@/lib/api/payments";
 import { ApiError } from "@/lib/api/http-error";
-
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+import { euros as currency } from "@/lib/format/money";
+import { Alert } from "@/components/ui/alert";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
 
 export function OrderConfirmation({ orderId }: { orderId: string }) {
   const [order, setOrder] = useState<ApiOrder | null>(null);
@@ -72,13 +75,13 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
       </div>
 
       {loading ? (
-        <p className="text-center text-sm text-ink-5">Chargement de votre commande…</p>
+        <MutedMessage>Chargement de votre commande…</MutedMessage>
       ) : loadError || !order ? (
-        <p className="mx-auto max-w-lg rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-6 text-center text-sm text-red-300">
+        <Alert centered className="mx-auto max-w-lg">
           {loadError}
-        </p>
+        </Alert>
       ) : (
-        <div className="mx-auto flex max-w-lg flex-col items-center gap-5 rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+        <div className={cardClass("mx-auto flex max-w-lg flex-col items-center gap-5 p-8 text-center")}>
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-3xl">
             ✓
           </div>
@@ -123,13 +126,13 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
           <div className="flex w-full flex-col gap-3 sm:flex-row">
             <Link
               href="/profil/billets"
-              className="flex-1 rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
+              className={buttonClass("primary", "flex-1 rounded-full py-3 text-sm")}
             >
               Voir mes billets
             </Link>
             <Link
               href="/catalogue"
-              className="flex-1 rounded-full border border-hairline-3 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+              className={buttonClass("secondary", "flex-1 rounded-full py-3 text-sm")}
             >
               Retour au catalogue
             </Link>

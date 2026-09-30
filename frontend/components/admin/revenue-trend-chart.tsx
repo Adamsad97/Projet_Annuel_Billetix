@@ -6,9 +6,9 @@
 import { useEffect, useState } from "react";
 import { getSalesTrend, type ApiSalesTrendPoint } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
-
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
-const dayFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
+import { roundEuros as currency } from "@/lib/format/money";
+import { dayMonth as dayFormatter } from "@/lib/format/dates";
+import { cardClass } from "@/components/ui/card";
 
 type Metric = "orders_count" | "tickets_count" | "revenue_ttc";
 
@@ -43,7 +43,7 @@ export function RevenueTrendChart() {
   const activeMetric = METRICS.find((entry) => entry.id === metric)!;
 
   return (
-    <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+    <div className={cardClass("p-5")}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-1.5">
           {METRICS.map((entry) => (

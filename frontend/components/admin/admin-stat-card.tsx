@@ -1,8 +1,9 @@
 import type { AdminStat } from "@/lib/mappers/admin-mappers";
+import { cardClass } from "@/components/ui/card";
 
 export function AdminStatCard({ stat }: { stat: AdminStat }) {
   return (
-    <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+    <div className={cardClass("p-5")}>
       <p className="text-xs font-medium uppercase tracking-wide text-ink-5">
         {stat.label}
       </p>

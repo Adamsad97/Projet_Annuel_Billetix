@@ -6,6 +6,7 @@
 // confirmations d'approbation/annulation/suppression un peu partout).
 
 import { useEffect, useId, useState, type ReactNode } from "react";
+import { Modal } from "@/components/ui/modal";
 
 export interface ActionDialogState {
   title: string;
@@ -33,16 +34,6 @@ export function ActionDialog({
   const [reason, setReason] = useState("");
   const titleId = useId();
 
-  // Échap ferme la fenêtre, comme une boîte native.
-  useEffect(() => {
-    if (!state) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [state, onClose]);
-
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- réinitialise le champ à chaque nouvelle ouverture de dialog
     setReason("");
@@ -59,15 +50,8 @@ export function ActionDialog({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/70 p-6"
-    >
+    <Modal open onClose={onClose} labelledBy={titleId} className="cursor-pointer bg-black/70 p-6">
       <div
-        onClick={(event) => event.stopPropagation()}
         className="w-full max-w-md cursor-auto rounded-2xl border border-hairline-2 bg-card p-6 shadow-2xl"
       >
         <h2 id={titleId} className="text-lg font-bold text-ink-1">{state.title}</h2>
@@ -107,6 +91,6 @@ export function ActionDialog({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

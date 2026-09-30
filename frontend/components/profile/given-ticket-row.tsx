@@ -4,9 +4,7 @@ import { useState } from "react";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import { requestTransferRevert, type ApiGivenTicket } from "@/lib/api/tickets";
 import { ApiError } from "@/lib/api/http-error";
-
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeStyle: "short" });
+import { longDate as dateFormatter, longDateTime as dateTimeFormatter } from "@/lib/format/dates";
 
 const badgeBase = "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset";
 

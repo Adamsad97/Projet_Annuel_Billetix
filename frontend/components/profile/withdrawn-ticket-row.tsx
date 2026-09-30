@@ -1,6 +1,5 @@
 import type { ApiWithdrawnTicket } from "@/lib/api/tickets";
-
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+import { longDate as dateFormatter } from "@/lib/format/dates";
 
 /** Billet reçu puis retiré : le transfert a été annulé à la demande de l'expéditeur. */
 export function WithdrawnTicketRow({ item }: { item: ApiWithdrawnTicket }) {

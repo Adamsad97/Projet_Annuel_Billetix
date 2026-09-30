@@ -13,6 +13,10 @@ import { SearchField } from "@/components/ui/search-field";
 import type { ApiTicket } from "@/lib/api/tickets";
 import { matchesSearch } from "@/lib/format/search";
 import { apiTicketToAttendee, type Attendee } from "@/lib/mappers/event-detail-mappers";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { filterSelectClass } from "@/components/ui/field";
+import { LoadMoreButton } from "@/components/ui/load-more-button";
 
 const PAGE_SIZE = 50;
 
@@ -99,7 +103,7 @@ export function AttendeesExplorer({ tickets, exportName }: { tickets: ApiTicket[
 
   if (attendees.length === 0) {
     return (
-      <p className="rounded-2xl border border-hairline-1 bg-card px-5 py-8 text-center text-sm text-ink-5">
+      <p className={cardClass("px-5 py-8 text-center text-sm text-ink-5")}>
         Aucun participant pour cet événement.
       </p>
     );
@@ -139,7 +143,7 @@ export function AttendeesExplorer({ tickets, exportName }: { tickets: ApiTicket[
             <select
               value={sort}
               onChange={(event) => setSort(event.target.value as SortOrder)}
-              className="h-10 rounded-full border border-hairline-3 bg-card px-4 text-sm font-medium text-ink-2 focus:border-blue-500 focus:outline-none"
+              className={filterSelectClass}
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.id} value={option.id}>
@@ -176,13 +180,13 @@ export function AttendeesExplorer({ tickets, exportName }: { tickets: ApiTicket[
           type="button"
           onClick={() => downloadCsv(filtered, `${exportName}.csv`)}
           disabled={filtered.length === 0}
-          className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-40"
+          className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm disabled:opacity-40")}
         >
           Exporter la liste (CSV)
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+      <div className={cardClass("overflow-hidden")}>
         {filtered.length > 0 ? (
           filtered.slice(0, visible).map((attendee) => <AttendeeRow key={attendee.id} attendee={attendee} />)
         ) : (
@@ -196,15 +200,7 @@ export function AttendeesExplorer({ tickets, exportName }: { tickets: ApiTicket[
       </div>
 
       {filtered.length > visible ? (
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={() => setVisible((current) => current + PAGE_SIZE)}
-            className="rounded-full border border-hairline-3 px-6 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
-          >
-            Afficher plus ({filtered.length - visible} restants)
-          </button>
-        </div>
+        <LoadMoreButton onClick={() => setVisible((current) => current + PAGE_SIZE)} remaining={filtered.length - visible} />
       ) : null}
     </div>
   );

@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AuthHeader } from "@/components/layout/auth-header";
+import { PageShell } from "@/components/layout/page-shell";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { OrganizerEventsExplorer } from "@/components/dashboard/organizer-events-explorer";
 import { getOrganizerDashboard, getMyPayouts, type ApiOrganizerDashboard } from "@/lib/api/organizer";
@@ -15,6 +15,10 @@ import { buildOrganizerDashboardStats } from "@/lib/mappers/dashboard-mappers";
 import { getStoredUser } from "@/lib/auth/session";
 import { ApiError } from "@/lib/api/http-error";
 import { getOrganizerProfile } from "@/lib/api/organizer-profile";
+import { Alert } from "@/components/ui/alert";
+import { BackLink } from "@/components/ui/back-link";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { buttonClass } from "@/components/ui/button";
 
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<ApiOrganizerDashboard | undefined>(undefined);
@@ -59,93 +63,84 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="flex flex-1 flex-col bg-page">
-      <AuthHeader />
+    <PageShell width="7xl">
+      <BackLink href="/">Accueil</BackLink>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-10">
-        <Link
-          href="/"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
-        >
-          ← Accueil
-        </Link>
-
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-ink-1">Tableau de bord</h1>
-            <p className="mt-1 text-sm text-accent">
-              Bonjour {firstName || ""} 👋 — performances tous événements confondus
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/dashboard/profil"
-              className="rounded-full border border-hairline-3 px-4 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
-            >
-              🏷️ Mon profil
-            </Link>
-            <Link
-              href="/dashboard/paiements"
-              className="rounded-full border border-hairline-3 px-4 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
-            >
-              💳 Paiements
-            </Link>
-            <Link
-              href="/creer-evenement"
-              className="rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
-            >
-              + Créer un événement
-            </Link>
-          </div>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-1">Tableau de bord</h1>
+          <p className="mt-1 text-sm text-accent">
+            Bonjour {firstName || ""} 👋 — performances tous événements confondus
+          </p>
         </div>
 
-        {hasProfile === false ? (
-          <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
-            <div>
-              <p className="text-sm font-semibold text-ink-1">Complétez votre profil organisateur</p>
-              <p className="mt-0.5 text-sm text-ink-3">
-                Nom public et présentation de votre structure : nécessaires pour la vérification d&apos;identité et
-                les reversements.
-              </p>
-            </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/dashboard/profil"
+            className={buttonClass("secondary", "rounded-full px-4 py-2.5 text-sm")}
+          >
+            🏷️ Mon profil
+          </Link>
+          <Link
+            href="/dashboard/paiements"
+            className={buttonClass("secondary", "rounded-full px-4 py-2.5 text-sm")}
+          >
+            💳 Paiements
+          </Link>
+          <Link
+            href="/creer-evenement"
+            className={buttonClass("primary", "rounded-full px-5 py-2.5 text-sm")}
+          >
+            + Créer un événement
+          </Link>
+        </div>
+      </div>
+
+      {hasProfile === false ? (
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
+          <div>
+            <p className="text-sm font-semibold text-ink-1">Complétez votre profil organisateur</p>
+            <p className="mt-0.5 text-sm text-ink-3">
+              Nom public et présentation de votre structure : nécessaires pour la vérification d&apos;identité et
+              les reversements.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/profil"
+            className="shrink-0 rounded-full bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            Compléter mon profil →
+          </Link>
+        </div>
+      ) : null}
+
+      {error ? (
+        <Alert centered>
+          {error}
+        </Alert>
+      ) : dashboard === undefined ? (
+        <MutedMessage />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {buildOrganizerDashboardStats(dashboard, nextPayoutDate).map((stat) => (
+              <StatCard key={stat.id} stat={stat} />
+            ))}
+          </div>
+
+          <div className="mb-4 mt-10 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-ink-1">Mes événements</h2>
             <Link
-              href="/dashboard/profil"
-              className="shrink-0 rounded-full bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              href="/dashboard/finances"
+              className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
             >
-              Compléter mon profil →
+              Finances →
             </Link>
           </div>
-        ) : null}
 
-        {error ? (
-          <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-6 text-center text-sm text-red-300">
-            {error}
-          </div>
-        ) : dashboard === undefined ? (
-          <p className="text-center text-sm text-ink-5">Chargement…</p>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {buildOrganizerDashboardStats(dashboard, nextPayoutDate).map((stat) => (
-                <StatCard key={stat.id} stat={stat} />
-              ))}
-            </div>
-
-            <div className="mb-4 mt-10 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-ink-1">Mes événements</h2>
-              <Link
-                href="/dashboard/finances"
-                className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
-              >
-                Finances →
-              </Link>
-            </div>
-
-            <OrganizerEventsExplorer events={dashboard.events} categoriesByCode={categoriesByCode} />
-          </>
-        )}
-      </main>
-    </div>
+          <OrganizerEventsExplorer events={dashboard.events} categoriesByCode={categoriesByCode} />
+        </>
+      )}
+    </PageShell>
   );
 }

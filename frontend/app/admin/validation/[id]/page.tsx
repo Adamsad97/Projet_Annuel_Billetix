@@ -23,8 +23,14 @@ import {
 import { ApiError } from "@/lib/api/http-error";
 import { statusBadgeStyles } from "@/lib/constants/dashboard";
 import { EventLocationMap } from "@/components/map/event-location-map";
+import { euros as currency } from "@/lib/format/money";
+import { longDate as dateFormatter } from "@/lib/format/dates";
+import { Alert } from "@/components/ui/alert";
+import { BackLink } from "@/components/ui/back-link";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 // Bug corrigé : l'en-tête affichait created_at (date de création du
 // brouillon en base) à la place de start_date (date choisie par
 // l'organisateur pour l'événement) — un admin validait donc "à l'aveugle"
@@ -36,7 +42,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", {
   hour: "2-digit",
   minute: "2-digit",
 });
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 
 export default function AdminValidationDetailPage({
   params,
@@ -178,7 +183,7 @@ export default function AdminValidationDetailPage({
   if (event === null) {
     return (
       <AdminShell active="/admin/validation">
-        <p className="text-center text-sm text-ink-5">Cet événement n&apos;existe pas.</p>
+        <MutedMessage>Cet événement n&apos;existe pas.</MutedMessage>
         <Link href="/admin/validation" className="mt-4 block text-center text-sm font-medium text-link hover:text-link-hover">
           ← Validation
         </Link>
@@ -204,26 +209,21 @@ export default function AdminValidationDetailPage({
 
   return (
     <AdminShell active="/admin/validation">
-      <Link
-        href="/admin/validation"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
-      >
-        ← Validation
-      </Link>
+      <BackLink href="/admin/validation">Validation</BackLink>
 
       {event === undefined ? (
-        <p className="text-center text-sm text-ink-5">Chargement…</p>
+        <MutedMessage />
       ) : (
         <>
           {error ? (
-            <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">
+            <Alert className="mb-6">
               {error}
-            </div>
+            </Alert>
           ) : null}
           {info ? (
-            <div className="mb-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-5 py-4 text-sm text-emerald-300">
+            <Alert tone="success" className="mb-6">
               {info}
-            </div>
+            </Alert>
           ) : null}
 
           <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -287,7 +287,7 @@ export default function AdminValidationDetailPage({
           </div>
 
           {event.is_non_profit ? (
-            <div className="mb-6 rounded-2xl border border-hairline-1 bg-card p-5">
+            <div className={cardClass("mb-6 p-5")}>
               <h2 className="mb-2 text-sm font-semibold text-ink-2">Vérification « à but non lucratif »</h2>
               {event.non_profit_verified ? (
                 <p className="mb-3 text-sm text-ink-4">✓ Justificatif vérifié — commission à 0 % appliquée.</p>
@@ -335,7 +335,7 @@ export default function AdminValidationDetailPage({
               adresse complète, tarifs, période de vente ni politique de
               remboursement, alors que toutes ces données étaient déjà
               chargées (ApiPendingEvent hérite d'ApiEvent en entier). */}
-          <div className="mb-6 rounded-2xl border border-hairline-1 bg-card p-5">
+          <div className={cardClass("mb-6 p-5")}>
             <h2 className="mb-3 text-sm font-semibold text-ink-2">Informations de l&apos;événement</h2>
             <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div>
@@ -393,7 +393,7 @@ export default function AdminValidationDetailPage({
             </div>
           </div>
 
-          <div className="mb-6 rounded-2xl border border-hairline-1 bg-card p-5">
+          <div className={cardClass("mb-6 p-5")}>
             <h2 className="mb-3 text-sm font-semibold text-ink-2">
               Catégories de billets {ticketCategories.length > 0 ? `(${ticketCategories.length})` : ""}
             </h2>
@@ -420,7 +420,7 @@ export default function AdminValidationDetailPage({
             )}
           </div>
 
-          <div className="mb-6 rounded-2xl border border-hairline-1 bg-card p-5">
+          <div className={cardClass("mb-6 p-5")}>
             <h2 className="mb-2 text-sm font-semibold text-ink-2">Description</h2>
             <p className="text-sm text-ink-4">{event.description}</p>
           </div>
@@ -435,7 +435,7 @@ export default function AdminValidationDetailPage({
           ) : null}
 
           {isPending ? (
-            <div className="mt-6 rounded-2xl border border-hairline-1 bg-card p-5">
+            <div className={cardClass("mt-6 p-5")}>
               <h2 className="mb-2 text-sm font-semibold text-ink-2">Demander un complément d&apos;information</h2>
               <p className="mb-3 text-xs text-ink-5">
                 Suspend le délai de traitement jusqu&apos;à la réponse de l&apos;organisateur.
@@ -445,7 +445,7 @@ export default function AdminValidationDetailPage({
                 value={infoMessage}
                 onChange={(evt) => setInfoMessage(evt.target.value)}
                 placeholder="Ex : Précisez l'adresse exacte du lieu."
-                className="w-full resize-none rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+                className={fieldClass("w-full resize-none px-3 py-2")}
               />
               <button
                 type="button"

@@ -1,8 +1,6 @@
 import type { ApiResoldTicket } from "@/lib/api/tickets";
-
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeStyle: "short" });
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+import { euros as currency } from "@/lib/format/money";
+import { longDate as dateFormatter, longDateTime as dateTimeFormatter } from "@/lib/format/dates";
 
 /** Billet revendu : trace en lecture seule pour le vendeur. */
 export function ResoldTicketRow({ item }: { item: ApiResoldTicket }) {

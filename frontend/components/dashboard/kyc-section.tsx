@@ -6,6 +6,8 @@ import { DocumentDropzone } from "@/components/ui/document-dropzone";
 import { getKycStatus, submitKyc, type ApiKycStatus, type KycStatus } from "@/lib/api/kyc";
 import { uploadDocument } from "@/lib/api/upload";
 import { ApiError } from "@/lib/api/http-error";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
 
 const STATUS_DISPLAY: Record<KycStatus, { label: string; className: string }> = {
   PENDING: { label: "À fournir", className: "bg-hairline-2 text-ink-3" },
@@ -66,7 +68,7 @@ export function KycSection() {
   const canSubmit = kyc && (kyc.kyc_status === "PENDING" || kyc.kyc_status === "REJECTED");
 
   return (
-    <section className="rounded-2xl border border-hairline-1 bg-card p-6">
+    <section className={cardClass("p-6")}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold text-ink-1">Vérification d&apos;identité</h2>
         {status ? (
@@ -129,7 +131,7 @@ export function KycSection() {
                 type="button"
                 disabled={!file || sending}
                 onClick={handleSubmit}
-                className="self-end rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                className={buttonClass("primary", "self-end rounded-full px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40")}
               >
                 {sending ? "Envoi…" : "Envoyer pour vérification"}
               </button>

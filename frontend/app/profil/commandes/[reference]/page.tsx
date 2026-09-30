@@ -10,7 +10,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { Elements } from "@stripe/react-stripe-js";
-import { AuthHeader } from "@/components/layout/auth-header";
+import { PageShell } from "@/components/layout/page-shell";
 import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
 import { downloadInvoice, getOrder, resendTickets, type ApiOrder, type ApiOrderItem } from "@/lib/api/orders";
 import { getTicketsByOrder, type ApiTicket } from "@/lib/api/tickets";
@@ -19,9 +19,14 @@ import { getStripe } from "@/lib/stripe/client";
 import { orderStatusBadge } from "@/lib/constants/profile";
 import { apiOrderItemsToLines, orderStatusFor, paymentMethodLabel } from "@/lib/mappers/profile-mappers";
 import { ApiError } from "@/lib/api/http-error";
-
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+import { euros as currency } from "@/lib/format/money";
+import { longDate as dateFormatter } from "@/lib/format/dates";
+import { Alert } from "@/components/ui/alert";
+import { BackLink } from "@/components/ui/back-link";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function OrderDetailPage({
   params,
@@ -138,211 +143,202 @@ export default function OrderDetailPage({
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-page">
-      <AuthHeader />
+    <PageShell width="lg">
+      <BackLink href="/profil">Profil</BackLink>
 
-      <main className="mx-auto w-full max-w-lg flex-1 px-6 py-10">
-        <Link
-          href="/profil"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
-        >
-          ← Profil
-        </Link>
-
-        {order === undefined ? (
-          <p className="text-center text-sm text-ink-5">Chargement…</p>
-        ) : error ? (
-          <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-6 text-center text-sm text-red-300">
-            {error}
-          </div>
-        ) : order === null ? (
-          <div className="rounded-2xl border border-hairline-1 bg-card p-8 text-center">
-            <div className="mb-3 text-4xl">📦</div>
-            <h1 className="text-lg font-bold text-ink-1">Page introuvable</h1>
-            <p className="mt-2 text-sm text-ink-5">
-              Cette commande n&apos;existe pas, ou a changé d&apos;adresse.
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-bold text-ink-1">{order.reference}</h1>
-                <p className="text-sm text-ink-5">
-                  Passée le {dateFormatter.format(new Date(order.created_at))}
-                </p>
-              </div>
-              {badge ? (
-                <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${badge.className}`}>
-                  {badge.label}
-                </span>
-              ) : null}
-            </div>
-
-            <div className="rounded-2xl border border-hairline-1 bg-card p-5">
-              <h2 className="mb-3 text-sm font-semibold text-ink-2">Récapitulatif</h2>
-              {lines.map((line) => (
-                <div key={line.label} className="flex items-center justify-between py-1.5 text-sm">
-                  <span className="text-ink-4">{line.label}</span>
-                  <span className="text-ink-3">{currency.format(line.amount)}</span>
-                </div>
-              ))}
-              <div className="mt-3 flex items-center justify-between border-t border-hairline-2 pt-3">
-                <span className="font-bold text-ink-1">Total</span>
-                <span className="font-bold text-ink-1">
-                  {currency.format(Number(order.total_amount_ttc))}
-                </span>
-              </div>
-              <p className="mt-3 text-xs text-ink-5">
-                💳 {paymentMethodLabel(order.payment_method)}
+      {order === undefined ? (
+        <MutedMessage />
+      ) : error ? (
+        <Alert centered>
+          {error}
+        </Alert>
+      ) : order === null ? (
+        <div className={cardClass("p-8 text-center")}>
+          <div className="mb-3 text-4xl">📦</div>
+          <h1 className="text-lg font-bold text-ink-1">Page introuvable</h1>
+          <p className="mt-2 text-sm text-ink-5">
+            Cette commande n&apos;existe pas, ou a changé d&apos;adresse.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-ink-1">{order.reference}</h1>
+              <p className="text-sm text-ink-5">
+                Passée le {dateFormatter.format(new Date(order.created_at))}
               </p>
             </div>
-
-            {canResume ? (
-              <div className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
-                {clientSecret ? (
-                  <Elements stripe={getStripe()} options={{ clientSecret, locale: "fr" }}>
-                    <StripePaymentForm
-                      orderId={order.id}
-                      amountLabel={currency.format(Number(order.total_amount_ttc))}
-                    />
-                  </Elements>
-                ) : (
-                  <>
-                    <h2 className="mb-1 text-sm font-semibold text-amber-200">Paiement non terminé</h2>
-                    <p className="mb-4 text-sm text-amber-200/70">
-                      Cette commande n&apos;a pas encore été réglée — vos places restent réservées le
-                      temps de finaliser le paiement.
-                    </p>
-                    {resumeError ? (
-                      <p className="mb-3 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-inset ring-red-500/30">
-                        {resumeError}
-                      </p>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={handleResume}
-                      disabled={resumeLoading}
-                      className="w-full rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {resumeLoading ? "Préparation du paiement…" : "Reprendre le paiement →"}
-                    </button>
-                  </>
-                )}
-              </div>
+            {badge ? (
+              <Badge tone={badge.className} size="md">
+                {badge.label}
+              </Badge>
             ) : null}
+          </div>
 
-            {order.invoice_url ? (
-              <div className="mt-6">
-                <button
-                  type="button"
-                  disabled={invoiceDownloading}
-                  onClick={async () => {
-                    setInvoiceDownloading(true);
-                    setInvoiceError(null);
-                    try {
-                      await downloadInvoice(order.id, order.reference);
-                    } catch (err) {
-                      setInvoiceError(err instanceof ApiError ? err.message : "Téléchargement impossible, veuillez réessayer.");
-                    } finally {
-                      setInvoiceDownloading(false);
-                    }
-                  }}
-                  className="w-full rounded-full border border-hairline-3 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-60"
-                >
-                  {invoiceDownloading ? "Téléchargement…" : "📄 Télécharger la facture (PDF)"}
-                </button>
-                {invoiceError ? (
-                  <p className="mt-2 text-center text-sm text-danger">{invoiceError}</p>
-                ) : null}
+          <div className={cardClass("p-5")}>
+            <h2 className="mb-3 text-sm font-semibold text-ink-2">Récapitulatif</h2>
+            {lines.map((line) => (
+              <div key={line.label} className="flex items-center justify-between py-1.5 text-sm">
+                <span className="text-ink-4">{line.label}</span>
+                <span className="text-ink-3">{currency.format(line.amount)}</span>
               </div>
-            ) : null}
+            ))}
+            <div className="mt-3 flex items-center justify-between border-t border-hairline-2 pt-3">
+              <span className="font-bold text-ink-1">Total</span>
+              <span className="font-bold text-ink-1">
+                {currency.format(Number(order.total_amount_ttc))}
+              </span>
+            </div>
+            <p className="mt-3 text-xs text-ink-5">
+              💳 {paymentMethodLabel(order.payment_method)}
+            </p>
+          </div>
 
-            <h2 className="mb-3 mt-6 text-sm font-semibold text-ink-2">Billets inclus</h2>
-            <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
-              {tickets.length === 0 && ticketsLoading ? (
-                <p className="px-5 py-4 text-sm text-ink-5">Chargement des billets…</p>
-              ) : tickets.length === 0 ? (
-                <p className="px-5 py-4 text-sm text-ink-5">Aucun billet pour cette commande.</p>
+          {canResume ? (
+            <div className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+              {clientSecret ? (
+                <Elements stripe={getStripe()} options={{ clientSecret, locale: "fr" }}>
+                  <StripePaymentForm
+                    orderId={order.id}
+                    amountLabel={currency.format(Number(order.total_amount_ttc))}
+                  />
+                </Elements>
               ) : (
-                tickets.map((ticket) =>
-                  ticket.resold ? (
-                    // Revendu : rattaché à la commande de l'acheteur, gardé ici en trace.
-                    <div
-                      key={`resold-${ticket.id}`}
-                      className="flex items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 last:border-b-0"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg">🔄</span>
-                        <div>
-                          <p className="text-sm font-bold text-ink-1">{ticket.event_name}</p>
-                          <p className="text-xs text-ink-5">
-                            {ticket.reference} · revendu {currency.format(ticket.resale_price ?? 0)}
-                            {ticket.sold_at ? ` le ${dateFormatter.format(new Date(ticket.sold_at))}` : ""}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-xs font-medium text-ink-5">Revendu</span>
-                    </div>
-                  ) : ticket.transferred ? (
-                    // Offert à un autre compte : plus accessible depuis ce compte.
-                    <div
-                      key={ticket.id}
-                      className="flex items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 last:border-b-0"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-lg">🎁</span>
-                        <div>
-                          <p className="text-sm font-bold text-ink-1">{ticket.event_name}</p>
-                          <p className="text-xs text-ink-5">
-                            {ticket.reference} · offert à {ticket.holder_first_name} {ticket.holder_last_name}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-xs font-medium text-ink-5">Offert</span>
-                    </div>
-                  ) : (
-                  <Link
-                    key={ticket.id}
-                    href={`/billets/${ticket.id}`}
-                    className="flex items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 transition-colors last:border-b-0 hover:bg-hairline-1"
+                <>
+                  <h2 className="mb-1 text-sm font-semibold text-amber-200">Paiement non terminé</h2>
+                  <p className="mb-4 text-sm text-amber-200/70">
+                    Cette commande n&apos;a pas encore été réglée — vos places restent réservées le
+                    temps de finaliser le paiement.
+                  </p>
+                  {resumeError ? (
+                    <p className="mb-3 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-inset ring-red-500/30">
+                      {resumeError}
+                    </p>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={handleResume}
+                    disabled={resumeLoading}
+                    className={buttonClass("primary", "w-full rounded-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg">🎫</span>
-                      <div>
-                        <p className="text-sm font-bold text-ink-1">{ticket.event_name}</p>
-                        <p className="text-xs text-ink-5">{ticket.reference}</p>
-                      </div>
-                    </div>
-                    <span className="text-sm text-link">Voir →</span>
-                  </Link>
-                  ),
-                )
+                    {resumeLoading ? "Préparation du paiement…" : "Reprendre le paiement →"}
+                  </button>
+                </>
               )}
             </div>
+          ) : null}
 
-            {canResend ? (
-              <div className="mt-6 flex flex-col items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleResend}
-                  disabled={resendState === "loading" || resendState === "sent"}
-                  className="rounded-full border border-hairline-3 px-5 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:cursor-not-allowed disabled:opacity-60"
+          {order.invoice_url ? (
+            <div className="mt-6">
+              <button
+                type="button"
+                disabled={invoiceDownloading}
+                onClick={async () => {
+                  setInvoiceDownloading(true);
+                  setInvoiceError(null);
+                  try {
+                    await downloadInvoice(order.id, order.reference);
+                  } catch (err) {
+                    setInvoiceError(err instanceof ApiError ? err.message : "Téléchargement impossible, veuillez réessayer.");
+                  } finally {
+                    setInvoiceDownloading(false);
+                  }
+                }}
+                className={buttonClass("secondary", "w-full rounded-full py-3 text-sm disabled:opacity-60")}
+              >
+                {invoiceDownloading ? "Téléchargement…" : "📄 Télécharger la facture (PDF)"}
+              </button>
+              {invoiceError ? (
+                <p className="mt-2 text-center text-sm text-danger">{invoiceError}</p>
+              ) : null}
+            </div>
+          ) : null}
+
+          <h2 className="mb-3 mt-6 text-sm font-semibold text-ink-2">Billets inclus</h2>
+          <div className={cardClass("overflow-hidden")}>
+            {tickets.length === 0 && ticketsLoading ? (
+              <p className="px-5 py-4 text-sm text-ink-5">Chargement des billets…</p>
+            ) : tickets.length === 0 ? (
+              <p className="px-5 py-4 text-sm text-ink-5">Aucun billet pour cette commande.</p>
+            ) : (
+              tickets.map((ticket) =>
+                ticket.resold ? (
+                  // Revendu : rattaché à la commande de l'acheteur, gardé ici en trace.
+                  <div
+                    key={`resold-${ticket.id}`}
+                    className="flex items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 last:border-b-0"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">🔄</span>
+                      <div>
+                        <p className="text-sm font-bold text-ink-1">{ticket.event_name}</p>
+                        <p className="text-xs text-ink-5">
+                          {ticket.reference} · revendu {currency.format(ticket.resale_price ?? 0)}
+                          {ticket.sold_at ? ` le ${dateFormatter.format(new Date(ticket.sold_at))}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium text-ink-5">Revendu</span>
+                  </div>
+                ) : ticket.transferred ? (
+                  // Offert à un autre compte : plus accessible depuis ce compte.
+                  <div
+                    key={ticket.id}
+                    className="flex items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 last:border-b-0"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">🎁</span>
+                      <div>
+                        <p className="text-sm font-bold text-ink-1">{ticket.event_name}</p>
+                        <p className="text-xs text-ink-5">
+                          {ticket.reference} · offert à {ticket.holder_first_name} {ticket.holder_last_name}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium text-ink-5">Offert</span>
+                  </div>
+                ) : (
+                <Link
+                  key={ticket.id}
+                  href={`/billets/${ticket.id}`}
+                  className="flex items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 transition-colors last:border-b-0 hover:bg-hairline-1"
                 >
-                  {resendState === "loading"
-                    ? "Envoi en cours…"
-                    : resendState === "sent"
-                      ? "✓ Billets renvoyés"
-                      : "📧 Renvoyer les billets par email"}
-                </button>
-                {resendState === "error" ? (
-                  <p className="text-xs text-red-300">{resendError}</p>
-                ) : null}
-              </div>
-            ) : null}
-          </>
-        )}
-      </main>
-    </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">🎫</span>
+                    <div>
+                      <p className="text-sm font-bold text-ink-1">{ticket.event_name}</p>
+                      <p className="text-xs text-ink-5">{ticket.reference}</p>
+                    </div>
+                  </div>
+                  <span className="text-sm text-link">Voir →</span>
+                </Link>
+                ),
+              )
+            )}
+          </div>
+
+          {canResend ? (
+            <div className="mt-6 flex flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resendState === "loading" || resendState === "sent"}
+                className={buttonClass("secondary", "rounded-full px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
+              >
+                {resendState === "loading"
+                  ? "Envoi en cours…"
+                  : resendState === "sent"
+                    ? "✓ Billets renvoyés"
+                    : "📧 Renvoyer les billets par email"}
+              </button>
+              {resendState === "error" ? (
+                <p className="text-xs text-red-300">{resendError}</p>
+              ) : null}
+            </div>
+          ) : null}
+        </>
+      )}
+    </PageShell>
   );
 }

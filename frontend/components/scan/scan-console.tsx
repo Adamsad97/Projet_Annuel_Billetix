@@ -23,6 +23,10 @@ import { getStoredUser } from "@/lib/auth/session";
 import { verifyOffline } from "@/lib/scan/offline-verify";
 import { closedEventNotice, scanEventStatus } from "@/lib/scan/event-status";
 import { clearQueue, enqueue, loadPack, loadQueue, markUsedInPack, savePack } from "@/lib/scan/offline-store";
+import { dateTime, time as timeOnly } from "@/lib/format/dates";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
 
 const SELECTED_EVENT_KEY = "billetix_scan_event";
 // Même QR relu par la caméra pendant l'affichage du verdict : ignoré.
@@ -153,8 +157,6 @@ interface Verdict {
   holder?: string;
 }
 
-const dateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
-const timeOnly = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" });
 const timeWithSeconds = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
 function readSelectedEvent(): string | null {
@@ -519,7 +521,7 @@ export function ScanConsole() {
       </section>
 
       {showSchedule && events ? (
-        <section aria-label="Mes événements" className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+        <section aria-label="Mes événements" className={cardClass("overflow-hidden")}>
           {(() => {
             const { current, past } = agentSchedule(events);
             const row = (e: ScanEvent, isPast: boolean) => {
@@ -685,7 +687,7 @@ export function ScanConsole() {
           </div>
 
           {/* Dernier verdict (rappel discret) */}
-          <div role="status" aria-live="assertive" className="rounded-2xl border border-hairline-1 bg-card px-4 py-3">
+          <div role="status" aria-live="assertive" className={cardClass("px-4 py-3")}>
             {verdict ? (
               <div className="flex items-center gap-3">
                 <span
@@ -706,11 +708,11 @@ export function ScanConsole() {
                 </div>
               </div>
             ) : (
-              <p className="text-center text-sm text-ink-5">
+              <MutedMessage>
                 {cameraOn
                   ? "Visez le QR code affiché sur le téléphone du participant."
                   : "Démarrez le scan, puis visez le QR code affiché sur le téléphone du participant."}
-              </p>
+              </MutedMessage>
             )}
           </div>
 
@@ -774,7 +776,7 @@ export function ScanConsole() {
 
           {/* Historique des scans */}
           {history.length > 0 ? (
-            <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+            <div className={cardClass("overflow-hidden")}>
               <div className="flex items-center justify-between gap-3 border-b border-hairline-1 px-4 py-2.5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ink-5">
                   Derniers scans
@@ -822,7 +824,7 @@ export function ScanConsole() {
                 ? { label: "Rien à vérifier", className: "bg-hairline-2 text-ink-3" }
                 : { label: "Prêt", className: "bg-emerald-500/15 text-emerald-600" };
             return (
-              <section aria-label="Contrôle sans réseau" className="rounded-2xl border border-hairline-1 bg-card p-4">
+              <section aria-label="Contrôle sans réseau" className={cardClass("p-4")}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600/10 text-blue-600" aria-hidden="true">
@@ -894,14 +896,14 @@ export function ScanConsole() {
             <button
               type="button"
               onClick={() => setCameraOn(false)}
-              className="rounded-full border border-hairline-3 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+              className={buttonClass("secondary", "rounded-full py-3 text-sm")}
             >
               Arrêter la caméra
             </button>
           ) : null}
         </>
       ) : (
-        <p className="rounded-2xl border border-hairline-1 bg-card px-4 py-6 text-center text-sm text-ink-5">
+        <p className={cardClass("px-4 py-6 text-center text-sm text-ink-5")}>
           Choisissez l&apos;événement à contrôler.
         </p>
       )}

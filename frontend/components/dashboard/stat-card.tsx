@@ -1,8 +1,9 @@
 import type { DashboardStat } from "@/lib/constants/dashboard";
+import { cardClass } from "@/components/ui/card";
 
 export function StatCard({ stat }: { stat: DashboardStat }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+    <div className={cardClass("overflow-hidden")}>
       <div className={`h-1 w-full ${stat.accent}`} />
       <div className="p-5">
         <p className="text-xs font-medium uppercase tracking-wide text-ink-5">

@@ -5,6 +5,8 @@ import { useState } from "react";
 import { requestResale } from "@/lib/api/tickets";
 import { ApiError } from "@/lib/api/http-error";
 import type { TicketDetail } from "@/lib/constants/ticket-detail";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
 
 export function ResellForm({ ticket }: { ticket: TicketDetail }) {
   const [price, setPrice] = useState(ticket.unitPriceTtc.toFixed(2));
@@ -58,7 +60,7 @@ export function ResellForm({ ticket }: { ticket: TicketDetail }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-hairline-1 bg-card p-6"
+      className={cardClass("p-6")}
     >
       <h2 className="text-base font-bold text-ink-1">Mettre ce billet en revente</h2>
       <p className="mt-1 text-sm text-ink-5">
@@ -95,7 +97,7 @@ export function ResellForm({ ticket }: { ticket: TicketDetail }) {
       <button
         type="submit"
         disabled={submitting}
-        className="mt-5 w-full rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+        className={buttonClass("primary", "mt-5 w-full rounded-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-40")}
       >
         {submitting ? "Mise en revente…" : "Confirmer la mise en revente"}
       </button>

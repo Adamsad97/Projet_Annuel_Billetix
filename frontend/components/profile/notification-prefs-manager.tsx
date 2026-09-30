@@ -11,6 +11,9 @@ import { ToggleSwitch } from "@/components/profile/toggle-switch";
 import { notificationPrefGroups } from "@/lib/constants/notification-prefs";
 import { getNotificationPrefs, updateNotificationPrefs } from "@/lib/api/notification-prefs";
 import { ApiError } from "@/lib/api/http-error";
+import { Alert } from "@/components/ui/alert";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { cardClass } from "@/components/ui/card";
 
 const defaultValues = Object.fromEntries(
   notificationPrefGroups.flatMap((group) =>
@@ -56,19 +59,19 @@ export function NotificationPrefsManager() {
   }
 
   if (!values) {
-    return <p className="text-center text-sm text-ink-5">Chargement…</p>;
+    return <MutedMessage />;
   }
 
   return (
     <div className="flex flex-col gap-6">
       {error ? (
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">
+        <Alert>
           {error}
-        </div>
+        </Alert>
       ) : null}
 
       {notificationPrefGroups.map((group) => (
-        <div key={group.title} className="rounded-2xl border border-hairline-1 bg-card p-5">
+        <div key={group.title} className={cardClass("p-5")}>
           <h2 className="mb-3 text-sm font-semibold text-ink-2">{group.title}</h2>
           <div className="flex flex-col divide-y divide-hairline-1">
             {group.prefs.map((pref) => (

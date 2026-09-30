@@ -18,6 +18,13 @@ import { getAdminEvent, getAdminEventOverview, type ApiAdminEvent, type ApiAdmin
 import { ApiError } from "@/lib/api/http-error";
 import { auditActionLabels } from "@/lib/mappers/audit-mappers";
 import { eventPath } from "@/lib/format/event-path";
+import { dateTime as shortDateTime, fullDateTime as dateFormatter } from "@/lib/format/dates";
+import { Alert } from "@/components/ui/alert";
+import { BackLink } from "@/components/ui/back-link";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 const statusBadge: Record<string, { label: string; className: string }> = {
   PUBLISHED: { label: "● Publié", className: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30" },
@@ -28,9 +35,6 @@ const statusBadge: Record<string, { label: string; className: string }> = {
   SUSPENDED: { label: "⊘ Désactivé", className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
   TERMINATED: { label: "Terminé", className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
 };
-
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
-const shortDateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -73,7 +77,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
   if (event === undefined) {
     return (
       <AdminShell active="/admin/evenements">
-        <p className="text-center text-sm text-ink-5">{error ?? "Chargement…"}</p>
+        <MutedMessage>{error ?? "Chargement…"}</MutedMessage>
       </AdminShell>
     );
   }
@@ -81,7 +85,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
   if (event === null) {
     return (
       <AdminShell active="/admin/evenements">
-        <div className="rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+        <div className={cardClass("p-8 text-center")}>
           <h1 className="text-lg font-bold text-ink-1">Événement introuvable</h1>
         </div>
       </AdminShell>
@@ -96,22 +100,17 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <AdminShell active="/admin/evenements">
-      <Link
-        href="/admin/evenements"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
-      >
-        ← Événements
-      </Link>
+      <BackLink href="/admin/evenements">Événements</BackLink>
 
       {error ? (
-        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">{error}</div>
+        <Alert className="mb-6">{error}</Alert>
       ) : null}
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold text-ink-1">{event.title}</h1>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${badge.className}`}>{badge.label}</span>
+            <Badge tone={badge.className} size="md">{badge.label}</Badge>
             <span className="rounded-full bg-hairline-1 px-2.5 py-1 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2">
               {eventTiming(event.start_date, event.end_date)}
             </span>
@@ -127,7 +126,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
         </div>
         <Link
           href={eventPath(event)}
-          className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+          className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
         >
           Voir la page publique →
         </Link>
@@ -136,7 +135,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
       <EventAdminControls event={event} onChanged={load} />
 
       <Section title="Organisateur">
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-hairline-1 bg-card px-5 py-4">
+        <div className={cardClass("flex flex-wrap items-center justify-between gap-4 px-5 py-4")}>
           {overview?.organizer ? (
             <div className="text-sm">
               <p className="font-semibold text-ink-1">
@@ -155,7 +154,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
           )}
           <Link
             href={`/admin/utilisateurs/${event.organizer_id}`}
-            className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+            className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
           >
             Voir la fiche de l&apos;organisateur
           </Link>
@@ -178,11 +177,11 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
           viewer="ADMIN"
         />
       ) : (
-        <p className="mb-8 rounded-2xl border border-hairline-1 bg-card px-5 py-4 text-sm text-ink-5">Chargement des ventes et des finances…</p>
+        <p className={cardClass("mb-8 px-5 py-4 text-sm text-ink-5")}>Chargement des ventes et des finances…</p>
       )}
 
       <Section title="Lieu">
-        <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+        <div className={cardClass("p-5")}>
           <p className="text-sm font-semibold text-ink-1">{event.venue_name}</p>
           <p className="mb-3 text-sm text-ink-4">{address}</p>
           <EventLocationMap
@@ -194,13 +193,13 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
       </Section>
 
       <Section title="Description">
-        <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+        <div className={cardClass("p-5")}>
           <p className="whitespace-pre-line text-sm leading-relaxed text-ink-3">{event.description}</p>
         </div>
       </Section>
 
       <Section title="Documents">
-        <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+        <div className={cardClass("p-5")}>
           <DocumentGrid
             documents={[
               { id: "poster", label: "Affiche de l'événement", url: event.poster_url ?? "" },
@@ -216,7 +215,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
         <Section title="Demandes de complément">
           <div className="flex flex-col gap-3">
             {overview.validation_requests.map((request) => (
-              <div key={request.id} className="rounded-2xl border border-hairline-1 bg-card px-5 py-4 text-sm">
+              <div key={request.id} className={cardClass("px-5 py-4 text-sm")}>
                 <p className="text-xs text-ink-5">Demandé le {shortDateTime.format(new Date(request.created_at))}</p>
                 <p className="mt-1 text-ink-1">{request.message}</p>
                 {request.response ? (
@@ -237,12 +236,12 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
         {overview ? (
           <AttendeesExplorer tickets={overview.attendees} exportName={exportName} />
         ) : (
-          <p className="rounded-2xl border border-hairline-1 bg-card px-5 py-4 text-sm text-ink-5">Chargement…</p>
+          <p className={cardClass("px-5 py-4 text-sm text-ink-5")}>Chargement…</p>
         )}
       </Section>
 
       <Section title="Historique des actions">
-        <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+        <div className={cardClass("overflow-hidden")}>
           {overview && overview.history.length > 0 ? (
             overview.history.map((log) => (
               <div key={log.id} className="border-b border-hairline-1 px-5 py-3 text-sm last:border-b-0">

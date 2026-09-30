@@ -8,7 +8,6 @@
 // de rôle), et aucun compte du tout (création à la volée).
 
 import { useEffect, useState, type FormEvent } from "react";
-import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { CreateEventForm } from "@/components/create-event/create-event-form";
 import { listCategories, type ApiCategory } from "@/lib/api/categories";
@@ -18,6 +17,11 @@ import { registerUser, requestPasswordReset } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/http-error";
 import { ageInYears, underageMessage } from "@/lib/auth/age";
 import { useRegistrationPolicy } from "@/lib/auth/use-registration-policy";
+import { BackLink } from "@/components/ui/back-link";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
 const roleLabel: Record<ApiAdminUser["role"], string> = {
   BUYER: "Acheteur",
@@ -156,12 +160,7 @@ export default function AdminCreateEventForOrganizerPage() {
 
   return (
     <AdminShell active="/admin/evenements">
-      <Link
-        href="/admin/evenements"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
-      >
-        ← Événements
-      </Link>
+      <BackLink href="/admin/evenements">Événements</BackLink>
 
       <div className="mb-8 text-center">
         <h1 className="text-2xl font-bold text-ink-1">Créer un événement pour un organisateur</h1>
@@ -180,18 +179,18 @@ export default function AdminCreateEventForOrganizerPage() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="ex: marie.kone@email.com"
               autoFocus
-              className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+              className={fieldClass("px-4 py-3")}
             />
           </label>
 
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
           {searching ? (
-            <p className="text-center text-sm text-ink-5">Recherche…</p>
+            <MutedMessage>Recherche…</MutedMessage>
           ) : results !== undefined ? (
             <>
               {results.length > 0 ? (
-                <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+                <div className={cardClass("overflow-hidden")}>
                   {results.map((account) => {
                     const selectable =
                       !account.is_suspended &&
@@ -229,14 +228,14 @@ export default function AdminCreateEventForOrganizerPage() {
                   })}
                 </div>
               ) : (
-                <p className="text-center text-sm text-ink-5">Aucun compte trouvé pour cette recherche.</p>
+                <MutedMessage>Aucun compte trouvé pour cette recherche.</MutedMessage>
               )}
 
               {isValidEmail(query.trim()) ? (
                 showCreateAccount ? (
                   <form
                     onSubmit={handleCreateAccount}
-                    className="flex flex-col gap-3 rounded-2xl border border-hairline-1 bg-card p-4"
+                    className={cardClass("flex flex-col gap-3 p-4")}
                   >
                     <p className="text-sm font-medium text-ink-1">
                       Nouveau compte organisateur — {query.trim()}
@@ -247,14 +246,14 @@ export default function AdminCreateEventForOrganizerPage() {
                         value={newFirstName}
                         onChange={(event) => setNewFirstName(event.target.value)}
                         placeholder="Prénom"
-                        className="rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+                        className={fieldClass("px-3 py-2")}
                       />
                       <input
                         required
                         value={newLastName}
                         onChange={(event) => setNewLastName(event.target.value)}
                         placeholder="Nom"
-                        className="rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+                        className={fieldClass("px-3 py-2")}
                       />
                     </div>
                     <label className="flex flex-col gap-1 text-xs text-ink-4">
@@ -266,7 +265,7 @@ export default function AdminCreateEventForOrganizerPage() {
                         value={newBirthDate}
                         onChange={(event) => setNewBirthDate(event.target.value)}
                         aria-invalid={newAccountUnderage}
-                        className={`rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none ${newAccountUnderage ? "border-danger" : ""}`}
+                        className={fieldClass(`px-3 py-2 ${newAccountUnderage ? "border-danger" : ""}`)}
                       />
                     </label>
                     {newAccountUnderage ? (
@@ -278,7 +277,7 @@ export default function AdminCreateEventForOrganizerPage() {
                       value={newPhone}
                       onChange={(event) => setNewPhone(event.target.value)}
                       placeholder="Téléphone (optionnel)"
-                      className="rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+                      className={fieldClass("px-3 py-2")}
                     />
                     <p className="text-xs text-ink-5">
                       Un email lui sera envoyé pour qu&apos;il définisse son mot de passe.
@@ -286,7 +285,7 @@ export default function AdminCreateEventForOrganizerPage() {
                     <button
                       type="submit"
                       disabled={creatingAccount || newAccountUnderage}
-                      className="rounded-full bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
+                      className={buttonClass("primary", "rounded-full px-4 py-2.5 text-sm disabled:opacity-50")}
                     >
                       {creatingAccount ? "Création…" : "Créer le compte et continuer →"}
                     </button>

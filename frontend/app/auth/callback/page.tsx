@@ -21,6 +21,11 @@ import { ageInYears, underageMessage } from "@/lib/auth/age";
 import { saveSession } from "@/lib/auth/session";
 import { useRegistrationPolicy } from "@/lib/auth/use-registration-policy";
 import { ApiError } from "@/lib/api/http-error";
+import { FormError } from "@/components/ui/alert";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
 // Après connexion Google/Facebook : l'accueil pour tous les rôles, comme
 // login-form.tsx (un admin y retrouve « Profil » et « Back-office »).
@@ -137,9 +142,9 @@ function OAuthCallbackContent() {
 
   return (
     <div className="flex flex-1 items-center justify-center bg-page px-6 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8">
+      <div className={cardClass("w-full max-w-md p-8")}>
         {status === "loading" ? (
-          <p className="text-center text-sm text-ink-5">Connexion en cours…</p>
+          <MutedMessage>Connexion en cours…</MutedMessage>
         ) : status === "error" ? (
           <>
             <div className="mb-6 text-center">
@@ -150,7 +155,7 @@ function OAuthCallbackContent() {
             </p>
             <Link
               href="/connexion"
-              className="mt-6 block rounded-full bg-blue-700 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
+              className={buttonClass("primary", "mt-6 block rounded-full py-3 text-center text-sm")}
             >
               Retour à la connexion
             </Link>
@@ -185,7 +190,7 @@ function OAuthCallbackContent() {
                   onChange={(event) => setBirthDate(event.target.value)}
                   aria-invalid={underage}
                   aria-describedby={underage ? "underage-message" : undefined}
-                  className={`rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none ${underage ? "border-danger" : ""}`}
+                  className={fieldClass(`px-4 py-3 ${underage ? "border-danger" : ""}`)}
                 />
               </label>
               {underage ? (
@@ -201,7 +206,7 @@ function OAuthCallbackContent() {
               <button
                 type="submit"
                 disabled={verifying || underage || birthDate === ""}
-                className="w-full rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                className={buttonClass("primary", "w-full rounded-xl py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
               >
                 {verifying ? "Vérification…" : "Continuer →"}
               </button>
@@ -224,9 +229,9 @@ function OAuthCallbackContent() {
             </div>
 
             {error ? (
-              <div className="mb-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-inset ring-red-500/30">
+              <FormError>
                 {error}
-              </div>
+              </FormError>
             ) : null}
 
             <form onSubmit={handleVerify} className="flex flex-col gap-4">
@@ -243,7 +248,7 @@ function OAuthCallbackContent() {
               <button
                 type="submit"
                 disabled={verifying}
-                className="w-full rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                className={buttonClass("primary", "w-full rounded-xl py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
               >
                 {verifying ? "Vérification…" : "Confirmer"}
               </button>

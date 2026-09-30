@@ -11,6 +11,7 @@ import { ResaleCard } from "@/components/resale/resale-card";
 import { listResaleListings, type ApiResaleListing } from "@/lib/api/resale";
 import { ApiError } from "@/lib/api/http-error";
 import { resaleNote } from "@/lib/constants/resale";
+import { cardClass } from "@/components/ui/card";
 
 export default function RevendePage() {
   const [listings, setListings] = useState<ApiResaleListing[] | null>(null);
@@ -55,11 +56,11 @@ export default function RevendePage() {
         ) : null}
 
         {listings === null ? (
-          <p className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
+          <p className={cardClass("px-5 py-10 text-center text-sm text-ink-5")}>
             Chargement des annonces…
           </p>
         ) : listings.length === 0 ? (
-          <p className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
+          <p className={cardClass("px-5 py-10 text-center text-sm text-ink-5")}>
             Aucun billet en revente pour le moment.
           </p>
         ) : (

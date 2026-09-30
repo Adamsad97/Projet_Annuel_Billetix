@@ -10,9 +10,11 @@ import {
 import { uploadAvatar } from "@/lib/api/upload";
 import { ApiError } from "@/lib/api/http-error";
 import { isPersistentSession, saveSession } from "@/lib/auth/session";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
-const fieldClassName =
-  "rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none";
+const fieldClassName = fieldClass("px-4 py-3");
 
 const LOGO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const LOGO_MAX_SIZE = 5 * 1024 * 1024; // aligné sur la passerelle (POST /upload/avatar)
@@ -156,7 +158,7 @@ export function OrganizerProfileForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6 rounded-2xl border border-hairline-1 bg-card p-6">
+    <form onSubmit={handleSubmit} className={cardClass("flex flex-col gap-6 p-6")}>
       <div className="flex flex-wrap items-center gap-5">
         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-hairline-2 ring-1 ring-inset ring-hairline-2">
           {logoPreview ? (
@@ -172,7 +174,7 @@ export function OrganizerProfileForm({
             <button
               type="button"
               onClick={() => logoInput.current?.click()}
-              className="rounded-full border border-hairline-3 px-4 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+              className={buttonClass("secondary", "rounded-full px-4 py-1.5 text-xs")}
             >
               {logoPreview ? "Changer" : "Ajouter un logo"}
             </button>
@@ -272,7 +274,7 @@ export function OrganizerProfileForm({
       <button
         type="submit"
         disabled={saving}
-        className="self-end rounded-full bg-blue-700 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        className={buttonClass("primary", "self-end rounded-full px-6 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50")}
       >
         {saving ? "Enregistrement…" : submitLabel ?? (profile ? "Enregistrer" : "Créer mon profil organisateur")}
       </button>

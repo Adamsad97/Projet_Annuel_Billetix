@@ -41,8 +41,13 @@ import { ApiError } from "@/lib/api/http-error";
 import { eventPath } from "@/lib/format/event-path";
 import { NonProfitResubmit } from "@/components/dashboard/non-profit-resubmit";
 import { EventAgents } from "@/components/dashboard/event-agents";
-
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+import { fullDateTime as dateFormatter } from "@/lib/format/dates";
+import { Alert } from "@/components/ui/alert";
+import { BackLink } from "@/components/ui/back-link";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { buttonClass } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { fieldClass } from "@/components/ui/field";
 
 export default function DashboardEventDetailPage({
   params,
@@ -235,21 +240,16 @@ export default function DashboardEventDetailPage({
       <AuthHeader />
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
-        <Link
-          href="/dashboard"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
-        >
-          ← Dashboard
-        </Link>
+        <BackLink href="/dashboard">Dashboard</BackLink>
 
         {error ? (
-          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">
+          <Alert className="mb-6">
             {error}
-          </div>
+          </Alert>
         ) : null}
 
         {detail === undefined ? (
-          <p className="text-center text-sm text-ink-5">Chargement…</p>
+          <MutedMessage />
         ) : (
           <>
             {(() => {
@@ -271,9 +271,9 @@ export default function DashboardEventDetailPage({
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h1 className="text-2xl font-bold text-ink-1">{event.title}</h1>
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${badge.className}`}>
+                        <Badge tone={badge.className} size="md">
                           {badge.label}
-                        </span>
+                        </Badge>
                         <span className="rounded-full bg-hairline-1 px-2.5 py-1 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2">
                           {eventTiming(event.start_date, event.end_date)}
                         </span>
@@ -311,7 +311,7 @@ export default function DashboardEventDetailPage({
                       ) : (
                         <Link
                           href={eventPath({ id, slug: detail?.event.slug })}
-                          className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+                          className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
                         >
                           Voir la page publique →
                         </Link>
@@ -320,7 +320,7 @@ export default function DashboardEventDetailPage({
                         <button
                           type="button"
                           onClick={copyPublicLink}
-                          className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+                          className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
                         >
                           {copied ? "Lien copié ✓" : "Copier le lien"}
                         </button>
@@ -331,7 +331,7 @@ export default function DashboardEventDetailPage({
                       event.status !== "ARCHIVED" ? (
                         <Link
                           href={`/evenements/${id}/modifier`}
-                          className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+                          className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
                         >
                           ✎ Modifier
                         </Link>
@@ -347,7 +347,7 @@ export default function DashboardEventDetailPage({
                           onClick={handleDuplicate}
                           disabled={actionBusy}
                           title="Programmer une nouvelle date pour ce même événement, maintenant complet"
-                          className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-50"
+                          className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm disabled:opacity-50")}
                         >
                           ⎘ Programmer une nouvelle date
                         </button>
@@ -357,7 +357,7 @@ export default function DashboardEventDetailPage({
                           type="button"
                           onClick={handleSubmit}
                           disabled={actionBusy}
-                          className="rounded-full bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
+                          className={buttonClass("primary", "rounded-full px-4 py-2 text-sm disabled:opacity-50")}
                         >
                           Soumettre à la validation →
                         </button>
@@ -432,7 +432,7 @@ export default function DashboardEventDetailPage({
                               <button
                                 type="button"
                                 onClick={() => handleWithdraw(request.id)}
-                                className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+                                className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
                               >
                                 Retirer ma demande
                               </button>
@@ -465,7 +465,7 @@ export default function DashboardEventDetailPage({
                               setResponseDrafts((prev) => ({ ...prev, [request.id]: evt.target.value }))
                             }
                             placeholder="Votre réponse…"
-                            className="mt-3 w-full resize-none rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+                            className={fieldClass("mt-3 w-full resize-none px-3 py-2")}
                           />
                           <button
                             type="button"

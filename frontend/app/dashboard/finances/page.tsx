@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AuthHeader } from "@/components/layout/auth-header";
+import { PageShell } from "@/components/layout/page-shell";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { OrganizerPayoutsExplorer } from "@/components/dashboard/organizer-payouts-explorer";
 import {
@@ -20,8 +20,10 @@ import {
   type ApiPayout,
 } from "@/lib/api/organizer";
 import { ApiError } from "@/lib/api/http-error";
-
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+import { euros as currency } from "@/lib/format/money";
+import { Alert } from "@/components/ui/alert";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { buttonClass } from "@/components/ui/button";
 
 export default function DashboardFinancesPage() {
   const [balance, setBalance] = useState<ApiOrganizerBalance | undefined>(undefined);
@@ -57,67 +59,63 @@ export default function DashboardFinancesPage() {
   const totalCommission = payouts?.reduce((sum, payout) => sum + Number(payout.commission_amount), 0) ?? 0;
 
   return (
-    <div className="flex flex-1 flex-col bg-page">
-      <AuthHeader />
-
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-ink-1">Finances</h1>
-            <p className="mt-1 text-sm text-ink-5">
-              Détail des reversements par événement.
-            </p>
-          </div>
-          <Link
-            href="/dashboard"
-            className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
-          >
-            ← Tableau de bord
-          </Link>
+    <PageShell width="5xl">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-ink-1">Finances</h1>
+          <p className="mt-1 text-sm text-ink-5">
+            Détail des reversements par événement.
+          </p>
         </div>
+        <Link
+          href="/dashboard"
+          className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
+        >
+          ← Tableau de bord
+        </Link>
+      </div>
 
-        {error ? (
-          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">
-            {error}
+      {error ? (
+        <Alert className="mb-6">
+          {error}
+        </Alert>
+      ) : null}
+
+      {balance === undefined || payouts === undefined ? (
+        <MutedMessage />
+      ) : (
+        <>
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-4">
+            <StatCard stat={{ id: "gross", label: "Total encaissé (brut)", value: currency.format(totalGross), accent: "bg-blue-500" }} />
+            <StatCard
+              stat={{
+                id: "commission",
+                label: "Commissions prélevées",
+                value: currency.format(totalCommission),
+                accent: "bg-amber-500",
+              }}
+            />
+            <StatCard
+              stat={{
+                id: "earned",
+                label: "Déjà versé",
+                value: currency.format(balance.total_earned),
+                accent: "bg-emerald-500",
+              }}
+            />
+            <StatCard
+              stat={{
+                id: "pending",
+                label: "En attente de versement",
+                value: currency.format(balance.pending_balance),
+                accent: "bg-blue-500",
+              }}
+            />
           </div>
-        ) : null}
 
-        {balance === undefined || payouts === undefined ? (
-          <p className="text-center text-sm text-ink-5">Chargement…</p>
-        ) : (
-          <>
-            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-4">
-              <StatCard stat={{ id: "gross", label: "Total encaissé (brut)", value: currency.format(totalGross), accent: "bg-blue-500" }} />
-              <StatCard
-                stat={{
-                  id: "commission",
-                  label: "Commissions prélevées",
-                  value: currency.format(totalCommission),
-                  accent: "bg-amber-500",
-                }}
-              />
-              <StatCard
-                stat={{
-                  id: "earned",
-                  label: "Déjà versé",
-                  value: currency.format(balance.total_earned),
-                  accent: "bg-emerald-500",
-                }}
-              />
-              <StatCard
-                stat={{
-                  id: "pending",
-                  label: "En attente de versement",
-                  value: currency.format(balance.pending_balance),
-                  accent: "bg-blue-500",
-                }}
-              />
-            </div>
-
-            <OrganizerPayoutsExplorer payouts={payouts} busyId={busyId} onRequestEarly={handleRequestEarly} />
-          </>
-        )}
-      </main>
-    </div>
+          <OrganizerPayoutsExplorer payouts={payouts} busyId={busyId} onRequestEarly={handleRequestEarly} />
+        </>
+      )}
+    </PageShell>
   );
 }

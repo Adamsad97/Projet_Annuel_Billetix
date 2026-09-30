@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
 
 export function ResaleStripePaymentForm({
   resaleId,
@@ -53,7 +55,7 @@ export function ResaleStripePaymentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-2xl border border-hairline-1 bg-card p-5">
+    <form onSubmit={handleSubmit} className={cardClass("p-5")}>
       <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-ink-2">
         <span>💳</span>
         Paiement par carte
@@ -70,7 +72,7 @@ export function ResaleStripePaymentForm({
       <button
         type="submit"
         disabled={!stripe || loading}
-        className="mt-6 w-full rounded-full bg-blue-700 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        className={buttonClass("primary", "mt-6 w-full rounded-full py-3.5 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
       >
         {loading ? "Traitement…" : `Payer ${amountLabel} →`}
       </button>

@@ -13,6 +13,8 @@ import {
 } from "@/lib/auth/password-policy";
 import { getStoredUser } from "@/lib/auth/session";
 import { useRegistrationPolicy } from "@/lib/auth/use-registration-policy";
+import { buttonClass } from "@/components/ui/button";
+import { fieldClass } from "@/components/ui/field";
 
 export function ChangePasswordRow() {
   const [open, setOpen] = useState(false);
@@ -90,7 +92,7 @@ export function ChangePasswordRow() {
             setSuccess(false);
             setOpen(true);
           }}
-          className="shrink-0 rounded-full border border-hairline-3 px-3.5 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+          className={buttonClass("secondary", "shrink-0 rounded-full px-3.5 py-1.5 text-xs")}
         >
           Modifier
         </button>
@@ -108,7 +110,7 @@ export function ChangePasswordRow() {
           value={currentPassword}
           onChange={(event) => setCurrentPassword(event.target.value)}
           placeholder="Mot de passe actuel"
-          className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-2.5 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+          className={fieldClass("px-4 py-2.5")}
         />
         <PasswordInput
           required
@@ -116,7 +118,7 @@ export function ChangePasswordRow() {
           value={newPassword}
           onChange={(event) => setNewPassword(event.target.value)}
           placeholder={`Nouveau mot de passe (${minLength} caractères min.)`}
-          className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-2.5 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+          className={fieldClass("px-4 py-2.5")}
         />
         <PasswordInput
           required
@@ -124,7 +126,7 @@ export function ChangePasswordRow() {
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
           placeholder="Confirmer le nouveau mot de passe"
-          className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-2.5 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+          className={fieldClass("px-4 py-2.5")}
         />
         <PasswordRequirements
           rules={passwordRules}
@@ -146,7 +148,7 @@ export function ChangePasswordRow() {
           <button
             type="submit"
             disabled={submitting || !passwordValid || newPassword !== confirmPassword}
-            className="flex-1 rounded-full bg-blue-700 py-2.5 text-xs font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className={buttonClass("primary", "flex-1 rounded-full py-2.5 text-xs disabled:cursor-not-allowed disabled:opacity-60")}
           >
             {submitting ? "Modification…" : "Confirmer"}
           </button>

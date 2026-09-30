@@ -13,8 +13,11 @@ import { createPaymentIntent } from "@/lib/api/payments";
 import { ApiError } from "@/lib/api/http-error";
 import { getStripe } from "@/lib/stripe/client";
 import { paymentMethods } from "@/lib/constants/checkout";
-
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+import { euros as currency } from "@/lib/format/money";
+import { Alert } from "@/components/ui/alert";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
 
 type Step = "billing" | "payment";
 
@@ -85,7 +88,7 @@ export function CheckoutFlow() {
   }
 
   if (cart === undefined) {
-    return <p className="text-center text-sm text-ink-5">Chargement…</p>;
+    return <MutedMessage />;
   }
 
   if (reservationExpired && cart) {
@@ -109,13 +112,13 @@ export function CheckoutFlow() {
 
   if (!cart) {
     return (
-      <div className="mx-auto max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+      <div className={cardClass("mx-auto max-w-md p-8 text-center")}>
         <p className="text-sm text-ink-4">
           Votre panier est vide ou votre réservation a expiré.
         </p>
         <Link
           href="/catalogue"
-          className="mt-4 inline-flex rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
+          className={buttonClass("primary", "mt-4 inline-flex rounded-full px-5 py-2.5 text-sm")}
         >
           Retour au catalogue
         </Link>
@@ -140,18 +143,18 @@ export function CheckoutFlow() {
         ) : null}
 
         {intentLoading ? (
-          <p className="text-center text-sm text-ink-5">Initialisation du paiement…</p>
+          <MutedMessage>Initialisation du paiement…</MutedMessage>
         ) : null}
 
         {intentError ? (
-          <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-300">
+          <Alert>
             {intentError}
-          </div>
+          </Alert>
         ) : null}
 
         {step === "payment" && clientSecret && orderId ? (
           <>
-            <div className="rounded-2xl border border-hairline-1 bg-card p-5">
+            <div className={cardClass("p-5")}>
               <h2 className="mb-3 text-sm font-semibold text-ink-2">Moyen de paiement</h2>
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
                 {paymentMethods.map((method) => {

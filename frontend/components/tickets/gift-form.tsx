@@ -10,6 +10,8 @@ import { useEffect, useState } from "react";
 import { giftTicket } from "@/lib/api/tickets";
 import { ApiError } from "@/lib/api/http-error";
 import type { TicketDetail } from "@/lib/constants/ticket-detail";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
 interface Draft {
   recipientEmail: string;
@@ -18,8 +20,7 @@ interface Draft {
 }
 
 const draftKey = (ticketId: string) => `billetix_gift_draft_${ticketId}`;
-const inputClass =
-  "w-full rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none";
+const inputClass = fieldClass("w-full px-4 py-3");
 
 export function GiftForm({ ticket }: { ticket: TicketDetail }) {
   const [draft, setDraft] = useState<Draft>({ recipientEmail: "", holderFirstName: "", holderLastName: "" });
@@ -101,7 +102,7 @@ export function GiftForm({ ticket }: { ticket: TicketDetail }) {
 
   if (step === "confirm") {
     return (
-      <div className="rounded-2xl border border-hairline-1 bg-card p-6">
+      <div className={cardClass("p-6")}>
         <h2 className="text-base font-bold text-ink-1">Confirmer le transfert</h2>
         <dl className="mt-4 flex flex-col gap-3 text-sm">
           <div>
@@ -158,7 +159,7 @@ export function GiftForm({ ticket }: { ticket: TicketDetail }) {
   }
 
   return (
-    <form onSubmit={review} className="rounded-2xl border border-hairline-1 bg-card p-6">
+    <form onSubmit={review} className={cardClass("p-6")}>
       <h2 className="text-base font-bold text-ink-1">Offrir ce billet</h2>
       <p className="mt-1 text-sm text-ink-5">
         {ticket.eventName} — {ticket.categoryName}

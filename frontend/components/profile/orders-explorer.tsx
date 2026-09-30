@@ -9,6 +9,7 @@ import { getTicketsByOrder } from "@/lib/api/tickets";
 import { matchesSearch } from "@/lib/format/search";
 import { apiOrderToProfileOrder } from "@/lib/mappers/profile-mappers";
 import type { ProfileOrder, OrderStatus } from "@/lib/constants/profile";
+import { cardClass } from "@/components/ui/card";
 
 const filters: { id: string; label: string }[] = [
   { id: "all", label: "Tous" },
@@ -77,7 +78,7 @@ export function OrdersExplorer() {
         <SearchField value={search} onChange={setSearch} placeholder="Référence ou événement…" className="w-full sm:max-w-xs" />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+      <div className={cardClass("overflow-hidden")}>
         {orders === null ? (
           <p className="px-5 py-4 text-sm text-ink-5">{error ?? "Chargement…"}</p>
         ) : filtered.length === 0 ? (

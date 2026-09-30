@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Panel } from "@/components/profile/panel";
 import { ChangePasswordRow } from "@/components/profile/change-password-row";
 import { get2faStatus } from "@/lib/api/two-factor";
+import { buttonClass } from "@/components/ui/button";
 
 export function SecurityPanel() {
   const [enabled, setEnabled] = useState<boolean | null>(null);
@@ -46,7 +47,7 @@ export function SecurityPanel() {
           )}
           <Link
             href="/profil/securite/2fa"
-            className="rounded-full border border-hairline-3 px-3.5 py-1.5 text-xs font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+            className={buttonClass("secondary", "rounded-full px-3.5 py-1.5 text-xs")}
           >
             Gérer
           </Link>

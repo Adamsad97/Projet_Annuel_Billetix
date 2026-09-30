@@ -3,6 +3,8 @@
 
 import type { ApiAdminDashboard, ApiAuditLogEntry } from "@/lib/api/admin";
 import type { ApiEvent } from "@/lib/api/events";
+import { euros as currency } from "@/lib/format/money";
+import { longDate as dateTimeFormatter } from "@/lib/format/dates";
 
 export interface AdminStat {
   id: string;
@@ -10,8 +12,6 @@ export interface AdminStat {
   value: string;
   valueClassName?: string;
 }
-
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 
 export function apiDashboardToAdminStats(dashboard: ApiAdminDashboard): AdminStat[] {
   const publishedEvents = dashboard.kpis.events_by_status["PUBLISHED"] ?? 0;
@@ -56,12 +56,6 @@ export interface ValidationHistoryEntry {
   decidedLabel: string;
   reason?: string;
 }
-
-const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
 
 /** Construit une ligne d'historique à partir d'une entrée d'audit log
  * (EVENT_APPROVED/EVENT_REJECTED) + l'événement concerné, résolu séparément

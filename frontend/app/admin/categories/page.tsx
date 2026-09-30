@@ -20,6 +20,10 @@ import {
   type ApiTicketTierType,
 } from "@/lib/api/ticket-tier-types";
 import { ApiError } from "@/lib/api/http-error";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<ApiCategory[] | undefined>(undefined);
@@ -180,7 +184,7 @@ export default function AdminCategoriesPage() {
 
         <form
           onSubmit={handleCreateCategory}
-          className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-hairline-1 bg-card p-4"
+          className={cardClass("mb-4 flex flex-wrap items-end gap-3 p-4")}
         >
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-accent/80">Emoji</span>
@@ -189,7 +193,7 @@ export default function AdminCategoriesPage() {
               onChange={(event) => setNewEmoji(event.target.value)}
               maxLength={8}
               placeholder="🎨"
-              className="w-16 rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-center text-sm text-ink-1 focus:border-blue-500 focus:outline-none"
+              className={fieldClass("w-16 px-3 py-2 text-center")}
             />
           </label>
           <label className="flex flex-col gap-1.5">
@@ -201,7 +205,7 @@ export default function AdminCategoriesPage() {
               placeholder="EXPOSITION"
               pattern="[A-Z][A-Z0-9_]*"
               title="Majuscules, chiffres et underscore uniquement"
-              className="w-40 rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+              className={fieldClass("w-40 px-3 py-2")}
             />
           </label>
           <label className="flex flex-1 flex-col gap-1.5">
@@ -211,13 +215,13 @@ export default function AdminCategoriesPage() {
               value={newLabel}
               onChange={(event) => setNewLabel(event.target.value)}
               placeholder="Exposition"
-              className="w-full rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+              className={fieldClass("w-full px-3 py-2")}
             />
           </label>
           <button
             type="submit"
             disabled={creatingCategory}
-            className="rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
+            className={buttonClass("primary", "rounded-full px-5 py-2.5 text-sm disabled:opacity-50")}
           >
             {creatingCategory ? "Ajout…" : "+ Ajouter"}
           </button>
@@ -230,13 +234,13 @@ export default function AdminCategoriesPage() {
         ) : null}
 
         {categories === undefined ? (
-          <p className="text-center text-sm text-ink-5">Chargement…</p>
+          <MutedMessage />
         ) : categories.length === 0 ? (
-          <div className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
+          <div className={cardClass("px-5 py-10 text-center text-sm text-ink-5")}>
             Aucune catégorie — ajoutez la première ci-dessus.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+          <div className={cardClass("overflow-hidden")}>
             <div className="grid grid-cols-[60px_1fr_90px_auto] gap-3 border-b border-hairline-1 px-4 py-2 text-xs font-medium uppercase tracking-wide text-ink-5">
               <span />
               <span>Catégorie</span>
@@ -265,7 +269,7 @@ export default function AdminCategoriesPage() {
 
         <form
           onSubmit={handleCreateTierType}
-          className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-hairline-1 bg-card p-4"
+          className={cardClass("mb-4 flex flex-wrap items-end gap-3 p-4")}
         >
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-accent/80">Emoji</span>
@@ -274,7 +278,7 @@ export default function AdminCategoriesPage() {
               onChange={(event) => setNewTierEmoji(event.target.value)}
               maxLength={8}
               placeholder="🎟️"
-              className="w-16 rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-center text-sm text-ink-1 focus:border-blue-500 focus:outline-none"
+              className={fieldClass("w-16 px-3 py-2 text-center")}
             />
           </label>
           <label className="flex flex-1 flex-col gap-1.5">
@@ -284,13 +288,13 @@ export default function AdminCategoriesPage() {
               value={newTierLabel}
               onChange={(event) => setNewTierLabel(event.target.value)}
               placeholder="Early Bird"
-              className="w-full rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+              className={fieldClass("w-full px-3 py-2")}
             />
           </label>
           <button
             type="submit"
             disabled={creatingTierType}
-            className="rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:opacity-50"
+            className={buttonClass("primary", "rounded-full px-5 py-2.5 text-sm disabled:opacity-50")}
           >
             {creatingTierType ? "Ajout…" : "+ Ajouter"}
           </button>
@@ -303,13 +307,13 @@ export default function AdminCategoriesPage() {
         ) : null}
 
         {tierTypes === undefined ? (
-          <p className="text-center text-sm text-ink-5">Chargement…</p>
+          <MutedMessage />
         ) : tierTypes.length === 0 ? (
-          <div className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
+          <div className={cardClass("px-5 py-10 text-center text-sm text-ink-5")}>
             Aucun nom — ajoutez le premier ci-dessus.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+          <div className={cardClass("overflow-hidden")}>
             <div className="grid grid-cols-[60px_1fr_90px_auto] gap-3 border-b border-hairline-1 px-4 py-2 text-xs font-medium uppercase tracking-wide text-ink-5">
               <span />
               <span>Nom</span>

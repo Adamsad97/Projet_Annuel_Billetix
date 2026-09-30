@@ -1,4 +1,5 @@
 import type { Attendee } from "@/lib/mappers/event-detail-mappers";
+import { Badge } from "@/components/ui/badge";
 
 const STATUS_STYLE: Record<Attendee["status"], { label: string; className: string }> = {
   used: { label: "Entré", className: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30" },
@@ -19,9 +20,9 @@ export function AttendeeRow({ attendee }: { attendee: Attendee }) {
         </p>
       </div>
 
-      <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${style.className}`}>
+      <Badge tone={style.className} size="md" className="shrink-0 ring-1 ring-inset">
         {style.label}
-      </span>
+      </Badge>
     </div>
   );
 }

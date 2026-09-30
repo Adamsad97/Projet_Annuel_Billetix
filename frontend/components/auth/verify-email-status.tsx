@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { verifyEmail } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/http-error";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
 
 type Status = "loading" | "success" | "error";
 
@@ -36,7 +38,7 @@ export function VerifyEmailStatus({ token }: { token: string | null }) {
 
   if (status === "loading") {
     return (
-      <div className="relative w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+      <div className={cardClass("relative w-full max-w-md p-8 text-center")}>
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-500/15 text-2xl">
           ⏳
         </div>
@@ -47,7 +49,7 @@ export function VerifyEmailStatus({ token }: { token: string | null }) {
 
   if (status === "error") {
     return (
-      <div className="relative w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+      <div className={cardClass("relative w-full max-w-md p-8 text-center")}>
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-500/15 text-2xl">
           ✕
         </div>
@@ -64,7 +66,7 @@ export function VerifyEmailStatus({ token }: { token: string | null }) {
   }
 
   return (
-    <div className="relative w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+    <div className={cardClass("relative w-full max-w-md p-8 text-center")}>
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-3xl">
         ✓
       </div>
@@ -76,7 +78,7 @@ export function VerifyEmailStatus({ token }: { token: string | null }) {
 
       <Link
         href="/connexion"
-        className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
+        className={buttonClass("primary", "mt-6 inline-flex w-full items-center justify-center rounded-xl py-3 text-sm")}
       >
         Se connecter
       </Link>

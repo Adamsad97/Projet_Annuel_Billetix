@@ -11,6 +11,8 @@ import type { ApiCategory } from "@/lib/api/categories";
 import type { ApiOrganizerEventSummary } from "@/lib/api/organizer";
 import { matchesSearch } from "@/lib/format/search";
 import { apiEventSummaryToOrganizerEvent } from "@/lib/mappers/dashboard-mappers";
+import { cardClass } from "@/components/ui/card";
+import { filterSelectClass } from "@/components/ui/field";
 
 type Group = "all" | "live" | "draft" | "pending" | "hidden" | "past" | "cancelled";
 type SortOrder = "upcoming" | "latest" | "revenue" | "title";
@@ -78,7 +80,7 @@ export function OrganizerEventsExplorer({
 
   if (events.length === 0) {
     return (
-      <div className="rounded-2xl border border-hairline-1 bg-card px-5 py-10 text-center text-sm text-ink-5">
+      <div className={cardClass("px-5 py-10 text-center text-sm text-ink-5")}>
         Vous n&apos;avez encore créé aucun événement.
       </div>
     );
@@ -98,7 +100,7 @@ export function OrganizerEventsExplorer({
           <select
             value={sort}
             onChange={(event) => setSort(event.target.value as SortOrder)}
-            className="h-10 rounded-full border border-hairline-3 bg-card px-4 text-sm font-medium text-ink-2 focus:border-blue-500 focus:outline-none"
+            className={filterSelectClass}
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.id} value={option.id}>
@@ -111,7 +113,7 @@ export function OrganizerEventsExplorer({
 
       <FilterPills options={groupOptions} active={group} onChange={(id) => setGroup(id as Group)} />
 
-      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+      <div className={cardClass("overflow-hidden")}>
         {filtered.length > 0 ? (
           filtered.map((event) => (
             <OrganizerEventRow key={event.id} event={apiEventSummaryToOrganizerEvent(event, categoriesByCode)} />

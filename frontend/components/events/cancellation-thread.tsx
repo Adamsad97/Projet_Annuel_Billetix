@@ -6,8 +6,10 @@
 
 import { useState, type ReactNode } from "react";
 import { cancellationStatusLabels, type ApiCancellationRequest } from "@/lib/api/cancellation";
-
-const dateTime = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
+import { dateTime } from "@/lib/format/dates";
+import { cardClass } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { fieldClass } from "@/components/ui/field";
 
 export function CancellationThread({
   request,
@@ -44,10 +46,10 @@ export function CancellationThread({
     role === viewer ? "Vous" : role === "ADMIN" ? "Administration BilleTix" : request.organizer_name ?? "Organisateur";
 
   return (
-    <div className="rounded-2xl border border-hairline-1 bg-card">
+    <div className={cardClass()}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline-1 px-5 py-3.5">
         <p className="text-sm text-ink-4">Demande du {dateTime.format(new Date(request.created_at))}</p>
-        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${status.className}`}>{status.label}</span>
+        <Badge tone={status.className}>{status.label}</Badge>
       </div>
 
       <div className="flex flex-col gap-3 px-5 py-4">
@@ -76,7 +78,7 @@ export function CancellationThread({
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Votre message…"
-            className="w-full resize-none rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+            className={fieldClass("w-full resize-none px-3 py-2")}
           />
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             <button

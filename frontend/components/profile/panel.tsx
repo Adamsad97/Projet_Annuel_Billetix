@@ -4,6 +4,7 @@
 // que de voir billets/commandes s'afficher directement à l'arrivée sur /profil.
 
 import { useState, type ReactNode } from "react";
+import { cardClass } from "@/components/ui/card";
 
 export function Panel({
   icon,
@@ -21,7 +22,7 @@ export function Panel({
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+    <div className={cardClass("overflow-hidden")}>
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}

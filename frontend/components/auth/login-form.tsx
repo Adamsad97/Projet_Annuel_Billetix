@@ -7,6 +7,10 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { isAuthSession, loginUser, resendVerificationEmail } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/http-error";
 import { saveSession } from "@/lib/auth/session";
+import { FormError } from "@/components/ui/alert";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
 // Bug corrigé (hydration mismatch) : getApiBaseUrl() choisit une adresse
 // différente selon qu'elle est évaluée côté serveur (interne au réseau
@@ -130,7 +134,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
 
   if (pendingCredentials) {
     return (
-      <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8">
+      <div className={cardClass("w-full max-w-md p-8")}>
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold text-ink-1">Code de vérification</h1>
           <p className="mt-1 text-sm text-accent/70">
@@ -140,9 +144,9 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
         </div>
 
         {error ? (
-          <div className="mb-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-inset ring-red-500/30">
+          <FormError>
             {error}
-          </div>
+          </FormError>
         ) : null}
 
         <form onSubmit={handleTwoFactorSubmit} className="flex flex-col gap-4">
@@ -159,7 +163,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            className={buttonClass("primary", "w-full rounded-xl py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
           >
             {loading ? "Vérification…" : "Confirmer"}
           </button>
@@ -180,7 +184,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8">
+    <div className={cardClass("w-full max-w-md p-8")}>
       <div className="mb-6 text-center">
         <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">
           Bienvenue <span>👋</span>
@@ -256,7 +260,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
             name="email"
             required
             placeholder="jean.dupont@email.com"
-            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+            className={fieldClass("px-4 py-3")}
           />
         </label>
 
@@ -269,7 +273,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
             required
             autoComplete="current-password"
             placeholder="••••••••"
-            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+            className={fieldClass("px-4 py-3")}
           />
         </label>
 
@@ -294,7 +298,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
         <button
           type="submit"
           disabled={loading}
-          className="mt-1 w-full rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className={buttonClass("primary", "mt-1 w-full rounded-xl py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
         >
           {loading ? "Connexion…" : "Se connecter →"}
         </button>

@@ -78,3 +78,8 @@ export function syncOfflineScans(
 export function getAgentEvents(): Promise<ApiEvent[]> {
   return apiGet<ApiEvent[]>("/tickets/agent/events");
 }
+
+/** Événements de l'organisateur connecté (données complètes : dates, affiche, statut). */
+export function getOrganizerScanEvents(): Promise<ApiEvent[]> {
+  return apiGet<ApiEvent[]>("/events/me/events");
+}

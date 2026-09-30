@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { apiFetchBlob } from "@/lib/api/client";
+import { buttonClass } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 
 export interface SubmittedDocument {
   id: string;
@@ -142,14 +144,8 @@ export function DocumentGrid({ documents }: { documents: SubmittedDocument[] }) 
       </div>
 
       {open ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setOpen(null)}
-          className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/80 p-6"
-        >
+        <Modal open onClose={() => setOpen(null)} label={open.doc.label} className="cursor-pointer bg-black/80 p-6">
           <div
-            onClick={(event) => event.stopPropagation()}
             className="flex w-full max-w-md cursor-auto flex-col items-center gap-4 rounded-2xl border border-hairline-2 bg-card p-6"
           >
             <DocumentThumb doc={open.doc} src={open.src} large />
@@ -157,12 +153,12 @@ export function DocumentGrid({ documents }: { documents: SubmittedDocument[] }) 
             <button
               type="button"
               onClick={() => setOpen(null)}
-              className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+              className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
             >
               Fermer
             </button>
           </div>
-        </div>
+        </Modal>
       ) : null}
     </>
   );

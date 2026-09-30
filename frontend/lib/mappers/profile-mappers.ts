@@ -6,14 +6,8 @@ import type { ApiOrder, ApiOrderItem, ApiPaymentMethod } from "@/lib/api/orders"
 import type { ApiTicket, ApiTicketStatus } from "@/lib/api/tickets";
 import type { ProfileOrder, ProfileTicket, TicketStatus, OrderStatus } from "@/lib/constants/profile";
 import type { TicketDetail } from "@/lib/constants/ticket-detail";
-
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-const timeFormatter = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" });
-const currency = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+import { euros as currency } from "@/lib/format/money";
+import { longDate as dateFormatter, time as timeFormatter } from "@/lib/format/dates";
 
 function ticketStatusFor(status: ApiTicketStatus): TicketStatus {
   switch (status) {

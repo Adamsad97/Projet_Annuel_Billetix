@@ -14,6 +14,7 @@ import { getMyTickets, type ApiGivenTicket, type ApiResoldTicket, type ApiWithdr
 import { matchesSearch } from "@/lib/format/search";
 import { apiTicketToProfileTicket } from "@/lib/mappers/profile-mappers";
 import type { ProfileTicket, TicketStatus } from "@/lib/constants/profile";
+import { cardClass } from "@/components/ui/card";
 
 const filters = [
   { id: "all", label: "Tous" },
@@ -93,7 +94,7 @@ export function TicketsExplorer() {
         <SearchField value={search} onChange={setSearch} placeholder="Événement, lieu ou référence…" className="w-full sm:max-w-xs" />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+      <div className={cardClass("overflow-hidden")}>
         {tickets === null ? (
           <p className="px-5 py-4 text-sm text-ink-5">{error ?? "Chargement…"}</p>
         ) : isEmpty ? (

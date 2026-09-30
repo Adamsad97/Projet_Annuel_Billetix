@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { EventsExplorer } from "@/components/admin/events-explorer";
+import { buttonClass } from "@/components/ui/button";
 
 export default function AdminEventsPage() {
   return (
@@ -14,7 +15,7 @@ export default function AdminEventsPage() {
         </div>
         <Link
           href="/admin/evenements/creer"
-          className="rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
+          className={buttonClass("primary", "rounded-full px-5 py-2.5 text-sm")}
         >
           + Créer pour un organisateur
         </Link>

@@ -26,9 +26,10 @@ import { createEventForOrganizer, createCategoryForOrganizer, submitEventForOrga
 import { uploadDocument, uploadPoster } from "@/lib/api/upload";
 import { DocumentDropzone } from "@/components/ui/document-dropzone";
 import { ApiError } from "@/lib/api/http-error";
+import { buttonClass } from "@/components/ui/button";
+import { fieldClass } from "@/components/ui/field";
 
-const fieldClassName =
-  "rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none";
+const fieldClassName = fieldClass("px-4 py-3");
 
 export interface CreateEventFormInitial {
   title: string;
@@ -541,7 +542,7 @@ export function CreateEventForm({
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-full bg-blue-700 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        className={buttonClass("primary", "w-full rounded-full py-3.5 text-sm disabled:cursor-not-allowed disabled:opacity-50")}
       >
         {submitting
           ? "Envoi en cours…"

@@ -16,6 +16,9 @@ import { searchAuditLogs, type ApiAuditLogEntry } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
 import { auditActionFilters, auditActionLabels, describeAuditLog } from "@/lib/mappers/audit-mappers";
 import { entityTypeFilters } from "@/lib/constants/admin-audit";
+import { MutedMessage } from "@/components/ui/muted-message";
+import { cardClass } from "@/components/ui/card";
+import { Pagination } from "@/components/ui/pagination";
 
 const PAGE_SIZE = 30;
 const dateTimeFull = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeStyle: "medium" });
@@ -79,39 +82,17 @@ export function AuditExplorer() {
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+      <div className={cardClass("overflow-hidden")}>
         {logs === null ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-5">{error ?? "Chargement…"}</p>
+          <MutedMessage variant="list">{error ?? "Chargement…"}</MutedMessage>
         ) : logs.length > 0 ? (
           logs.map((log) => <AuditRow key={log.id} log={log} onOpen={() => setSelected(log)} />)
         ) : (
-          <p className="px-5 py-8 text-center text-sm text-ink-5">Aucune entrée ne correspond à cette recherche.</p>
+          <MutedMessage variant="list">Aucune entrée ne correspond à cette recherche.</MutedMessage>
         )}
       </div>
 
-      {pageCount > 1 ? (
-        <div className="flex items-center justify-center gap-3 text-sm">
-          <button
-            type="button"
-            disabled={page === 0}
-            onClick={() => setPage((current) => current - 1)}
-            className="rounded-full border border-hairline-3 px-4 py-1.5 text-ink-3 disabled:opacity-40"
-          >
-            ← Précédent
-          </button>
-          <span className="text-ink-5">
-            Page {page + 1} / {pageCount}
-          </span>
-          <button
-            type="button"
-            disabled={page + 1 >= pageCount}
-            onClick={() => setPage((current) => current + 1)}
-            className="rounded-full border border-hairline-3 px-4 py-1.5 text-ink-3 disabled:opacity-40"
-          >
-            Suivant →
-          </button>
-        </div>
-      ) : null}
+      <Pagination page={page + 1} pageCount={pageCount} onChange={(next) => setPage(next - 1)} />
       <DetailDialog
         open={selected !== null}
         title={selected ? auditActionLabels[selected.action] ?? selected.action : ""}

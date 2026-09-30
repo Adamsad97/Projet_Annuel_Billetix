@@ -7,6 +7,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getStoredUser } from "@/lib/auth/session";
 import type { AuthUser } from "@/lib/api/auth";
+import { buttonClass } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
 
 const roleLabels: Record<AuthUser["role"], string> = {
   BUYER: "Acheteur",
@@ -23,10 +25,6 @@ const roleStyles: Record<AuthUser["role"], string> = {
   AGENT: "bg-teal-500/15 text-teal-300 ring-1 ring-inset ring-teal-500/30",
   SUPER_ADMIN: "bg-indigo-500/15 text-indigo-300 ring-1 ring-inset ring-indigo-500/30",
 };
-
-function initialsOf(user: AuthUser): string {
-  return `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase();
-}
 
 export function ProfileHeader() {
   const [user, setUser] = useState<AuthUser | null | undefined>(undefined);
@@ -51,9 +49,7 @@ export function ProfileHeader() {
   return (
     <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
       <div className="flex items-center gap-5">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xl font-bold text-white">
-          {initialsOf(user)}
-        </div>
+        <Avatar firstName={user.first_name} lastName={user.last_name} size="lg" />
 
         <div>
           <h1 className="text-2xl font-bold text-ink-1">
@@ -74,7 +70,7 @@ export function ProfileHeader() {
       {user.role === "AGENT" ? null : (
         <Link
           href="/profil/modifier"
-          className="flex items-center gap-2 rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+          className={buttonClass("secondary", "flex items-center gap-2 rounded-full px-4 py-2 text-sm")}
         >
           ✏️ Modifier
         </Link>

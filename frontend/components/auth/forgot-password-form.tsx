@@ -4,6 +4,10 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { requestPasswordReset } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/http-error";
+import { FormError } from "@/components/ui/alert";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { fieldClass } from "@/components/ui/field";
 
 export function ForgotPasswordForm() {
   const [sent, setSent] = useState(false);
@@ -31,7 +35,7 @@ export function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8 text-center">
+      <div className={cardClass("w-full max-w-md p-8 text-center")}>
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">
           ✓
         </div>
@@ -43,7 +47,7 @@ export function ForgotPasswordForm() {
 
         <Link
           href="/connexion"
-          className="mt-6 inline-flex w-full items-center justify-center rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90"
+          className={buttonClass("primary", "mt-6 inline-flex w-full items-center justify-center rounded-xl py-3 text-sm")}
         >
           Retour à la connexion
         </Link>
@@ -63,7 +67,7 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-hairline-1 bg-card p-8">
+    <div className={cardClass("w-full max-w-md p-8")}>
       <div className="mb-6 text-center">
         <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">
           Mot de passe oublié <span>🔑</span>
@@ -74,9 +78,9 @@ export function ForgotPasswordForm() {
       </div>
 
       {error ? (
-        <div className="mb-4 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-inset ring-red-500/30">
+        <FormError>
           {error}
-        </div>
+        </FormError>
       ) : null}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -90,14 +94,14 @@ export function ForgotPasswordForm() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="jean.dupont@email.com"
-            className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+            className={fieldClass("px-4 py-3")}
           />
         </label>
 
         <button
           type="submit"
           disabled={loading}
-          className="mt-1 w-full rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className={buttonClass("primary", "mt-1 w-full rounded-xl py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
         >
           {loading ? "Envoi…" : "Envoyer le lien →"}
         </button>

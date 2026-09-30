@@ -4,8 +4,8 @@ import { useId } from "react";
 import type { PricingPolicy } from "@/lib/api/events";
 import type { ApiTicketTierType } from "@/lib/api/ticket-tier-types";
 import { commissionPercentFor, computePriceBreakdown } from "@/lib/pricing/price-breakdown";
-
-const euros = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
+import { euros } from "@/lib/format/money";
+import { fieldClass } from "@/components/ui/field";
 
 /**
  * Détail d'un prix saisi : ce que le client paiera (affiché sur le site)
@@ -176,7 +176,7 @@ export function TicketTiersEditor({
             <select
               value={row.name}
               onChange={(event) => updateRow(row.id, "name", event.target.value)}
-              className="col-span-2 rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2.5 text-sm text-ink-1 focus:border-blue-500 focus:outline-none sm:col-span-1"
+              className={fieldClass("col-span-2 px-3 py-2.5 sm:col-span-1")}
             >
               {optionsForRow.length === 0 ? (
                 <option value="" className="bg-card">Aucun nom disponible</option>
@@ -202,7 +202,7 @@ export function TicketTiersEditor({
                 min="0"
                 step="0.01"
                 aria-label={`Prix HT de la catégorie ${row.name}`}
-                className="rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2.5 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+                className={fieldClass("px-3 py-2.5")}
               />
             )}
             <input
@@ -212,7 +212,7 @@ export function TicketTiersEditor({
               placeholder="Quota"
               min="1"
               max={maxForRow}
-              className="rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2.5 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+              className={fieldClass("px-3 py-2.5")}
             />
             <input
               type="number"
@@ -220,7 +220,7 @@ export function TicketTiersEditor({
               onChange={(event) => updateRow(row.id, "maxPerOrder", event.target.value)}
               placeholder="Max"
               min="1"
-              className="rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2.5 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+              className={fieldClass("px-3 py-2.5")}
             />
             <button
               type="button"

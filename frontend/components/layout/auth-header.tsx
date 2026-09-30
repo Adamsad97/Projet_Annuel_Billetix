@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Logo } from "@/components/layout/logo";
 import { PreviewSwitcher } from "@/components/admin/preview-switcher";
 import { isAdminRole, isPreviewActive } from "@/lib/auth/preview";
+import { buttonClass } from "@/components/ui/button";
 
 export function AuthHeader() {
   const router = useRouter();
@@ -74,7 +75,7 @@ export function AuthHeader() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+                className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
               >
                 Déconnexion
               </button>
@@ -82,7 +83,7 @@ export function AuthHeader() {
           ) : (
             <Link
               href="/connexion"
-              className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+              className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
             >
               Connexion
             </Link>

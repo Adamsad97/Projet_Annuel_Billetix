@@ -9,9 +9,12 @@ import type { AuthUser } from "@/lib/api/auth";
 import { getBuyerProfile, updateBuyerProfile, type BillingAddress } from "@/lib/api/buyer-profile";
 import { ApiError } from "@/lib/api/http-error";
 import { getStoredUser } from "@/lib/auth/session";
+import { buttonClass } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { Avatar } from "@/components/ui/avatar";
+import { fieldClass } from "@/components/ui/field";
 
-const fieldClassName =
-  "rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none";
+const fieldClassName = fieldClass("px-4 py-3");
 const readOnlyClassName = "rounded-xl border border-hairline-1 px-4 py-3 text-sm text-ink-4";
 
 const ADDRESS_FIELDS: Array<{ key: keyof BillingAddress; label: string; placeholder?: string; wide?: boolean }> = [
@@ -56,14 +59,10 @@ export function EditProfileForm() {
     }
   }
 
-  const initials = user ? `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase() : "";
-
   return (
-    <form onSubmit={save} className="rounded-2xl border border-hairline-1 bg-card p-6">
+    <form onSubmit={save} className={cardClass("p-6")}>
       <div className="mb-6 flex items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">
-          {initials}
-        </div>
+        <Avatar firstName={user?.first_name} lastName={user?.last_name} size="lg" />
         <div className="min-w-0">
           <p className="truncate text-base font-semibold text-ink-1">{user ? `${user.first_name} ${user.last_name}` : "…"}</p>
           <p className="truncate text-sm text-ink-5">{user?.email}</p>
@@ -111,14 +110,14 @@ export function EditProfileForm() {
         <button
           type="submit"
           disabled={saving || address === null}
-          className="flex-1 rounded-full bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className={buttonClass("primary", "flex-1 rounded-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-40")}
         >
           {saving ? "Enregistrement…" : "Enregistrer"}
         </button>
         <button
           type="button"
           onClick={() => router.push("/profil")}
-          className="flex-1 rounded-full border border-hairline-3 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+          className={buttonClass("secondary", "flex-1 rounded-full py-3 text-sm")}
         >
           Retour
         </button>

@@ -26,6 +26,9 @@ import {
 } from "@/lib/catalogue/filters";
 import type { MockEvent } from "@/lib/constants/events";
 import { apiEventToCard } from "@/lib/mappers/event-mappers";
+import { cardClass } from "@/components/ui/card";
+import { filterSelectClass } from "@/components/ui/field";
+import { LoadMoreButton } from "@/components/ui/load-more-button";
 
 const fieldClassName =
   "h-11 w-full rounded-full border border-hairline-3 bg-card pl-11 pr-4 text-sm text-ink-1 placeholder:text-ink-5 focus:border-blue-500 focus:outline-none";
@@ -384,7 +387,7 @@ export function CatalogueExplorer() {
           <select
             value={filters.sort}
             onChange={(event) => update({ sort: event.target.value as CatalogueFilters["sort"] })}
-            className="h-10 rounded-full border border-hairline-3 bg-card px-4 text-sm font-medium text-ink-2 focus:border-blue-500 focus:outline-none"
+            className={filterSelectClass}
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.id} value={option.id}>
@@ -403,7 +406,7 @@ export function CatalogueExplorer() {
       {loading ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy="true">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-72 animate-pulse rounded-2xl border border-hairline-1 bg-card" />
+            <div key={i} className={cardClass("h-72 animate-pulse")} />
           ))}
         </div>
       ) : (
@@ -426,7 +429,7 @@ export function CatalogueExplorer() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-hairline-1 bg-card px-5 py-12 text-center">
+            <div className={cardClass("flex flex-col items-center gap-3 px-5 py-12 text-center")}>
               <p className="text-sm font-medium text-ink-2">
                 {hasActiveFilters ? "Aucun événement ne correspond à vos critères." : "Aucun événement à venir pour le moment."}
               </p>
@@ -439,16 +442,7 @@ export function CatalogueExplorer() {
           )}
 
           {hasMore ? (
-            <div className="flex justify-center">
-              <button
-                type="button"
-                onClick={loadMore}
-                disabled={loadingMore}
-                className="rounded-full border border-hairline-3 px-6 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-50"
-              >
-                {loadingMore ? "Chargement…" : "Afficher plus d'événements"}
-              </button>
-            </div>
+            <LoadMoreButton onClick={loadMore} loading={loadingMore} label="Afficher plus d'événements" />
           ) : null}
         </>
       )}

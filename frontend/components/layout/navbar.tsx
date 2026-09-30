@@ -16,6 +16,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Logo } from "@/components/layout/logo";
 import { PreviewSwitcher } from "@/components/admin/preview-switcher";
 import { effectiveRole, isAdminRole, isPreviewActive, PREVIEW_CHANGED_EVENT } from "@/lib/auth/preview";
+import { buttonClass } from "@/components/ui/button";
 
 // Matrice de rôles de la navbar — un compte n'a qu'un seul rôle à la fois,
 // chaque onglet ne sert donc qu'à celui à qui il est réellement utile
@@ -114,7 +115,7 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="whitespace-nowrap rounded-full border border-hairline-3 px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 sm:px-4"
+                className={buttonClass("secondary", "whitespace-nowrap rounded-full px-3 py-2 text-sm sm:px-4")}
               >
                 Déconnexion
               </button>
@@ -123,13 +124,13 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
             <>
               <Link
                 href="/connexion"
-                className="whitespace-nowrap rounded-full border border-hairline-3 px-3 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 sm:px-4"
+                className={buttonClass("secondary", "whitespace-nowrap rounded-full px-3 py-2 text-sm sm:px-4")}
               >
                 Connexion
               </Link>
               <Link
                 href="/inscription"
-                className="whitespace-nowrap rounded-full bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition-opacity hover:opacity-90 sm:px-4"
+                className={buttonClass("primary", "whitespace-nowrap rounded-full px-3 py-2 text-sm sm:px-4")}
               >
                 S&apos;inscrire
               </Link>

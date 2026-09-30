@@ -1,6 +1,7 @@
 "use client";
 
 import type { ApiCategory } from "@/lib/api/categories";
+import { fieldClass } from "@/components/ui/field";
 
 // Liste réelle gérée depuis l'espace Admin (GET /events/categories) — plus
 // de liste figée côté frontend, cf. lib/api/categories.ts.
@@ -25,7 +26,7 @@ export function CategoryPicker({
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-sm text-ink-1 focus:border-blue-500 focus:outline-none"
+      className={fieldClass("px-4 py-3")}
     >
       {categories.map((category) => (
         <option key={category.code} value={category.code} className="bg-card">
