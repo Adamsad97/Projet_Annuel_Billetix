@@ -45,7 +45,7 @@ import { EventPostponementService, type PostponedEvent } from "./event-postponem
 import { ChangeRequestDto, ChangeRequestKind, RescheduleEventDto } from "./dto/postponement.dto";
 import { Order, OrderStatus } from "./types/order-snapshot.type";
 import { MessageDto, OptionalReasonDto, ReasonDto } from "../common/dto/common.dto";
-import { CreatePromoCodeDto, CreateTicketCategoryDto, RespondToInfoRequestDto, ValidatePromoCodeDto } from "./dto/event-actions.dto";
+import { CreatePromoCodeDto, CreateTicketCategoryDto, UpdateTicketCategoryDto, RespondToInfoRequestDto, ValidatePromoCodeDto } from "./dto/event-actions.dto";
 import { UuidPipe } from "../common/pipes/uuid.pipe";
 import { EventOwner } from "../common/guards/event-owner.guard";
 import { findScheduleConflict, type ScheduledEvent } from "../ticket/agent-schedule";
@@ -652,6 +652,27 @@ export class EventController {
         organizer_id: user.sub,
       }),
     );
+  }
+
+  /** Brouillon uniquement (vérifié par event-service) : aucun billet vendu. */
+  @Patch("ticket-categories/:categoryId")
+  @Roles("ORGANIZER")
+  @ApiOperation({ summary: "Modifier une catégorie de billet d'un brouillon (ORGANIZER)" })
+  updateTicketCategory(
+    @CurrentUser() user: JwtPayload,
+    @Param("categoryId", UuidPipe) categoryId: string,
+    @Body() dto: UpdateTicketCategoryDto,
+  ) {
+    return firstValueFrom(
+      this.eventClient.send("event.update_category", { id: categoryId, dto, organizer_id: user.sub }),
+    );
+  }
+
+  @Delete("ticket-categories/:categoryId")
+  @Roles("ORGANIZER")
+  @ApiOperation({ summary: "Supprimer une catégorie de billet d'un brouillon (ORGANIZER)" })
+  deleteTicketCategory(@CurrentUser() user: JwtPayload, @Param("categoryId", UuidPipe) categoryId: string) {
+    return firstValueFrom(this.eventClient.send("event.deactivate_category", { id: categoryId, organizer_id: user.sub }));
   }
 
   @Post(":id/promo-codes")

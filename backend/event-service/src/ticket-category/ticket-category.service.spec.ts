@@ -11,7 +11,7 @@ import { TicketCategoryService } from './ticket-category.service';
 
 describe('TicketCategoryService', () => {
   let service: TicketCategoryService;
-  let repo: { find: jest.Mock; findOne: jest.Mock; create: jest.Mock; save: jest.Mock; update: jest.Mock };
+  let repo: { find: jest.Mock; findOne: jest.Mock; create: jest.Mock; save: jest.Mock; update: jest.Mock; delete: jest.Mock };
   let eventRepo: { findOne: jest.Mock; save: jest.Mock };
   let userClient: { send: jest.Mock };
   let notifClient: { emit: jest.Mock };
@@ -26,6 +26,7 @@ describe('TicketCategoryService', () => {
       create: jest.fn().mockImplementation((category) => category),
       save: jest.fn().mockImplementation((category) => Promise.resolve(category)),
       update: jest.fn(),
+      delete: jest.fn(),
     };
     eventRepo = { findOne: jest.fn(), save: jest.fn().mockImplementation((event) => Promise.resolve(event)) };
     // Par défaut : aucune préférence enregistrée -> alerte envoyée (fail-open).
@@ -135,7 +136,7 @@ describe('TicketCategoryService', () => {
     const catId = '11111111-1111-4111-8111-111111111111';
 
     it('autorise à conserver son propre nom (ne se bloque pas lui-même)', async () => {
-      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 1000 });
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 1000, status: 'DRAFT' });
       repo.findOne
         .mockResolvedValueOnce({ id: catId, event_id: 'evt-1', name: 'Standard', is_active: true })
         .mockResolvedValueOnce({ id: catId, event_id: 'evt-1', name: 'Standard', is_active: true });
@@ -146,7 +147,7 @@ describe('TicketCategoryService', () => {
     });
 
     it('rejette le renommage vers un nom déjà utilisé par une autre catégorie du même événement', async () => {
-      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 1000 });
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 1000, status: 'DRAFT' });
       repo.findOne
         .mockResolvedValueOnce({ id: catId, event_id: 'evt-1', name: 'Standard', is_active: true })
         .mockResolvedValueOnce({ id: 'cat-2', event_id: 'evt-1', name: 'VIP', is_active: true });
@@ -169,7 +170,7 @@ describe('TicketCategoryService', () => {
     });
 
     it("s'auto-exclut correctement : augmenter son propre quota jusqu'à la capacité totale reste autorisé", async () => {
-      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 500 });
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'organizer-1', total_capacity: 500, status: 'DRAFT' });
       repo.findOne.mockResolvedValue({ id: catId, event_id: 'evt-1', name: 'Standard', quota: 460, is_active: true });
       repo.find.mockResolvedValue([
         { id: catId, quota: 460, is_active: true },
@@ -390,6 +391,34 @@ describe('TicketCategoryService', () => {
       platformConfig.get.mockResolvedValue({ tva_rate: 0.055 });
       const [category] = await service.withPriceTtc([{ id: 'a', price_ht: '20.00' }] as unknown as TicketCategory[]);
       expect(category.price_ttc).toBe(21.1);
+    });
+  });
+
+  describe('modification des billets : brouillon uniquement', () => {
+    const category = { id: '22222222-2222-4222-8222-222222222222', event_id: 'evt-1', name: 'Standard', quota: 100, remaining_quota: 100 };
+
+    it('brouillon : prix et quota modifiables, quota disponible recalé', async () => {
+      repo.findOne.mockResolvedValue({ ...category });
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'org-1', status: 'DRAFT', total_capacity: 500 });
+      repo.find.mockResolvedValue([]);
+      repo.save.mockImplementation(async (value: object) => value);
+      const result = await service.update('22222222-2222-4222-8222-222222222222', { price_ht: 0, quota: 80 }, 'org-1');
+      expect(result).toMatchObject({ price_ht: 0, quota: 80, remaining_quota: 80 });
+    });
+
+    it('événement soumis ou publié : refusé', async () => {
+      repo.findOne.mockResolvedValue({ ...category });
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'org-1', status: 'PUBLISHED', total_capacity: 500 });
+      await expect(service.update('22222222-2222-4222-8222-222222222222', { price_ht: 1 }, 'org-1')).rejects.toMatchObject({ error: { statusCode: 400 } });
+      await expect(service.deactivate('22222222-2222-4222-8222-222222222222', 'org-1')).rejects.toMatchObject({ error: { statusCode: 400 } });
+      expect(repo.delete).not.toHaveBeenCalled();
+    });
+
+    it('brouillon : suppression de la catégorie', async () => {
+      repo.findOne.mockResolvedValue({ ...category });
+      eventRepo.findOne.mockResolvedValue({ id: 'evt-1', organizer_id: 'org-1', status: 'DRAFT', total_capacity: 500 });
+      await expect(service.deactivate('22222222-2222-4222-8222-222222222222', 'org-1')).resolves.toEqual({ success: true });
+      expect(repo.delete).toHaveBeenCalledWith('22222222-2222-4222-8222-222222222222');
     });
   });
 });

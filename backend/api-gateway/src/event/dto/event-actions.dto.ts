@@ -1,3 +1,4 @@
+import { PartialType } from "@nestjs/swagger";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
@@ -67,6 +68,9 @@ export class CreateTicketCategoryDto {
   @ApiPropertyOptional() @IsOptional() @IsDateString() sales_start_date?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() sales_end_date?: string;
 }
+
+/** Modification partielle d'une catégorie de billet (brouillon). */
+export class UpdateTicketCategoryDto extends PartialType(CreateTicketCategoryDto) {}
 
 export enum DiscountType {
   PERCENTAGE = "PERCENTAGE",

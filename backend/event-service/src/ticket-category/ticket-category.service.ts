@@ -142,9 +142,24 @@ export class TicketCategoryService {
     return category;
   }
 
+  /**
+   * Billets modifiables tant que l'événement est un brouillon (jamais soumis,
+   * ou rejeté par un admin) : aucun billet n'a encore été vendu. Ensuite, ce
+   * que les acheteurs ont payé ne change plus.
+   */
+  private assertDraft(event: Event): void {
+    if (event.status !== EventStatus.DRAFT) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "Les billets ne sont plus modifiables une fois l'événement soumis à validation.",
+      });
+    }
+  }
+
   async update(id: string, dto: Partial<CreateTicketCategoryDto>, organizerId: string): Promise<TicketCategory> {
     const category = await this.getById(id);
     const event = await this.assertOwnsEvent(category.event_id, organizerId);
+    this.assertDraft(event);
     if (dto.name) {
       await this.ticketTierTypeService.assertActive(dto.name);
       await this.assertNameNotUsed(category.event_id, dto.name, category.id);
@@ -153,13 +168,17 @@ export class TicketCategoryService {
       await this.assertQuotaWithinCapacity(category.event_id, event.total_capacity, dto.quota, category.id);
     }
     Object.assign(category, dto);
+    // Brouillon : rien de vendu, tout le quota reste disponible.
+    if (dto.quota !== undefined) category.remaining_quota = dto.quota;
     return this.repo.save(category);
   }
 
+  /** Brouillon : la catégorie est supprimée (aucun billet vendu). */
   async deactivate(id: string, organizerId: string): Promise<{ success: boolean }> {
     const category = await this.getById(id);
-    await this.assertOwnsEvent(category.event_id, organizerId);
-    await this.repo.update(id, { is_active: false });
+    const event = await this.assertOwnsEvent(category.event_id, organizerId);
+    this.assertDraft(event);
+    await this.repo.delete(id);
     return { success: true };
   }
 
