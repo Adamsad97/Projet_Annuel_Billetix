@@ -13,6 +13,7 @@ import { Elements } from "@stripe/react-stripe-js";
 import { PageShell } from "@/components/layout/page-shell";
 import { PostponementRefund } from "@/components/profile/postponement-refund";
 import { CreditNotes } from "@/components/profile/credit-notes";
+import { OrderDispute } from "@/components/profile/order-dispute";
 import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
 import { downloadInvoice, getOrder, resendTickets, type ApiOrder, type ApiOrderItem } from "@/lib/api/orders";
 import { getTicketsByOrder, type ApiTicket } from "@/lib/api/tickets";
@@ -277,6 +278,10 @@ export default function OrderDetailPage({
           ) : null}
 
           <CreditNotes orderId={order.id} refreshKey={postponementRefunded ? 1 : 0} />
+          <OrderDispute
+            orderId={order.id}
+            canReport={(order.status === "CONFIRMED" || order.status === "TICKETS_SENT") && Number(order.total_amount_ttc) > 0}
+          />
 
           <h2 className="mb-3 mt-6 text-sm font-semibold text-ink-2">Billets inclus</h2>
           <div className={cardClass("overflow-hidden")}>

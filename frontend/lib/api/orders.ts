@@ -159,6 +159,26 @@ export function resendTickets(orderId: string): Promise<{ success: boolean }> {
   return apiPost<{ success: boolean }>(`/orders/${orderId}/resend-tickets`);
 }
 
+/** Réclamation (litige) ouverte par l'acheteur sur une de ses commandes. */
+export interface ApiBuyerDispute {
+  id: string;
+  order_id: string;
+  status: "OPEN" | "UNDER_REVIEW" | "WON" | "LOST" | "CLOSED";
+  reason: string;
+  description: string | null;
+  resolution_notes: string | null;
+  resolved_at: string | null;
+  created_at: string;
+}
+
+export function listMyDisputes(): Promise<ApiBuyerDispute[]> {
+  return apiGet<ApiBuyerDispute[]>("/payments/disputes/me");
+}
+
+export function openDispute(orderId: string, reason: string, description: string): Promise<ApiBuyerDispute> {
+  return apiPost<ApiBuyerDispute>("/payments/disputes", { order_id: orderId, reason, description });
+}
+
 /** Avoir d'un remboursement : annule, pour son montant, la facture de la commande. */
 export interface ApiCreditNote {
   id: string;

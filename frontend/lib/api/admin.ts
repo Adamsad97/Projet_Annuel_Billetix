@@ -555,13 +555,67 @@ export interface ApiDispute {
   status: ApiDisputeStatus;
   reason: ApiDisputeReason;
   description: string | null;
+  /** Contestation bancaire (chargeback) reçue de Stripe. */
+  stripe_dispute_id?: string | null;
   resolved_at: string | null;
   resolution_notes: string | null;
   created_at: string;
+  // Enrichis par la passerelle (liste admin).
+  order_reference?: string | null;
+  event_name?: string | null;
+  buyer_name?: string | null;
+  amount_ttc?: number | null;
 }
 
 export function listDisputes(): Promise<ApiDispute[]> {
   return apiGet<ApiDispute[]>("/admin/disputes");
+}
+
+/** Fiche d'un litige : commande, billets, paiement et avoirs. */
+export interface ApiDisputeDetail {
+  dispute: ApiDispute;
+  order: {
+    id: string;
+    reference: string;
+    status: string;
+    event_id: string;
+    event_name: string;
+    event_start_at: string | null;
+    total_amount_ttc: number;
+    refunded_amount: number;
+    payment_method: string;
+    buyer_id: string;
+    buyer_name: string;
+    buyer_email: string;
+    created_at: string;
+  };
+  tickets: Array<{ id: string; reference: string; status: string; holder: string; category: string }>;
+  payment: { status: string; amount: number; refunded_amount: number; provider: string } | null;
+  credit_notes: Array<{ number: string; amount_ttc: number; reason: string; created_at: string }>;
+}
+
+export function getDisputeDetail(id: string): Promise<ApiDisputeDetail> {
+  return apiGet<ApiDisputeDetail>(`/admin/disputes/${id}`);
+}
+
+export function startDisputeReview(id: string): Promise<ApiDispute> {
+  return apiPost<ApiDispute>(`/admin/disputes/${id}/review`, {});
+}
+
+export interface ResolveDisputeInput {
+  status: "WON" | "LOST" | "CLOSED";
+  resolution_notes: string;
+  refund_full?: boolean;
+  refund_amount_cents?: number;
+}
+
+export function resolveDispute(id: string, input: ResolveDisputeInput): Promise<ApiDispute> {
+  return apiPost<ApiDispute>(`/admin/disputes/${id}/resolve`, input);
+}
+
+/** Billet rendu inutilisable (fraude, doublon…), motif conservé au journal. */
+export function invalidateTicketAsAdmin(ticketId: string, reason: string): Promise<unknown> {
+  return apiPost(`/admin/tickets/${ticketId}/invalidate`, { reason });
 }
 
 // ─── Cycle de vie d'un événement (admin) ────────────────────────────────────
