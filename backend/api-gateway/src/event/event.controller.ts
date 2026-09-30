@@ -14,6 +14,7 @@ import {
   Post,
   Query,
   Req,
+  ConflictException,
 } from "@nestjs/common";
 import { assertOwnDocumentUrl } from "../upload/document-url";
 import { ConfigService } from "@nestjs/config";
@@ -45,6 +46,8 @@ import { MessageDto, OptionalReasonDto, ReasonDto } from "../common/dto/common.d
 import { CreatePromoCodeDto, CreateTicketCategoryDto, RespondToInfoRequestDto, ValidatePromoCodeDto } from "./dto/event-actions.dto";
 import { UuidPipe } from "../common/pipes/uuid.pipe";
 import { EventOwner } from "../common/guards/event-owner.guard";
+import { findScheduleConflict, type ScheduledEvent } from "../ticket/agent-schedule";
+import { formatEventDate } from "../common/event-date";
 
 // Adresse lisible générée par event-service (cf. event/slug.ts).
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -64,6 +67,7 @@ export class EventController {
     @Inject("TICKET_SERVICE") private readonly ticketClient: ClientProxy,
     @Inject("NOTIFICATION_SERVICE") private readonly notifClient: ClientProxy,
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
+    @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     private readonly eventRefund: EventRefundService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
@@ -283,6 +287,59 @@ export class EventController {
 
   // --- Routes organisateur ---
 
+  /**
+   * Nouvelles dates : aucun agent déjà affecté ne doit se retrouver sur deux
+   * événements qui se chevauchent (même règle qu'à l'affectation). Seulement
+   * pour l'organisateur de l'événement — event-service refuse les autres, et
+   * les agents d'un événement tiers ne sont jamais révélés.
+   */
+  private async assertAgentsStillAvailable(eventId: string, organizerId: string, dto: UpdateEventDto): Promise<void> {
+    if (dto.start_date === undefined && dto.end_date === undefined) return;
+    const current = await firstValueFrom(
+      this.eventClient.send<ScheduledEvent & { organizer_id: string }>("event.get", { id: eventId }),
+    ).catch(() => null);
+    if (!current || current.organizer_id !== organizerId) return;
+
+    const agents = await firstValueFrom(
+      this.ticketClient.send<Array<{ user_id: string }>>("ticket.get_agents", { event_id: eventId }),
+    );
+    if (agents.length === 0) return;
+
+    const target: ScheduledEvent = {
+      id: eventId,
+      title: current.title,
+      start_date: dto.start_date ?? current.start_date,
+      end_date: dto.end_date ?? current.end_date,
+    };
+    const conflicts: Array<{ user_id: string; event: ScheduledEvent }> = [];
+    for (const agent of agents) {
+      const assignedIds = (
+        await firstValueFrom(this.ticketClient.send<string[]>("ticket.get_agent_events", { user_id: agent.user_id }))
+      ).filter((otherId) => otherId !== eventId);
+      if (assignedIds.length === 0) continue;
+      const others = await firstValueFrom(this.eventClient.send<ScheduledEvent[]>("event.get_by_ids", { ids: assignedIds }));
+      const conflict = findScheduleConflict(target, others);
+      if (conflict) conflicts.push({ user_id: agent.user_id, event: conflict });
+    }
+    if (conflicts.length === 0) return;
+
+    const accounts = await firstValueFrom(
+      this.authClient.send<Array<{ id: string; first_name: string; last_name: string }>>("auth.get_users_by_ids", {
+        ids: conflicts.map((c) => c.user_id),
+      }),
+    ).catch(() => []);
+    const nameOf = (userId: string) => {
+      const account = accounts.find((a) => a.id === userId);
+      return account ? `${account.first_name} ${account.last_name}` : "Un agent";
+    };
+    const details = conflicts
+      .map((c) => `${nameOf(c.user_id)} contrôle déjà « ${c.event.title} » (${formatEventDate(c.event.start_date)})`)
+      .join(" ; ");
+    throw new ConflictException(
+      `Ces dates font chevaucher des agents avec un autre événement : ${details}. Retirez ces agents de l'événement ou choisissez d'autres dates.`,
+    );
+  }
+
   private checkNonProfitDocument(url: string | undefined, organizerId: string): void {
     if (url) assertOwnDocumentUrl(url, organizerId, this.config.get("MINIO_BUCKET_DOCUMENTS", "documents"));
   }
@@ -453,6 +510,7 @@ export class EventController {
     @Body() dto: UpdateEventDto,
   ) {
     this.checkNonProfitDocument(dto.non_profit_document_url, user.sub);
+    await this.assertAgentsStillAvailable(id, user.sub, dto);
     const updatedEvent = (await firstValueFrom(
       this.eventClient.send("event.update", {
         id,
