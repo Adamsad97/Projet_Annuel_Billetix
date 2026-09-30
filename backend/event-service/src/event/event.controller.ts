@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { EventService } from './event.service';
-import { AdminActionPayload, AdminIdPayload, IdPayload, IdsPayload, OrganizerPayload, OwnedIdPayload } from '../common/payloads';
+import { AdminActionPayload, AdminIdPayload, IdPayload, IdsPayload, OrganizerPayload, OwnedIdPayload, SlugPayload } from '../common/payloads';
 import { CancelEventPayload, CreateEventPayload, ListAllEventsPayload, ListPublishedPayload, RecommendationPayload, RequestInfoPayload, RespondToInfoPayload, UpdateEventPayload, VerifyNonProfitPayload } from './dto/event-payloads';
 
 @Controller()
@@ -21,6 +21,11 @@ export class EventController {
   @MessagePattern('event.get_public')
   getPublic(@Payload() data: IdPayload) {
     return this.eventService.getPublic(data.id);
+  }
+
+  @MessagePattern('event.get_by_slug')
+  getBySlug(@Payload() data: SlugPayload) {
+    return this.eventService.getBySlug(data.slug);
   }
 
   @MessagePattern('event.get_by_ids')

@@ -25,6 +25,8 @@ describe('EventService', () => {
     orderBy: jest.Mock;
     take: jest.Mock;
     getMany: jest.Mock;
+    select: jest.Mock;
+    getRawMany: jest.Mock;
   };
   // Injecté dans EventService (@InjectRepository(TicketCategory)) mais non
   // encore exploité dans les méthodes actuelles — mock minimal seulement
@@ -56,6 +58,8 @@ describe('EventService', () => {
       orderBy: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
       getMany: jest.fn().mockResolvedValue([]),
+      select: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([]),
     };
     repo = {
       create: jest.fn().mockImplementation((event) => event),
@@ -129,6 +133,38 @@ describe('EventService', () => {
         service.create('organizer-1', { category: 'INEXISTANT', total_capacity: 500 } as any),
       ).rejects.toThrow(RpcException);
       expect(repo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('adresse lisible (slug)', () => {
+    it('attribue une adresse tirée du titre à la création', async () => {
+      const event = await service.create('organizer-1', { title: 'Afro Vibes Festival 2026', total_capacity: 500 } as any);
+      expect(event.slug).toBe('afro-vibes-festival-2026');
+    });
+
+    it("ajoute un suffixe si l'adresse est déjà prise", async () => {
+      queryBuilder.getRawMany.mockResolvedValue([{ slug: 'afro-vibes-festival-2026' }]);
+      const event = await service.create('organizer-1', { title: 'Afro Vibes Festival 2026', total_capacity: 500 } as any);
+      expect(event.slug).toBe('afro-vibes-festival-2026-2');
+    });
+
+    it("suit le titre tant que l'événement est un brouillon", async () => {
+      repo.findOne.mockResolvedValue({ id: '11111111-1111-4111-8111-111111111111', organizer_id: 'organizer-1', status: EventStatus.DRAFT, title: 'Ancien', slug: 'ancien' });
+      const event = await service.update('11111111-1111-4111-8111-111111111111', 'organizer-1', { title: 'Nouveau titre' } as any);
+      expect(event.slug).toBe('nouveau-titre');
+    });
+
+    it('retrouve un événement par son adresse, 404 sinon', async () => {
+      repo.findOne.mockResolvedValueOnce({ id: 'e1', slug: 'concert' });
+      await expect(service.getBySlug('concert')).resolves.toMatchObject({ id: 'e1' });
+      repo.findOne.mockResolvedValueOnce(null);
+      await expect(service.getBySlug('inconnu')).rejects.toThrow(RpcException);
+    });
+
+    it("attribue une adresse aux événements existants qui n'en ont pas", async () => {
+      repo.find.mockResolvedValue([{ id: 'e1', title: 'Gala' }]);
+      await service.onApplicationBootstrap();
+      expect(repo.save).toHaveBeenCalledWith(expect.objectContaining({ id: 'e1', slug: 'gala' }));
     });
   });
 

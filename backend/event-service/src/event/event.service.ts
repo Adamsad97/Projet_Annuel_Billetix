@@ -1,9 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { isUUID } from 'class-validator';
 import { firstValueFrom } from 'rxjs';
-import { In, Repository, Brackets } from 'typeorm';
+import { In, IsNull, Repository, Brackets, QueryFailedError } from 'typeorm';
 import { CategoryService } from '../category/category.service';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { CategoryVisibility, TicketCategory } from '../ticket-category/ticket-category.entity';
@@ -12,6 +12,7 @@ import { ValidationRequestService } from '../validation-request/validation-reque
 import { AdminActionDto } from './dto/admin-action.dto';
 import { CreateEventDto } from './dto/create-event.dto';
 import { Event, EventStatus } from './event.entity';
+import { firstFreeSlug, slugify } from './slug';
 
 // Une fois soumis (hors DRAFT), seuls ces champs restent modifiables — les
 // autres (date, lieu, capacité...) sont dupliqués dans Order/Ticket au
@@ -75,7 +76,9 @@ export interface AdminEventListFilters {
 }
 
 @Injectable()
-export class EventService {
+export class EventService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(EventService.name);
+
   constructor(
     @InjectRepository(Event)
     private readonly repo: Repository<Event>,
@@ -148,7 +151,49 @@ export class EventService {
       commission_rate,
       status: EventStatus.DRAFT,
     });
-    return this.repo.save(event);
+    return this.saveWithSlug(event);
+  }
+
+  /**
+   * Remplit l'adresse lisible des événements qui n'en ont pas encore
+   * (créés avant son introduction). Idempotent, exécuté à chaque démarrage.
+   */
+  async onApplicationBootstrap(): Promise<void> {
+    try {
+      const missing = await this.repo.find({ where: { slug: IsNull() }, order: { created_at: 'ASC' } });
+      for (const event of missing) await this.saveWithSlug(event);
+      if (missing.length > 0) this.logger.log(`Adresse lisible attribuée à ${missing.length} événement(s)`);
+    } catch (err) {
+      this.logger.error(`Attribution des adresses lisibles échouée : ${(err as Error).message}`);
+    }
+  }
+
+  /** Première adresse libre pour ce titre (hors l'événement lui-même). */
+  private async freeSlug(title: string | undefined, excludeId?: string): Promise<string> {
+    const base = slugify(title ?? '');
+    const qb = this.repo
+      .createQueryBuilder('e')
+      .select('e.slug', 'slug')
+      .where('(e.slug = :base OR e.slug LIKE :pattern)', { base, pattern: `${base}-%` });
+    if (excludeId) qb.andWhere('e.id != :id', { id: excludeId });
+    const rows = await qb.getRawMany<{ slug: string }>();
+    return firstFreeSlug(base, rows.map((r) => r.slug));
+  }
+
+  /**
+   * Enregistre en attribuant l'adresse lisible. L'index unique tranche si
+   * deux créations simultanées visent la même adresse : on recalcule.
+   */
+  private async saveWithSlug(event: Event): Promise<Event> {
+    for (let attempt = 0; ; attempt++) {
+      event.slug = await this.freeSlug(event.title, event.id);
+      try {
+        return await this.repo.save(event);
+      } catch (err) {
+        const duplicate = err instanceof QueryFailedError && (err as QueryFailedError & { code?: string }).code === '23505';
+        if (!duplicate || attempt >= 4) throw err;
+      }
+    }
   }
 
   /**
@@ -518,8 +563,10 @@ export class EventService {
       if (dto.start_date !== undefined || dto.end_date !== undefined) {
         this.assertValidDates(dto, event);
       }
+      const titleChanged = dto.title !== undefined && dto.title !== event.title;
       Object.assign(event, pickUpdatableFields(dto));
-      return this.repo.save(event);
+      // Brouillon jamais publié : l'adresse suit le titre.
+      return titleChanged ? this.saveWithSlug(event) : this.repo.save(event);
     }
 
     const editableStatuses: EventStatus[] = [EventStatus.PENDING_VALIDATION, EventStatus.PUBLISHED];
@@ -598,7 +645,7 @@ export class EventService {
       access_conditions: original.access_conditions,
       status: EventStatus.DRAFT,
     });
-    const saved = await this.repo.save(clone);
+    const saved = await this.saveWithSlug(clone);
 
     const categories = await this.ticketCategoryService.getByEvent(id);
     for (const category of categories) {
@@ -711,6 +758,13 @@ export class EventService {
   async getPublic(id: string): Promise<Event> {
     const event = await this.getById(id);
     if (event.is_hidden) throw new RpcException({ statusCode: 404, message: 'Événement introuvable' });
+    return event;
+  }
+
+  /** Événement désigné par son adresse lisible (mêmes règles que getPublic côté appelant). */
+  async getBySlug(slug: string): Promise<Event> {
+    const event = await this.repo.findOne({ where: { slug } });
+    if (!event) throw new RpcException({ statusCode: 404, message: 'Événement introuvable' });
     return event;
   }
 

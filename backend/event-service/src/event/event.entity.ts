@@ -1,10 +1,4 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, Index } from 'typeorm';
 
 export enum EventStatus {
   DRAFT = 'DRAFT',
@@ -31,6 +25,14 @@ export class Event {
 
   @Column({ length: 120 })
   title: string;
+
+  // Adresse lisible de la page publique (/evenements/afro-vibes-festival-2026),
+  // tirée du titre. Suit le titre tant que l'événement est un brouillon, puis
+  // reste figée (le titre est verrouillé dès la soumission) : un lien partagé
+  // ne casse jamais. Nullable le temps du remplissage des lignes existantes.
+  @Index('UQ_events_slug', { unique: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  slug: string | null;
 
   @Column({ type: 'text' })
   description: string;
