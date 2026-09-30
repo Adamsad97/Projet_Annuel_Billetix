@@ -46,6 +46,11 @@ import { CreatePromoCodeDto, CreateTicketCategoryDto, RespondToInfoRequestDto, V
 import { UuidPipe } from "../common/pipes/uuid.pipe";
 import { EventOwner } from "../common/guards/event-owner.guard";
 
+// Adresse lisible générée par event-service (cf. event/slug.ts).
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+type VisibleEvent = { organizer_id: string; is_hidden?: boolean };
+
 @ApiTags("events")
 @ApiBearerAuth()
 @Controller("events")
@@ -227,10 +232,27 @@ export class EventController {
   @Get(":id")
   @ApiOperation({ summary: "Détail d'un événement (un événement masqué n'est visible que par son organisateur et les admins)" })
   async getById(@Param("id", UuidPipe) id: string, @Req() req: Request) {
-    const event = (await firstValueFrom(this.eventClient.send("event.get", { id }))) as {
-      organizer_id: string;
-      is_hidden?: boolean;
-    };
+    const event = (await firstValueFrom(this.eventClient.send("event.get", { id }))) as VisibleEvent;
+    return this.assertVisible(event, req);
+  }
+
+  /**
+   * Page publique par son adresse lisible (/evenements/afro-vibes-festival-2026),
+   * mêmes règles de visibilité que GET :id. Deux segments : aucun conflit
+   * avec les routes « :id ».
+   */
+  @Public()
+  @Get("by-slug/:slug")
+  @ApiOperation({ summary: "Détail d'un événement par son adresse lisible" })
+  async getBySlug(@Param("slug") slug: string, @Req() req: Request) {
+    // Une adresse mal formée désigne simplement un événement inexistant.
+    if (!SLUG_PATTERN.test(slug) || slug.length > 100) throw new NotFoundException("Événement introuvable");
+    const event = (await firstValueFrom(this.eventClient.send("event.get_by_slug", { slug }))) as VisibleEvent;
+    return this.assertVisible(event, req);
+  }
+
+  /** Un événement masqué n'est visible que par son organisateur et les admins. */
+  private assertVisible(event: VisibleEvent, req: Request): VisibleEvent {
     if (event.is_hidden) {
       const viewer = this.optionalViewer(req);
       const allowed = viewer && (viewer.role === "ADMIN" || viewer.role === "SUPER_ADMIN" || viewer.sub === event.organizer_id);
