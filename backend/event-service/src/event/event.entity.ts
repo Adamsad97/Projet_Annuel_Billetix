@@ -66,6 +66,17 @@ export class Event {
   @Column({ nullable: true })
   non_profit_verified_by: string | null;
 
+  // Bug corrigé : un refus remettait seulement non_profit_verified à false
+  // — l'état « en attente » — sans rien enregistrer : l'admin revoyait le
+  // justificatif à examiner, pouvait le refuser en boucle (un email à
+  // chaque fois) et l'organisateur ne savait pas pourquoi. Refus daté et
+  // motivé ; effacé quand l'organisateur envoie un nouveau justificatif.
+  @Column({ type: 'timestamptz', nullable: true })
+  non_profit_rejected_at: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  non_profit_rejection_reason: string | null;
+
   @Column({ type: 'timestamptz' })
   start_date: Date;
 

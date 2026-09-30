@@ -95,6 +95,8 @@ export class RecommendationPayload {
 
 export class VerifyNonProfitPayload extends AdminIdPayload {
   @IsBoolean() approved: boolean;
+  // Motif du refus, communiqué à l'organisateur.
+  @IsOptional() @IsString() @MaxLength(2000) reason?: string;
 }
 
 export class CancelEventPayload extends IdPayload {

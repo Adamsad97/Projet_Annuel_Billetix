@@ -87,7 +87,7 @@ export class EventController {
 
   @MessagePattern('event.verify_non_profit')
   verifyNonProfit(@Payload() data: VerifyNonProfitPayload) {
-    return this.eventService.verifyNonProfit(data.id, data.admin_id, data.approved);
+    return this.eventService.verifyNonProfit(data.id, data.admin_id, data.approved, data.reason);
   }
 
   @MessagePattern('event.reject')

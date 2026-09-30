@@ -136,6 +136,49 @@ describe('EventService', () => {
     });
   });
 
+  describe('justificatif « à but non lucratif »', () => {
+    const ID = '11111111-1111-4111-8111-111111111111';
+    const pending = () => ({
+      id: ID,
+      organizer_id: 'organizer-1',
+      status: EventStatus.PENDING_VALIDATION,
+      is_non_profit: true,
+      non_profit_document_url: 'http://localhost:9000/documents/o/a.pdf',
+      non_profit_verified: false,
+      non_profit_rejected_at: null,
+      non_profit_rejection_reason: null,
+    });
+
+    it('refus : daté et motivé, distinct de « en attente »', async () => {
+      repo.findOne.mockResolvedValue(pending());
+      const event = await service.verifyNonProfit(ID, 'admin-1', false, '  Statuts illisibles  ');
+      expect(event.non_profit_verified).toBe(false);
+      expect(event.non_profit_rejected_at).toBeInstanceOf(Date);
+      expect(event.non_profit_rejection_reason).toBe('Statuts illisibles');
+    });
+
+    it('refus sans motif : refusé', async () => {
+      repo.findOne.mockResolvedValue(pending());
+      await expect(service.verifyNonProfit(ID, 'admin-1', false, '  ')).rejects.toThrow(RpcException);
+    });
+
+    it('une décision ne se prend pas deux fois', async () => {
+      repo.findOne.mockResolvedValue({ ...pending(), non_profit_rejected_at: new Date() });
+      await expect(service.verifyNonProfit(ID, 'admin-1', false, 'encore')).rejects.toThrow(RpcException);
+      repo.findOne.mockResolvedValue({ ...pending(), non_profit_verified: true });
+      await expect(service.verifyNonProfit(ID, 'admin-1', true)).rejects.toThrow(RpcException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("un nouveau justificatif, même après soumission, rouvre l'examen", async () => {
+      repo.findOne.mockResolvedValue({ ...pending(), non_profit_rejected_at: new Date(), non_profit_rejection_reason: 'illisible' });
+      const event = await service.update(ID, 'organizer-1', { non_profit_document_url: 'http://localhost:9000/documents/o/b.pdf' } as any);
+      expect(event.non_profit_document_url).toBe('http://localhost:9000/documents/o/b.pdf');
+      expect(event.non_profit_rejected_at).toBeNull();
+      expect(event.non_profit_rejection_reason).toBeNull();
+    });
+  });
+
   describe('adresse lisible (slug)', () => {
     it('attribue une adresse tirée du titre à la création', async () => {
       const event = await service.create('organizer-1', { title: 'Afro Vibes Festival 2026', total_capacity: 500 } as any);

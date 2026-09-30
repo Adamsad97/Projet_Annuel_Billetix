@@ -22,6 +22,8 @@ const COSMETIC_FIELDS: Array<keyof CreateEventDto> = [
   'description',
   'poster_url',
   'access_conditions',
+  // Nouveau justificatif après un refus : n'affecte ni billets ni commandes.
+  'non_profit_document_url',
 ];
 
 // Défense en profondeur : même si le gateway type déjà son DTO, ce handler
@@ -219,7 +221,7 @@ export class EventService implements OnApplicationBootstrap {
    * `validate()` ne consulte ensuite que `non_profit_verified` (jamais
    * `is_non_profit` directement) pour calculer la commission finale.
    */
-  async verifyNonProfit(id: string, adminId: string, approved: boolean): Promise<Event> {
+  async verifyNonProfit(id: string, adminId: string, approved: boolean, reason?: string): Promise<Event> {
     const event = await this.getById(id);
     if (!event.is_non_profit) {
       throw new RpcException({
@@ -233,10 +235,37 @@ export class EventService implements OnApplicationBootstrap {
         message: 'Aucun justificatif fourni par l\'organisateur',
       });
     }
+    // Une décision n'est prise qu'une fois par justificatif : un nouveau
+    // justificatif de l'organisateur rouvre l'examen (cf. update()).
+    if (event.non_profit_verified) {
+      throw new RpcException({ statusCode: 400, message: 'Ce justificatif a déjà été validé.' });
+    }
+    if (event.non_profit_rejected_at) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "Ce justificatif a déjà été refusé ; l'organisateur doit en envoyer un nouveau.",
+      });
+    }
+    const motive = reason?.trim();
+    if (!approved && !motive) {
+      throw new RpcException({ statusCode: 400, message: 'Le motif du refus est obligatoire.' });
+    }
     event.non_profit_verified = approved;
     event.non_profit_verified_at = new Date();
     event.non_profit_verified_by = adminId;
+    event.non_profit_rejected_at = approved ? null : new Date();
+    event.non_profit_rejection_reason = approved ? null : motive!;
     return this.repo.save(event);
+  }
+
+  /** Nouveau justificatif : la décision précédente ne vaut plus, retour en examen. */
+  private resetNonProfitReview(event: Event, dto: Partial<CreateEventDto>): void {
+    if (dto.non_profit_document_url === undefined || dto.non_profit_document_url === event.non_profit_document_url) return;
+    event.non_profit_verified = false;
+    event.non_profit_verified_at = null;
+    event.non_profit_verified_by = null;
+    event.non_profit_rejected_at = null;
+    event.non_profit_rejection_reason = null;
   }
 
   /**
@@ -564,6 +593,7 @@ export class EventService implements OnApplicationBootstrap {
         this.assertValidDates(dto, event);
       }
       const titleChanged = dto.title !== undefined && dto.title !== event.title;
+      this.resetNonProfitReview(event, dto);
       Object.assign(event, pickUpdatableFields(dto));
       // Brouillon jamais publié : l'adresse suit le titre.
       return titleChanged ? this.saveWithSlug(event) : this.repo.save(event);
@@ -583,10 +613,11 @@ export class EventService implements OnApplicationBootstrap {
     if (lockedFields.length > 0) {
       throw new RpcException({
         statusCode: 400,
-        message: `Une fois soumis, seuls la description, l'affiche et les conditions d'accès restent modifiables (verrouillé : ${lockedFields.join(', ')})`,
+        message: `Une fois soumis, seuls la description, l'affiche, les conditions d'accès et le justificatif restent modifiables (verrouillé : ${lockedFields.join(', ')})`,
       });
     }
 
+    this.resetNonProfitReview(event, dto);
     Object.assign(event, pickUpdatableFields(dto));
     return this.repo.save(event);
   }
