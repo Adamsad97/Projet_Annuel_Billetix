@@ -28,6 +28,8 @@ export interface PlatformConfig {
   resale_reservation_minutes: number;
   ticket_qr_rotation_seconds: number;
   ticket_qr_rotation_tolerance_steps: number;
+  scan_opens_before_minutes: number;
+  scan_closes_after_minutes: number;
   ticket_transfer_max_per_ticket: number;
   ticket_transfer_cutoff_hours: number;
 }
@@ -56,6 +58,8 @@ const FALLBACK: PlatformConfig = {
   resale_reservation_minutes: 15,
   ticket_qr_rotation_seconds: 5,
   ticket_qr_rotation_tolerance_steps: 1,
+  scan_opens_before_minutes: 180,
+  scan_closes_after_minutes: 60,
   ticket_transfer_max_per_ticket: 1,
   ticket_transfer_cutoff_hours: 2,
 };

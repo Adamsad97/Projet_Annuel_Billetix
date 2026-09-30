@@ -520,6 +520,9 @@ services:
       OFFLINE_SYNC_MAX_HOURS: ${OFFLINE_SYNC_MAX_HOURS:-4}
       ADMIN_SERVICE_HOST: admin-service
       ADMIN_SERVICE_PORT: 3009
+      # Statut et dates de l'événement vérifiés à chaque scan.
+      EVENT_SERVICE_HOST: event-service
+      EVENT_SERVICE_PORT: 3003
     depends_on:
       ticket-db:
         condition: service_healthy

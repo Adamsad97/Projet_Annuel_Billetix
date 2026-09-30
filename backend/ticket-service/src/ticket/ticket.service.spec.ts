@@ -355,8 +355,24 @@ describe('TicketService', () => {
       expect(result.status).toBe(TicketStatus.USED);
       expect(dataSource.query).toHaveBeenCalledWith(
         expect.stringContaining("SET status = 'USED'"),
-        [expect.any(Date), 'agent-1', 'tablette-1', 'ticket-123'],
+        [expect.any(Date), 'agent-1', 'tablette-1', 'ticket-123', null],
       );
+    });
+
+    it('lie la consommation au jeton du porteur : revendu entre vérification et scan → SUPERSEDED', async () => {
+      dataSource.query.mockResolvedValue([[]]);
+      repo.findOne.mockResolvedValue({ id: 'ticket-123', status: TicketStatus.SENT, qr_code_token: 'nouveau-jeton' });
+
+      await expect(service.markUsed('ticket-123', 'agent-1', undefined, 'ancien-jeton')).rejects.toMatchObject({
+        error: { code: 'SUPERSEDED' },
+      });
+      expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('qr_code_token = $5'), [
+        expect.any(Date),
+        'agent-1',
+        null,
+        'ticket-123',
+        'ancien-jeton',
+      ]);
     });
 
     it('rejette (ALREADY_USED) si la transition conditionnelle n\'affecte aucune ligne — un autre scan a déjà eu lieu entre-temps', async () => {

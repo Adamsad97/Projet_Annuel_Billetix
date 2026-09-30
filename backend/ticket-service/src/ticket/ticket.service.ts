@@ -290,16 +290,29 @@ export class TicketService {
    * affecte une ligne, le second reçoit ALREADY_USED même s'il a lu le
    * statut via verifyQr() avant que le premier n'ait écrit.
    */
-  async markUsed(id: string, agentId: string, deviceInfo?: string): Promise<Ticket> {
+  async markUsed(id: string, agentId: string, deviceInfo?: string, expectedToken?: string): Promise<Ticket> {
+    // `expectedToken` : jeton du porteur lu à la vérification du QR. Le
+    // repasser dans le même UPDATE rend vérification et consommation
+    // indissociables — une revente ou un transfert survenu entre les deux
+    // ne peut plus laisser entrer l'ancien titulaire.
     const rows = await this.dataSource.query(
       `UPDATE tickets.tickets
        SET status = 'USED', scanned_at = $1, scanned_by = $2, scan_device_info = $3
        WHERE id = $4 AND status IN ('GENERATED', 'SENT')
+         AND ($5::text IS NULL OR qr_code_token = $5)
        RETURNING id`,
-      [new Date(), agentId, deviceInfo ?? null, id],
+      [new Date(), agentId, deviceInfo ?? null, id, expectedToken ?? null],
     );
 
     if (!rows[0]?.length) {
+      const current = await this.repo.findOne({ where: { id } });
+      if (expectedToken && current && current.qr_code_token !== expectedToken) {
+        throw new RpcException({
+          statusCode: 409,
+          code: 'SUPERSEDED',
+          message: "Ce billet a changé de titulaire (revente ou transfert) — ce QR code n'est plus valide",
+        });
+      }
       throw new RpcException({
         statusCode: 409,
         code: 'ALREADY_USED',

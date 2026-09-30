@@ -24,6 +24,12 @@ export enum ScanResult {
   // Même résultat après un transfert (billet offert) : l'ancien titulaire
   // ne peut plus entrer avec.
   SUPERSEDED = 'SUPERSEDED',
+  // Événement annulé, suspendu, masqué ou pas encore publié : aucune entrée.
+  EVENT_UNAVAILABLE = 'EVENT_UNAVAILABLE',
+  // Hors de la fenêtre de contrôle (réglages scan_opens_before_minutes /
+  // scan_closes_after_minutes) : trop tôt avant le début, trop tard après la fin.
+  TOO_EARLY = 'TOO_EARLY',
+  TOO_LATE = 'TOO_LATE',
 }
 
 @Entity({ name: 'scan_logs', schema: 'tickets' })

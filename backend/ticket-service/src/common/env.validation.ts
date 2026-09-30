@@ -12,6 +12,8 @@ class TicketServiceEnvironment {
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(65535) PORT?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(65535) HEALTH_PORT?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) OFFLINE_SYNC_MAX_HOURS?: number;
+  @IsOptional() @IsString() EVENT_SERVICE_HOST?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(65535) EVENT_SERVICE_PORT?: number;
 }
 
 export function validateEnvironment(config: Record<string, unknown>): Record<string, unknown> {

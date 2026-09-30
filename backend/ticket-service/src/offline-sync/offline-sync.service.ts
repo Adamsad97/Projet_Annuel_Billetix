@@ -52,16 +52,15 @@ export class OfflineSyncService {
           status = SyncStatus.CONFLICT;
           conflictDetail = 'Billet déjà scanné en ligne avant la synchronisation';
           conflicts++;
-        } else if (
-          scanResult.result === ScanResult.INVALID ||
-          scanResult.result === ScanResult.CANCELLED ||
-          scanResult.result === ScanResult.WRONG_EVENT
-        ) {
-          status = SyncStatus.ERROR;
-          conflictDetail = `Scan invalide : ${scanResult.result}`;
-          errors++;
-        } else {
+        } else if (scanResult.result === ScanResult.SUCCESS) {
           synced++;
+        } else {
+          // Bug corrigé : seuls INVALID/CANCELLED/WRONG_EVENT étaient
+          // comptés en erreur — un QR expiré, revendu, fixe, ou un scan
+          // hors fenêtre / événement fermé passait pour « synchronisé ».
+          status = SyncStatus.ERROR;
+          conflictDetail = `Scan refusé : ${scanResult.result}`;
+          errors++;
         }
       } catch {
         status = SyncStatus.ERROR;

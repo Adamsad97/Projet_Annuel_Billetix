@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { RpcException } from '@nestjs/microservices';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
+import { firstValueFrom, timeout } from 'rxjs';
 import { Repository } from 'typeorm';
+import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { ControlAgentService } from '../control-agent/control-agent.service';
 import { Ticket, TicketStatus } from '../ticket/ticket.entity';
 import { TicketService } from '../ticket/ticket.service';
@@ -26,13 +28,57 @@ export interface ScanResponse {
   ticket?: Ticket;
 }
 
+/** Statuts d'événement autorisant l'entrée (TERMINATED : juste après la fin, dans la fenêtre de fermeture). */
+const OPEN_EVENT_STATUSES = ['PUBLISHED', 'TERMINATED'];
+const EVENT_LOOKUP_TIMEOUT_MS = 3000;
+
+interface EventSnapshot {
+  status: string;
+  is_hidden?: boolean;
+  start_date: string;
+  end_date: string | null;
+}
+
 @Injectable()
 export class ScanService {
+  private readonly logger = new Logger(ScanService.name);
+
   constructor(
     @InjectRepository(ScanLog) private readonly logRepo: Repository<ScanLog>,
     private readonly ticketService: TicketService,
     private readonly controlAgentService: ControlAgentService,
+    private readonly platformConfig: PlatformConfigCache,
+    @Inject('EVENT_SERVICE') private readonly eventClient: ClientProxy,
   ) {}
+
+  /**
+   * Vérification de l'événement au moment du scan : ouvert au public
+   * (publié, non masqué, ni suspendu ni annulé) et dans la fenêtre de
+   * contrôle (réglages admin). null si l'entrée est permise.
+   *
+   * event-service injoignable : on ne bloque pas l'entrée de tout un
+   * public sur une panne interne — la fenêtre horaire est alors jugée sur
+   * les dates recopiées dans le billet, et l'incident est journalisé.
+   */
+  private async eventGate(ticket: Ticket, at: Date): Promise<ScanResult | null> {
+    const event = await firstValueFrom(
+      this.eventClient.send<EventSnapshot>('event.get', { id: ticket.event_id }).pipe(timeout(EVENT_LOOKUP_TIMEOUT_MS)),
+    ).catch((err) => {
+      this.logger.warn(`Statut de l'événement ${ticket.event_id} indisponible au scan : ${err?.message ?? err}`);
+      return null;
+    });
+
+    if (event && (event.is_hidden || !OPEN_EVENT_STATUSES.includes(event.status))) {
+      return ScanResult.EVENT_UNAVAILABLE;
+    }
+
+    const { scan_opens_before_minutes: before, scan_closes_after_minutes: after } = await this.platformConfig.get();
+    const start = new Date(event?.start_date ?? ticket.event_start_at).getTime();
+    const end = new Date(event?.end_date ?? ticket.event_end_at ?? ticket.event_start_at).getTime();
+    if (at.getTime() < start - before * 60_000) return ScanResult.TOO_EARLY;
+    if (at.getTime() > end + after * 60_000) return ScanResult.TOO_LATE;
+    return null;
+  }
 
   async scan(dto: ScanDto): Promise<ScanResponse> {
     // Bug corrigé : n'importe quel utilisateur avec le rôle global AGENT
@@ -68,8 +114,13 @@ export class ScanService {
       if (ticket.event_id !== dto.event_id) {
         result = ScanResult.WRONG_EVENT;
       } else {
-        scannedTicket = await this.ticketService.markUsed(ticket.id, dto.agent_id, dto.device_info);
-        result = ScanResult.SUCCESS;
+        const refusal = await this.eventGate(ticket, scannedAt);
+        if (refusal) {
+          result = refusal;
+        } else {
+          scannedTicket = await this.ticketService.markUsed(ticket.id, dto.agent_id, dto.device_info, ticket.qr_code_token);
+          result = ScanResult.SUCCESS;
+        }
       }
     } catch (scanError: any) {
       const code = scanError?.error?.code;
