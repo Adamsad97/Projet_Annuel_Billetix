@@ -143,6 +143,8 @@ export function apiEventToDetail(event: ApiEvent, categories: ApiTicketCategory[
       // Prix payé par le client (TVA incluse) — le HT sert au détail de la TVA.
       price: Number(c.price_ttc),
       priceHt: Number(c.price_ht),
+      remaining: c.remaining_quota,
+      maxPerOrder: c.max_per_order,
     }));
 
   const addressParts = [event.venue_address_line1, event.venue_address_line2].filter(Boolean);
@@ -188,6 +190,7 @@ export function apiEventToDetail(event: ApiEvent, categories: ApiTicketCategory[
     startAt: event.start_date,
     venueCity: event.venue_city,
     fromPrice: tickets.length > 0 ? Math.min(...tickets.map((t) => t.price)) : null,
-    remaining: totalRemaining,
+    // Places en vente au public (hors catégories masquées ou désactivées).
+    remaining: tickets.reduce((sum, t) => sum + (t.remaining ?? 0), 0),
   };
 }

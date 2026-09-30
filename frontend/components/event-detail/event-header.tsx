@@ -19,7 +19,7 @@ export function fromPriceLabel(price: number | null | undefined): string | null 
  */
 export function EventHeader({ event, purchasable }: { event: EventDetail; purchasable: boolean }) {
   const price = fromPriceLabel(event.fromPrice);
-  const soldOut = purchasable && event.tickets.length > 0 && event.remaining === 0;
+  const soldOut = purchasable && event.tickets.length > 0 && event.tickets.every((t) => t.remaining === 0);
 
   return (
     <section className="relative isolate overflow-hidden bg-slate-950 text-white">

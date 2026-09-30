@@ -91,7 +91,7 @@ export default async function EventDetailPage({
   const suggestions = await loadSuggestions(id);
   const purchasable = availability === null;
   const price = fromPriceLabel(event.fromPrice);
-  const showMobileBar = purchasable && event.tickets.length > 0 && event.remaining !== 0;
+  const showMobileBar = purchasable && event.tickets.some((t) => t.remaining !== 0);
 
   return (
     <div className="flex flex-1 flex-col bg-page">

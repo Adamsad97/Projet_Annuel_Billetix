@@ -9,6 +9,10 @@ export interface TicketOption {
   originalPrice?: number;
   tag?: string;
   defaultQuantity?: number;
+  /** Places restantes ; 0 = catégorie complète, réservation désactivée. */
+  remaining?: number;
+  /** Nombre maximum de billets de cette catégorie par commande. */
+  maxPerOrder?: number;
 }
 
 export interface EventDetail {

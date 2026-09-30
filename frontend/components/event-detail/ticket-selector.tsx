@@ -17,6 +17,17 @@ const currency = new Intl.NumberFormat("fr-FR", {
   currency: "EUR",
 });
 
+/** Quantité maximale réservable : places restantes, plafonnées par commande. */
+function maxQuantity(ticket: TicketOption): number {
+  const remaining = ticket.remaining ?? Number.POSITIVE_INFINITY;
+  const perOrder = ticket.maxPerOrder ?? Number.POSITIVE_INFINITY;
+  return Math.max(0, Math.min(remaining, perOrder));
+}
+
+function isSoldOut(ticket: TicketOption): boolean {
+  return ticket.remaining === 0;
+}
+
 const saleDateFormatter = new Intl.DateTimeFormat("fr-FR", {
   dateStyle: "long",
   timeStyle: "short",
@@ -124,12 +135,14 @@ export function TicketSelector({
     [quantities],
   );
 
-  function updateQuantity(id: string, delta: number) {
+  function updateQuantity(ticket: TicketOption, delta: number) {
     setQuantities((prev) => ({
       ...prev,
-      [id]: Math.max(0, (prev[id] ?? 0) + delta),
+      [ticket.id]: Math.min(maxQuantity(ticket), Math.max(0, (prev[ticket.id] ?? 0) + delta)),
     }));
   }
+
+  const allSoldOut = tickets.length > 0 && tickets.every(isSoldOut);
 
   async function handleReserve() {
     setError(null);
@@ -263,6 +276,25 @@ export function TicketSelector({
     );
   }
 
+  // Toutes les catégories épuisées : plus de sélection possible.
+  if (allSoldOut) {
+    return shell(
+      <>
+        <div className="rounded-xl bg-red-500/5 px-4 py-4 text-center ring-1 ring-inset ring-red-500/25">
+          <p className="text-sm font-semibold text-ink-1">Complet</p>
+          <p className="mt-1 text-xs text-ink-4">Toutes les places de cet événement ont été vendues.</p>
+        </div>
+        <button
+          type="button"
+          disabled
+          className="mt-4 w-full cursor-not-allowed rounded-xl bg-hairline-3 py-3 text-sm font-semibold text-ink-4"
+        >
+          Complet
+        </button>
+      </>,
+    );
+  }
+
   return shell(
     <>
       {tickets.length === 0 ? (
@@ -271,16 +303,28 @@ export function TicketSelector({
         </p>
       ) : (
         <div className="flex flex-col gap-3">
-          {tickets.map((ticket) => (
+          {tickets.map((ticket) => {
+            const soldOut = isSoldOut(ticket);
+            const quantity = quantities[ticket.id] ?? 0;
+            const atMax = quantity >= maxQuantity(ticket);
+            return (
             <div
               key={ticket.id}
-              className="flex items-center justify-between gap-3 rounded-xl bg-hairline-1 p-3 ring-1 ring-inset ring-hairline-2"
+              aria-disabled={soldOut}
+              className={`flex items-center justify-between gap-3 rounded-xl p-3 ring-1 ring-inset ${
+                soldOut ? "bg-hairline-1/50 ring-hairline-1" : "bg-hairline-1 ring-hairline-2"
+              }`}
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="truncate text-xs font-semibold text-brand">
+                  <span className={`truncate text-xs font-semibold ${soldOut ? "text-ink-5" : "text-brand"}`}>
                     {ticket.label}
                   </span>
+                  {soldOut ? (
+                    <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-semibold text-red-500 ring-1 ring-inset ring-red-500/30">
+                      Complet
+                    </span>
+                  ) : null}
                   {ticket.tag ? (
                     <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
                       {ticket.tag}
@@ -293,36 +337,49 @@ export function TicketSelector({
                       {ticket.originalPrice} €
                     </span>
                   ) : null}
-                  <span className="text-sm font-bold text-ink-1">
+                  <span className={`text-sm font-bold ${soldOut ? "text-ink-5 line-through" : "text-ink-1"}`}>
                     {ticket.price === 0 ? "Gratuit" : currency.format(ticket.price)}
                   </span>
                 </div>
+                {!soldOut && atMax && quantity > 0 ? (
+                  <p className="mt-1 text-[11px] text-ink-5">
+                    {quantity >= (ticket.remaining ?? Number.POSITIVE_INFINITY)
+                      ? "Plus aucune place supplémentaire dans cette catégorie."
+                      : `Maximum ${quantity} billet${quantity > 1 ? "s" : ""} par commande.`}
+                  </p>
+                ) : null}
               </div>
 
+              {soldOut ? (
+                <span className="shrink-0 text-xs font-medium text-ink-5">Épuisé</span>
+              ) : (
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => updateQuantity(ticket.id, -1)}
+                  onClick={() => updateQuantity(ticket, -1)}
                   aria-label={`Retirer un billet ${ticket.label}`}
-                  disabled={(quantities[ticket.id] ?? 0) === 0}
+                  disabled={quantity === 0}
                   className="flex h-7 w-7 items-center justify-center rounded-full bg-hairline-3 text-ink-1 transition-colors hover:bg-hairline-4 disabled:opacity-40"
                 >
                   −
                 </button>
                 <span className="w-4 text-center text-sm font-medium text-ink-1">
-                  {quantities[ticket.id] ?? 0}
+                  {quantity}
                 </span>
                 <button
                   type="button"
-                  onClick={() => updateQuantity(ticket.id, 1)}
+                  onClick={() => updateQuantity(ticket, 1)}
                   aria-label={`Ajouter un billet ${ticket.label}`}
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-white transition-opacity hover:opacity-90"
+                  disabled={atMax}
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   +
                 </button>
               </div>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
