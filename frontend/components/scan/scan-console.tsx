@@ -493,35 +493,61 @@ export function ScanConsole() {
                 </div>
               </div>
             ) : (
-              <p className="text-center text-sm text-ink-5">Présentez le QR code du billet devant la caméra.</p>
+              <p className="text-center text-sm text-ink-5">
+                {cameraOn
+                  ? "Visez le QR code affiché sur le téléphone du participant."
+                  : "Démarrez le scan, puis visez le QR code affiché sur le téléphone du participant."}
+              </p>
             )}
           </div>
 
-          {/* Compteurs */}
+          {/* Bilan de l'appareil */}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-hairline-1 bg-card p-4">
               <p className="text-3xl font-extrabold text-emerald-600">{validated}</p>
-              <p className="text-xs font-medium text-ink-5">Entrée{validated > 1 ? "s" : ""} validée{validated > 1 ? "s" : ""} (session)</p>
+              <p className="text-sm font-semibold text-ink-1">
+                {validated > 1 ? "personnes entrées" : "personne entrée"}
+              </p>
+              <p className="mt-0.5 text-xs text-ink-5">avec cet appareil, depuis l&apos;ouverture de la page</p>
             </div>
-            <div className="rounded-2xl border border-hairline-1 bg-card p-4">
-              <p className={`text-3xl font-extrabold ${pending > 0 ? "text-amber-500" : "text-ink-1"}`}>{pending}</p>
-              <p className="text-xs font-medium text-ink-5">À synchroniser</p>
-              {pending > 0 && online ? (
-                <button type="button" onClick={() => eventId && syncQueue(eventId)} className="mt-1 text-xs font-semibold text-link hover:text-link-hover">
-                  Synchroniser maintenant
-                </button>
-              ) : null}
-            </div>
+            {pending > 0 ? (
+              <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4">
+                <p className="text-3xl font-extrabold text-amber-500">{pending}</p>
+                <p className="text-sm font-semibold text-ink-1">{pending > 1 ? "entrées à envoyer" : "entrée à envoyer"}</p>
+                <p className="mt-0.5 text-xs text-ink-5">
+                  Validées sans réseau : envoyées automatiquement au retour de la connexion.
+                </p>
+                {online ? (
+                  <button
+                    type="button"
+                    onClick={() => eventId && syncQueue(eventId)}
+                    className="mt-2 text-xs font-semibold text-link hover:text-link-hover"
+                  >
+                    Envoyer maintenant
+                  </button>
+                ) : null}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-hairline-1 bg-card p-4">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m5 12.5 4.5 4.5L19 7.5" />
+                  </svg>
+                </span>
+                <p className="text-sm font-semibold text-ink-1">Tout est envoyé</p>
+                <p className="mt-0.5 text-xs text-ink-5">Aucune entrée en attente d&apos;envoi au serveur.</p>
+              </div>
+            )}
           </div>
 
           {/* Paquet hors ligne */}
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-hairline-1 bg-card px-4 py-3 text-xs">
             <div className="min-w-0">
-              <p className="font-semibold text-ink-2">Mode hors ligne</p>
-              <p className="truncate text-ink-5">
+              <p className="font-semibold text-ink-2">Contrôle sans réseau</p>
+              <p className="text-ink-5">
                 {pack
-                  ? `Prêt · ${pack.tickets.length} billet${pack.tickets.length > 1 ? "s" : ""} · mis à jour à ${timeOnly.format(new Date(pack.generated_at))}`
-                  : "Paquet non téléchargé"}
+                  ? `Prêt : ${pack.tickets.length} billet${pack.tickets.length > 1 ? "s" : ""} vérifiable${pack.tickets.length > 1 ? "s" : ""} même sans connexion (liste du ${timeOnly.format(new Date(pack.generated_at))})`
+                  : "Pas encore prêt : connectez-vous pour télécharger la liste des billets"}
               </p>
               {packError ? <p className="mt-0.5 text-amber-600">{packError}</p> : null}
             </div>
