@@ -74,6 +74,8 @@ export async function verifyOffline(raw: string, pack: OfflinePack, at: Date = n
   if (!ticket) return { result: "INVALID", ticketId };
   if (ticket.fingerprint !== fingerprint) return { result: "SUPERSEDED", ticketId };
   if (ticket.status === "USED") return { result: "ALREADY_USED", ticketId };
+  if (ticket.status === "CANCELLED" || ticket.status === "REFUNDED") return { result: "CANCELLED", ticketId };
+  if (ticket.status === "FOR_RESALE") return { result: "FOR_RESALE", ticketId };
 
   if (pack.event.is_hidden || !OPEN_EVENT_STATUSES.includes(pack.event.status)) {
     return { result: "EVENT_UNAVAILABLE", ticketId };

@@ -15,7 +15,8 @@ export type ScanResultCode =
   | "STATIC_REFUSED"
   | "EVENT_UNAVAILABLE"
   | "TOO_EARLY"
-  | "TOO_LATE";
+  | "TOO_LATE"
+  | "FOR_RESALE";
 
 export interface ApiScanResponse {
   result: ScanResultCode;

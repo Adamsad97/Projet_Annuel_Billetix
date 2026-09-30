@@ -31,18 +31,34 @@ const HISTORY_SIZE = 30;
 
 type Tone = "success" | "warning" | "danger";
 
+// Refusé (rouge) : ce QR ne fera jamais entrer cette personne.
+// À vérifier (orange) : la personne est peut-être dans son droit, une action
+// immédiate règle le problème (billet affiché en direct, revenir à l'ouverture).
 const VERDICTS: Record<ScanResultCode, { label: string; hint: string; tone: Tone }> = {
   SUCCESS: { label: "Entrée validée", hint: "Le billet est valide.", tone: "success" },
   ALREADY_USED: { label: "Billet déjà utilisé", hint: "Ce billet a déjà servi à entrer.", tone: "danger" },
   INVALID: { label: "QR code invalide", hint: "Code inconnu ou falsifié.", tone: "danger" },
   CANCELLED: { label: "Billet annulé", hint: "Billet annulé ou remboursé.", tone: "danger" },
-  WRONG_EVENT: { label: "Autre événement", hint: "Ce billet est valable pour un autre événement.", tone: "warning" },
-  SUPERSEDED: { label: "Billet revendu ou transféré", hint: "Ce QR appartient à l'ancien titulaire.", tone: "warning" },
-  EXPIRED: { label: "QR expiré", hint: "Demandez d'afficher le billet en direct dans l'application.", tone: "warning" },
-  STATIC_REFUSED: { label: "Capture ou PDF refusé", hint: "Seul le QR affiché en direct dans l'application est accepté.", tone: "warning" },
+  SUPERSEDED: {
+    label: "Billet revendu ou offert",
+    hint: "Ce QR appartient à l'ancien titulaire : seul le nouveau titulaire peut entrer.",
+    tone: "danger",
+  },
+  FOR_RESALE: {
+    label: "Billet mis en revente",
+    hint: "Son titulaire l'a mis en vente : entrée impossible tant que l'annonce est active.",
+    tone: "danger",
+  },
+  WRONG_EVENT: { label: "Autre événement", hint: "Ce billet est valable pour un autre événement.", tone: "danger" },
   EVENT_UNAVAILABLE: { label: "Événement fermé", hint: "Événement annulé, suspendu ou non publié.", tone: "danger" },
-  TOO_EARLY: { label: "Contrôle pas encore ouvert", hint: "Trop tôt avant le début de l'événement.", tone: "warning" },
-  TOO_LATE: { label: "Contrôle terminé", hint: "L'événement est terminé.", tone: "warning" },
+  TOO_LATE: { label: "Contrôle terminé", hint: "L'événement est terminé : plus d'entrée possible.", tone: "danger" },
+  EXPIRED: { label: "QR expiré", hint: "Demandez d'afficher le billet en direct dans l'application.", tone: "warning" },
+  STATIC_REFUSED: {
+    label: "Capture ou PDF",
+    hint: "Demandez d'afficher le billet en direct dans l'application.",
+    tone: "warning",
+  },
+  TOO_EARLY: { label: "Contrôle pas encore ouvert", hint: "Trop tôt : la personne doit revenir à l'ouverture.", tone: "warning" },
 };
 
 const TONE_STYLES: Record<Tone, string> = {
@@ -152,6 +168,8 @@ export function ScanConsole() {
   const [paused, setPaused] = useState(false);
   // Scans de cet appareil depuis l'ouverture de la page (le plus récent en tête).
   const [history, setHistory] = useState<Array<Verdict & { at: number }>>([]);
+  // Filtre de l'historique (clic sur un compteur du bilan).
+  const [historyFilter, setHistoryFilter] = useState<Tone | null>(null);
   const [pending, setPending] = useState(0);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const lastCode = useRef<{ text: string; at: number } | null>(null);
@@ -258,6 +276,7 @@ export function ScanConsole() {
     setPack(loadPack(eventId));
     setPending(loadQueue(eventId).length);
     setHistory([]);
+    setHistoryFilter(null);
     setVerdict(null);
     setSyncMessage(null);
     setDetails(null);
@@ -533,10 +552,19 @@ export function ScanConsole() {
                   { tone: "warning", label: "À vérifier", value: toCheck, color: "text-amber-500", ring: "border-amber-500/30" },
                 ] as const
               ).map((item) => (
-                <div key={item.tone} className={`rounded-2xl border bg-card px-3 py-3 text-center ${item.value > 0 ? item.ring : "border-hairline-1"}`}>
+                <button
+                  key={item.tone}
+                  type="button"
+                  aria-pressed={historyFilter === item.tone}
+                  disabled={item.value === 0}
+                  onClick={() => setHistoryFilter((current) => (current === item.tone ? null : item.tone))}
+                  className={`rounded-2xl border bg-card px-3 py-3 text-center transition-all disabled:cursor-default ${
+                    item.value > 0 ? item.ring : "border-hairline-1"
+                  } ${historyFilter === item.tone ? "ring-2 ring-offset-2 ring-offset-page ring-current " + item.color : ""}`}
+                >
                   <p className={`text-2xl font-extrabold ${item.value > 0 ? item.color : "text-ink-4"}`}>{item.value}</p>
                   <p className="text-xs font-semibold text-ink-2">{item.label}</p>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -572,11 +600,23 @@ export function ScanConsole() {
           {/* Historique des scans */}
           {history.length > 0 ? (
             <div className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
-              <p className="border-b border-hairline-1 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-5">
-                Derniers scans
-              </p>
+              <div className="flex items-center justify-between gap-3 border-b border-hairline-1 px-4 py-2.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-5">
+                  Derniers scans
+                  {historyFilter
+                    ? ` · ${historyFilter === "success" ? "entrées" : historyFilter === "danger" ? "refusés" : "à vérifier"}`
+                    : ""}
+                </p>
+                {historyFilter ? (
+                  <button type="button" onClick={() => setHistoryFilter(null)} className="text-xs font-semibold text-link hover:text-link-hover">
+                    Tout afficher
+                  </button>
+                ) : null}
+              </div>
               <ul className="max-h-80 divide-y divide-hairline-1 overflow-y-auto">
-                {history.map((item, index) => (
+                {history
+                  .filter((item) => !historyFilter || (item.tone === historyFilter && item.code !== "ERROR"))
+                  .map((item, index) => (
                   <li key={`${item.at}-${index}`} className="flex items-center gap-3 px-4 py-2.5">
                     <span
                       aria-hidden="true"
