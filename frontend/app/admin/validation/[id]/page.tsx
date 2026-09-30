@@ -129,18 +129,35 @@ export default function AdminValidationDetailPage({
     });
   }
 
-  async function handleVerifyNonProfit(approved: boolean) {
+  async function decideNonProfit(approved: boolean, reason?: string) {
     setBusy(true);
     setError(null);
     try {
-      await verifyNonProfit(id, approved);
-      setInfo(approved ? "Justificatif validé — exonération de commission appliquée." : "Justificatif rejeté.");
+      await verifyNonProfit(id, approved, reason);
+      setInfo(
+        approved
+          ? "Justificatif validé — exonération de commission appliquée."
+          : "Justificatif refusé — l'organisateur a été informé du motif.",
+      );
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Impossible de traiter le justificatif.");
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleRejectNonProfit() {
+    setDialog({
+      title: "Refuser le justificatif",
+      message: "Le motif sera communiqué à l'organisateur, qui pourra envoyer un nouveau justificatif.",
+      confirmLabel: "✕ Refuser",
+      danger: true,
+      showReason: true,
+      reasonRequired: true,
+      reasonPlaceholder: "Motif du refus (document illisible, association non reconnue…)",
+      onConfirm: (reason) => decideNonProfit(false, reason),
+    });
   }
 
   async function handleRequestInfo() {
@@ -272,16 +289,28 @@ export default function AdminValidationDetailPage({
           {event.is_non_profit ? (
             <div className="mb-6 rounded-2xl border border-hairline-1 bg-card p-5">
               <h2 className="mb-2 text-sm font-semibold text-ink-2">Vérification « à but non lucratif »</h2>
-              <p className="mb-3 text-sm text-ink-4">
-                {event.non_profit_verified
-                  ? "✓ Justificatif déjà vérifié — commission à 0% appliquée."
-                  : "Justificatif non encore vérifié — l'exonération de commission ne s'applique pas tant que ce n'est pas fait."}
-              </p>
-              {!event.non_profit_verified && event.non_profit_document_url ? (
+              {event.non_profit_verified ? (
+                <p className="mb-3 text-sm text-ink-4">✓ Justificatif vérifié — commission à 0 % appliquée.</p>
+              ) : event.non_profit_rejected_at ? (
+                <div className="mb-3 rounded-xl bg-red-500/5 px-4 py-3 text-sm ring-1 ring-inset ring-red-500/25">
+                  <p className="font-medium text-ink-1">
+                    ✕ Justificatif refusé le {new Date(event.non_profit_rejected_at).toLocaleDateString("fr-FR")}
+                  </p>
+                  {event.non_profit_rejection_reason ? (
+                    <p className="mt-1 text-ink-3">Motif : {event.non_profit_rejection_reason}</p>
+                  ) : null}
+                  <p className="mt-1 text-ink-5">En attente d&apos;un nouveau justificatif de l&apos;organisateur.</p>
+                </div>
+              ) : (
+                <p className="mb-3 text-sm text-ink-4">
+                  Justificatif à examiner — l&apos;exonération de commission ne s&apos;applique qu&apos;une fois validé.
+                </p>
+              )}
+              {!event.non_profit_verified && !event.non_profit_rejected_at && event.non_profit_document_url ? (
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => handleVerifyNonProfit(true)}
+                    onClick={() => decideNonProfit(true)}
                     disabled={busy}
                     className="rounded-lg bg-emerald-500/15 px-3.5 py-2 text-sm font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
                   >
@@ -289,7 +318,7 @@ export default function AdminValidationDetailPage({
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleVerifyNonProfit(false)}
+                    onClick={handleRejectNonProfit}
                     disabled={busy}
                     className="rounded-lg bg-red-500/15 px-3.5 py-2 text-sm font-medium text-red-300 ring-1 ring-inset ring-red-500/30 transition-colors hover:bg-red-500/25 disabled:opacity-50"
                   >

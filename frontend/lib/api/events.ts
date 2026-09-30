@@ -33,6 +33,9 @@ export interface ApiEvent {
   is_non_profit: boolean;
   non_profit_document_url: string | null;
   non_profit_verified: boolean;
+  /** Justificatif refusé par un admin (null tant qu'il n'est pas refusé). */
+  non_profit_rejected_at: string | null;
+  non_profit_rejection_reason: string | null;
   start_date: string;
   end_date: string;
   timezone: string;
@@ -222,6 +225,8 @@ export const EVENT_COSMETIC_FIELDS = ["description", "poster_url", "access_condi
 // collecte pas access_conditions, alors que c'est justement l'un des 3
 // champs "cosmétiques" modifiables une fois l'événement soumis/publié.
 export interface UpdateEventDto {
+  /** Nouveau justificatif « à but non lucratif » (après un refus). */
+  non_profit_document_url?: string;
   title?: string;
   description?: string;
   category?: string;

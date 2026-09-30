@@ -245,7 +245,11 @@ export function EventOrganizerOverview({
           </InfoItem>
           {event.is_non_profit ? (
             <InfoItem label="Événement à but non lucratif">
-              {event.non_profit_verified ? "Justificatif vérifié" : "Justificatif en attente de vérification"}
+              {event.non_profit_verified
+                ? "Justificatif vérifié"
+                : event.non_profit_rejected_at
+                  ? `Justificatif refusé${event.non_profit_rejection_reason ? ` : ${event.non_profit_rejection_reason}` : ""}`
+                  : "Justificatif en attente de vérification"}
             </InfoItem>
           ) : null}
           {event.access_conditions ? <InfoItem label="Conditions d'accès">{event.access_conditions}</InfoItem> : null}

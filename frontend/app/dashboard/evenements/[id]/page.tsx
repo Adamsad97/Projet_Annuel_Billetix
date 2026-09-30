@@ -39,6 +39,7 @@ import {
 import type { ApiTicket } from "@/lib/api/tickets";
 import { ApiError } from "@/lib/api/http-error";
 import { eventPath } from "@/lib/format/event-path";
+import { NonProfitResubmit } from "@/components/dashboard/non-profit-resubmit";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
@@ -450,6 +451,10 @@ export default function DashboardEventDetailPage({
                         </div>
                       ))}
                     </div>
+                  ) : null}
+
+                  {event.is_non_profit && event.non_profit_rejected_at ? (
+                    <NonProfitResubmit event={event} onSubmitted={load} />
                   ) : null}
 
                   <EventOrganizerOverview

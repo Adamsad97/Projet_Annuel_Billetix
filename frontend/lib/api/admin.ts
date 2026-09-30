@@ -68,8 +68,9 @@ export function requestEventInfo(id: string, message: string): Promise<{ success
   return apiPost<{ success: true }>(`/admin/events/${id}/request-info`, { message });
 }
 
-export function verifyNonProfit(id: string, approved: boolean): Promise<ApiEvent> {
-  return apiPost<ApiEvent>(`/admin/events/${id}/verify-non-profit`, { approved });
+/** `reason` : motif obligatoire en cas de refus, communiqué à l'organisateur. */
+export function verifyNonProfit(id: string, approved: boolean, reason?: string): Promise<ApiEvent> {
+  return apiPost<ApiEvent>(`/admin/events/${id}/verify-non-profit`, approved ? { approved } : { approved, reason });
 }
 
 // ─── Gestion globale des événements (tous statuts) ─────────────────────────
