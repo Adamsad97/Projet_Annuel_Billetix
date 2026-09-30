@@ -30,6 +30,7 @@ import { UploadService } from "../upload/upload.service";
 import { OptionalReasonDto } from "../common/dto/common.dto";
 import { CreateOrderDto, ReserveStockDto } from "./dto/order.dto";
 import { UuidPipe } from "../common/pipes/uuid.pipe";
+import { formatEventDate } from "../common/event-date";
 
 @ApiTags("orders")
 @ApiBearerAuth()
@@ -301,12 +302,7 @@ export class OrderController {
       email: order.buyer_email,
       firstName: order.buyer_first_name,
       eventName: order.event_name,
-      eventDate: new Date(order.event_start_at).toLocaleDateString("fr-FR", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }),
+      eventDate: formatEventDate(order.event_start_at),
       eventVenue: order.event_venue_name,
       tickets: tickets.map((ticket) => ({
         ticketNumber: ticket.reference,

@@ -3,6 +3,7 @@ import { ClientProxy } from "@nestjs/microservices";
 import { firstValueFrom } from "rxjs";
 import { TicketsGateway } from "../events/tickets.gateway";
 import { UploadService } from "../upload/upload.service";
+import { DEFAULT_EVENT_TIMEZONE, formatEventDate } from "../common/event-date";
 
 /**
  * Orchestration post-achat (génération billets/PDF/facture, notifications,
@@ -249,12 +250,7 @@ export class PurchaseFulfillmentService {
       email: order.buyer_email,
       firstName: order.buyer_first_name,
       eventName: order.event_name,
-      eventDate: new Date(order.event_start_at).toLocaleDateString("fr-FR", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }),
+      eventDate: formatEventDate(order.event_start_at),
       eventVenue: order.event_venue_name,
       tickets: tickets.map((ticket) => ({
         ticketNumber: ticket.reference,
@@ -371,12 +367,7 @@ export class PurchaseFulfillmentService {
       firstName: order.buyer_first_name ?? order.billing_first_name ?? "",
       orderReference: order.reference,
       eventName: order.event_name,
-      eventDate: new Date(order.event_start_at).toLocaleDateString("fr-FR", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }),
+      eventDate: formatEventDate(order.event_start_at),
       eventVenue: order.event_venue_name,
       items: items.map((item) => ({
         categoryName: item.ticket_category_name,
@@ -390,7 +381,7 @@ export class PurchaseFulfillmentService {
       discount: Number(order.discount_amount) > 0 ? money(order.discount_amount) : undefined,
       fees: Number(order.free_ticket_fees) > 0 ? money(order.free_ticket_fees) : undefined,
       paymentMethod: totalTtc === 0 ? "Gratuit" : (PAYMENT_METHOD_LABELS[order.payment_method] ?? order.payment_method),
-      paidAt: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }),
+      paidAt: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: DEFAULT_EVENT_TIMEZONE }),
       billingName: `${order.billing_first_name ?? ""} ${order.billing_last_name ?? ""}`.trim(),
       billingAddress,
       orderId,
