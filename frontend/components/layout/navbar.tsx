@@ -68,7 +68,7 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
   return (
     <header className="sticky top-0 z-50 border-b border-hairline-2 bg-header/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6">
-        <Link href="/" className="shrink-0">
+        <Link href={user?.role === "AGENT" ? "/scan" : "/"} className="shrink-0">
           <Logo />
         </Link>
 

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme/theme-provider";
 import { SessionManager } from "@/components/auth/session-manager";
+import { AgentSpaceGuard } from "@/components/auth/agent-space-guard";
 import { PreviewBanner } from "@/components/admin/preview-banner";
 
 // Bug corrigé : sans ce script exécuté avant tout rendu, un visiteur ayant
@@ -47,6 +48,7 @@ export default function RootLayout({
           <PreviewBanner />
           {children}
           <SessionManager />
+          <AgentSpaceGuard />
         </ThemeProvider>
       </body>
     </html>

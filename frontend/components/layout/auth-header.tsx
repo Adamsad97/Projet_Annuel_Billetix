@@ -30,9 +30,11 @@ export function AuthHeader() {
     router.push("/");
   }
 
-  // Le logo mène à l'accueil pour tous les rôles (le back-office reste
-  // accessible par le lien « Back-office » de la barre de navigation).
-  const homeHref = "/";
+  // Le logo mène à l'accueil (le back-office reste accessible par le lien
+  // « Back-office » de la barre de navigation) — sauf pour un agent de
+  // contrôle, dont l'espace se limite au contrôle et à son compte.
+  const isAgent = user?.role === "AGENT";
+  const homeHref = isAgent ? "/scan" : "/";
 
   return (
     <header className="border-b border-hairline-2 bg-header/90 backdrop-blur">
@@ -42,6 +44,22 @@ export function AuthHeader() {
         </Link>
 
         <div className="flex items-center gap-3">
+          {isAgent ? (
+            <nav aria-label="Espace agent" className="hidden items-center gap-1 sm:flex">
+              {[
+                { href: "/scan", label: "Contrôle" },
+                { href: "/profil", label: "Mon compte" },
+              ].map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="rounded-full px-3 py-1.5 text-sm font-medium text-ink-3 transition-colors hover:bg-hairline-1 hover:text-ink-1"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          ) : null}
           <ThemeToggle />
           {isAdminRole(user?.role) && !isPreviewActive() ? (
             <span className="hidden md:inline-flex">

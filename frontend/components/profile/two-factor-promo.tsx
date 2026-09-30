@@ -20,6 +20,8 @@ export function TwoFactorPromo({ className = "" }: { className?: string }) {
   // Compte administrateur (hors mode aperçu) : pas de billets à protéger,
   // mais l'accès au back-office — message adapté.
   const [forAdmin, setForAdmin] = useState(false);
+  // Agent de contrôle : il protège l'accès au contrôle des entrées.
+  const [forAgent, setForAgent] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +34,7 @@ export function TwoFactorPromo({ className = "" }: { className?: string }) {
       .then((enabled) => {
         if (cancelled || enabled) return;
         setForAdmin(isAdminRole(effectiveRole(getStoredUser())));
+        setForAgent(getStoredUser()?.role === "AGENT");
         setVisible(true);
       })
       .catch(() => undefined);
@@ -59,13 +62,17 @@ export function TwoFactorPromo({ className = "" }: { className?: string }) {
           <p className="text-sm font-semibold text-ink-1">
             {forAdmin
               ? "Protégez l'accès au back-office avec la double authentification"
-              : "Protégez vos billets avec la double authentification"}
+              : forAgent
+                ? "Protégez votre accès au contrôle avec la double authentification"
+                : "Protégez vos billets avec la double authentification"}
           </p>
           <p className="mt-0.5 text-sm text-ink-4">
             Un code de votre téléphone sera demandé à la connexion : même avec votre mot de passe,
             {forAdmin
               ? " personne ne pourra agir sur la plateforme à votre place."
-              : " personne ne pourra accéder à vos billets."}
+              : forAgent
+                ? " personne ne pourra valider des entrées à votre place."
+                : " personne ne pourra accéder à vos billets."}
           </p>
         </div>
       </div>

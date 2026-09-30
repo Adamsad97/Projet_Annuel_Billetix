@@ -70,12 +70,15 @@ export function ProfileHeader() {
         </div>
       </div>
 
-      <Link
-        href="/profil/modifier"
-        className="flex items-center gap-2 rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
-      >
-        ✏️ Modifier
-      </Link>
+      {/* Agent : rien à modifier (identité fixée, pas d'adresse de facturation). */}
+      {user.role === "AGENT" ? null : (
+        <Link
+          href="/profil/modifier"
+          className="flex items-center gap-2 rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+        >
+          ✏️ Modifier
+        </Link>
+      )}
     </div>
   );
 }

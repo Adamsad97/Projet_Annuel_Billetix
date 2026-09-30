@@ -34,14 +34,18 @@ export default function ProfilPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   // Acheteur (vrai rôle, hors aperçu admin) : peut devenir organisateur.
   const [isBuyer, setIsBuyer] = useState(false);
+  // Agent de contrôle : espace limité au contrôle et à son compte.
+  const [isAgent, setIsAgent] = useState(false);
 
   useEffect(() => {
     const admin = isAdminRole(effectiveRole(getStoredUser()));
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsAdmin(admin);
     setIsBuyer(getStoredUser()?.role === "BUYER");
+    const agent = getStoredUser()?.role === "AGENT";
+    setIsAgent(agent);
 
-    if (admin || !getAccessToken()) {
+    if (admin || agent || !getAccessToken()) {
       // Pas de session — évite un aller-retour réseau inutile pour rien.
       setOrders([]);
       setTickets([]);
@@ -89,14 +93,41 @@ export default function ProfilPage() {
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
         <Link
-          href="/"
+          href={isAgent ? "/scan" : "/"}
           className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
         >
-          ← Accueil
+          {isAgent ? "← Contrôle des billets" : "← Accueil"}
         </Link>
 
         <ProfileHeader />
         <TwoFactorPromo className="mb-8" />
+
+        {isAgent ? (
+          <div className="mb-8 overflow-hidden rounded-2xl bg-slate-950 text-white shadow-lg">
+            <div className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-blue-700/40 to-transparent px-5 py-5">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600" aria-hidden="true">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6L12 3Z" />
+                    <path d="m8.8 12.2 2.2 2.2 4.3-4.6" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-base font-bold">Espace agent de contrôle</p>
+                  <p className="text-sm text-white/70">
+                    Vous contrôlez les billets des événements auxquels un organisateur vous a affecté.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/scan"
+                className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition-opacity hover:opacity-90"
+              >
+                Ouvrir le contrôle →
+              </Link>
+            </div>
+          </div>
+        ) : null}
 
         {isBuyer ? (
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-hairline-1 bg-card px-5 py-4">
@@ -122,7 +153,7 @@ export default function ProfilPage() {
             </div>
           ) : null}
 
-          {isAdmin ? null : (
+          {isAdmin || isAgent ? null : (
             <>
               <Panel
                 icon="🎫"
@@ -170,15 +201,18 @@ export default function ProfilPage() {
 
           <SecurityPanel />
 
-          <Link
-            href="/profil/notifications"
-            className="flex items-center justify-between rounded-2xl border border-hairline-1 bg-card px-5 py-4 transition-colors hover:bg-hairline-1"
-          >
-            <span className="flex items-center gap-2 text-sm font-semibold text-ink-2">
-              🔔 Préférences de notification
-            </span>
-            <span className="text-sm text-link">Gérer →</span>
-          </Link>
+          {/* Préférences d'emails d'achat : sans objet pour un agent de contrôle. */}
+          {isAgent ? null : (
+            <Link
+              href="/profil/notifications"
+              className="flex items-center justify-between rounded-2xl border border-hairline-1 bg-card px-5 py-4 transition-colors hover:bg-hairline-1"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-ink-2">
+                🔔 Préférences de notification
+              </span>
+              <span className="text-sm text-link">Gérer →</span>
+            </Link>
+          )}
         </div>
       </main>
     </div>
