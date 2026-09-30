@@ -207,6 +207,23 @@ export function activateUserAccount(id: string): Promise<ApiAdminUser> {
   return apiPost<ApiAdminUser>(`/admin/users/${id}/activate`);
 }
 
+/** Organisateur dont la pièce d'identité attend un examen. */
+export interface ApiPendingKyc {
+  user_id: string;
+  display_name: string;
+  kyc_submitted_at: string | null;
+  owner_name: string | null;
+  owner_email: string | null;
+}
+
+export function listPendingKyc(): Promise<ApiPendingKyc[]> {
+  return apiGet<ApiPendingKyc[]>("/admin/kyc/pending");
+}
+
+export function getPendingKycCount(): Promise<{ count: number }> {
+  return apiGet<{ count: number }>("/admin/kyc/pending-count");
+}
+
 export function approveOrganizerKyc(userId: string): Promise<ApiOrganizerProfile> {
   return apiPost<ApiOrganizerProfile>(`/admin/kyc/${userId}/approve`);
 }

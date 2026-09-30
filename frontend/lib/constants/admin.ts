@@ -34,6 +34,12 @@ export const adminNavSections: AdminNavSection[] = [
         icon: "👥",
       },
       {
+        id: "kyc",
+        href: "/admin/kyc",
+        label: "Identités",
+        icon: "🪪",
+      },
+      {
         id: "events",
         href: "/admin/evenements",
         label: "Événements",
@@ -42,7 +48,7 @@ export const adminNavSections: AdminNavSection[] = [
       {
         id: "cancellations",
         href: "/admin/annulations",
-        label: "Annulations",
+        label: "Annulations et reports",
         icon: "🛑",
       },
       {

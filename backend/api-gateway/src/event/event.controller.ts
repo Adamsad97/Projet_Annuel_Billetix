@@ -50,6 +50,7 @@ import { UuidPipe } from "../common/pipes/uuid.pipe";
 import { EventOwner } from "../common/guards/event-owner.guard";
 import { findScheduleConflict, type ScheduledEvent } from "../ticket/agent-schedule";
 import { formatEventDate, formatEventSchedule } from "../common/event-date";
+import { AdminRecipients } from "../admin-alerts/admin-recipients.service";
 
 /** Demande d'annulation ou de report telle que renvoyée par event-service. */
 interface ChangeRequestSnapshot {
@@ -84,6 +85,7 @@ export class EventController {
     private readonly postponement: EventPostponementService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly adminRecipients: AdminRecipients,
   ) {}
 
   // --- Routes publiques ---
@@ -775,7 +777,7 @@ export class EventController {
    */
   private notifyAdminsOfRequest(request: ChangeRequestSnapshot, action: "NEW" | "MESSAGE", text: string): void {
     (async () => {
-      const [event, organizer, ...adminPages] = await Promise.all([
+      const [event, organizer, admins] = await Promise.all([
         firstValueFrom(
           this.eventClient.send<{ title: string; start_date: string; timezone?: string | null }>("event.get", {
             id: request.event_id,
@@ -784,19 +786,10 @@ export class EventController {
         firstValueFrom(
           this.authClient.send<{ first_name: string; last_name: string } | null>("auth.get_user", { id: request.organizer_id }),
         ).catch(() => null),
-        ...(["ADMIN", "SUPER_ADMIN"] as const).map((role) =>
-          firstValueFrom(
-            this.authClient.send<{ data: Array<{ email: string; first_name: string }> }>("auth.list_users", {
-              role,
-              status: "active",
-              limit: 100,
-            }),
-          ),
-        ),
+        this.adminRecipients.list(),
       ]);
-      const recipients = new Map(adminPages.flatMap((page) => page.data).map((admin) => [admin.email.toLowerCase(), admin]));
       const timezone = event.timezone ?? null;
-      for (const admin of recipients.values()) {
+      for (const admin of admins) {
         this.notifClient.emit("notification.admin_change_request", {
           email: admin.email,
           firstName: admin.first_name,

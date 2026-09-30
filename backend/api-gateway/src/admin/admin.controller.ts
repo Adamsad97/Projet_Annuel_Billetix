@@ -1540,8 +1540,35 @@ export class AdminController {
   @ApiOperation({
     summary: "Profils organisateurs en attente de vérification KYC",
   })
-  getPendingKyc() {
-    return firstValueFrom(this.userClient.send("user.list_kyc_pending", {}));
+  async getPendingKyc() {
+    const profiles = await firstValueFrom(
+      this.userClient.send<Array<{ user_id: string; display_name: string; kyc_submitted_at: string | null }>>(
+        "user.list_kyc_pending",
+        {},
+      ),
+    );
+    if (profiles.length === 0) return [];
+    const accounts = (await firstValueFrom(
+      this.authClient.send("auth.get_users_by_ids", { ids: profiles.map((profile) => profile.user_id) }),
+    ).catch(() => [])) as Array<{ id: string; first_name: string; last_name: string; email: string }>;
+    const byId = new Map(accounts.map((account) => [account.id, account]));
+    return profiles.map((profile) => {
+      const account = byId.get(profile.user_id);
+      return {
+        user_id: profile.user_id,
+        display_name: profile.display_name,
+        kyc_submitted_at: profile.kyc_submitted_at,
+        owner_name: account ? `${account.first_name} ${account.last_name}` : null,
+        owner_email: account?.email ?? null,
+      };
+    });
+  }
+
+  @Get("kyc/pending-count")
+  @ApiOperation({ summary: "Nombre de vérifications KYC en attente (pastille du menu admin)" })
+  async pendingKycCount() {
+    const profiles = await firstValueFrom(this.userClient.send<unknown[]>("user.list_kyc_pending", {}));
+    return { count: profiles.length };
   }
 
   @Post("kyc/:userId/approve")

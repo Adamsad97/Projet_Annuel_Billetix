@@ -1,18 +1,27 @@
 "use client";
 
-// Pastille du menu admin : nombre de demandes d'annulation en attente.
+// Pastille du menu admin : nombre d'éléments en attente d'une décision
+// (demandes d'annulation ou de report, vérifications d'identité).
 
 import { useEffect, useState } from "react";
+import { getPendingKycCount } from "@/lib/api/admin";
 import { getPendingCancellationCount } from "@/lib/api/cancellation";
 
-export function PendingCancellationsBadge() {
+const COUNTERS = {
+  cancellations: getPendingCancellationCount,
+  kyc: getPendingKycCount,
+} as const;
+
+export type PendingCounter = keyof typeof COUNTERS;
+
+export function PendingCountBadge({ counter }: { counter: PendingCounter }) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    getPendingCancellationCount()
+    COUNTERS[counter]()
       .then((result) => setCount(result.count))
       .catch(() => setCount(0));
-  }, []);
+  }, [counter]);
 
   if (count === 0) return null;
   return (

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{headline}}</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #0f172a; padding: 28px 32px; }
+    .header h1 { color: #fff; margin: 0; font-size: 22px; }
+    .body { padding: 32px; color: #333; line-height: 1.6; }
+    .details { background: #f1f5f9; border-radius: 8px; padding: 14px 20px; margin: 16px 0; }
+    .details div { padding: 2px 0; }
+    .btn { display: inline-block; margin: 20px 0 8px; padding: 14px 32px; background: #1d4ed8; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; }
+    .footer { padding: 20px 32px; background: #f9f9f9; color: #999; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>{{headline}}</h1></div>
+    <div class="body">
+      <p>Bonjour {{firstName}},</p>
+      <p>{{intro}}</p>
+      {{#if details.length}}
+      <div class="details">
+        {{#each details}}<div>{{this}}</div>{{/each}}
+      </div>
+      {{/if}}
+      <a href="{{ctaUrl}}" class="btn">{{ctaLabel}}</a>
+    </div>
+    <div class="footer">© {{year}} BilletiX — Tous droits réservés</div>
+  </div>
+</body>
+</html>

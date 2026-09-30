@@ -30,6 +30,7 @@ import { UpdateIbanDto } from "./dto/update-iban.dto";
 import { UpdateNotificationPrefsDto } from "./dto/update-notification-prefs.dto";
 import { UpdateOrganizerProfileDto } from "./dto/update-organizer-profile.dto";
 import { DeleteAccountDto } from "./dto/delete-account.dto";
+import { AdminRecipients } from "../admin-alerts/admin-recipients.service";
 
 @ApiTags("users")
 @ApiBearerAuth()
@@ -44,6 +45,7 @@ export class UserController {
     @Inject("PAYMENT_SERVICE") private readonly paymentClient: ClientProxy,
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
     private readonly config: ConfigService,
+    private readonly adminRecipients: AdminRecipients,
   ) {}
 
   // --- Profil acheteur ---
@@ -177,17 +179,38 @@ export class UserController {
     summary:
       "Soumettre le KYC — fournir l'URL du document uploadé via POST /upload/document",
   })
-  submitKyc(
+  async submitKyc(
     @CurrentUser() user: JwtPayload,
     @Body() body: SubmitKycDto,
   ) {
     assertOwnDocumentUrl(body.document_url, user.sub, this.config.get("MINIO_BUCKET_DOCUMENTS", "documents"));
-    return firstValueFrom(
-      this.userClient.send("user.update_kyc", {
+    const profile = await firstValueFrom(
+      this.userClient.send<{ display_name: string }>("user.update_kyc", {
         user_id: user.sub,
         dto: { kyc_status: "SUBMITTED", kyc_document_url: body.document_url },
       }),
     );
+    // Les admins sont prévenus : les reversements de l'organisateur
+    // attendent cette vérification.
+    this.authClient
+      .send<{ first_name: string; last_name: string; email: string } | null>("auth.get_user", { id: user.sub })
+      .subscribe({
+        next: (account) =>
+          this.adminRecipients.noticeInBackground({
+            subject: `Nouvelle vérification d'identité — ${profile.display_name}`,
+            headline: "Vérification d'identité à examiner",
+            intro:
+              "Un organisateur a envoyé sa pièce d'identité. Ses reversements restent bloqués tant qu'elle n'est pas validée.",
+            details: [
+              `Organisateur : ${profile.display_name}`,
+              ...(account ? [`Titulaire du compte : ${account.first_name} ${account.last_name}`, `Email : ${account.email}`] : []),
+            ],
+            ctaLabel: "Examiner la demande",
+            ctaPath: `/admin/utilisateurs/${user.sub}`,
+          }),
+        error: () => undefined,
+      });
+    return profile;
   }
 
   /**

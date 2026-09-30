@@ -311,4 +311,23 @@ describe('NotificationController', () => {
     expect(options.subject).toContain(subjectPart);
     expect(options.context.requestsUrl).toBe('http://localhost:3000/admin/annulations');
   });
+
+  it("alerte admin générique : lien vers la page d'administration", async () => {
+    await controller.onAdminNotice(
+      {
+        email: 'admin@example.com',
+        firstName: 'Awa',
+        subject: "Nouvelle vérification d'identité — Les Nuits",
+        headline: "Vérification d'identité à examiner",
+        intro: 'Un organisateur a envoyé ses pièces.',
+        details: ['Organisateur : Les Nuits'],
+        ctaLabel: 'Examiner la demande',
+        ctaPath: '/admin/utilisateurs/abc',
+      },
+      rmqContext,
+    );
+    const [options] = mail.send.mock.calls[0];
+    expect(options).toMatchObject({ to: 'admin@example.com', template: 'admin-notice', subject: "Nouvelle vérification d'identité — Les Nuits" });
+    expect(options.context.ctaUrl).toBe('http://localhost:3000/admin/utilisateurs/abc');
+  });
 });

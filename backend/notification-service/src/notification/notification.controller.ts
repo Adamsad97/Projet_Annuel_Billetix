@@ -5,6 +5,7 @@ import { MailAttachment, MailService } from '../mail/mail.service';
 import { AccountActivatedDto } from './dto/account-activated.dto';
 import { EventPostponedDto } from './dto/event-postponed.dto';
 import { AdminChangeRequestDto } from './dto/admin-change-request.dto';
+import { AdminNoticeDto } from './dto/admin-notice.dto';
 import { AccountSuspendedDto } from './dto/account-suspended.dto';
 import { AccountUnlockedDto } from './dto/account-unlocked.dto';
 import { AccountUnsuspendedDto } from './dto/account-unsuspended.dto';
@@ -428,6 +429,17 @@ export class NotificationController {
         eventName: data.eventName,
         ordersUrl: `${this.appUrl}/profil/commandes`,
       },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.admin_notice')
+  async onAdminNotice(@Payload() data: AdminNoticeDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: data.subject,
+      template: 'admin-notice',
+      context: { ...data, details: data.details ?? [], ctaUrl: `${this.appUrl}${data.ctaPath}` },
     });
     this.ack(rmqContext);
   }

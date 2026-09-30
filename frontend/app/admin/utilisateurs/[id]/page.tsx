@@ -495,7 +495,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
           </div>
 
           {user.role === "ORGANIZER" ? (
-            <div className={cardClass("mb-6 p-5")}>
+            <div id="kyc" className={cardClass("mb-6 scroll-mt-24 p-5")}>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold text-ink-2">
                   Vérification d&apos;identité (KYC){organizerProfile ? ` — ${organizerProfile.display_name}` : ""}

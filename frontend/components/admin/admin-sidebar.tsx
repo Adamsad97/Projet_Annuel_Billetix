@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PendingCancellationsBadge } from "@/components/admin/pending-cancellations-badge";
+import { PendingCountBadge } from "@/components/admin/pending-count-badge";
 import { adminNavSections } from "@/lib/constants/admin";
 
 export function AdminSidebar({ active = "/admin" }: { active?: string }) {
@@ -28,7 +28,8 @@ export function AdminSidebar({ active = "/admin" }: { active?: string }) {
                       <span>{item.icon}</span>
                       {item.label}
                     </span>
-                    {item.id === "cancellations" ? <PendingCancellationsBadge /> : null}
+                    {item.id === "cancellations" ? <PendingCountBadge counter="cancellations" /> : null}
+                    {item.id === "kyc" ? <PendingCountBadge counter="kyc" /> : null}
                     {item.badge ? (
                       <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
                         {item.badge}
