@@ -16,6 +16,7 @@ export type ApiEventStatus =
   | "PENDING_VALIDATION"
   | "PUBLISHED"
   | "SUSPENDED"
+  | "POSTPONED"
   | "CANCELLED"
   | "TERMINATED"
   | "ARCHIVED";
@@ -61,6 +62,13 @@ export interface ApiEvent {
   rejection_reason: string | null;
   suspension_reason: string | null;
   cancellation_reason: string | null;
+  // Report accepté : date annoncée à l'achat, motif, annonce de la nouvelle
+  // date (null tant qu'elle est à venir, statut POSTPONED).
+  postponed_at?: string | null;
+  postponement_reason?: string | null;
+  original_start_date?: string | null;
+  original_end_date?: string | null;
+  rescheduled_at?: string | null;
   validated_at: string | null;
   validation_requested_at: string | null;
   // Masqué par un admin : hors catalogue, page publique indisponible.

@@ -55,6 +55,7 @@ function salesState(detail: ApiEventDashboardDetail, now = new Date()): { label:
   const { event, fill_stats } = detail;
   if (event.is_hidden) return { label: "Ventes bloquées : l'événement est masqué au public par l'administration.", tone: "closed" };
   if (event.status === "SUSPENDED") return { label: "Ventes suspendues par l'administration.", tone: "closed" };
+  if (event.status === "POSTPONED") return { label: "Événement reporté : les ventes reprendront à la nouvelle date.", tone: "closed" };
   if (event.status === "CANCELLED") return { label: "Événement annulé : les acheteurs sont remboursés.", tone: "off" };
   if (event.status === "TERMINATED" || event.status === "ARCHIVED") return { label: "Événement terminé.", tone: "off" };
   if (event.status !== "PUBLISHED") return { label: "Billetterie fermée : l'événement n'est pas encore publié.", tone: "off" };

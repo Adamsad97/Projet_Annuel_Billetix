@@ -11,7 +11,8 @@ export type ApiEventStatus =
   | "CANCELLED"
   | "TERMINATED"
   | "ARCHIVED"
-  | "SUSPENDED";
+  | "SUSPENDED"
+  | "POSTPONED";
 
 export interface ApiOrganizerEventSummary {
   id: string;

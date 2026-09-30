@@ -231,7 +231,14 @@ export function ScanConsole() {
         poster_url: e.poster_url,
         status: e.status,
         is_hidden: e.is_hidden,
-        reason: e.status === "CANCELLED" ? e.cancellation_reason : e.status === "SUSPENDED" ? e.suspension_reason : null,
+        reason:
+          e.status === "CANCELLED"
+            ? e.cancellation_reason
+            : e.status === "SUSPENDED"
+              ? e.suspension_reason
+              : e.status === "POSTPONED"
+                ? (e.postponement_reason ?? null)
+                : null,
       })),
     );
     load

@@ -11,6 +11,7 @@ export interface StatusSource {
 export type ScanEventStatusKey =
   | "CANCELLED"
   | "SUSPENDED"
+  | "POSTPONED"
   | "UNAVAILABLE"
   | "PENDING"
   | "ENDED"
@@ -29,6 +30,7 @@ export interface ScanEventStatus {
 const STATUSES: Record<ScanEventStatusKey, Omit<ScanEventStatus, "key">> = {
   CANCELLED: { label: "Annulé", badge: "bg-red-500/15 text-red-600", closed: true },
   SUSPENDED: { label: "Suspendu", badge: "bg-amber-500/15 text-amber-600", closed: true },
+  POSTPONED: { label: "Reporté", badge: "bg-amber-500/15 text-amber-600", closed: true },
   UNAVAILABLE: { label: "Indisponible", badge: "bg-amber-500/15 text-amber-600", closed: true },
   PENDING: { label: "En attente de validation", badge: "bg-hairline-2 text-ink-3", closed: true },
   ENDED: { label: "Terminé", badge: "bg-hairline-2 text-ink-4", closed: false },
@@ -40,6 +42,7 @@ export function scanEventStatus(event: StatusSource, now = Date.now()): ScanEven
   const key: ScanEventStatusKey = (() => {
     if (event.status === "CANCELLED") return "CANCELLED";
     if (event.status === "SUSPENDED") return "SUSPENDED";
+    if (event.status === "POSTPONED") return "POSTPONED";
     if (event.is_hidden) return "UNAVAILABLE";
     if (event.status === "DRAFT" || event.status === "PENDING_VALIDATION") return "PENDING";
     const start = new Date(event.start_date).getTime();
@@ -61,6 +64,12 @@ export function closedEventNotice(
       return { title: "Événement annulé", text: "Aucun contrôle à effectuer : les participants sont remboursés.", reason: motive };
     case "SUSPENDED":
       return { title: "Événement suspendu", text: "Les entrées sont bloquées jusqu'à nouvel ordre de l'organisation.", reason: motive };
+    case "POSTPONED":
+      return {
+        title: "Événement reporté",
+        text: "Nouvelle date à venir : le contrôle reprendra à la date fixée par l'organisateur.",
+        reason: motive,
+      };
     case "UNAVAILABLE":
       return { title: "Événement indisponible", text: "L'administration a retiré l'événement : les entrées sont bloquées.", reason: null };
     case "PENDING":

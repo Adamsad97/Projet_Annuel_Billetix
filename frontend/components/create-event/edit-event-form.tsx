@@ -40,6 +40,7 @@ function toIsoOrNull(datetimeLocal: string): string | null {
 
 const LOCKED_STATUS_MESSAGE: Partial<Record<ApiEvent["status"], string>> = {
   SUSPENDED: "Cet événement est suspendu par l'administration — plus aucune modification n'est possible.",
+  POSTPONED: "Cet événement est reporté — fixez d'abord sa nouvelle date depuis sa page dans votre tableau de bord.",
   CANCELLED: "Cet événement est annulé — plus aucune modification n'est possible.",
   TERMINATED: "Cet événement est terminé — plus aucune modification n'est possible.",
   ARCHIVED: "Cet événement est archivé — plus aucune modification n'est possible.",

@@ -26,6 +26,7 @@ const eventStatusFilters: { id: string; label: string }[] = [
   { id: "PENDING_VALIDATION", label: "En validation" },
   { id: "DRAFT", label: "Brouillons" },
   { id: "SUSPENDED", label: "Suspendus" },
+  { id: "POSTPONED", label: "Reportés" },
   { id: "CANCELLED", label: "Annulés" },
   { id: "TERMINATED", label: "Terminés" },
   { id: "ARCHIVED", label: "Archivés" },

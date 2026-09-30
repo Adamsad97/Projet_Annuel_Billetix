@@ -1,10 +1,12 @@
-// Demandes d'annulation d'un événement : l'organisateur demande, un admin
-// accepte (annulation + remboursement des acheteurs) ou refuse, après un
-// échange de messages (api-gateway : /events/... et /admin/cancellation-requests).
+// Demandes d'annulation ou de report d'un événement : l'organisateur demande,
+// un admin accepte ou refuse, après un échange de messages (api-gateway :
+// /events/... et /admin/cancellation-requests). Annulation acceptée : acheteurs
+// remboursés. Report accepté : acheteurs prévenus, remboursement sur demande.
 
 import { apiGet, apiPost } from "./client";
 
 export type CancellationStatus = "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
+export type ChangeRequestKind = "CANCELLATION" | "POSTPONEMENT";
 
 export interface ApiCancellationMessage {
   id: string;
@@ -19,6 +21,10 @@ export interface ApiCancellationRequest {
   event_id: string;
   organizer_id: string;
   reason: string;
+  kind: ChangeRequestKind;
+  /** Report : nouvelle date proposée, null si « date à venir ». */
+  new_start_date: string | null;
+  new_end_date: string | null;
   status: CancellationStatus;
   decided_at: string | null;
   messages: ApiCancellationMessage[];
@@ -37,7 +43,38 @@ export const cancellationStatusLabels: Record<CancellationStatus, { label: strin
   WITHDRAWN: { label: "Retirée", className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
 };
 
+export const changeRequestKindLabels: Record<ChangeRequestKind, { title: string; badge: string; className: string }> = {
+  CANCELLATION: {
+    title: "Demande d'annulation",
+    badge: "Annulation",
+    className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
+  },
+  POSTPONEMENT: {
+    title: "Demande de report",
+    badge: "Report",
+    className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
+  },
+};
+
 // ─── Organisateur ───────────────────────────────────────────────────────────
+
+/** Report : sans dates, l'événement passe « Reporté » avec une date à venir. */
+export function requestEventPostponement(
+  eventId: string,
+  reason: string,
+  dates: { start: string; end: string } | null,
+): Promise<ApiCancellationRequest> {
+  return apiPost(`/events/${eventId}/cancellation-requests`, {
+    reason,
+    kind: "POSTPONEMENT",
+    ...(dates ? { new_start_date: dates.start, new_end_date: dates.end } : {}),
+  });
+}
+
+/** Nouvelle date d'un événement reporté : ventes et contrôle reprennent. */
+export function rescheduleEvent(eventId: string, start: string, end: string): Promise<unknown> {
+  return apiPost(`/events/${eventId}/reschedule`, { start_date: start, end_date: end });
+}
 
 export function requestEventCancellation(eventId: string, reason: string): Promise<ApiCancellationRequest> {
   return apiPost(`/events/${eventId}/cancellation-requests`, { reason });

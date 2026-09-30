@@ -1,6 +1,6 @@
 "use client";
 
-// Liste des demandes d'annulation (GET /admin/cancellation-requests). Le
+// Liste des demandes d'annulation ou de report (GET /admin/cancellation-requests). Le
 // traitement (échange, accepter, refuser) se fait sur la fiche de l'événement.
 
 import Link from "next/link";
@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { FilterPills } from "@/components/admin/filter-pills";
 import {
   cancellationStatusLabels,
+  changeRequestKindLabels,
   listCancellationRequests,
   type ApiCancellationRequest,
   type CancellationStatus,
@@ -97,6 +98,9 @@ export function CancellationRequestsExplorer() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-bold text-ink-1">{request.event_title ?? "Événement"}</p>
+                    <Badge tone={changeRequestKindLabels[request.kind ?? "CANCELLATION"].className}>
+                      {changeRequestKindLabels[request.kind ?? "CANCELLATION"].badge}
+                    </Badge>
                     <Badge tone={badge.className}>{badge.label}</Badge>
                   </div>
                   <p className="mt-0.5 text-xs text-ink-5">

@@ -108,12 +108,16 @@ export function EventAdminControls({ event, onChanged }: { event: ApiAdminEvent;
   }
 
   function askApprove(request: ApiCancellationRequest) {
+    const postponement = request.kind === "POSTPONEMENT";
     setDialog({
-      title: "Accepter la demande d'annulation",
-      message:
-        "L'événement est annulé et les acheteurs remboursés automatiquement, avec le motif de l'organisateur. Cette action est irréversible.",
-      confirmLabel: "Accepter et annuler",
-      danger: true,
+      title: postponement ? "Accepter la demande de report" : "Accepter la demande d'annulation",
+      message: postponement
+        ? request.new_start_date
+          ? "L'événement passe à la nouvelle date proposée. Les acheteurs sont prévenus par email : leur billet reste valable, et ils peuvent demander le remboursement pendant le délai prévu."
+          : "L'événement passe « Reporté » : ventes et contrôle suspendus jusqu'à ce que l'organisateur fixe la nouvelle date. Les acheteurs sont prévenus et peuvent demander le remboursement."
+        : "L'événement est annulé et les acheteurs remboursés automatiquement, avec le motif de l'organisateur. Cette action est irréversible.",
+      confirmLabel: postponement ? "Accepter le report" : "Accepter et annuler",
+      danger: !postponement,
       showReason: true,
       reasonPlaceholder: "Message à l'organisateur (facultatif)",
       onConfirm: (message) => run(() => approveCancellation(request.id, message), "Impossible d'accepter la demande."),
@@ -122,7 +126,7 @@ export function EventAdminControls({ event, onChanged }: { event: ApiAdminEvent;
 
   function askReject(request: ApiCancellationRequest) {
     setDialog({
-      title: "Refuser la demande d'annulation",
+      title: request.kind === "POSTPONEMENT" ? "Refuser la demande de report" : "Refuser la demande d'annulation",
       message: "L'événement continue normalement. Expliquez votre décision à l'organisateur : il pourra faire une nouvelle demande.",
       confirmLabel: "Refuser",
       showReason: true,
@@ -206,7 +210,7 @@ export function EventAdminControls({ event, onChanged }: { event: ApiAdminEvent;
 
       {requests.length > 0 ? (
         <section className="mb-6">
-          <h2 className="mb-1 text-sm font-semibold text-ink-2">Demandes d&apos;annulation de l&apos;organisateur</h2>
+          <h2 className="mb-1 text-sm font-semibold text-ink-2">Demandes d&apos;annulation ou de report de l&apos;organisateur</h2>
           <p className="mb-3 text-xs text-ink-5">
             {pending ? "Une demande attend votre décision. Échangez avec l'organisateur jusqu'à trouver un accord." : "Historique des demandes."}
           </p>

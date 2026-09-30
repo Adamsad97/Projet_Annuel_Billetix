@@ -23,10 +23,16 @@ function unavailability(
   status: string,
   suspensionReason: string | null,
   cancellationReason: string | null,
+  postponementReason: string | null,
 ): { title: string; message: string | null } | null {
   switch (status) {
     case "PUBLISHED":
       return null;
+    case "POSTPONED":
+      return {
+        title: "Cet événement est reporté : la nouvelle date sera annoncée prochainement. Les billets déjà achetés restent valables.",
+        message: postponementReason,
+      };
     case "SUSPENDED":
       return { title: "Les ventes de cet événement sont momentanément suspendues.", message: suspensionReason };
     case "CANCELLED":
@@ -111,6 +117,8 @@ export default async function EventDetailPage({
   let event;
   let organizerId: string;
   let availability: { title: string; message: string | null } | null = null;
+  // Report à une nouvelle date connue : rappel de la date d'origine.
+  let postponedNote: string | null = null;
   try {
     const [categories, referential] = await Promise.all([
       getEventCategories(id),
@@ -121,7 +129,24 @@ export default async function EventDetailPage({
     const category = referential.find((c) => c.code === apiEvent.category);
     if (category) event = { ...event, categoryLabel: category.label };
     organizerId = apiEvent.organizer_id;
-    availability = unavailability(apiEvent.status, apiEvent.suspension_reason, apiEvent.cancellation_reason);
+    availability = unavailability(
+      apiEvent.status,
+      apiEvent.suspension_reason,
+      apiEvent.cancellation_reason,
+      apiEvent.postponement_reason ?? null,
+    );
+    if (apiEvent.postponed_at && apiEvent.original_start_date) {
+      const originally = new Intl.DateTimeFormat("fr-FR", {
+        dateStyle: "full",
+        timeZone: apiEvent.timezone || "Europe/Paris",
+      }).format(new Date(apiEvent.original_start_date));
+      if (apiEvent.status === "POSTPONED") {
+        // Date d'origine caduque : pas de calendrier tant que la nouvelle n'est pas fixée.
+        event = { ...event, calendar: undefined, dateRangeLabel: "Nouvelle date à venir", timeRangeLabel: `Initialement prévu le ${originally}` };
+      } else {
+        postponedNote = `Événement reporté : initialement prévu le ${originally}. Les billets déjà achetés restent valables pour la nouvelle date.`;
+      }
+    }
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       notFound();
@@ -140,6 +165,14 @@ export default async function EventDetailPage({
 
       <main className={`flex-1 ${showMobileBar ? "pb-24 md:pb-0" : ""}`}>
         <EventHeader event={event} purchasable={purchasable} />
+
+        {postponedNote ? (
+          <div className="mx-auto max-w-6xl px-6 pt-6">
+            <div role="status" className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
+              <p className="text-sm font-semibold text-ink-1">{postponedNote}</p>
+            </div>
+          </div>
+        ) : null}
 
         {availability ? (
           <div className="mx-auto max-w-6xl px-6 pt-6">

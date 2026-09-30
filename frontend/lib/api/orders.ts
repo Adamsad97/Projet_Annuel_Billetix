@@ -137,6 +137,24 @@ export async function getMyOrdersSynced(): Promise<ApiOrder[]> {
   return getMyOrders();
 }
 
+/** Événement reporté : remboursement possible pour cette commande ? */
+export interface PostponementRefundStatus {
+  postponed: boolean;
+  available: boolean;
+  /** Dernier moment pour le demander ; null tant que la nouvelle date est à venir. */
+  deadline: string | null;
+  /** Motif si le remboursement n'est pas (ou plus) possible. */
+  message: string | null;
+}
+
+export function getPostponementRefundStatus(orderId: string): Promise<PostponementRefundStatus> {
+  return apiGet<PostponementRefundStatus>(`/orders/${orderId}/postponement-refund`);
+}
+
+export function requestPostponementRefund(orderId: string): Promise<{ refunded: true; amount: number }> {
+  return apiPost(`/orders/${orderId}/postponement-refund`, {});
+}
+
 export function resendTickets(orderId: string): Promise<{ success: boolean }> {
   return apiPost<{ success: boolean }>(`/orders/${orderId}/resend-tickets`);
 }

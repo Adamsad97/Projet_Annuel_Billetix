@@ -14,12 +14,13 @@ import { apiEventSummaryToOrganizerEvent } from "@/lib/mappers/dashboard-mappers
 import { cardClass } from "@/components/ui/card";
 import { filterSelectClass } from "@/components/ui/field";
 
-type Group = "all" | "live" | "draft" | "pending" | "hidden" | "past" | "cancelled";
+type Group = "all" | "live" | "postponed" | "draft" | "pending" | "hidden" | "past" | "cancelled";
 type SortOrder = "upcoming" | "latest" | "revenue" | "title";
 
 const GROUPS: { id: Group; label: string; statuses: string[] }[] = [
   { id: "all", label: "Tous", statuses: [] },
   { id: "live", label: "En vente", statuses: ["PUBLISHED"] },
+  { id: "postponed", label: "Reportés", statuses: ["POSTPONED"] },
   { id: "draft", label: "Brouillons", statuses: ["DRAFT"] },
   { id: "pending", label: "En validation", statuses: ["PENDING_VALIDATION"] },
   { id: "hidden", label: "Masqués au public", statuses: [] },

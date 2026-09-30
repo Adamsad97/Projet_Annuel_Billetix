@@ -20,10 +20,14 @@ import {
   listEventCancellationRequests,
   replyToCancellation,
   requestEventCancellation,
+  requestEventPostponement,
+  rescheduleEvent,
   withdrawCancellation,
+  changeRequestKindLabels,
   type ApiCancellationRequest,
 } from "@/lib/api/cancellation";
 import { CancellationThread } from "@/components/events/cancellation-thread";
+import { PostponeDialog, type PostponeDialogResult } from "@/components/events/postpone-dialog";
 import {
   duplicateEvent,
   getEventAttendees,
@@ -67,6 +71,8 @@ export default function DashboardEventDetailPage({
   // Fenêtre « Assigner des agents » (ouverte depuis l'en-tête ou la section).
   const [agentsDialogOpen, setAgentsDialogOpen] = useState(false);
   const [cancellations, setCancellations] = useState<ApiCancellationRequest[]>([]);
+  // Fenêtre de report : demande à l'admin, ou nouvelle date d'un événement reporté.
+  const [postponeMode, setPostponeMode] = useState<"request" | "reschedule" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notFoundError, setNotFoundError] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
@@ -150,9 +156,19 @@ export default function DashboardEventDetailPage({
     });
   }
 
+  async function handlePostpone(result: PostponeDialogResult) {
+    if (result.mode === "request") {
+      await requestEventPostponement(id, result.reason, result.dates);
+    } else {
+      await rescheduleEvent(id, result.dates.start, result.dates.end);
+    }
+    setPostponeMode(null);
+    load();
+  }
+
   function handleWithdraw(requestId: string) {
     setDialog({
-      title: "Retirer votre demande d'annulation ?",
+      title: "Retirer votre demande ?",
       message: "L'événement continue normalement. Vous pourrez faire une nouvelle demande plus tard.",
       confirmLabel: "Retirer la demande",
       onConfirm: async () => {
@@ -260,10 +276,15 @@ export default function DashboardEventDetailPage({
               // Demandes à afficher : celle en cours et la dernière décision.
               const shownCancellations = cancellations.slice(0, pendingCancellation ? 2 : 1);
               // Agents de contrôle : utiles dès la soumission et jusqu'à la fin du contrôle.
-              const canManageAgents = ["PENDING_VALIDATION", "PUBLISHED", "SUSPENDED", "TERMINATED"].includes(event.status);
+              const canManageAgents = ["PENDING_VALIDATION", "PUBLISHED", "SUSPENDED", "POSTPONED", "TERMINATED"].includes(
+                event.status,
+              );
               const canRequestCancellation =
                 !pendingCancellation &&
-                ["DRAFT", "PENDING_VALIDATION", "PUBLISHED", "SUSPENDED"].includes(event.status);
+                ["DRAFT", "PENDING_VALIDATION", "PUBLISHED", "SUSPENDED", "POSTPONED"].includes(event.status);
+              // Report : événement publié (le serveur refuse s'il a déjà commencé).
+              const canRequestPostponement = !pendingCancellation && event.status === "PUBLISHED";
+              const requestTitle = changeRequestKindLabels[shownCancellations[0]?.kind ?? "CANCELLATION"].title;
 
               return (
                 <>
@@ -274,9 +295,11 @@ export default function DashboardEventDetailPage({
                         <Badge tone={badge.className} size="md">
                           {badge.label}
                         </Badge>
-                        <span className="rounded-full bg-hairline-1 px-2.5 py-1 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2">
-                          {eventTiming(event.start_date, event.end_date)}
-                        </span>
+                        {event.status !== "POSTPONED" ? (
+                          <span className="rounded-full bg-hairline-1 px-2.5 py-1 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2">
+                            {eventTiming(event.start_date, event.end_date)}
+                          </span>
+                        ) : null}
                         {event.is_hidden ? (
                           <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
                             Masqué au public
@@ -284,6 +307,7 @@ export default function DashboardEventDetailPage({
                         ) : null}
                       </div>
                       <p className="mt-1 text-sm text-ink-5">
+                        {event.status === "POSTPONED" ? "Initialement prévu le " : ""}
                         {dateFormatter.format(new Date(event.start_date))} · {event.venue_name}, {event.venue_city}
                       </p>
                     </div>
@@ -325,7 +349,17 @@ export default function DashboardEventDetailPage({
                           {copied ? "Lien copié ✓" : "Copier le lien"}
                         </button>
                       ) : null}
+                      {event.status === "POSTPONED" ? (
+                        <button
+                          type="button"
+                          onClick={() => setPostponeMode("reschedule")}
+                          className={buttonClass("primary", "rounded-full px-4 py-2 text-sm")}
+                        >
+                          Fixer la nouvelle date
+                        </button>
+                      ) : null}
                       {event.status !== "SUSPENDED" &&
+                      event.status !== "POSTPONED" &&
                       event.status !== "CANCELLED" &&
                       event.status !== "TERMINATED" &&
                       event.status !== "ARCHIVED" ? (
@@ -360,6 +394,16 @@ export default function DashboardEventDetailPage({
                           className={buttonClass("primary", "rounded-full px-4 py-2 text-sm disabled:opacity-50")}
                         >
                           Soumettre à la validation →
+                        </button>
+                      ) : null}
+                      {canRequestPostponement ? (
+                        <button
+                          type="button"
+                          onClick={() => setPostponeMode("request")}
+                          disabled={actionBusy}
+                          className="rounded-full border border-amber-500/40 px-4 py-2 text-sm font-medium text-amber-600 transition-colors hover:bg-amber-500/5 disabled:opacity-50"
+                        >
+                          Demander un report
                         </button>
                       ) : null}
                       {canRequestCancellation ? (
@@ -402,6 +446,25 @@ export default function DashboardEventDetailPage({
                     </div>
                   ) : null}
 
+                  {event.status === "POSTPONED" ? (
+                    <div className="mb-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-5 py-4 text-sm text-ink-2">
+                      <p className="font-semibold text-ink-1">Événement reporté : nouvelle date à venir</p>
+                      {event.postponement_reason ? <p className="mt-1">« {event.postponement_reason} »</p> : null}
+                      <p className="mt-1 text-xs text-ink-4">
+                        Les ventes et le contrôle des billets sont suspendus. Dès que vous connaissez la nouvelle date,
+                        indiquez-la avec « Fixer la nouvelle date » : les acheteurs seront prévenus par email.
+                      </p>
+                    </div>
+                  ) : event.postponed_at && event.original_start_date ? (
+                    <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/5 px-5 py-4 text-sm text-ink-2">
+                      <p className="font-semibold text-ink-1">Événement reporté</p>
+                      <p className="mt-1">
+                        Initialement prévu le {dateFormatter.format(new Date(event.original_start_date))}
+                        {event.postponement_reason ? ` · « ${event.postponement_reason} »` : ""}
+                      </p>
+                    </div>
+                  ) : null}
+
                   {event.is_hidden ? (
                     <div className="mb-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-5 py-4 text-sm text-ink-2">
                       <p className="font-semibold text-ink-1">Événement masqué au public par l&apos;administration</p>
@@ -415,7 +478,7 @@ export default function DashboardEventDetailPage({
 
                   {shownCancellations.length > 0 ? (
                     <section className="mb-8">
-                      <h2 className="mb-1 text-lg font-bold text-ink-1">Demande d&apos;annulation</h2>
+                      <h2 className="mb-1 text-lg font-bold text-ink-1">{requestTitle}</h2>
                       <p className="mb-3 text-sm text-ink-5">
                         {pendingCancellation
                           ? "En cours d'examen par l'administration. Vous pouvez échanger ici jusqu'à trouver un accord."
@@ -503,6 +566,17 @@ export default function DashboardEventDetailPage({
         )}
       </main>
 
+      {detail ? (
+        <PostponeDialog
+          key={postponeMode ?? "closed"}
+          mode={postponeMode ?? "request"}
+          open={postponeMode !== null}
+          eventTitle={detail.event.title}
+          currentStart={detail.event.start_date}
+          onClose={() => setPostponeMode(null)}
+          onSubmit={handlePostpone}
+        />
+      ) : null}
       <ActionDialog state={dialog} onClose={() => setDialog(null)} />
     </div>
   );

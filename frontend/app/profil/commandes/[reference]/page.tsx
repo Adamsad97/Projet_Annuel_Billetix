@@ -11,6 +11,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { Elements } from "@stripe/react-stripe-js";
 import { PageShell } from "@/components/layout/page-shell";
+import { PostponementRefund } from "@/components/profile/postponement-refund";
 import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
 import { downloadInvoice, getOrder, resendTickets, type ApiOrder, type ApiOrderItem } from "@/lib/api/orders";
 import { getTicketsByOrder, type ApiTicket } from "@/lib/api/tickets";
@@ -41,6 +42,8 @@ export default function OrderDetailPage({
   const [tickets, setTickets] = useState<ApiTicket[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Remboursement demandé après le report de l'événement (message conservé après rechargement).
+  const [postponementRefunded, setPostponementRefunded] = useState(false);
   const [resendState, setResendState] = useState<"idle" | "loading" | "sent" | "error">("idle");
   const [resendError, setResendError] = useState<string | null>(null);
   // Bug corrigé (fonctionnalité absente) : une commande abandonnée en cours
@@ -175,6 +178,23 @@ export default function OrderDetailPage({
               </Badge>
             ) : null}
           </div>
+
+          {postponementRefunded ? (
+            <Alert tone="success" className="mb-6">
+              Votre commande est remboursée : vos billets sont annulés. Le montant sera crédité sur votre moyen de paiement
+              d&apos;origine sous 5 à 10 jours ouvrés.
+            </Alert>
+          ) : order.status === "CONFIRMED" || order.status === "TICKETS_SENT" ? (
+            <PostponementRefund
+              orderId={order.id}
+              onRefunded={() => {
+                setPostponementRefunded(true);
+                getOrder(order.id)
+                  .then((result) => setOrder(result.order))
+                  .catch(() => undefined);
+              }}
+            />
+          ) : null}
 
           <div className={cardClass("p-5")}>
             <h2 className="mb-3 text-sm font-semibold text-ink-2">Récapitulatif</h2>

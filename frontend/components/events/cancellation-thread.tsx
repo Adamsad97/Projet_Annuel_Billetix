@@ -1,12 +1,13 @@
 "use client";
 
-// Échange sur une demande d'annulation : motif de l'organisateur, messages
-// des deux parties et zone de réponse tant que la demande est en attente.
+// Échange sur une demande d'annulation ou de report : motif (et nouvelle date
+// proposée) de l'organisateur, messages des deux parties et zone de réponse
+// tant que la demande est en attente.
 // Les actions (accepter, refuser, retirer) sont fournies par la page.
 
 import { useState, type ReactNode } from "react";
-import { cancellationStatusLabels, type ApiCancellationRequest } from "@/lib/api/cancellation";
-import { dateTime } from "@/lib/format/dates";
+import { cancellationStatusLabels, changeRequestKindLabels, type ApiCancellationRequest } from "@/lib/api/cancellation";
+import { dateTime, fullDateTime } from "@/lib/format/dates";
 import { cardClass } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { fieldClass } from "@/components/ui/field";
@@ -26,6 +27,8 @@ export function CancellationThread({
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const status = cancellationStatusLabels[request.status];
+  const kind = changeRequestKindLabels[request.kind ?? "CANCELLATION"];
+  const postponement = request.kind === "POSTPONEMENT";
   const pending = request.status === "PENDING";
 
   async function send() {
@@ -48,9 +51,19 @@ export function CancellationThread({
   return (
     <div className={cardClass()}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline-1 px-5 py-3.5">
-        <p className="text-sm text-ink-4">Demande du {dateTime.format(new Date(request.created_at))}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone={kind.className}>{kind.badge}</Badge>
+          <p className="text-sm text-ink-4">Demande du {dateTime.format(new Date(request.created_at))}</p>
+        </div>
         <Badge tone={status.className}>{status.label}</Badge>
       </div>
+
+      {postponement ? (
+        <p className="border-b border-hairline-1 px-5 py-3 text-sm text-ink-2">
+          <span className="font-semibold text-ink-1">Nouvelle date proposée : </span>
+          {request.new_start_date ? fullDateTime.format(new Date(request.new_start_date)) : "à venir (fixée plus tard par l'organisateur)"}
+        </p>
+      ) : null}
 
       <div className="flex flex-col gap-3 px-5 py-4">
         <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ring-1 ring-inset ${bubble(viewer === "ORGANIZER")}`}>

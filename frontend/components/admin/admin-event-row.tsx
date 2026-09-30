@@ -31,6 +31,10 @@ const statusBadge: Record<string, { label: string; className: string }> = {
     label: "⊘ Suspendu",
     className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
   },
+  POSTPONED: {
+    label: "↻ Reporté",
+    className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
+  },
   TERMINATED: {
     label: "Terminé",
     className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",

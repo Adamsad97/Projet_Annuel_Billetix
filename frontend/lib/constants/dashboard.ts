@@ -18,7 +18,8 @@ export type OrganizerEventStatus =
   | "CANCELLED"
   | "TERMINATED"
   | "ARCHIVED"
-  | "SUSPENDED";
+  | "SUSPENDED"
+  | "POSTPONED";
 
 export interface OrganizerEvent {
   id: string;
@@ -70,5 +71,9 @@ export const statusBadgeStyles: Record<
   SUSPENDED: {
     label: "Désactivé",
     className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
+  },
+  POSTPONED: {
+    label: "Reporté",
+    className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
   },
 };
