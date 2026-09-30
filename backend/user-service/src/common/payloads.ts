@@ -1,5 +1,6 @@
+import { PayoutMethod } from '../organizer/organizer-profile.entity';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsString, IsUUID, Matches, ValidateNested } from 'class-validator';
+import { IsBoolean, IsEnum, IsString, IsUUID, Matches, ValidateNested } from 'class-validator';
 import { UpdateBuyerProfileDto } from '../buyer/dto/update-buyer-profile.dto';
 import { UpdateNotificationPrefsDto } from '../buyer/dto/update-notification-prefs.dto';
 import { CreateOrganizerProfileDto } from '../organizer/dto/create-organizer-profile.dto';
@@ -33,6 +34,10 @@ export class UpdateOrganizerProfilePayload extends UserIdPayload {
 
 export class UpdateIbanPayload extends UserIdPayload {
   @ValidateNested() @Type(() => UpdateIbanDto) dto: UpdateIbanDto;
+}
+
+export class SetPayoutMethodPayload extends UserIdPayload {
+  @IsEnum(PayoutMethod) payout_method: PayoutMethod;
 }
 
 export class UpdateKycPayload extends UserIdPayload {

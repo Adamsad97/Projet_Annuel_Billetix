@@ -30,27 +30,36 @@ describe('OrganizerService', () => {
   });
 
   describe('updateIban', () => {
-    it("refuse d'enregistrer un IBAN si la 2FA n'est pas activée", async () => {
-      authClient.send.mockReturnValue(of({ two_factor_enabled: false }));
+    const IBAN = 'FR76 3000 6000 0112 3456 7890 189';
+    let qb: { addSelect: jest.Mock; where: jest.Mock; getOne: jest.Mock };
 
-      await expect(
-        service.updateIban('user-1', { iban: 'FR7612345', bank_owner_name: 'Jean Dupont' }),
-      ).rejects.toThrow(RpcException);
+    beforeEach(() => {
+      qb = { addSelect: jest.fn().mockReturnThis(), where: jest.fn().mockReturnThis(), getOne: jest.fn() };
+      (repo as unknown as { createQueryBuilder: jest.Mock }).createQueryBuilder = jest.fn().mockReturnValue(qb);
+    });
 
+    it('enregistre un IBAN valide, chiffré, sans exiger la 2FA ; le changement est daté', async () => {
+      qb.getOne.mockResolvedValue({ user_id: 'user-1', iban_encrypted: null });
+      const result = await service.updateIban('user-1', { iban: IBAN, bank_owner_name: ' Jean Dupont ' });
+      expect(result).toEqual({ success: true, changed: true, iban_masked: 'FR76 •••• •••• 0189' });
+      expect(crypto.encrypt).toHaveBeenCalledWith('FR7630006000011234567890189');
+      expect(repo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ iban_encrypted: 'enc', bank_owner_name: 'Jean Dupont', iban_updated_at: expect.any(Date) }),
+      );
+      expect(authClient.send).not.toHaveBeenCalled();
+    });
+
+    it('refuse un IBAN dont la clé de contrôle est fausse', async () => {
+      await expect(service.updateIban('user-1', { iban: 'FR7630006000011234567890188', bank_owner_name: 'Jean' })).rejects.toThrow(RpcException);
       expect(repo.save).not.toHaveBeenCalled();
     });
 
-    it('enregistre un IBAN chiffré quand la 2FA est activée', async () => {
-      authClient.send.mockReturnValue(of({ two_factor_enabled: true }));
-      repo.findOne.mockResolvedValue({ user_id: 'user-1' });
-
-      const result = await service.updateIban('user-1', { iban: 'FR7612345', bank_owner_name: 'Jean Dupont' });
-
-      expect(result).toEqual({ success: true });
-      expect(crypto.encrypt).toHaveBeenCalledWith('FR7612345');
-      expect(repo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ iban_encrypted: 'enc', iban_iv: 'iv', iban_tag: 'tag' }),
-      );
+    it("même IBAN ré-enregistré : pas de nouvelle date de changement", async () => {
+      crypto.decrypt.mockReturnValue('FR7630006000011234567890189');
+      qb.getOne.mockResolvedValue({ user_id: 'user-1', iban_encrypted: 'x', iban_iv: 'i', iban_tag: 't', iban_updated_at: null });
+      const result = await service.updateIban('user-1', { iban: IBAN, bank_owner_name: 'Jean Dupont' });
+      expect(result.changed).toBe(false);
+      expect(repo.save).toHaveBeenCalledWith(expect.objectContaining({ iban_updated_at: null }));
     });
   });
 

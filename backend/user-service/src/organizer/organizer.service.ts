@@ -1,14 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
-import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
 import { CryptoService } from '../crypto/crypto.service';
 import { CreateOrganizerProfileDto } from './dto/create-organizer-profile.dto';
 import { UpdateIbanDto } from './dto/update-iban.dto';
 import { UpdateKycDto } from './dto/update-kyc.dto';
 import { UpdateOrganizerProfileDto } from './dto/update-organizer-profile.dto';
-import { KycStatus, OrganizerProfile } from './organizer-profile.entity';
+import { KycStatus, OrganizerProfile, PayoutMethod } from './organizer-profile.entity';
+import { isValidIban, maskIban, normalizeIban } from './iban';
 
 @Injectable()
 export class OrganizerService {
@@ -42,25 +42,72 @@ export class OrganizerService {
     return this.repo.save(profile);
   }
 
-  async updateIban(userId: string, dto: UpdateIbanDto): Promise<{ success: boolean }> {
-    const user = await firstValueFrom(
-      this.authClient.send<{ two_factor_enabled: boolean }>('auth.get_user', { id: userId }),
-    );
-    if (!user?.two_factor_enabled) {
-      throw new RpcException({
-        statusCode: 403,
-        message: 'La double authentification (2FA) doit être activée avant d\'enregistrer un IBAN',
-      });
+  /**
+   * IBAN de reversement, chiffré (AES-256-GCM). La 2FA reste facultative :
+   * la passerelle exige le mot de passe, prévient l'organisateur par email,
+   * et un IBAN changé suspend les reversements quelque temps (iban_updated_at).
+   */
+  async updateIban(
+    userId: string,
+    dto: UpdateIbanDto,
+  ): Promise<{ success: boolean; changed: boolean; iban_masked: string }> {
+    const iban = normalizeIban(dto.iban);
+    if (!isValidIban(iban)) {
+      throw new RpcException({ statusCode: 400, message: 'IBAN invalide : vérifiez les caractères saisis.' });
     }
+    const profile = await this.repo
+      .createQueryBuilder('p')
+      .addSelect(['p.iban_encrypted', 'p.iban_iv', 'p.iban_tag'])
+      .where('p.user_id = :userId', { userId })
+      .getOne();
+    if (!profile) throw new RpcException({ statusCode: 404, message: 'Profil organisateur introuvable' });
 
-    const profile = await this.getByUserId(userId);
-    const { encrypted, iv, tag } = this.crypto.encrypt(dto.iban);
+    const previous = profile.iban_encrypted
+      ? this.crypto.decrypt(profile.iban_encrypted, profile.iban_iv!, profile.iban_tag!)
+      : null;
+    const changed = previous !== iban;
+    const { encrypted, iv, tag } = this.crypto.encrypt(iban);
     profile.iban_encrypted = encrypted;
     profile.iban_iv = iv;
     profile.iban_tag = tag;
-    profile.bank_owner_name = dto.bank_owner_name;
+    profile.bank_owner_name = dto.bank_owner_name.trim();
+    if (changed) profile.iban_updated_at = new Date();
     await this.repo.save(profile);
-    return { success: true };
+    return { success: true, changed, iban_masked: maskIban(iban) };
+  }
+
+  /** Moyen de reversement de l'organisateur, IBAN masqué (jamais en clair). */
+  async getPayoutAccount(userId: string) {
+    const profile = await this.repo
+      .createQueryBuilder('p')
+      .addSelect(['p.iban_encrypted', 'p.iban_iv', 'p.iban_tag'])
+      .where('p.user_id = :userId', { userId })
+      .getOne();
+    if (!profile) throw new RpcException({ statusCode: 404, message: 'Profil organisateur introuvable' });
+    const iban = profile.iban_encrypted ? this.crypto.decrypt(profile.iban_encrypted, profile.iban_iv!, profile.iban_tag!) : null;
+    return {
+      payout_method: profile.payout_method,
+      has_iban: iban !== null,
+      iban_masked: iban ? maskIban(iban) : null,
+      bank_owner_name: profile.bank_owner_name,
+      iban_updated_at: profile.iban_updated_at,
+      stripe_connect_onboarded: profile.stripe_connect_onboarded,
+      stripe_connect_account_id: profile.stripe_connect_account_id,
+      kyc_status: profile.kyc_status,
+    };
+  }
+
+  /** Stripe seulement si le compte Connect est prêt ; virement seulement avec un IBAN. */
+  async setPayoutMethod(userId: string, method: PayoutMethod) {
+    const account = await this.getPayoutAccount(userId);
+    if (method === PayoutMethod.STRIPE && !account.stripe_connect_onboarded) {
+      throw new RpcException({ statusCode: 400, message: "Terminez d'abord la configuration de votre compte Stripe." });
+    }
+    if (method === PayoutMethod.BANK_TRANSFER && !account.has_iban) {
+      throw new RpcException({ statusCode: 400, message: "Enregistrez d'abord votre IBAN." });
+    }
+    await this.repo.update({ user_id: userId }, { payout_method: method });
+    return { ...account, payout_method: method };
   }
 
   async getDecryptedIban(userId: string): Promise<{ iban: string; bank_owner_name: string }> {

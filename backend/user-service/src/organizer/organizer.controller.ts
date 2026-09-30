@@ -1,7 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { OrganizerService } from './organizer.service';
-import { CreateOrganizerProfilePayload, SetStripeAccountPayload, StripeOnboardedPayload, UpdateIbanPayload, UpdateKycPayload, UpdateOrganizerProfilePayload, UserIdPayload } from '../common/payloads';
+import { CreateOrganizerProfilePayload, SetPayoutMethodPayload, SetStripeAccountPayload, StripeOnboardedPayload, UpdateIbanPayload, UpdateKycPayload, UpdateOrganizerProfilePayload, UserIdPayload } from '../common/payloads';
 
 @Controller()
 export class OrganizerController {
@@ -25,6 +25,16 @@ export class OrganizerController {
   @MessagePattern('user.update_iban')
   updateIban(@Payload() data: UpdateIbanPayload) {
     return this.organizerService.updateIban(data.user_id, data.dto);
+  }
+
+  @MessagePattern('user.get_payout_account')
+  getPayoutAccount(@Payload() data: UserIdPayload) {
+    return this.organizerService.getPayoutAccount(data.user_id);
+  }
+
+  @MessagePattern('user.set_payout_method')
+  setPayoutMethod(@Payload() data: SetPayoutMethodPayload) {
+    return this.organizerService.setPayoutMethod(data.user_id, data.payout_method);
   }
 
   @MessagePattern('user.get_iban')

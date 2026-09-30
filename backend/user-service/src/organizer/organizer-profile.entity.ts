@@ -6,6 +6,12 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+/** Moyen de reversement : virement sur IBAN (par l'admin) ou Stripe Connect (automatique). */
+export enum PayoutMethod {
+  BANK_TRANSFER = 'BANK_TRANSFER',
+  STRIPE = 'STRIPE',
+}
+
 export enum KycStatus {
   PENDING = 'PENDING',
   SUBMITTED = 'SUBMITTED',
@@ -57,6 +63,14 @@ export class OrganizerProfile {
 
   @Column({ nullable: true })
   bank_owner_name: string | null;
+
+  // Dernier changement d'IBAN : les reversements restent suspendus
+  // iban_change_payout_hold_hours après (protection contre le détournement).
+  @Column({ type: 'timestamptz', nullable: true })
+  iban_updated_at: Date | null;
+
+  @Column({ type: 'enum', enum: PayoutMethod, default: PayoutMethod.BANK_TRANSFER })
+  payout_method: PayoutMethod;
 
   @Column({ nullable: true })
   stripe_connect_account_id: string | null;
