@@ -8,7 +8,7 @@ import { UpdateIbanDto } from './dto/update-iban.dto';
 import { UpdateKycDto } from './dto/update-kyc.dto';
 import { UpdateOrganizerProfileDto } from './dto/update-organizer-profile.dto';
 import { KycStatus, OrganizerProfile, PayoutMethod } from './organizer-profile.entity';
-import { isValidIban, maskIban, normalizeIban } from './iban';
+import { ibanError, maskIban, normalizeIban } from './iban';
 
 @Injectable()
 export class OrganizerService {
@@ -52,9 +52,8 @@ export class OrganizerService {
     dto: UpdateIbanDto,
   ): Promise<{ success: boolean; changed: boolean; iban_masked: string }> {
     const iban = normalizeIban(dto.iban);
-    if (!isValidIban(iban)) {
-      throw new RpcException({ statusCode: 400, message: 'IBAN invalide : vérifiez les caractères saisis.' });
-    }
+    const invalid = ibanError(iban);
+    if (invalid) throw new RpcException({ statusCode: 400, message: invalid });
     const profile = await this.repo
       .createQueryBuilder('p')
       .addSelect(['p.iban_encrypted', 'p.iban_iv', 'p.iban_tag'])

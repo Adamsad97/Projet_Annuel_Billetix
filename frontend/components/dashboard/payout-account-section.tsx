@@ -10,7 +10,7 @@ import {
 } from "@/lib/api/payout-account";
 import { ApiError } from "@/lib/api/http-error";
 import { longDateTime } from "@/lib/format/dates";
-import { formatIban, ibanCaret } from "@/lib/format/iban";
+import { formatIban, ibanCaret, ibanExpectedLength, ibanLength } from "@/lib/format/iban";
 import { Alert, FormError } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
@@ -186,8 +186,10 @@ export function PayoutAccountSection() {
                   placeholder="FR76 3000 6000 0112 3456 7890 189"
                   autoComplete="off"
                   spellCheck={false}
+                  aria-describedby="iban-length"
                   className={fieldClass("px-4 py-3 font-mono")}
                 />
+                <IbanLengthHint value={iban} />
               </label>
               {account.has_password ? (
                 <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">
@@ -293,5 +295,23 @@ export function PayoutAccountSection() {
         </div>
       )}
     </section>
+  );
+}
+
+/** « IBAN FR : 27 caractères — 21 / 27 », vert une fois la longueur atteinte. */
+function IbanLengthHint({ value }: { value: string }) {
+  const expected = ibanExpectedLength(value);
+  const typed = ibanLength(value);
+  if (!expected) {
+    return (
+      <span id="iban-length" className="text-xs font-normal text-ink-5">
+        {typed >= 2 ? `${typed} caractères` : "Commence par le code du pays, ex. FR76 pour la France."}
+      </span>
+    );
+  }
+  return (
+    <span id="iban-length" className={`text-xs font-normal ${typed === expected ? "text-success" : "text-ink-5"}`}>
+      IBAN {value.slice(0, 2)} : {expected} caractères — {typed} / {expected}
+    </span>
   );
 }
