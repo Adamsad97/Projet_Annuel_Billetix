@@ -411,38 +411,30 @@ export function CreateEventForm({
 
       <InfoCard icon="🎟️" title="Billetterie">
         <div className="flex flex-col gap-4">
-          <div role="radiogroup" aria-label="Type d'entrée" className="grid grid-cols-2 gap-3">
-            {(
-              [
-                { free: false, label: "Payant", description: "Les participants achètent leur billet." },
-                { free: true, label: "Gratuit", description: "Entrée libre, sur réservation." },
-              ] as const
-            ).map((option) => {
-              const active = option.free === isFree;
-              return (
-                <button
-                  key={option.label}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => {
-                    if (option.free === isFree) return;
-                    setIsFree(option.free);
-                    // Gratuit : 0 € partout ; retour au payant : prix à saisir.
-                    setTierRows((rows) => rows.map((row) => ({ ...row, price: option.free ? "0" : "" })));
-                  }}
-                  className={
-                    active
-                      ? "flex flex-col items-start gap-1 rounded-xl border border-blue-500 bg-blue-500/10 p-4 text-left"
-                      : "flex flex-col items-start gap-1 rounded-xl border border-hairline-2 bg-hairline-1 p-4 text-left transition-colors hover:border-hairline-4"
-                  }
-                >
-                  <span className="font-semibold text-ink-1">{option.label}</span>
-                  <span className="text-xs text-ink-5">{option.description}</span>
-                </button>
-              );
-            })}
-          </div>
+          {/* Payant par défaut ; cochée, l'entrée devient gratuite (prix à 0 €, non saisissables). */}
+          <label
+            className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${
+              isFree ? "border-emerald-500/50 bg-emerald-500/10" : "border-hairline-2 bg-hairline-1 hover:border-hairline-4"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={isFree}
+              onChange={(event) => {
+                const free = event.target.checked;
+                setIsFree(free);
+                // Gratuit : 0 € partout ; décochée : prix à saisir de nouveau.
+                setTierRows((rows) => rows.map((row) => ({ ...row, price: free ? "0" : "" })));
+              }}
+              className="mt-0.5 h-4 w-4 accent-emerald-600"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-ink-1">Événement gratuit</span>
+              <span className="block text-xs text-ink-5">
+                Entrée libre, sur réservation : les participants ne paient pas leur billet.
+              </span>
+            </span>
+          </label>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
