@@ -103,6 +103,19 @@ function currentEvent(list: ScanEvent[], now = Date.now()): ScanEvent | undefine
   return list[list.length - 1];
 }
 
+/**
+ * Affectations de l'agent, du plus proche au plus lointain : en cours, puis
+ * à venir par date croissante ; les événements passés à part.
+ */
+function agentSchedule(list: ScanEvent[], now = Date.now()): { current: ScanEvent[]; past: ScanEvent[] } {
+  const endOf = (e: ScanEvent) => new Date(e.end_date ?? e.start_date).getTime();
+  const byStart = (a: ScanEvent, b: ScanEvent) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
+  return {
+    current: list.filter((e) => endOf(e) >= now).sort(byStart),
+    past: list.filter((e) => endOf(e) < now).sort((a, b) => byStart(b, a)),
+  };
+}
+
 /** État du contrôle selon la fenêtre du paquet hors ligne (réglages admin). */
 function checkpointState(pack: OfflinePack | null, now = Date.now()): { label: string; tone: "open" | "soon" | "closed" } | null {
   if (!pack) return null;
@@ -157,6 +170,8 @@ export function ScanConsole() {
   // Détails de l'événement contrôlé (affiche, fin), lus sur sa page publique.
   const [details, setDetails] = useState<{ poster_url: string | null; end_date: string | null } | null>(null);
   const [flash, setFlash] = useState(false);
+  // Agent : liste de ses affectations (ouverte à la demande).
+  const [showSchedule, setShowSchedule] = useState(false);
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [eventId, setEventId] = useState<string | null>(null);
   const [pack, setPack] = useState<OfflinePack | null>(null);
@@ -439,6 +454,34 @@ export function ScanConsole() {
           </div>
         </div>
 
+        {/* Agent : ses affectations, sur demande */}
+        {isAgent && events && events.length > 0 ? (
+          <div className="border-t border-white/10 px-5 py-3">
+            <button
+              type="button"
+              aria-expanded={showSchedule}
+              onClick={() => setShowSchedule((open) => !open)}
+              className="flex w-full items-center justify-between rounded-xl bg-white/10 px-3.5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+            >
+              <span>Mes événements ({events.length})</span>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className={`transition-transform ${showSchedule ? "rotate-180" : ""}`}
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+          </div>
+        ) : null}
+
         {/* Organisateur : choix parmi ses événements (l'agent, lui, n'a que le sien) */}
         {!isAgent && events && events.length > 0 ? (
           <div className="border-t border-white/10 px-5 py-3">
@@ -459,6 +502,63 @@ export function ScanConsole() {
           </div>
         ) : null}
       </section>
+
+      {isAgent && showSchedule && events ? (
+        <section aria-label="Mes événements" className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
+          {(() => {
+            const { current, past } = agentSchedule(events);
+            const row = (e: ScanEvent, isPast: boolean) => {
+              const active = e.id === eventId;
+              const ongoing = !isPast && new Date(e.start_date).getTime() <= Date.now();
+              return (
+                <li key={e.id} className={`flex items-center gap-3 px-4 py-3 ${active ? "bg-blue-500/5" : ""}`}>
+                  <div className="h-12 w-10 shrink-0 overflow-hidden rounded-lg bg-hairline-2">
+                    {e.poster_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- affiche hébergée sur MinIO
+                      <img src={e.poster_url} alt="" className={`h-full w-full object-cover ${isPast ? "opacity-50 grayscale" : ""}`} />
+                    ) : null}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={`truncate text-sm font-semibold ${isPast ? "text-ink-4" : "text-ink-1"}`}>{e.title}</p>
+                    <p className="truncate text-xs text-ink-5">
+                      {dateTime.format(new Date(e.start_date))} · {e.venue}
+                    </p>
+                  </div>
+                  {active ? (
+                    <span className="shrink-0 rounded-full bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white">Contrôle actuel</span>
+                  ) : isPast ? (
+                    <span className="shrink-0 text-[11px] font-medium text-ink-5">Terminé</span>
+                  ) : ongoing ? (
+                    <span className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-600">En cours</span>
+                  ) : (
+                    <span className="shrink-0 rounded-full bg-hairline-1 px-2.5 py-1 text-[11px] font-semibold text-ink-3">À venir</span>
+                  )}
+                </li>
+              );
+            };
+            return (
+              <>
+                <p className="border-b border-hairline-1 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-5">
+                  À venir · du plus proche au plus lointain
+                </p>
+                {current.length > 0 ? (
+                  <ul className="divide-y divide-hairline-1">{current.map((e) => row(e, false))}</ul>
+                ) : (
+                  <p className="px-4 py-3 text-sm text-ink-5">Aucun événement à venir.</p>
+                )}
+                {past.length > 0 ? (
+                  <>
+                    <p className="border-y border-hairline-1 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-5">
+                      Passés
+                    </p>
+                    <ul className="divide-y divide-hairline-1">{past.map((e) => row(e, true))}</ul>
+                  </>
+                ) : null}
+              </>
+            );
+          })()}
+        </section>
+      ) : null}
 
       {eventsError ? (
         <p className="rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-danger">{eventsError}</p>
