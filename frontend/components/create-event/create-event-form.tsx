@@ -102,6 +102,8 @@ export function CreateEventForm({
   const [refundPolicy, setRefundPolicy] = useState<"NON_REFUNDABLE" | "REFUNDABLE">("NON_REFUNDABLE");
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [isNonProfit, setIsNonProfit] = useState(false);
+  // Événement gratuit : toutes les catégories à 0 €.
+  const [isFree, setIsFree] = useState(false);
   const [nonProfitFile, setNonProfitFile] = useState<File | null>(null);
   const [tierRows, setTierRows] = useState<TicketTierRow[]>(() =>
     makeInitialTierRows(genId, tierTypes, initial?.ticketTiers),
@@ -132,7 +134,11 @@ export function CreateEventForm({
     }
     const validTiers = tierRows.filter((row) => row.name.trim() && row.price && row.quota);
     if (validTiers.length === 0) {
-      setError("Ajoutez au moins une catégorie de billet complète (nom, prix, quota).");
+      setError(
+        isFree
+          ? "Ajoutez au moins une catégorie de billet complète (nom, quota)."
+          : "Ajoutez au moins une catégorie de billet complète (nom, prix, quota).",
+      );
       return;
     }
     const totalQuota = validTiers.reduce((sum, row) => sum + Number(row.quota), 0);
@@ -183,7 +189,8 @@ export function CreateEventForm({
         total_capacity: Number(totalCapacity),
         sales_start_date: salesStartIso,
         sales_end_date: salesEndIso,
-        refund_policy: refundPolicy,
+        // Rien à rembourser sur une entrée gratuite.
+        refund_policy: isFree ? "NON_REFUNDABLE" : refundPolicy,
         ...(nonProfitDocumentUrl ? { is_non_profit: true, non_profit_document_url: nonProfitDocumentUrl } : {}),
       };
 
@@ -404,6 +411,39 @@ export function CreateEventForm({
 
       <InfoCard icon="🎟️" title="Billetterie">
         <div className="flex flex-col gap-4">
+          <div role="radiogroup" aria-label="Type d'entrée" className="grid grid-cols-2 gap-3">
+            {(
+              [
+                { free: false, label: "Payant", description: "Les participants achètent leur billet." },
+                { free: true, label: "Gratuit", description: "Entrée libre, sur réservation." },
+              ] as const
+            ).map((option) => {
+              const active = option.free === isFree;
+              return (
+                <button
+                  key={option.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => {
+                    if (option.free === isFree) return;
+                    setIsFree(option.free);
+                    // Gratuit : 0 € partout ; retour au payant : prix à saisir.
+                    setTierRows((rows) => rows.map((row) => ({ ...row, price: option.free ? "0" : "" })));
+                  }}
+                  className={
+                    active
+                      ? "flex flex-col items-start gap-1 rounded-xl border border-blue-500 bg-blue-500/10 p-4 text-left"
+                      : "flex flex-col items-start gap-1 rounded-xl border border-hairline-2 bg-hairline-1 p-4 text-left transition-colors hover:border-hairline-4"
+                  }
+                >
+                  <span className="font-semibold text-ink-1">{option.label}</span>
+                  <span className="text-xs text-ink-5">{option.description}</span>
+                </button>
+              );
+            })}
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-accent/80">Capacité totale *</span>
@@ -416,6 +456,7 @@ export function CreateEventForm({
                 className={fieldClassName}
               />
             </label>
+            {isFree ? null : (
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-accent/80">Politique de remboursement *</span>
               <select
@@ -427,6 +468,7 @@ export function CreateEventForm({
                 <option value="REFUNDABLE" className="bg-card">Remboursable</option>
               </select>
             </label>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -463,6 +505,7 @@ export function CreateEventForm({
           tierTypes={tierTypes}
           totalCapacity={Number(totalCapacity) || 0}
           pricing={pricing}
+          free={isFree}
         />
       </InfoCard>
 

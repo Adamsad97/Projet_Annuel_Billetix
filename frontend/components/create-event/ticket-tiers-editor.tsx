@@ -87,6 +87,7 @@ export function TicketTiersEditor({
   tierTypes,
   totalCapacity,
   pricing = null,
+  free = false,
 }: {
   rows: TicketTierRow[];
   onChange: (rows: TicketTierRow[]) => void;
@@ -98,6 +99,8 @@ export function TicketTiersEditor({
   // capacité totale de l'événement (ex: 500 places mais 500 + 40 réparties
   // en catégories) — désormais visible en temps réel et plafonné par ligne.
   totalCapacity: number;
+  // Événement gratuit : prix fixé à 0 sur chaque catégorie, non saisissable.
+  free?: boolean;
 }) {
   const genId = useId();
   const commissionPercent = pricing ? commissionPercentFor(pricing, totalCapacity) : 0;
@@ -122,7 +125,7 @@ export function TicketTiersEditor({
       {
         id: `${genId}-${rows.length}-${Date.now()}`,
         name: availableForNewRow[0]?.label ?? "",
-        price: "",
+        price: free ? "0" : "",
         quota: "",
         maxPerOrder: "",
       },
@@ -133,11 +136,25 @@ export function TicketTiersEditor({
     if (rows.length > 1) onChange(rows.filter((row) => row.id !== id));
   }
 
+  const freeTicketFee = pricing ? computePriceBreakdown(0, pricing, commissionPercent).freeTicketFee : null;
+
   return (
     <div className="flex flex-col gap-3">
+      {free ? (
+        <div className="rounded-xl bg-emerald-500/10 px-4 py-3 text-xs text-ink-3 ring-1 ring-inset ring-emerald-500/30">
+          <p className="text-sm font-semibold text-ink-1">Entrée gratuite pour le public</p>
+          <p className="mt-1">
+            Les participants réservent leur billet sans payer.
+            {freeTicketFee !== null && freeTicketFee > 0
+              ? ` Frais de ${euros.format(freeTicketFee)} par billet à votre charge, déduits de vos reversements.`
+              : ""}
+          </p>
+        </div>
+      ) : null}
+
       <div className="hidden grid-cols-[1fr_120px_100px_100px_28px] gap-3 px-1 text-xs font-medium uppercase tracking-wide text-ink-5 sm:grid">
         <span>Nom</span>
-        <span>Prix HT (€)</span>
+        <span>{free ? "Prix" : "Prix HT (€)"}</span>
         <span>Quota</span>
         <span>Max/cmd</span>
         <span />
@@ -172,15 +189,22 @@ export function TicketTiersEditor({
                 ))
               )}
             </select>
-            <input
-              type="number"
-              value={row.price}
-              onChange={(event) => updateRow(row.id, "price", event.target.value)}
-              placeholder="Prix"
-              min="0"
-              step="0.01"
-              className="rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2.5 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
-            />
+            {free ? (
+              <span className="rounded-xl bg-emerald-500/10 px-3 py-2.5 text-center text-sm font-semibold text-emerald-600 ring-1 ring-inset ring-emerald-500/30">
+                Gratuit
+              </span>
+            ) : (
+              <input
+                type="number"
+                value={row.price}
+                onChange={(event) => updateRow(row.id, "price", event.target.value)}
+                placeholder="Prix"
+                min="0"
+                step="0.01"
+                aria-label={`Prix HT de la catégorie ${row.name}`}
+                className="rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2.5 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
+              />
+            )}
             <input
               type="number"
               value={row.quota}
@@ -207,12 +231,12 @@ export function TicketTiersEditor({
             >
               ✕
             </button>
-            {pricing ? <PriceDetail price={row.price} pricing={pricing} commissionPercent={commissionPercent} /> : null}
+            {pricing && !free ? <PriceDetail price={row.price} pricing={pricing} commissionPercent={commissionPercent} /> : null}
           </div>
         );
       })}
 
-      {pricing ? (
+      {pricing && !free ? (
         <p className="text-center text-xs text-ink-5">
           Le prix affiché aux clients inclut la TVA. « Vous recevez » est une estimation : les frais de
           paiement réels dépendent du montant de chaque commande.
@@ -239,7 +263,7 @@ export function TicketTiersEditor({
       </button>
       {tierTypes.length > 0 && availableForNewRow.length === 0 ? (
         <p className="text-center text-xs text-ink-5">
-          Tous les noms disponibles sont déjà utilisés — demande à un admin d&apos;en ajouter un nouveau si besoin.
+          Tous les noms disponibles sont déjà utilisés — demandez à un administrateur d&apos;en ajouter un si besoin.
         </p>
       ) : null}
     </div>
