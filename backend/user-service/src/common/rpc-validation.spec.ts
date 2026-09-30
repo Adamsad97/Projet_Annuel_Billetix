@@ -1,5 +1,5 @@
 import { RpcException } from '@nestjs/microservices';
-import { SetStripeAccountPayload, UpdateIbanPayload, UserIdPayload } from './payloads';
+import { CreateOrganizerProfilePayload, SetStripeAccountPayload, UpdateIbanPayload, UserIdPayload } from './payloads';
 import { rpcValidationPipe } from './rpc-validation';
 
 const pipe = rpcValidationPipe();
@@ -26,5 +26,15 @@ describe('Validation des messages internes (user-service)', () => {
   it("n'accepte qu'un identifiant de compte Stripe Connect", async () => {
     await expect(run(SetStripeAccountPayload, { user_id: ID, account_id: 'acct_1AbCdEfGhIjKlMnO' })).resolves.toBeDefined();
     await expect(run(SetStripeAccountPayload, { user_id: ID, account_id: 'cus_123' })).rejects.toBeInstanceOf(RpcException);
+  });
+
+  it('conserve présentation, logo et site web à la création du profil organisateur', async () => {
+    const dto = {
+      display_name: 'Les Nuits de Paris',
+      description: 'Collectif',
+      logo_url: 'http://localhost:9000/avatars/logo.png',
+      website_url: 'https://www.exemple.fr',
+    };
+    await expect(run(CreateOrganizerProfilePayload, { user_id: ID, dto })).resolves.toMatchObject({ dto });
   });
 });
