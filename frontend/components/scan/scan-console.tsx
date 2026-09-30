@@ -9,9 +9,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CameraScanner } from "@/components/scan/camera-scanner";
 import { getEvent } from "@/lib/api/events";
-import { getOrganizerDashboard } from "@/lib/api/organizer";
 import {
   getAgentEvents,
+  getOrganizerScanEvents,
   getOfflinePack,
   scanTicket,
   syncOfflineScans,
@@ -204,45 +204,35 @@ export function ScanConsole() {
     const role = getStoredUser()?.role;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- rôle lu dans la session après le montage
     setIsAgent(role === "AGENT");
-    const load: Promise<ScanEvent[]> =
+    // Même source complète pour les deux rôles : l'agent, ses affectations ;
+    // l'organisateur, ses événements (hors brouillons, rien à contrôler).
+    const load: Promise<ScanEvent[]> = (
       role === "AGENT"
-        ? getAgentEvents().then((list) =>
-            list.map((e) => ({
-              id: e.id,
-              title: e.title,
-              start_date: e.start_date,
-              end_date: e.end_date,
-              venue: `${e.venue_name}, ${e.venue_city}`,
-              poster_url: e.poster_url,
-              status: e.status,
-              is_hidden: e.is_hidden,
-              reason: e.status === "CANCELLED" ? e.cancellation_reason : e.status === "SUSPENDED" ? e.suspension_reason : null,
-            })),
-          )
-        : getOrganizerDashboard().then((dashboard) =>
-            dashboard.events
-              .filter((e) => ["PUBLISHED", "SUSPENDED", "TERMINATED"].includes(e.status))
-              .map((e) => ({
-                id: e.id,
-                title: e.title,
-                start_date: e.start_date,
-                venue: `${e.venue_name}, ${e.venue_city}`,
-                status: e.status,
-                is_hidden: e.is_hidden,
-                reason: e.status === "SUSPENDED" ? e.suspension_reason : null,
-              })),
-          );
+        ? getAgentEvents()
+        : getOrganizerScanEvents().then((list) => list.filter((e) => e.status !== "DRAFT"))
+    ).then((list) =>
+      list.map((e) => ({
+        id: e.id,
+        title: e.title,
+        start_date: e.start_date,
+        end_date: e.end_date,
+        venue: `${e.venue_name}, ${e.venue_city}`,
+        poster_url: e.poster_url,
+        status: e.status,
+        is_hidden: e.is_hidden,
+        reason: e.status === "CANCELLED" ? e.cancellation_reason : e.status === "SUSPENDED" ? e.suspension_reason : null,
+      })),
+    );
     load
       .then((list) => {
         const sorted = [...list].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
         setEvents(sorted);
-        if (role === "AGENT") {
-          // L'agent ne choisit pas : son événement s'ouvre directement.
-          setEventId(currentEvent(sorted)?.id ?? null);
-          return;
-        }
-        const remembered = readSelectedEvent();
-        if (remembered && sorted.some((e) => e.id === remembered)) setEventId(remembered);
+        // Même ouverture pour tous : l'événement en cours, sinon le prochain.
+        // L'organisateur retrouve en plus son dernier choix.
+        const remembered = role === "AGENT" ? null : readSelectedEvent();
+        setEventId(
+          remembered && sorted.some((e) => e.id === remembered) ? remembered : (currentEvent(sorted)?.id ?? null),
+        );
       })
       .catch((err) => setEventsError(err instanceof ApiError ? err.message : "Impossible de charger vos événements."));
   }, []);
@@ -405,6 +395,9 @@ export function ScanConsole() {
   }
 
   const selected = events?.find((e) => e.id === eventId) ?? null;
+  // Seule différence entre les rôles : l'organisateur choisit l'événement
+  // contrôlé ; l'agent contrôle celui de son affectation en cours.
+  const canChoose = !isAgent;
   // Erreurs techniques (réseau, navigateur) hors bilan : ce ne sont pas des billets refusés.
   const judged = history.filter((item) => item.code !== "ERROR");
   const entered = judged.filter((item) => item.tone === "success").length;
@@ -495,8 +488,8 @@ export function ScanConsole() {
           </div>
         </div>
 
-        {/* Agent : ses affectations, sur demande */}
-        {isAgent && events && events.length > 0 ? (
+        {/* Mes événements (agent : ses affectations ; organisateur : les siens) */}
+        {events && events.length > 0 ? (
           <div className="border-t border-white/10 px-5 py-3">
             <button
               type="button"
@@ -523,28 +516,9 @@ export function ScanConsole() {
           </div>
         ) : null}
 
-        {/* Organisateur : choix parmi ses événements (l'agent, lui, n'a que le sien) */}
-        {!isAgent && events && events.length > 0 ? (
-          <div className="border-t border-white/10 px-5 py-3">
-            <label className="sr-only" htmlFor="scan-event">Événement contrôlé</label>
-            <select
-              id="scan-event"
-              value={eventId ?? ""}
-              onChange={(e) => setEventId(e.target.value || null)}
-              className="w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white focus:border-white/40 focus:outline-none"
-            >
-              <option value="" className="text-slate-900">Choisir l&apos;événement à contrôler…</option>
-              {events.map((e) => (
-                <option key={e.id} value={e.id} className="text-slate-900">
-                  {e.title} — {dateTime.format(new Date(e.start_date))}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : null}
       </section>
 
-      {isAgent && showSchedule && events ? (
+      {showSchedule && events ? (
         <section aria-label="Mes événements" className="overflow-hidden rounded-2xl border border-hairline-1 bg-card">
           {(() => {
             const { current, past } = agentSchedule(events);
@@ -552,7 +526,18 @@ export function ScanConsole() {
               const active = e.id === eventId;
               const status = scanEventStatus(e);
               return (
-                <li key={e.id} className={`flex items-center gap-3 px-4 py-3 ${active ? "bg-blue-500/5" : ""}`}>
+                <li key={e.id}>
+                  <button
+                    type="button"
+                    disabled={!canChoose}
+                    onClick={() => {
+                      setEventId(e.id);
+                      setShowSchedule(false);
+                    }}
+                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors disabled:cursor-default ${
+                      active ? "bg-blue-500/5" : canChoose ? "hover:bg-hairline-1" : ""
+                    }`}
+                  >
                   <div className="h-12 w-10 shrink-0 overflow-hidden rounded-lg bg-hairline-2">
                     {e.poster_url ? (
                       // eslint-disable-next-line @next/next/no-img-element -- affiche hébergée sur MinIO
@@ -579,14 +564,16 @@ export function ScanConsole() {
                   <div className="flex shrink-0 flex-col items-end gap-1">
                     <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${status.badge}`}>{status.label}</span>
                   </div>
+                  </button>
                 </li>
               );
             };
             return (
               <>
-                <p className="border-b border-hairline-1 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-5">
-                  À venir · du plus proche au plus lointain
-                </p>
+                <div className="border-b border-hairline-1 px-4 py-2.5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-5">À venir · du plus proche au plus lointain</p>
+                  {canChoose ? <p className="mt-0.5 text-[11px] text-ink-5">Touchez un événement pour le contrôler.</p> : null}
+                </div>
                 {current.length > 0 ? (
                   <ul className="divide-y divide-hairline-1">{current.map((e) => row(e, false))}</ul>
                 ) : (
@@ -645,8 +632,8 @@ export function ScanConsole() {
               {closedNotice.reason}
             </p>
           ) : null}
-          {isAgent && events && events.length > 1 ? (
-            <p className="text-xs text-ink-5">Vos autres affectations sont dans « Mes événements ».</p>
+          {events && events.length > 1 ? (
+            <p className="text-xs text-ink-5">Vos autres événements sont dans « Mes événements ».</p>
           ) : null}
         </div>
       ) : selected ? (
@@ -826,28 +813,80 @@ export function ScanConsole() {
             </div>
           ) : null}
 
-          {/* Paquet hors ligne */}
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-hairline-1 bg-card px-4 py-3 text-xs">
-            <div className="min-w-0">
-              <p className="font-semibold text-ink-2">Si le réseau coupe</p>
-              <p className="text-ink-5">
-                {!pack
-                  ? "Liste des billets pas encore enregistrée sur ce téléphone : connectez-vous pour l'obtenir, le contrôle pourra alors continuer sans réseau."
-                  : pack.tickets.length === 0
-                    ? `Aucun billet vendu pour l'instant (vérifié à ${timeOnly.format(new Date(pack.generated_at))}).`
-                    : `Liste des ${pack.tickets.length} billet${pack.tickets.length > 1 ? "s" : ""} enregistrée sur ce téléphone à ${timeOnly.format(new Date(pack.generated_at))} : le contrôle continue même sans connexion.`}
-              </p>
-              {packError ? <p className="mt-0.5 text-amber-600">{packError}</p> : null}
-            </div>
-            <button
-              type="button"
-              disabled={packLoading || !online}
-              onClick={() => eventId && refreshPack(eventId)}
-              className="shrink-0 rounded-full border border-hairline-3 px-3 py-1.5 font-semibold text-ink-2 transition-colors hover:border-hairline-5 disabled:opacity-50"
-            >
-              {packLoading ? "Mise à jour…" : "Mettre à jour"}
-            </button>
-          </div>
+          {/* Contrôle sans réseau : liste des billets enregistrée sur l'appareil */}
+          {(() => {
+            const count = pack?.tickets.length ?? 0;
+            const state = !pack
+              ? { label: "À préparer", className: "bg-amber-500/15 text-amber-600" }
+              : count === 0
+                ? { label: "Rien à vérifier", className: "bg-hairline-2 text-ink-3" }
+                : { label: "Prêt", className: "bg-emerald-500/15 text-emerald-600" };
+            return (
+              <section aria-label="Contrôle sans réseau" className="rounded-2xl border border-hairline-1 bg-card p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600/10 text-blue-600" aria-hidden="true">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 8.8a15 15 0 0 1 20 0M5.5 12.4a10 10 0 0 1 13 0M9 16a5 5 0 0 1 6 0M12 19.5h.01" />
+                        <path d="M3 3l18 18" />
+                      </svg>
+                    </span>
+                    <div>
+                      <p className="text-sm font-bold text-ink-1">Contrôle sans réseau</p>
+                      <p className="text-xs text-ink-5">Si la connexion coupe, ce téléphone vérifie seul les billets.</p>
+                    </div>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${state.className}`}>{state.label}</span>
+                </div>
+
+                <dl className="mt-4 grid grid-cols-2 gap-2.5">
+                  <div className="rounded-xl bg-hairline-1 px-3 py-2.5">
+                    <dt className="text-[11px] font-medium text-ink-5">Billets vérifiables</dt>
+                    <dd className="text-base font-bold text-ink-1">
+                      {pack ? `${count} billet${count > 1 ? "s" : ""}` : "—"}
+                    </dd>
+                  </div>
+                  <div className="rounded-xl bg-hairline-1 px-3 py-2.5">
+                    <dt className="text-[11px] font-medium text-ink-5">Liste actualisée à</dt>
+                    <dd className="text-base font-bold text-ink-1">{pack ? timeOnly.format(new Date(pack.generated_at)) : "—"}</dd>
+                  </div>
+                </dl>
+
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <p className="text-xs text-ink-5">
+                    {!pack
+                      ? "Connectez-vous pour enregistrer la liste sur ce téléphone."
+                      : count === 0
+                        ? "Aucun billet vendu pour l'instant."
+                        : "Actualisée automatiquement à chaque retour sur la page."}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={packLoading || !online}
+                    onClick={() => eventId && refreshPack(eventId)}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-hairline-3 px-3.5 py-1.5 text-xs font-semibold text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-50"
+                  >
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className={packLoading ? "animate-spin" : ""}
+                    >
+                      <path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" />
+                    </svg>
+                    {packLoading ? "Actualisation…" : "Actualiser"}
+                  </button>
+                </div>
+                {packError ? <p className="mt-2 text-xs text-amber-600">{packError}</p> : null}
+              </section>
+            );
+          })()}
 
           {syncMessage ? <p className="text-center text-xs text-ink-4">{syncMessage}</p> : null}
 
