@@ -14,6 +14,7 @@ import { listCategories, type ApiCategory } from "@/lib/api/categories";
 import { buildOrganizerDashboardStats } from "@/lib/mappers/dashboard-mappers";
 import { getStoredUser } from "@/lib/auth/session";
 import { ApiError } from "@/lib/api/http-error";
+import { getOrganizerProfile } from "@/lib/api/organizer-profile";
 
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<ApiOrganizerDashboard | undefined>(undefined);
@@ -21,12 +22,17 @@ export default function DashboardPage() {
   const [nextPayoutDate, setNextPayoutDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [firstName, setFirstName] = useState("");
+  // false : aucun profil organisateur (compte créé sans), à compléter.
+  const [hasProfile, setHasProfile] = useState<boolean | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setFirstName(getStoredUser()?.first_name ?? "");
 
     let cancelled = false;
+    getOrganizerProfile()
+      .then(() => !cancelled && setHasProfile(true))
+      .catch((err) => !cancelled && setHasProfile(!(err instanceof ApiError && err.status === 404)));
     Promise.all([
       getOrganizerDashboard(),
       getMyPayouts().catch(() => []),
@@ -72,7 +78,13 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/dashboard/profil"
+              className="rounded-full border border-hairline-3 px-4 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+            >
+              🏷️ Mon profil
+            </Link>
             <Link
               href="/dashboard/paiements"
               className="rounded-full border border-hairline-3 px-4 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
@@ -87,6 +99,24 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
+
+        {hasProfile === false ? (
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
+            <div>
+              <p className="text-sm font-semibold text-ink-1">Complétez votre profil organisateur</p>
+              <p className="mt-0.5 text-sm text-ink-3">
+                Nom public et présentation de votre structure : nécessaires pour la vérification d&apos;identité et
+                les reversements.
+              </p>
+            </div>
+            <Link
+              href="/dashboard/profil"
+              className="shrink-0 rounded-full bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              Compléter mon profil →
+            </Link>
+          </div>
+        ) : null}
 
         {error ? (
           <div className="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-6 text-center text-sm text-red-300">

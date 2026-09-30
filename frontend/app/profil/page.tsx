@@ -32,11 +32,14 @@ export default function ProfilPage() {
   // seul ADMIN était testé, un super admin voyait les blocs acheteur. En
   // mode aperçu acheteur, la page s'affiche comme pour un client.
   const [isAdmin, setIsAdmin] = useState(false);
+  // Acheteur (vrai rôle, hors aperçu admin) : peut devenir organisateur.
+  const [isBuyer, setIsBuyer] = useState(false);
 
   useEffect(() => {
     const admin = isAdminRole(effectiveRole(getStoredUser()));
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsAdmin(admin);
+    setIsBuyer(getStoredUser()?.role === "BUYER");
 
     if (admin || !getAccessToken()) {
       // Pas de session — évite un aller-retour réseau inutile pour rien.
@@ -94,6 +97,23 @@ export default function ProfilPage() {
 
         <ProfileHeader />
         <TwoFactorPromo className="mb-8" />
+
+        {isBuyer ? (
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-hairline-1 bg-card px-5 py-4">
+            <div>
+              <p className="text-sm font-semibold text-ink-1">Vous organisez des événements ?</p>
+              <p className="mt-0.5 text-sm text-ink-5">
+                Vendez vos billets sur BilleTix, en gardant votre compte actuel.
+              </p>
+            </div>
+            <Link
+              href="/devenir-organisateur"
+              className="shrink-0 rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+            >
+              Devenir organisateur →
+            </Link>
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-6">
           {error ? (

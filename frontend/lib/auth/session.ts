@@ -36,6 +36,12 @@ export function saveSession(session: AuthSession, persist = true): void {
   markActivity();
 }
 
+/** Session mémorisée (« Se souvenir de moi ») plutôt que limitée à l'onglet. */
+export function isPersistentSession(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(ACCESS_TOKEN_KEY) !== null;
+}
+
 /**
  * Termine la session côté navigateur et prévient l'application : cet
  * onglet via un événement, les autres via l'événement `storage` (clé

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { DocumentDropzone } from "@/components/ui/document-dropzone";
 import { getKycStatus, submitKyc, type ApiKycStatus, type KycStatus } from "@/lib/api/kyc";
@@ -78,10 +79,17 @@ export function KycSection() {
       ) : kyc === undefined ? (
         <p className="text-sm text-ink-5">Chargement…</p>
       ) : kyc === null ? (
-        <p className="text-sm text-ink-5">
-          Votre profil organisateur n&apos;est pas encore créé. Contactez le support pour finaliser votre compte
-          organisateur avant de fournir une pièce d&apos;identité.
-        </p>
+        <div className="flex flex-col items-start gap-3">
+          <p className="text-sm text-ink-5">
+            Créez d&apos;abord votre profil organisateur ; vous pourrez ensuite fournir votre pièce d&apos;identité.
+          </p>
+          <Link
+            href="/dashboard/profil"
+            className="rounded-full bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            Créer mon profil organisateur →
+          </Link>
+        </div>
       ) : (
         <div className="flex flex-col gap-4">
           {kyc.kyc_status === "SUBMITTED" ? (

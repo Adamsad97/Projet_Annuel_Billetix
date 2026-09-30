@@ -65,3 +65,8 @@ export function uploadPoster(file: File): Promise<{ url: string }> {
 export function uploadDocument(file: File): Promise<{ url: string }> {
   return uploadFile("/upload/document", file);
 }
+
+/** Image publique de profil (avatar, logo d'organisateur). */
+export function uploadAvatar(file: File): Promise<{ url: string }> {
+  return uploadFile("/upload/avatar", file);
+}
