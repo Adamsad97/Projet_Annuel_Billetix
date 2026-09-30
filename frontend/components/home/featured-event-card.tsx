@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { CountryFlag } from "@/components/home/country-flag";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import type { FeaturedEvent } from "@/lib/mappers/event-mappers";
+import { eventPath } from "@/lib/format/event-path";
 
 /**
  * Carte du carrousel « À la une » : affiche en grand (fond flouté de la même
@@ -12,7 +13,7 @@ import type { FeaturedEvent } from "@/lib/mappers/event-mappers";
 export function FeaturedEventCard({ event }: { event: FeaturedEvent }) {
   return (
     <Link
-      href={`/evenements/${event.id}`}
+      href={eventPath(event)}
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-hairline-2 bg-card transition-shadow hover:shadow-xl hover:shadow-black/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand"
     >
       <div className="relative aspect-[16/9.5] overflow-hidden">

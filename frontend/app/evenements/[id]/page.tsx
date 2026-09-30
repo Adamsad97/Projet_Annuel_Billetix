@@ -1,11 +1,12 @@
-import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import type { Metadata } from "next";
+import { notFound, permanentRedirect } from "next/navigation";
+import { cache, type ReactNode } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { EventHeader, fromPriceLabel } from "@/components/event-detail/event-header";
 import { TicketSelector } from "@/components/event-detail/ticket-selector";
 import { FeaturedEventCard } from "@/components/home/featured-event-card";
 import { EventLocationMap } from "@/components/map/event-location-map";
-import { getEvent, getEventCategories, listPublishedEvents } from "@/lib/api/events";
+import { getEvent, getEventBySlug, getEventCategories, listPublishedEvents, type ApiEvent } from "@/lib/api/events";
 import { listCategories } from "@/lib/api/categories";
 import {
   apiEventToDetail,
@@ -41,6 +42,40 @@ function unavailability(
   }
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Événement désigné par l'adresse : lisible (afro-vibes-festival-2026) ou,
+ * pour les liens plus anciens, par identifiant. `cache` : une seule requête
+ * pour la page et ses métadonnées. null si introuvable.
+ */
+const loadEvent = cache(async (param: string): Promise<ApiEvent | null> => {
+  try {
+    return UUID.test(param) ? await getEvent(param) : await getEventBySlug(param);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+});
+
+/** Titre d'onglet et aperçu de partage (réseaux sociaux, messageries). */
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const event = await loadEvent(id).catch(() => null);
+  if (!event) return { title: "Événement introuvable — BilleTix" };
+  const description = event.description.replace(/\s+/g, " ").trim().slice(0, 160);
+  return {
+    title: `${event.title} — BilleTix`,
+    description,
+    openGraph: {
+      title: event.title,
+      description,
+      type: "website",
+      images: event.poster_url ? [{ url: event.poster_url }] : undefined,
+    },
+  };
+}
+
 // Nombre de suggestions sous la fiche (réglage d'affichage).
 const SUGGESTIONS_LIMIT = 3;
 
@@ -64,14 +99,20 @@ export default async function EventDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
+  const { id: param } = await params;
+
+  const apiEvent = await loadEvent(param);
+  if (!apiEvent) notFound();
+  // Ancienne adresse par identifiant : redirection permanente vers
+  // l'adresse lisible (les liens déjà partagés continuent de fonctionner).
+  if (apiEvent.slug && param !== apiEvent.slug) permanentRedirect(`/evenements/${apiEvent.slug}`);
+  const id = apiEvent.id;
 
   let event;
   let organizerId: string;
   let availability: { title: string; message: string | null } | null = null;
   try {
-    const [apiEvent, categories, referential] = await Promise.all([
-      getEvent(id),
+    const [categories, referential] = await Promise.all([
       getEventCategories(id),
       // Libellé de la catégorie tel que défini par l'administration.
       listCategories().catch(() => []),

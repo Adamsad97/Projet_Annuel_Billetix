@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { categoryPillStyles, type MockEvent } from "@/lib/constants/events";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
+import { eventPath } from "@/lib/format/event-path";
 
 export function EventCard({ event }: { event: MockEvent }) {
   return (
     <Link
-      href={`/evenements/${event.id}`}
+      href={eventPath(event)}
       className="group block overflow-hidden rounded-2xl border border-hairline-1 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-hairline-2 hover:shadow-xl"
     >
       <div

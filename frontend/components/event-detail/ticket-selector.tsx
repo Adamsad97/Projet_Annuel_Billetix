@@ -148,7 +148,7 @@ export function TicketSelector({
     setError(null);
 
     if (!getAccessToken()) {
-      router.push(`/connexion?next=/evenements/${eventId}`);
+      router.push(`/connexion?next=${encodeURIComponent(window.location.pathname)}`);
       return;
     }
 
@@ -167,6 +167,7 @@ export function TicketSelector({
       const reservation = await reserveStock(eventId, items);
       saveCart({
         eventId,
+        eventPath: window.location.pathname,
         eventTitle,
         reservationToken: reservation.reservation_token,
         expiresAt: reservation.expires_at,

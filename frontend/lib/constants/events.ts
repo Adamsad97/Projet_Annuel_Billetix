@@ -11,6 +11,8 @@ export type EventCategory =
 
 export interface MockEvent {
   id: string;
+  /** Adresse lisible de la page publique. */
+  slug?: string | null;
   day: string;
   month: string;
   title: string;

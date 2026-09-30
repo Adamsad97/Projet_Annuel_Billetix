@@ -98,7 +98,7 @@ export function CheckoutFlow() {
           sont encore disponibles.
         </p>
         <Link
-          href={`/evenements/${cart.eventId}`}
+          href={cart.eventPath ?? `/evenements/${cart.eventId}`}
           className="mt-5 inline-flex rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
         >
           Réserver à nouveau

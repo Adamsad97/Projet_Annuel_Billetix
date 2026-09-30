@@ -50,6 +50,7 @@ export function apiEventToCard(event: ApiEvent, categories: ApiTicketCategory[])
 
   return {
     id: event.id,
+    slug: event.slug,
     day: dayFormatter.format(start),
     month: monthFormatter.format(start).replace(".", "."),
     title: event.title,
@@ -91,6 +92,7 @@ function formatFeaturedDate(isoDate: string, timeZone: string): string {
 /** Carte du carrousel « À la une » (affiche en grand + pastilles d'infos). */
 export interface FeaturedEvent {
   id: string;
+  slug: string | null;
   title: string;
   venueName: string;
   city: string;
@@ -112,6 +114,7 @@ export function apiEventToFeatured(event: ApiEvent, categories: ApiTicketCategor
   const min = lowestPrice(categories);
   return {
     id: event.id,
+    slug: event.slug,
     title: event.title,
     venueName: event.venue_name,
     city: event.venue_city,

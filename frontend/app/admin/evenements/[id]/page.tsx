@@ -17,6 +17,7 @@ import { EventLocationMap } from "@/components/map/event-location-map";
 import { getAdminEvent, getAdminEventOverview, type ApiAdminEvent, type ApiAdminEventOverview } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/http-error";
 import { auditActionLabels } from "@/lib/mappers/audit-mappers";
+import { eventPath } from "@/lib/format/event-path";
 
 const statusBadge: Record<string, { label: string; className: string }> = {
   PUBLISHED: { label: "● Publié", className: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30" },
@@ -125,7 +126,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
           </p>
         </div>
         <Link
-          href={`/evenements/${event.id}`}
+          href={eventPath(event)}
           className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
         >
           Voir la page publique →

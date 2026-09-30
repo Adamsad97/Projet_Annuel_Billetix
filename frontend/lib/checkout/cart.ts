@@ -16,6 +16,8 @@ export interface CartLine {
 
 export interface Cart {
   eventId: string;
+  /** Page publique d'origine (adresse lisible), pour y revenir. */
+  eventPath?: string;
   eventTitle: string;
   reservationToken: string;
   expiresAt: string;

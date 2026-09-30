@@ -24,6 +24,8 @@ export interface ApiEvent {
   id: string;
   organizer_id: string;
   title: string;
+  /** Adresse lisible de la page publique (cf. lib/format/event-path.ts). */
+  slug: string | null;
   description: string;
   // Code d'une catégorie gérée depuis l'espace Admin (cf. lib/api/categories.ts).
   category: string;
@@ -155,6 +157,10 @@ export function listPublishedEvents(
 
 export function getEvent(id: string): Promise<ApiEvent> {
   return getJson<ApiEvent>(`/events/${id}`);
+}
+
+export function getEventBySlug(slug: string): Promise<ApiEvent> {
+  return getJson<ApiEvent>(`/events/by-slug/${encodeURIComponent(slug)}`);
 }
 
 /** Taux appliqués au prix d'un billet (réglages admin), pour l'organisateur. */

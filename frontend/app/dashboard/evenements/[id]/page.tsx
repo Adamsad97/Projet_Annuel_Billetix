@@ -38,6 +38,7 @@ import {
 } from "@/lib/api/events";
 import type { ApiTicket } from "@/lib/api/tickets";
 import { ApiError } from "@/lib/api/http-error";
+import { eventPath } from "@/lib/format/event-path";
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
@@ -183,7 +184,9 @@ export default function DashboardEventDetailPage({
 
   async function copyPublicLink() {
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/evenements/${id}`);
+      await navigator.clipboard.writeText(
+        `${window.location.origin}${eventPath({ id, slug: detail?.event.slug })}`,
+      );
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -288,7 +291,7 @@ export default function DashboardEventDetailPage({
                         </span>
                       ) : (
                         <Link
-                          href={`/evenements/${id}`}
+                          href={eventPath({ id, slug: detail?.event.slug })}
                           className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
                         >
                           Voir la page publique →
