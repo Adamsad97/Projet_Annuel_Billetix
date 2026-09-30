@@ -19,7 +19,7 @@ import {
 
 const trim = ({ value }: { value: unknown }) => (typeof value === "string" ? value.trim() : value);
 
-export const PAYMENT_METHODS = ["STRIPE", "PAYPAL", "APPLE_PAY", "GOOGLE_PAY", "ORANGE_MONEY", "WAVE"] as const;
+export const PAYMENT_METHODS = ["STRIPE", "PAYPAL", "APPLE_PAY", "GOOGLE_PAY", "ORANGE_MONEY", "WAVE", "FREE"] as const;
 // Plafond technique d'une ligne de commande ; le maximum métier par commande
 // est celui de la catégorie de billet (max_per_order), vérifié par event-service.
 const MAX_QUANTITY_PER_LINE = 100;
@@ -54,8 +54,8 @@ export class OrderItemDto extends ReserveItemDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) seat_info?: string;
 }
 
-/** Coordonnées de facturation et moyen de paiement (commande, achat en revente). */
-export class BillingDto {
+/** Identité de l'acheteur et moyen de paiement. */
+class BuyerIdentityDto {
   @ApiProperty() @Transform(trim) @IsString() @IsNotEmpty({ message: "Le prénom est obligatoire." }) @MaxLength(100)
   billing_first_name: string;
 
@@ -65,6 +65,14 @@ export class BillingDto {
   @ApiProperty() @Transform(trim) @IsEmail({}, { message: "L'adresse email n'est pas valide." }) @MaxLength(254)
   billing_email: string;
 
+  // FREE : réservation gratuite — accepté seulement si le total calculé
+  // par order-service est nul (jamais sur la parole du client).
+  @ApiProperty({ enum: PAYMENT_METHODS }) @IsIn(PAYMENT_METHODS, { message: "Moyen de paiement non pris en charge." })
+  payment_method: (typeof PAYMENT_METHODS)[number];
+}
+
+/** Coordonnées de facturation complètes (achat en revente, toujours payant). */
+export class BillingDto extends BuyerIdentityDto {
   @ApiProperty() @Transform(trim) @IsString() @IsNotEmpty({ message: "L'adresse est obligatoire." }) @MaxLength(200)
   billing_address_line1: string;
 
@@ -78,16 +86,21 @@ export class BillingDto {
 
   @ApiProperty() @Transform(trim) @IsString() @IsNotEmpty({ message: "Le pays est obligatoire." }) @MaxLength(60)
   billing_country: string;
-
-  @ApiProperty({ enum: PAYMENT_METHODS }) @IsIn(PAYMENT_METHODS, { message: "Moyen de paiement non pris en charge." })
-  payment_method: (typeof PAYMENT_METHODS)[number];
 }
 
 /**
  * Étape 2 : création de la commande. Prix, commission et informations de
  * l'événement ne sont jamais acceptés du client : ils sont relus côté serveur.
  */
-export class CreateOrderDto extends BillingDto {
+export class CreateOrderDto extends BuyerIdentityDto {
+  // Adresse facultative ici : exigée par order-service pour une commande
+  // payante, inutile pour une réservation gratuite.
+  @ApiPropertyOptional() @IsOptional() @Transform(trim) @IsString() @MaxLength(200) billing_address_line1?: string;
+  @ApiPropertyOptional() @IsOptional() @Transform(trim) @IsString() @MaxLength(200) billing_address_line2?: string;
+  @ApiPropertyOptional() @IsOptional() @Transform(trim) @IsString() @MaxLength(100) billing_city?: string;
+  @ApiPropertyOptional() @IsOptional() @Transform(trim) @IsString() @MaxLength(20) billing_postal_code?: string;
+  @ApiPropertyOptional() @IsOptional() @Transform(trim) @IsString() @MaxLength(60) billing_country?: string;
+
   @ApiProperty() @IsUUID("all", { message: "Identifiant d'événement invalide." }) event_id: string;
 
   @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(200) reservation_token: string;

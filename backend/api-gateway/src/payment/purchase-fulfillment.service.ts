@@ -19,6 +19,7 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   PAYPAL: "PayPal",
   ORANGE_MONEY: "Orange Money",
   WAVE: "Wave",
+  FREE: "Gratuit",
 };
 
 @Injectable()
@@ -262,11 +263,14 @@ export class PurchaseFulfillmentService {
       })),
     });
 
-    this.emitInvoice(order, items, orderId, platformConfig);
-
-    this.sendInvoiceEmail(order, items, orderId, platformConfig).catch((err) =>
-      this.logger.error(`Erreur email facture commande ${orderId}: ${err?.message}`),
-    );
+    // Réservation gratuite : l'email d'accès aux billets suffit — pas de
+    // facture à 0 € (aucune vente, et l'adresse n'a pas été demandée).
+    if (Number(order.total_amount_ttc) > 0) {
+      this.emitInvoice(order, items, orderId, platformConfig);
+      this.sendInvoiceEmail(order, items, orderId, platformConfig).catch((err) =>
+        this.logger.error(`Erreur email facture commande ${orderId}: ${err?.message}`),
+      );
+    }
 
     this.logger.log(
       `Post-achat traité : ${tickets.length} billet(s) générés pour commande ${orderId}`,
