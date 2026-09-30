@@ -967,6 +967,7 @@ export class AdminController {
         id,
         admin_id: user.sub,
         approved: dto.approved,
+        reason: dto.approved ? undefined : dto.reason,
       }),
     );
     this.audit(
@@ -979,6 +980,7 @@ export class AdminController {
     this.notifyOrganizerOfEvent(
       result as { id: string; title: string; organizer_id: string },
       dto.approved ? "NON_PROFIT_VERIFIED" : "NON_PROFIT_REJECTED",
+      dto.approved ? null : dto.reason,
     );
     return result;
   }

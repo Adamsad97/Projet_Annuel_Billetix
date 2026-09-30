@@ -467,7 +467,9 @@ export class EventController {
     // mais ces changements restent pertinents pour les détenteurs de billet
     // (ex : conditions d'accès à l'entrée). Fire-and-forget, ne bloque
     // jamais la réponse de mise à jour elle-même.
-    if (updatedEvent.status === "PUBLISHED" && Object.keys(dto).length > 0) {
+    // Le justificatif « but non lucratif » ne concerne pas les acheteurs.
+    const publicChanges = Object.keys(dto).filter((key) => key !== "non_profit_document_url" && key !== "is_non_profit");
+    if (updatedEvent.status === "PUBLISHED" && publicChanges.length > 0) {
       this.notifyBuyersOfEventUpdate(updatedEvent).catch((err) =>
         this.logger.error(
           `Erreur notification modification event ${id}: ${err?.message}`,

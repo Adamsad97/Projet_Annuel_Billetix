@@ -8,8 +8,10 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Length,
   MaxLength,
   Min,
+  ValidateIf,
   ValidateNested,
 } from "class-validator";
 import { PaginationQueryDto, TEXT_MAX_LENGTH } from "../../common/dto/common.dto";
@@ -47,6 +49,14 @@ export class CreateCategoryForOrganizerDto extends OrganizerRefDto {
 
 export class VerifyNonProfitDto {
   @ApiProperty() @IsBoolean() approved: boolean;
+
+  // Motif du refus, obligatoire et communiqué à l'organisateur. Une seule
+  // règle (Length) : un seul message, même quand le champ est absent.
+  @ApiPropertyOptional()
+  @Transform(trim)
+  @ValidateIf((dto: VerifyNonProfitDto) => dto.approved === false)
+  @Length(1, TEXT_MAX_LENGTH, { message: `Le motif du refus est obligatoire (${TEXT_MAX_LENGTH} caractères maximum).` })
+  reason?: string;
 }
 
 export const DISPUTE_RESOLUTIONS = ["WON", "LOST", "CLOSED"] as const;
