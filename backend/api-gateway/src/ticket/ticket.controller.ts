@@ -1156,6 +1156,18 @@ export class TicketController {
     );
   }
 
+  /** Événements auxquels l'agent connecté est affecté (écran de scan). */
+  @Get("agent/events")
+  @Roles("AGENT")
+  @ApiOperation({ summary: "Mes événements à contrôler (AGENT)" })
+  async agentEvents(@CurrentUser() user: JwtPayload) {
+    const ids = await firstValueFrom(
+      this.ticketClient.send<string[]>("ticket.get_agent_events", { user_id: user.sub }),
+    );
+    if (ids.length === 0) return [];
+    return firstValueFrom(this.eventClient.send("event.get_by_ids", { ids }));
+  }
+
   // ─── Agent : session mobile ──────────────────────────────────────────────────
 
   @Post("session/start")
