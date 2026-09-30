@@ -84,6 +84,24 @@
   --color-danger: #b91c1c;
 }
 
+/* Listes déroulantes, calendriers, barres de défilement natives : dessinés
+   par le navigateur selon color-scheme. Sans lui, la liste ouverte d'un
+   <select> restait blanche en sombre, avec le texte blanc du thème —
+   options illisibles. */
+:root {
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+option,
+optgroup {
+  background-color: var(--color-popover);
+  color: var(--color-ink-1);
+}
+
 body {
   background: var(--color-page);
   color: var(--color-ink-1);
