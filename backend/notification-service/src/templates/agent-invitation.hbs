@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent de contrôle — {{eventName}}</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #1d4ed8; padding: 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0; font-size: 28px; }
+    .body { padding: 32px; color: #333; line-height: 1.6; }
+    .event-box { background: #f1f5f9; border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+    .event-name { font-size: 18px; font-weight: bold; color: #0f172a; }
+    .btn { display: inline-block; margin: 20px 0 8px; padding: 14px 32px; background: #1d4ed8; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; }
+    .note { font-size: 13px; color: #64748b; }
+    .footer { padding: 20px 32px; background: #f9f9f9; color: #999; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>BilleTix</h1></div>
+    <div class="body">
+      <h2>Vous êtes agent de contrôle</h2>
+      <p>Bonjour {{firstName}},</p>
+      <p><strong>{{organizerName}}</strong> vous a désigné pour contrôler les billets à l'entrée de :</p>
+      <div class="event-box">
+        <div class="event-name">{{eventName}}</div>
+        <div>📅 {{eventDate}}</div>
+      </div>
+      {{#if setPasswordUrl}}
+      <p>Un compte agent a été créé à votre nom. Choisissez votre mot de passe pour l'activer :</p>
+      <a href="{{setPasswordUrl}}" class="btn">Choisir mon mot de passe</a>
+      <p class="note">Ce lien est valable {{validHours}} heures. Passé ce délai, utilisez « Mot de passe oublié » sur la page de connexion.</p>
+      {{else}}
+      <p>Connectez-vous avec votre compte agent habituel : l'événement apparaît dans la page de scan.</p>
+      <a href="{{scanUrl}}" class="btn">Ouvrir la page de scan</a>
+      {{/if}}
+      <p class="note">Le jour J, ouvrez la page de scan sur votre téléphone, choisissez l'événement et laissez-la télécharger le paquet hors ligne : le contrôle continue même sans réseau.</p>
+    </div>
+    <div class="footer">© {{year}} BilleTix — Tous droits réservés</div>
+  </div>
+</body>
+</html>

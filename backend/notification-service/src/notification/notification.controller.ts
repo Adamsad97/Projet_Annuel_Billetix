@@ -31,6 +31,7 @@ import { KycApprovedDto } from './dto/kyc-approved.dto';
 import { KycRejectedDto } from './dto/kyc-rejected.dto';
 import { NewsletterDto } from './dto/newsletter.dto';
 import { OrderConfirmedDto } from './dto/order-confirmed.dto';
+import { AgentInvitationDto } from './dto/agent-invitation.dto';
 import { PasswordResetDto } from './dto/password-reset.dto';
 import { PaymentConfirmedDto } from './dto/payment-confirmed.dto';
 import { PaymentFailedDto } from './dto/payment-failed.dto';
@@ -107,6 +108,25 @@ export class NotificationController {
       context: {
         firstName: data.firstName,
         resetUrl: `${this.appUrl}/auth/reset-password?token=${data.token}`,
+      },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.agent_invitation')
+  async onAgentInvitation(@Payload() data: AgentInvitationDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: `Agent de contrôle pour "${data.eventName}" — BilleTix`,
+      template: 'agent-invitation',
+      context: {
+        firstName: data.firstName,
+        eventName: data.eventName,
+        eventDate: data.eventDate,
+        organizerName: data.organizerName,
+        setPasswordUrl: data.token ? `${this.appUrl}/auth/reset-password?token=${data.token}` : null,
+        validHours: data.validHours,
+        scanUrl: `${this.appUrl}/scan`,
       },
     });
     this.ack(rmqContext);
