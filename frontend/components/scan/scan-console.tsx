@@ -235,7 +235,7 @@ export function ScanConsole() {
       setPackError(
         err instanceof ApiError && err.status !== 0
           ? err.message
-          : "Pas de réseau : paquet hors ligne non mis à jour.",
+          : "Pas de réseau : la liste enregistrée sur ce téléphone n'a pas pu être actualisée.",
       );
     } finally {
       setPackLoading(false);
@@ -320,7 +320,7 @@ export function ScanConsole() {
   async function judgeOffline(text: string, id: string) {
     const current = loadPack(id);
     if (!current) {
-      show({ code: "ERROR", label: "Pas de réseau", hint: "Aucun paquet hors ligne : reconnectez-vous pour le télécharger.", tone: "danger", offline: true });
+      show({ code: "ERROR", label: "Pas de réseau", hint: "La liste des billets n'est pas encore enregistrée sur ce téléphone : reconnectez-vous pour l'obtenir.", tone: "danger", offline: true });
       return;
     }
     const now = new Date();
@@ -659,10 +659,10 @@ export function ScanConsole() {
               <p className="font-semibold text-ink-2">Si le réseau coupe</p>
               <p className="text-ink-5">
                 {!pack
-                  ? "Liste des billets pas encore téléchargée : connectez-vous pour l'obtenir, le contrôle pourra alors continuer sans réseau."
+                  ? "Liste des billets pas encore enregistrée sur ce téléphone : connectez-vous pour l'obtenir, le contrôle pourra alors continuer sans réseau."
                   : pack.tickets.length === 0
-                    ? `Aucun billet vendu au moment du téléchargement (${timeOnly.format(new Date(pack.generated_at))}).`
-                    : `Ce téléphone peut vérifier les ${pack.tickets.length} billet${pack.tickets.length > 1 ? "s" : ""} de l'événement même sans connexion (liste de ${timeOnly.format(new Date(pack.generated_at))}).`}
+                    ? `Aucun billet vendu pour l'instant (vérifié à ${timeOnly.format(new Date(pack.generated_at))}).`
+                    : `Liste des ${pack.tickets.length} billet${pack.tickets.length > 1 ? "s" : ""} enregistrée sur ce téléphone à ${timeOnly.format(new Date(pack.generated_at))} : le contrôle continue même sans connexion.`}
               </p>
               {packError ? <p className="mt-0.5 text-amber-600">{packError}</p> : null}
             </div>
