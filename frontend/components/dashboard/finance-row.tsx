@@ -4,6 +4,7 @@ import { euros as currency } from "@/lib/format/money";
 import { longDate as dateFormatter } from "@/lib/format/dates";
 import { buttonClass } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { payoutSettlement } from "@/lib/finance/payout-settlement";
 
 export function FinanceRow({
   payout,
@@ -15,7 +16,9 @@ export function FinanceRow({
   busy: boolean;
 }) {
   const badge = payoutStatusBadge[payout.status];
-  const canRequestEarly = payout.status === "PENDING" && !payout.requested_early_at && !payout.on_hold_for_postponement;
+  const settlement = payoutSettlement(payout);
+  const canRequestEarly =
+    payout.status === "PENDING" && !payout.requested_early_at && !payout.on_hold_for_postponement && Number(payout.net_amount) > 0;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 last:border-b-0">
@@ -30,6 +33,7 @@ export function FinanceRow({
               Événement reporté
             </span>
           ) : null}
+          {settlement.badge ? <Badge tone={settlement.badge.className}>{settlement.badge.label}</Badge> : null}
           {payout.requested_early_at ? (
             <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-xs font-medium text-accent ring-1 ring-inset ring-blue-500/30">
               Anticipé demandé
@@ -42,6 +46,7 @@ export function FinanceRow({
             : `Prévu le ${dateFormatter.format(new Date(payout.scheduled_at))}`}
           {payout.processed_at ? ` · versé le ${dateFormatter.format(new Date(payout.processed_at))}` : ""}
         </p>
+        {settlement.detail ? <p className="mt-0.5 text-xs text-ink-4">{settlement.detail}</p> : null}
         {payout.status === "BLOCKED" && payout.blocked_reason ? (
           <p className="mt-1 text-xs text-red-400">{payout.blocked_reason}</p>
         ) : null}

@@ -3,6 +3,7 @@ import type { ApiPayout, ApiPayoutStatus } from "@/lib/api/admin";
 import { euros as currency } from "@/lib/format/money";
 import { longDate as dateFormatter } from "@/lib/format/dates";
 import { Badge } from "@/components/ui/badge";
+import { payoutSettlement } from "@/lib/finance/payout-settlement";
 
 export const payoutStatusBadge: Record<ApiPayoutStatus, { label: string; className: string }> = {
   PENDING: { label: "⏳ En attente", className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30" },
@@ -26,6 +27,7 @@ export function PayoutRow({
   onApproveEarly: () => void;
 }) {
   const badge = payoutStatusBadge[payout.status];
+  const settlement = payoutSettlement(payout);
   const awaitingEarlyApproval = Boolean(payout.requested_early_at) && !payout.early_request_approved_by;
 
   return (
@@ -41,6 +43,7 @@ export function PayoutRow({
               Événement reporté
             </span>
           ) : null}
+          {settlement.badge ? <Badge tone={settlement.badge.className}>{settlement.badge.label}</Badge> : null}
           {awaitingEarlyApproval ? (
             <span className="rounded-full bg-blue-500/15 px-2.5 py-0.5 text-xs font-medium text-accent ring-1 ring-inset ring-blue-500/30">
               Demande anticipée
@@ -53,6 +56,7 @@ export function PayoutRow({
             : `Prévu le ${dateFormatter.format(new Date(payout.scheduled_at))}`}
           {payout.blocked_reason ? ` · ${payout.blocked_reason}` : ""}
         </p>
+        {settlement.detail ? <p className="mt-0.5 text-xs text-ink-4">{settlement.detail}</p> : null}
       </div>
 
       <div className="flex shrink-0 items-center gap-3">

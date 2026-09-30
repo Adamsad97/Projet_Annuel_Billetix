@@ -316,6 +316,12 @@ export interface ApiPayout {
   stripe_transfer_id: string | null;
   /** Événement reporté, nouvelle date à venir : rien n'est versé d'ici là. */
   on_hold_for_postponement?: boolean;
+  /** Frais des billets gratuits déduits (à la charge de l'organisateur). */
+  free_ticket_fees_amount?: number;
+  /** Montants dus déduits de ce reversement au moment du virement. */
+  offset_amount?: number;
+  /** Montant dû soldé par ce reversement. */
+  settled_by_payout_id?: string | null;
   scheduled_at: string;
   processed_at: string | null;
   blocked_at: string | null;
