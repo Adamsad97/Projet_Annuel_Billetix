@@ -16,6 +16,10 @@ FROM base AS builder
 # client (les passer seulement au runtime, via environment:, ne suffit pas).
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+# Adresse publique du site : base des aperçus de partage des pages
+# pré-générées au build (aussi passée au runtime pour les pages dynamiques).
+ARG SITE_URL
+ENV SITE_URL=$SITE_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 COPY . .

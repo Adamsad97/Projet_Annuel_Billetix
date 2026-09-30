@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SHARED_OPEN_GRAPH } from "@/lib/site-url";
 import { notFound, permanentRedirect } from "next/navigation";
 import { cache, type ReactNode } from "react";
 import { Navbar } from "@/components/layout/navbar";
@@ -70,13 +71,17 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const event = await loadEvent(id).catch(() => null);
   if (!event) return { title: "Événement introuvable — BilleTix" };
   const description = event.description.replace(/\s+/g, " ").trim().slice(0, 160);
+  // Adresse de référence : le lien lisible (slug), quel que soit le lien utilisé.
+  const path = `/evenements/${event.slug ?? event.id}`;
   return {
     title: `${event.title} — BilleTix`,
     description,
+    alternates: { canonical: path },
     openGraph: {
+      ...SHARED_OPEN_GRAPH,
       title: event.title,
       description,
-      type: "website",
+      url: path,
       images: event.poster_url ? [{ url: event.poster_url }] : undefined,
     },
   };

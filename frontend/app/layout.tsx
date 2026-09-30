@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SHARED_OPEN_GRAPH, SITE_URL } from "@/lib/site-url";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/lib/theme/theme-provider";
@@ -24,9 +25,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Base des URL absolues (aperçus de partage, adresses canoniques).
+  metadataBase: SITE_URL,
   title: "BilletiX — Votre prochain événement commence ici",
   description:
     "Des milliers d'événements. Billets QR code à usage unique envoyés en 5 minutes.",
+  openGraph: { ...SHARED_OPEN_GRAPH, url: "/" },
 };
 
 export default function RootLayout({

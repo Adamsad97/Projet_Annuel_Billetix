@@ -715,6 +715,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
         NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+        SITE_URL: ${FRONTEND_URL:-http://localhost:3000}
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -731,6 +732,9 @@ services:
       # NEXT_PUBLIC_, donc invisible côté client, où il n'aurait de toute
       # façon aucun sens).
       API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api-gateway:4000/api/v1}
+      # Adresse publique du site (aperçus de partage, adresses canoniques) :
+      # la même que celle des liens d'emails.
+      SITE_URL: ${FRONTEND_URL:-http://localhost:3000}
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
     ports:
       - "3000:3000"
