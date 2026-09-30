@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AuthHeader } from "@/components/layout/auth-header";
 import { KycSection } from "@/components/dashboard/kyc-section";
-import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
+import { PayoutAccountSection } from "@/components/dashboard/payout-account-section";
 
 export default function OrganizerPaymentsOnboardingPage() {
   return (
@@ -19,13 +19,13 @@ export default function OrganizerPaymentsOnboardingPage() {
         <div className="mb-6 text-center">
           <h1 className="text-xl font-bold text-ink-1">Configurer les paiements</h1>
           <p className="mt-1 text-sm text-ink-5">
-            Nécessaire pour recevoir les reversements de vos événements.
+            Deux étapes pour recevoir le produit de vos ventes : votre identité, puis votre compte de reversement.
           </p>
         </div>
 
         <div className="flex flex-col gap-6">
           <KycSection />
-          <OnboardingFlow />
+          <PayoutAccountSection />
         </div>
       </main>
     </div>
