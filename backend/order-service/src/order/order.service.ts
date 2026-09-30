@@ -7,7 +7,7 @@ import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { StockReservationService } from '../reservation/stock-reservation.service';
 import { CreateOrderDto, CreateResaleOrderDto } from './dto/create-order.dto';
 import { OrderItem } from './order-item.entity';
-import { Order, OrderStatus, PaymentStatus } from './order.entity';
+import { Order, OrderStatus, PaymentMethod, PaymentStatus } from './order.entity';
 
 @Injectable()
 export class OrderService {
@@ -146,6 +146,20 @@ export class OrderService {
       free_ticket_fees = parseFloat(free_ticket_fees.toFixed(2));
       const net_organizer = parseFloat((total_ht - commission - free_ticket_fees).toFixed(2));
 
+      // Réservation gratuite (total calculé ici, jamais annoncé par le
+      // client) : aucun moyen de paiement, adresse facultative. Payante :
+      // adresse complète obligatoire, « gratuit » refusé.
+      const isFree = total_ttc === 0;
+      const hasAddress = [dto.billing_address_line1, dto.billing_city, dto.billing_postal_code, dto.billing_country].every(
+        (field) => typeof field === 'string' && field.trim() !== '',
+      );
+      if (!isFree && !hasAddress) {
+        throw new RpcException({ statusCode: 400, message: "L'adresse de facturation complète est obligatoire." });
+      }
+      if (!isFree && dto.payment_method === PaymentMethod.FREE) {
+        throw new RpcException({ statusCode: 400, message: 'Cette commande est payante : choisissez un moyen de paiement.' });
+      }
+
       const order = manager.create(Order, {
         reference: this.generateReference(),
         buyer_id: dto.buyer_id,
@@ -174,12 +188,12 @@ export class OrderService {
         billing_first_name: dto.billing_first_name,
         billing_last_name: dto.billing_last_name,
         billing_email: dto.billing_email,
-        billing_address_line1: dto.billing_address_line1,
+        billing_address_line1: dto.billing_address_line1?.trim() || null,
         billing_address_line2: dto.billing_address_line2 ?? null,
-        billing_city: dto.billing_city,
-        billing_postal_code: dto.billing_postal_code,
-        billing_country: dto.billing_country,
-        payment_method: dto.payment_method,
+        billing_city: dto.billing_city?.trim() || null,
+        billing_postal_code: dto.billing_postal_code?.trim() || null,
+        billing_country: dto.billing_country?.trim() || null,
+        payment_method: isFree ? PaymentMethod.FREE : dto.payment_method,
       });
 
       await manager.save(order);

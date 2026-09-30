@@ -101,20 +101,22 @@ export class CreateOrderDto {
   @IsEmail()
   billing_email: string;
 
-  @IsString()
-  billing_address_line1: string;
+  // Adresse : obligatoire pour une commande payante — vérifié dans
+  // OrderService.create une fois le total calculé côté serveur.
+  @IsString() @IsOptional()
+  billing_address_line1?: string;
 
   @IsString() @IsOptional()
   billing_address_line2?: string;
 
-  @IsString()
-  billing_city: string;
+  @IsString() @IsOptional()
+  billing_city?: string;
 
-  @IsString()
-  billing_postal_code: string;
+  @IsString() @IsOptional()
+  billing_postal_code?: string;
 
-  @IsString()
-  billing_country: string;
+  @IsString() @IsOptional()
+  billing_country?: string;
 
   @IsEnum(PaymentMethod)
   payment_method: PaymentMethod;

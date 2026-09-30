@@ -21,6 +21,8 @@ export enum PaymentMethod {
   GOOGLE_PAY = 'GOOGLE_PAY',
   ORANGE_MONEY = 'ORANGE_MONEY',
   WAVE = 'WAVE',
+  // Commande à 0 € : réservation confirmée sans aucun prestataire de paiement.
+  FREE = 'FREE',
 }
 
 export enum PaymentStatus {
@@ -78,20 +80,22 @@ export class Order {
   @Column()
   billing_email: string;
 
-  @Column()
-  billing_address_line1: string;
+  // Adresse de facturation : exigée pour une commande payante seulement
+  // (une réservation gratuite ne demande que nom, prénom et email).
+  @Column({ type: 'varchar', nullable: true })
+  billing_address_line1: string | null;
 
   @Column({ nullable: true })
   billing_address_line2: string | null;
 
-  @Column()
-  billing_city: string;
+  @Column({ type: 'varchar', nullable: true })
+  billing_city: string | null;
 
-  @Column()
-  billing_postal_code: string;
+  @Column({ type: 'varchar', nullable: true })
+  billing_postal_code: string | null;
 
-  @Column()
-  billing_country: string;
+  @Column({ type: 'varchar', nullable: true })
+  billing_country: string | null;
 
   @Column({ type: 'enum', enum: PaymentMethod })
   payment_method: PaymentMethod;

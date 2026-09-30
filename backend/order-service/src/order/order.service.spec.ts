@@ -392,6 +392,29 @@ describe('OrderService', () => {
       expect(order.net_organizer_amount).toBe(-1);
     });
 
+    it('réservation gratuite : sans adresse ni paiement, enregistrée « FREE »', async () => {
+      mockEventClient({ categories: [{ id: 'cat-1', name: 'Gratuit', price_ht: 0 }] });
+      const { order } = await service.create({
+        ...baseDto,
+        billing_address_line1: undefined,
+        billing_city: undefined,
+        billing_postal_code: undefined,
+        billing_country: undefined,
+      } as unknown as import('./dto/create-order.dto').CreateOrderDto);
+      expect(order.payment_method).toBe('FREE');
+      expect(order.billing_address_line1).toBeNull();
+    });
+
+    it('commande payante : adresse obligatoire et « gratuit » refusé', async () => {
+      mockEventClient({ categories: [{ id: 'cat-1', name: 'Standard', price_ht: 50 }] });
+      await expect(
+        service.create({ ...baseDto, billing_city: '  ' } as unknown as import('./dto/create-order.dto').CreateOrderDto),
+      ).rejects.toThrow(RpcException);
+      await expect(
+        service.create({ ...baseDto, payment_method: 'FREE' } as unknown as import('./dto/create-order.dto').CreateOrderDto),
+      ).rejects.toThrow(RpcException);
+    });
+
     it('utilise le prix réel de la catégorie (event-service), pas celui envoyé par le client', async () => {
       mockEventClient({ categories: [{ id: 'cat-1', name: 'Standard', price_ht: 75 }] });
 
