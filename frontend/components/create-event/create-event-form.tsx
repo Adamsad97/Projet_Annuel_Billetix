@@ -4,6 +4,7 @@ import { useEffect, useId, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { InfoCard } from "@/components/event-detail/info-card";
 import { CategoryPicker } from "@/components/create-event/category-picker";
+import { TicketingTypeToggle } from "@/components/create-event/ticketing-type-toggle";
 import { PosterDropzone } from "@/components/create-event/poster-dropzone";
 import { LocationPicker } from "@/components/map/location-picker";
 import { AddressAutocomplete } from "@/components/create-event/address-autocomplete";
@@ -431,42 +432,7 @@ export function CreateEventForm({
 
       <InfoCard icon="🎟️" title="Billetterie">
         <div className="flex flex-col gap-4">
-          {/* Deux cases liées : « Payant » cochée par défaut ; cocher ou décocher
-              l'une bascule l'autre. Gratuit : prix à 0 €, non saisissables. */}
-          <div role="group" aria-label="Type d'entrée" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {(
-              [
-                { free: false, label: "Payant", description: "Les participants achètent leur billet." },
-                { free: true, label: "Gratuit", description: "Entrée libre, sur réservation." },
-              ] as const
-            ).map((option) => {
-              const checked = option.free === isFree;
-              return (
-                <label
-                  key={option.label}
-                  className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${
-                    checked
-                      ? option.free
-                        ? "border-emerald-500/50 bg-emerald-500/10"
-                        : "border-blue-500/50 bg-blue-500/10"
-                      : "border-hairline-2 bg-hairline-1 hover:border-hairline-4"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    // Cocher l'une décoche l'autre ; décocher l'une coche l'autre.
-                    onChange={() => applyFree(!isFree)}
-                    className={`mt-0.5 h-4 w-4 ${option.free ? "accent-emerald-600" : "accent-blue-600"}`}
-                  />
-                  <span>
-                    <span className="block text-sm font-semibold text-ink-1">{option.label}</span>
-                    <span className="block text-xs text-ink-5">{option.description}</span>
-                  </span>
-                </label>
-              );
-            })}
-          </div>
+          <TicketingTypeToggle free={isFree} onChange={applyFree} />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">

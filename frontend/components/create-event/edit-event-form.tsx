@@ -8,7 +8,7 @@
 // logique assez différente de la création pour justifier un composant à
 // part plutôt que d'entremêler les deux flux.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { InfoCard } from "@/components/event-detail/info-card";
 import { CategoryPicker } from "@/components/create-event/category-picker";
@@ -16,8 +16,25 @@ import { PosterDropzone } from "@/components/create-event/poster-dropzone";
 import { LocationPicker } from "@/components/map/location-picker";
 import { AddressAutocomplete } from "@/components/create-event/address-autocomplete";
 import type { ApiCategory } from "@/lib/api/categories";
-import { updateEvent, type ApiEvent, type UpdateEventDto } from "@/lib/api/events";
-import { uploadPoster } from "@/lib/api/upload";
+import {
+  createTicketCategory,
+  deleteTicketCategory,
+  getEventCategories,
+  getPricingPolicy,
+  updateEvent,
+  updateTicketCategory,
+  type ApiEvent,
+  type ApiTicketCategory,
+  type PricingPolicy,
+  type UpdateEventDto,
+} from "@/lib/api/events";
+import { listTicketTierTypes, type ApiTicketTierType } from "@/lib/api/ticket-tier-types";
+import { uploadDocument, uploadPoster } from "@/lib/api/upload";
+import { TicketTiersEditor, type TicketTierRow } from "@/components/create-event/ticket-tiers-editor";
+import { TicketingTypeToggle } from "@/components/create-event/ticketing-type-toggle";
+import { DocumentDropzone } from "@/components/ui/document-dropzone";
+import { NonProfitResubmit } from "@/components/dashboard/non-profit-resubmit";
+import { euros } from "@/lib/format/money";
 import { ApiError } from "@/lib/api/http-error";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import { Alert } from "@/components/ui/alert";
@@ -36,6 +53,16 @@ function toIsoOrNull(datetimeLocal: string): string | null {
   if (!datetimeLocal) return null;
   const date = new Date(datetimeLocal);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+/** Date (ISO) déjà passée. */
+function isInPast(iso: string): boolean {
+  return new Date(iso).getTime() < Date.now();
+}
+
+/** Ligne de billet exploitable : nom, prix et quota renseignés. */
+function isCompleteRow(row: TicketTierRow): boolean {
+  return Boolean(row.name.trim() && row.price !== "" && row.quota);
 }
 
 const LOCKED_STATUS_MESSAGE: Partial<Record<ApiEvent["status"], string>> = {
@@ -87,6 +114,51 @@ export function EditEventForm({
   const [accessConditions, setAccessConditions] = useState(event.access_conditions ?? "");
   const [posterFile, setPosterFile] = useState<File | null>(null);
 
+  // Billetterie : modifiable en brouillon (événement jamais soumis, ou rejeté),
+  // en lecture seule ensuite.
+  const [tierTypes, setTierTypes] = useState<ApiTicketTierType[]>([]);
+  const [pricing, setPricing] = useState<PricingPolicy | null>(null);
+  const [ticketCategories, setTicketCategories] = useState<ApiTicketCategory[] | null>(null);
+  const [tierRows, setTierRows] = useState<TicketTierRow[]>([]);
+  const [isFree, setIsFree] = useState(false);
+  const [isNonProfit, setIsNonProfit] = useState(event.is_non_profit);
+  const [nonProfitFile, setNonProfitFile] = useState<File | null>(null);
+
+  function applyCategories(list: ApiTicketCategory[]) {
+    const active = list.filter((category) => category.is_active);
+    setTicketCategories(active);
+    setTierRows(
+      active.map((category) => ({
+        id: category.id,
+        name: category.name,
+        price: String(Number(category.price_ht)),
+        quota: String(category.quota),
+        maxPerOrder: String(category.max_per_order),
+      })),
+    );
+    setIsFree(active.length > 0 && active.every((category) => Number(category.price_ht) === 0));
+  }
+
+  useEffect(() => {
+    Promise.all([
+      listTicketTierTypes().catch(() => []),
+      getPricingPolicy().catch(() => null),
+      getEventCategories(event.id),
+    ])
+      .then(([types, policy, list]) => {
+        setTierTypes(types);
+        setPricing(policy);
+        applyCategories(list);
+      })
+      .catch(() => setTicketCategories([]));
+  }, [event.id]);
+
+  /** Bascule payant / gratuit : 0 € partout, ou prix à saisir de nouveau. */
+  function applyFree(free: boolean) {
+    setIsFree(free);
+    setTierRows((rows) => rows.map((row) => ({ ...row, price: free ? "0" : "" })));
+  }
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -106,12 +178,29 @@ export function EditEventForm({
     if (isDraft) {
       const nextStart = toIsoOrNull(startAt) ?? event.start_date;
       const nextEnd = toIsoOrNull(endAt) ?? event.end_date;
-      if (new Date(nextStart).getTime() < Date.now()) {
+      if (isInPast(nextStart)) {
         setError("La date de début ne peut pas être dans le passé.");
         return;
       }
       if (new Date(nextEnd).getTime() <= new Date(nextStart).getTime()) {
         setError("La date de fin doit être postérieure à la date de début.");
+        return;
+      }
+      if (tierRows.filter(isCompleteRow).length === 0) {
+        setError(
+          isFree
+            ? "Ajoutez au moins une catégorie de billet complète (nom, quota)."
+            : "Ajoutez au moins une catégorie de billet complète (nom, prix, quota).",
+        );
+        return;
+      }
+      const totalQuota = tierRows.filter(isCompleteRow).reduce((sum, row) => sum + Number(row.quota), 0);
+      if (totalQuota > Number(totalCapacity)) {
+        setError(`La somme des quotas (${totalQuota}) dépasse la capacité totale (${totalCapacity}).`);
+        return;
+      }
+      if (isNonProfit && !nonProfitFile && !event.non_profit_document_url) {
+        setError("Joignez un justificatif pour la déclaration à but non lucratif.");
         return;
       }
     }
@@ -123,6 +212,8 @@ export function EditEventForm({
         const result = await uploadPoster(posterFile);
         posterUrl = result.url;
       }
+      const nonProfitDocumentUrl =
+        isDraft && isNonProfit && nonProfitFile ? (await uploadDocument(nonProfitFile)).url : undefined;
 
       const dto: UpdateEventDto = isDraft
         ? {
@@ -142,7 +233,12 @@ export function EditEventForm({
             total_capacity: Number(totalCapacity),
             sales_start_date: toIsoOrNull(salesStartAt) ?? event.sales_start_date,
             sales_end_date: toIsoOrNull(salesEndAt) ?? event.sales_end_date,
-            refund_policy: refundPolicy,
+            // Rien à rembourser sur une entrée gratuite.
+            refund_policy: isFree ? "NON_REFUNDABLE" : refundPolicy,
+            is_non_profit: isNonProfit,
+            ...(isNonProfit && (nonProfitDocumentUrl ?? event.non_profit_document_url)
+              ? { non_profit_document_url: nonProfitDocumentUrl ?? event.non_profit_document_url ?? undefined }
+              : {}),
             ...(posterUrl ? { poster_url: posterUrl } : {}),
           }
         : {
@@ -152,8 +248,10 @@ export function EditEventForm({
           };
 
       const updated = await updateEvent(event.id, dto);
+      if (isDraft) await syncTicketCategories();
       setEvent(updated);
       setPosterFile(null);
+      setNonProfitFile(null);
       setSaved(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
@@ -165,6 +263,39 @@ export function EditEventForm({
     } finally {
       setSubmitting(false);
     }
+  }
+
+  /**
+   * Billets d'un brouillon alignés sur le formulaire : catégories retirées
+   * supprimées d'abord (libère noms et quotas), puis modifiées, puis créées.
+   */
+  async function syncTicketCategories() {
+    const existing = new Map((ticketCategories ?? []).map((category) => [category.id, category]));
+    const rows = tierRows.filter(isCompleteRow);
+    const kept = new Set(rows.map((row) => row.id).filter((id) => existing.has(id)));
+    for (const category of existing.values()) {
+      if (!kept.has(category.id)) await deleteTicketCategory(category.id);
+    }
+    for (const row of rows) {
+      const dto = {
+        name: row.name,
+        price_ht: Number(row.price),
+        quota: Number(row.quota),
+        ...(row.maxPerOrder ? { max_per_order: Number(row.maxPerOrder) } : {}),
+      };
+      const current = existing.get(row.id);
+      if (!current) {
+        await createTicketCategory(event.id, dto);
+      } else if (
+        current.name !== dto.name ||
+        Number(current.price_ht) !== dto.price_ht ||
+        current.quota !== dto.quota ||
+        (dto.max_per_order !== undefined && current.max_per_order !== dto.max_per_order)
+      ) {
+        await updateTicketCategory(row.id, dto);
+      }
+    }
+    applyCategories(await getEventCategories(event.id));
   }
 
   if (isFullyLocked) {
@@ -180,8 +311,8 @@ export function EditEventForm({
       {!isDraft ? (
         <Alert tone="warning">
           Cet événement est {event.status === "PUBLISHED" ? "publié" : "en attente de validation"} — seuls
-          la description, l&apos;affiche et les conditions d&apos;accès restent modifiables, pour ne pas
-          changer les informations sur lesquelles les acheteurs se sont déjà engagés.
+          la description, l&apos;affiche et les conditions d&apos;accès restent modifiables (ainsi qu&apos;un
+          justificatif refusé), pour ne pas changer les informations sur lesquelles les acheteurs se sont déjà engagés.
         </Alert>
       ) : null}
 
@@ -299,6 +430,7 @@ export function EditEventForm({
               className={fieldClassName}
             />
           </label>
+          {isFree ? null : (
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-accent/80">Politique de remboursement</span>
             <select
@@ -311,6 +443,7 @@ export function EditEventForm({
               <option value="REFUNDABLE" className="bg-card">Remboursable</option>
             </select>
           </label>
+          )}
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-accent/80">Conditions d&apos;accès</span>
             <textarea
@@ -322,6 +455,86 @@ export function EditEventForm({
             />
           </label>
         </div>
+      </InfoCard>
+
+      <InfoCard icon="✏️" title="Billetterie">
+        {ticketCategories === null ? (
+          <p className="text-sm text-ink-5">Chargement des billets…</p>
+        ) : isDraft ? (
+          <div className="flex flex-col gap-4">
+            <TicketingTypeToggle free={isFree} onChange={applyFree} />
+            <TicketTiersEditor
+              rows={tierRows}
+              onChange={setTierRows}
+              tierTypes={tierTypes}
+              totalCapacity={Number(totalCapacity) || 0}
+              pricing={pricing}
+              free={isFree}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm font-semibold text-ink-1">{isFree ? "Entrée gratuite, sur réservation" : "Billetterie payante"}</p>
+            <ul className="divide-y divide-hairline-1 rounded-xl border border-hairline-1">
+              {ticketCategories.map((category) => (
+                <li key={category.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
+                  <span className="text-ink-1">{category.name}</span>
+                  <span className="text-ink-4">
+                    {Number(category.price_ht) === 0 ? "Gratuit" : `${euros.format(category.price_ttc)} TTC`} · {category.quota} places ·{" "}
+                    {category.quota - category.remaining_quota} vendues
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-ink-5">
+              Les billets ne changent plus une fois l&apos;événement soumis : les acheteurs gardent le prix qu&apos;ils ont payé.
+            </p>
+          </div>
+        )}
+      </InfoCard>
+
+      <InfoCard icon="🤝" title="Événement à but non lucratif">
+        {isDraft ? (
+          <div className="flex flex-col gap-4">
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={isNonProfit}
+                onChange={(e) => {
+                  const nonProfit = e.target.checked;
+                  setIsNonProfit(nonProfit);
+                  // Proposé en gratuit par défaut ; « Payant » reste possible (gala caritatif…).
+                  if (nonProfit && !isFree) applyFree(true);
+                }}
+                className="mt-0.5 h-4 w-4 accent-blue-600"
+              />
+              <span className="text-sm text-ink-3">
+                Cet événement est organisé à but non lucratif (association, action caritative…). Après vérification du
+                justificatif par un administrateur, la commission de la plateforme ne s&apos;applique pas.
+              </span>
+            </label>
+            {isNonProfit ? (
+              <>
+                {event.non_profit_document_url && !nonProfitFile ? (
+                  <p className="text-xs text-ink-5">Justificatif déjà fourni. Déposez-en un autre pour le remplacer.</p>
+                ) : null}
+                <DocumentDropzone
+                  onFileSelected={setNonProfitFile}
+                  disabled={submitting}
+                  hint="Glissez le justificatif (statuts, récépissé de déclaration…) ou cliquez"
+                />
+              </>
+            ) : null}
+          </div>
+        ) : !event.is_non_profit ? (
+          <p className="text-sm text-ink-4">Événement non déclaré à but non lucratif.</p>
+        ) : event.non_profit_verified ? (
+          <p className="text-sm text-emerald-600">Justificatif vérifié : la commission de la plateforme ne s&apos;applique pas.</p>
+        ) : event.non_profit_rejected_at ? (
+          <NonProfitResubmit event={event} onSubmitted={() => router.refresh()} />
+        ) : (
+          <p className="text-sm text-ink-4">Justificatif en cours de vérification par l&apos;administration.</p>
+        )}
       </InfoCard>
 
       <div className="flex justify-end gap-3">

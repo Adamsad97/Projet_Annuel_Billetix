@@ -2,7 +2,7 @@
 // (backend/api-gateway/src/event/event.controller.ts). Câblage réel.
 
 import { getApiBaseUrl } from "./base-url";
-import { apiGet, apiPatch, apiPost } from "./client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
 import { ApiError, extractErrorMessage } from "./http-error";
 import type { ApiTicket } from "./tickets";
 
@@ -233,7 +233,9 @@ export const EVENT_COSMETIC_FIELDS = ["description", "poster_url", "access_condi
 // collecte pas access_conditions, alors que c'est justement l'un des 3
 // champs "cosmétiques" modifiables une fois l'événement soumis/publié.
 export interface UpdateEventDto {
-  /** Nouveau justificatif « à but non lucratif » (après un refus). */
+  /** Brouillon : déclaration « à but non lucratif ». */
+  is_non_profit?: boolean;
+  /** Justificatif « à but non lucratif » (brouillon, ou nouveau après un refus). */
   non_profit_document_url?: string;
   title?: string;
   description?: string;
@@ -271,6 +273,15 @@ export function createTicketCategory(
   dto: CreateTicketCategoryDto,
 ): Promise<ApiTicketCategory> {
   return apiPost<ApiTicketCategory>(`/events/${eventId}/categories`, dto);
+}
+
+/** Brouillon uniquement : les billets ne changent plus une fois l'événement soumis. */
+export function updateTicketCategory(categoryId: string, dto: Partial<CreateTicketCategoryDto>): Promise<ApiTicketCategory> {
+  return apiPatch<ApiTicketCategory>(`/events/ticket-categories/${categoryId}`, dto);
+}
+
+export function deleteTicketCategory(categoryId: string): Promise<{ success: boolean }> {
+  return apiDelete<{ success: boolean }>(`/events/ticket-categories/${categoryId}`);
 }
 
 export function submitEventForValidation(eventId: string): Promise<ApiEvent> {
