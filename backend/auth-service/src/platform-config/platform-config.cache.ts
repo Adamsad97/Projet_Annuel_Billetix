@@ -17,6 +17,7 @@ export interface AuthPlatformConfig {
   session_idle_timeout_minutes: number;
   session_refresh_grace_seconds: number;
   session_max_duration_hours: number;
+  agent_invitation_hours: number;
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -29,6 +30,7 @@ const FALLBACK: AuthPlatformConfig = {
   session_idle_timeout_minutes: 30,
   session_refresh_grace_seconds: 30,
   session_max_duration_hours: 12,
+  agent_invitation_hours: 72,
 };
 
 @Injectable()

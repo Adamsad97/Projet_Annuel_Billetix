@@ -46,6 +46,15 @@ export class EmailPayload {
   @IsEmail() @MaxLength(254) email: string;
 }
 
+/** Invitation d'un agent de contrôle par un organisateur (contexte repris dans l'email). */
+export class InviteAgentPayload extends EmailPayload {
+  @IsString() @MaxLength(100) first_name: string;
+  @IsString() @MaxLength(100) last_name: string;
+  @IsString() @MaxLength(200) event_name: string;
+  @IsString() @MaxLength(100) event_date: string;
+  @IsString() @MaxLength(200) organizer_name: string;
+}
+
 /** Résolution par lot : les identifiants mal formés sont tolérés puis ignorés. */
 export class IdsPayload {
   @IsArray() @IsString({ each: true }) @MaxLength(100, { each: true }) ids: string[];

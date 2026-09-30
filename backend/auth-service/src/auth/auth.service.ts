@@ -697,6 +697,68 @@ export class AuthService {
     return { success: true };
   }
 
+  /**
+   * Agent de contrôle invité par un organisateur, par son adresse email.
+   * Compte agent existant : simplement prévenu de sa nouvelle affectation.
+   * Adresse inconnue : compte AGENT créé sans mot de passe, et lien pour le
+   * choisir (le suivre prouve aussi la maîtrise de l'adresse). Adresse d'un
+   * compte d'un autre rôle : refusée — un agent a un compte dédié, pour ne
+   * jamais mêler droits de contrôle et compte acheteur/organisateur.
+   */
+  async inviteAgent(data: {
+    email: string;
+    first_name: string;
+    last_name: string;
+    event_name: string;
+    event_date: string;
+    organizer_name: string;
+  }): Promise<{ user_id: string; created: boolean }> {
+    const email = data.email.trim().toLowerCase();
+    let user = await this.userRepo.findOne({ where: { email } });
+    if (user && user.role !== UserRole.AGENT) {
+      throw new RpcException({
+        statusCode: 409,
+        message:
+          "Cette adresse appartient déjà à un compte acheteur ou organisateur : l'agent de contrôle doit utiliser une adresse dédiée.",
+      });
+    }
+
+    const created = !user;
+    let setPasswordToken: string | undefined;
+    let validHours: number | undefined;
+    if (!user) {
+      const firstName = data.first_name.trim();
+      const lastName = data.last_name.trim();
+      if (!firstName || !lastName) {
+        throw new RpcException({ statusCode: 400, message: "Le prénom et le nom de l'agent sont obligatoires." });
+      }
+      user = await this.userRepo.save(
+        this.userRepo.create({
+          email,
+          password_hash: null,
+          first_name: firstName,
+          last_name: lastName,
+          role: UserRole.AGENT,
+          is_email_verified: false,
+        }),
+      );
+      validHours = (await this.platformConfig.get()).agent_invitation_hours;
+      setPasswordToken = randomUUID();
+      await this.redis.set(`reset_password:${setPasswordToken}`, user.id, "EX", validHours * 3600);
+    }
+
+    this.notifClient.emit("notification.agent_invitation", {
+      email: user.email,
+      firstName: user.first_name,
+      eventName: data.event_name,
+      eventDate: data.event_date,
+      organizerName: data.organizer_name,
+      ...(setPasswordToken ? { token: setPasswordToken, validHours } : {}),
+    });
+
+    return { user_id: user.id, created };
+  }
+
   async forgotPassword(dto: ForgotPasswordDto) {
     const user = await this.userRepo.findOne({ where: { email: dto.email } });
     // Ne pas révéler si l'email existe ou non
@@ -739,6 +801,12 @@ export class AuthService {
     await this.assertPasswordPolicy(dto.new_password, user);
 
     user.password_hash = await bcrypt.hash(dto.new_password, BCRYPT_ROUNDS);
+    // Lien reçu par email et suivi : l'adresse est confirmée (cas d'un agent
+    // invité, dont le compte est créé sans vérification préalable).
+    if (!user.is_email_verified) {
+      user.is_email_verified = true;
+      user.email_verified_at = new Date();
+    }
     await this.userRepo.save(user);
     await this.redis.del(`reset_password:${dto.token}`);
 

@@ -940,4 +940,49 @@ describe("AuthService", () => {
       expect(repo.findBy).not.toHaveBeenCalled();
     });
   });
+
+  describe("inviteAgent — agent de contrôle invité par email", () => {
+    const invite = {
+      email: " Agent.Porte@Example.com ",
+      first_name: "Awa",
+      last_name: "Diallo",
+      event_name: "Concert",
+      event_date: "samedi 24 octobre 2026",
+      organizer_name: "Les Nuits",
+    };
+    const notif = () => (service as unknown as { notifClient: { emit: jest.Mock } }).notifClient;
+
+    it("adresse inconnue : crée un compte AGENT sans mot de passe et envoie le lien pour le choisir", async () => {
+      repo.findOne.mockResolvedValue(null);
+      repo.create.mockImplementation((u: object) => u);
+      repo.save.mockImplementation((u: object) => Promise.resolve({ id: "agent-1", ...u }));
+      platformConfig.get.mockResolvedValue({ agent_invitation_hours: 72 });
+
+      await expect(service.inviteAgent(invite)).resolves.toEqual({ user_id: "agent-1", created: true });
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ email: "agent.porte@example.com", role: UserRole.AGENT, password_hash: null, is_email_verified: false }),
+      );
+      expect(redis.set).toHaveBeenCalledWith(expect.stringMatching(/^reset_password:/), "agent-1", "EX", 72 * 3600);
+      expect(notif().emit).toHaveBeenCalledWith(
+        "notification.agent_invitation",
+        expect.objectContaining({ token: expect.any(String), eventName: "Concert" }),
+      );
+    });
+
+    it("compte agent existant : affecté et prévenu, sans nouveau lien", async () => {
+      repo.findOne.mockResolvedValue({ id: "agent-2", email: "agent.porte@example.com", first_name: "Awa", role: UserRole.AGENT });
+
+      await expect(service.inviteAgent(invite)).resolves.toEqual({ user_id: "agent-2", created: false });
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(redis.set).not.toHaveBeenCalled();
+      const [, sent] = notif().emit.mock.calls.find(([pattern]) => pattern === "notification.agent_invitation")!;
+      expect(sent).not.toHaveProperty("token");
+    });
+
+    it("refuse l'adresse d'un compte acheteur ou organisateur", async () => {
+      repo.findOne.mockResolvedValue({ id: "buyer-1", role: UserRole.BUYER });
+      await expect(service.inviteAgent(invite)).rejects.toMatchObject({ error: { statusCode: 409 } });
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+  });
 });
