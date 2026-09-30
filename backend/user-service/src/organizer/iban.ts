@@ -11,8 +11,8 @@ export const IBAN_LENGTHS: Record<string, number> = {
   NO: 15, OM: 23, PK: 24, PL: 28, PS: 29, PT: 25, QA: 29, RO: 24, RS: 22, RU: 33, SA: 24, SC: 31,
   SD: 18, SE: 24, SI: 19, SK: 24, SM: 27, SO: 23, ST: 25, SV: 28, TL: 23, TN: 24, TR: 26, UA: 29,
   VA: 22, VG: 24, XK: 20, YE: 30,
-  // Hors registre SWIFT (UEMOA, CEMAC, Maghreb…)
-  AO: 25, BF: 28, BJ: 28, CF: 27, CG: 27, CI: 28, CM: 27, CV: 25, DZ: 26, GA: 27, GQ: 27, GW: 25,
+  // Hors registre SWIFT (UEMOA, CEMAC, Maghreb, Iran, Honduras…)
+  AO: 25, HN: 28, IR: 26, BF: 28, BJ: 28, CF: 27, CG: 27, CI: 28, CM: 27, CV: 25, DZ: 26, GA: 27, GQ: 27, GW: 25,
   KM: 27, MA: 28, MG: 27, ML: 28, MZ: 25, NE: 28, SN: 28, TD: 27, TG: 28,
 };
 

@@ -21,3 +21,10 @@ describe('contrôle des IBAN', () => {
     expect(ibanError('7630006000011234567890189')).toMatch(/2 lettres/);
   });
 });
+
+describe('pays hors registre SWIFT', () => {
+  it('connaît la longueur des IBAN iraniens et honduriens', () => {
+    expect(ibanError('IR0000000000000000000000000')).toMatch(/IR comporte 26 caractères/);
+    expect(ibanError('HN00000000000000000000000')).toMatch(/HN comporte 28 caractères/);
+  });
+});
