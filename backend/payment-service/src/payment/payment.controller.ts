@@ -5,7 +5,9 @@ import { PaypalProvider } from '../providers/paypal.provider';
 import { WaveProvider } from '../providers/wave.provider';
 import { StripeService } from '../stripe/stripe.service';
 import { PaymentService } from './payment.service';
-import { ConnectOnboardingPayload, CreateIntentPayload, OrangeMoneyCallbackPayload, OrderIdPayload, PaypalWebhookPayload, RefundPayload, StripeWebhookPayload, WaveWebhookPayload } from '../common/payloads';
+import { ConnectAccountPayload, ConnectOnboardingPayload, CreateIntentPayload, OrangeMoneyCallbackPayload, OrderIdPayload, PaypalWebhookPayload, RefundPayload, StripeWebhookPayload, WaveWebhookPayload } from '../common/payloads';
+import type Stripe from 'stripe';
+import { connectAccountStatus } from '../stripe/connect-status';
 
 @Controller()
 export class PaymentController {
@@ -47,6 +49,21 @@ export class PaymentController {
     return { account_id: accountId, url };
   }
 
+  /**
+   * État du compte Connect lu directement chez Stripe : ne dépend pas du
+   * webhook account.updated, qui peut ne jamais arriver (poste de
+   * développement sans tunnel, webhook mal configuré en production).
+   */
+  @MessagePattern('payment.get_connect_status')
+  async getConnectStatus(@Payload() data: ConnectAccountPayload) {
+    return connectAccountStatus(await this.stripe.retrieveAccount(data.account_id));
+  }
+
+  @MessagePattern('payment.create_connect_login_link')
+  async createConnectLoginLink(@Payload() data: ConnectAccountPayload) {
+    return { url: await this.stripe.createLoginLink(data.account_id) };
+  }
+
   @MessagePattern('payment.create_intent')
   createIntent(@Payload() data: CreateIntentPayload) {
     return this.paymentService.createIntent(data);
@@ -68,15 +85,11 @@ export class PaymentController {
     // Stripe renvoie cet événement à chaque changement d'état du compte
     // connecté (formulaire complété, vérification d'identité, etc.).
     if (event.type === 'account.updated') {
-      const account = event.data.object as {
-        id: string;
-        details_submitted: boolean;
-        charges_enabled: boolean;
-      };
+      const account = event.data.object as Stripe.Account;
       await firstValueFrom(
         this.userClient.send('user.set_stripe_connect_onboarded', {
           account_id: account.id,
-          onboarded: account.details_submitted && account.charges_enabled,
+          onboarded: connectAccountStatus(account).onboarded,
         }),
       );
       return { received: true };

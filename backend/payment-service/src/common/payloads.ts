@@ -5,6 +5,7 @@ import {
   IsEmail,
   IsEnum,
   IsIn,
+  Matches,
   IsInt,
   IsNumber,
   IsObject,
@@ -58,6 +59,10 @@ export class ConnectOnboardingPayload extends OrganizerPayload {
   @IsOptional() @IsString() @MaxLength(100) existing_account_id: string | null;
   @IsString() @MaxLength(1000) refresh_url: string;
   @IsString() @MaxLength(1000) return_url: string;
+}
+
+export class ConnectAccountPayload {
+  @Matches(/^acct_[A-Za-z0-9]+$/) @MaxLength(100) account_id: string;
 }
 
 export class StripeWebhookPayload {

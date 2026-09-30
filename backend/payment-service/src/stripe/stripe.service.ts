@@ -94,6 +94,15 @@ export class StripeService implements OnModuleInit {
     return this.stripe.accounts.retrieve(accountId);
   }
 
+  /**
+   * Lien à usage unique vers le tableau de bord Express de l'organisateur,
+   * où il modifie lui-même son compte bancaire (jamais saisi chez nous).
+   */
+  async createLoginLink(accountId: string): Promise<string> {
+    const link = await this.stripe.accounts.createLoginLink(accountId);
+    return link.url;
+  }
+
   constructWebhookEvent(payload: Buffer, signature: string): Stripe.Event {
     return this.stripe.webhooks.constructEvent(
       payload,
