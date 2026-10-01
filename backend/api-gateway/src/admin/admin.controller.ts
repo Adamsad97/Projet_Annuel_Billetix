@@ -35,6 +35,7 @@ import {
   CancellationRequestsQueryDto,
   ChangeRoleDto, CreateCategoryForOrganizerDto, CreateEventForOrganizerDto, ForceRefundDto, OrganizerRefDto, ResolveDisputeDto, SendNewsletterDto, UpdateSettingDto, VerifyNonProfitDto } from "./dto/admin-actions.dto";
 import { UuidPipe } from "../common/pipes/uuid.pipe";
+import { SetEventVatRateDto } from "../event/dto/vat-rate.dto";
 import { CreditNoteIssuer } from "../credit-notes/credit-note-issuer.service";
 import { DisputeWorkflow } from "../disputes/dispute-workflow.service";
 
@@ -1099,6 +1100,27 @@ export class AdminController {
     )) as { id: string; title: string; organizer_id: string };
     this.audit(user, req, "CUSTOM", "EVENT", id, `Événement masqué au public : ${dto?.reason ?? ""}`);
     this.notifyOrganizerOfEvent(result, "HIDDEN", dto?.reason);
+    return result;
+  }
+
+  @Post("events/:id/vat-rate")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Corriger le taux de TVA d'un événement avant sa publication (ADMIN)" })
+  async setEventVatRate(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("id", UuidPipe) id: string,
+    @Body() dto: SetEventVatRateDto,
+  ) {
+    const result = await firstValueFrom(
+      this.eventClient.send<{ vat_rate: string; vat_rate_label: string | null }>("event.set_vat_rate", {
+        id,
+        admin_id: user.sub,
+        vat_rate_id: dto.vat_rate_id,
+      }),
+    );
+    const percent = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(Number(result.vat_rate) * 100);
+    this.audit(user, req, "CUSTOM", "EVENT", id, `Taux de TVA corrigé : ${percent} %${result.vat_rate_label ? ` — ${result.vat_rate_label}` : ""}`);
     return result;
   }
 

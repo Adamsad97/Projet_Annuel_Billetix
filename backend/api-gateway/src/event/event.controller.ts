@@ -52,6 +52,7 @@ import { findScheduleConflict, type ScheduledEvent } from "../ticket/agent-sched
 import { formatEventDate, formatEventSchedule } from "../common/event-date";
 import { AdminRecipients } from "../admin-alerts/admin-recipients.service";
 import { PeriodCountsDto } from "./dto/period-counts.dto";
+import { CreateVatRateDto, UpdateVatRateDto } from "./dto/vat-rate.dto";
 import { toPublicFilters, type PublicFilterQuery } from "./public-filters";
 
 /** Demande d'annulation ou de report telle que renvoyée par event-service. */
@@ -75,6 +76,17 @@ interface ReferenceItem {
   label: string;
   code?: string;
 }
+
+/** Taux de TVA de la liste de l'admin (fraction : « 0.0550 » pour 5,5 %). */
+interface VatRateItem {
+  id: string;
+  label: string;
+  rate: string | number;
+}
+
+/** « 5,5 % — Spectacles vivants » pour le journal d'audit. */
+const describeVat = (item: VatRateItem) =>
+  `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(Number(item.rate) * 100)} % — ${item.label}`;
 
 /** « Spectacle (SPECTACLE) » pour le journal d'audit. */
 const describe = (item: ReferenceItem) => (item.code ? `${item.label} (${item.code})` : item.label);
@@ -203,6 +215,55 @@ export class EventController {
   }
 
   @Public()
+  @Get("vat-rates")
+  @ApiOperation({ summary: "Taux de TVA proposés à la création d'un événement" })
+  listVatRates() {
+    return firstValueFrom(this.eventClient.send("event.vat_rate.list", {}));
+  }
+
+  @Get("vat-rates/all")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Tous les taux de TVA, désactivés compris (ADMIN)" })
+  listAllVatRates() {
+    return firstValueFrom(this.eventClient.send("event.vat_rate.list_all", {}));
+  }
+
+  @Post("vat-rates")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Ajouter un taux de TVA (ADMIN)" })
+  async createVatRate(@CurrentUser() user: JwtPayload, @Req() req: Request, @Body() dto: CreateVatRateDto) {
+    const created = await firstValueFrom(this.eventClient.send<VatRateItem>("event.vat_rate.create", { dto }));
+    this.auditVatRate(user, req, created.id, `Taux de TVA ajouté : ${describeVat(created)}`);
+    return created;
+  }
+
+  @Patch("vat-rates/:vatRateId")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Modifier un taux de TVA (ADMIN)" })
+  async updateVatRate(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("vatRateId", UuidPipe) vatRateId: string,
+    @Body() dto: UpdateVatRateDto,
+  ) {
+    const updated = await firstValueFrom(this.eventClient.send<VatRateItem>("event.vat_rate.update", { id: vatRateId, dto }));
+    this.auditVatRate(user, req, vatRateId, `Taux de TVA modifié : ${describeVat(updated)}`);
+    return updated;
+  }
+
+  @Delete("vat-rates/:vatRateId")
+  @Roles("ADMIN")
+  @ApiOperation({ summary: "Supprimer un taux de TVA (ADMIN) — les événements gardent leur taux" })
+  async deleteVatRate(@CurrentUser() user: JwtPayload, @Req() req: Request, @Param("vatRateId", UuidPipe) vatRateId: string) {
+    const existing = await firstValueFrom(this.eventClient.send<VatRateItem[]>("event.vat_rate.list_all", {}))
+      .then((list) => list.find((item) => item.id === vatRateId))
+      .catch(() => undefined);
+    const result = await firstValueFrom(this.eventClient.send("event.vat_rate.delete", { id: vatRateId }));
+    this.auditVatRate(user, req, vatRateId, `Taux de TVA supprimé${existing ? ` : ${describeVat(existing)}` : ""}`);
+    return result;
+  }
+
+  @Public()
   @Get("ticket-tier-types")
   @ApiOperation({ summary: "Noms de catégorie de billet actifs (gérés depuis l'espace Admin)" })
   listTicketTierTypes() {
@@ -253,6 +314,22 @@ export class EventController {
     return result;
   }
 
+  /** Journal d'audit des taux de TVA (paramètre de la plateforme). */
+  private auditVatRate(user: JwtPayload, req: Request, entityId: string, reason: string): void {
+    this.adminClient
+      .send("admin.log_action", {
+        action: "CUSTOM",
+        entity_type: "SETTING",
+        entity_id: entityId,
+        performed_by: user.sub,
+        performed_by_email: user.email,
+        reason,
+        metadata: null,
+        ip_address: ((req.headers["x-forwarded-for"] as string)?.split(",")[0] ?? req.ip ?? "").trim(),
+      })
+      .subscribe({ error: () => undefined });
+  }
+
   /** Journal d'audit des référentiels de l'admin (sans bloquer l'action). */
   private auditReference(user: JwtPayload, req: Request, entityId: string, reason: string): void {
     this.adminClient
@@ -277,11 +354,10 @@ export class EventController {
    */
   @Get("pricing-policy")
   @Roles("ORGANIZER", "ADMIN")
-  @ApiOperation({ summary: "Taux appliqués au prix d'un billet (TVA, commission, frais)" })
+  @ApiOperation({ summary: "Taux appliqués au prix d'un billet (commission, frais) — la TVA est celle de l'événement" })
   async getPricingPolicy() {
     const config = await firstValueFrom(
       this.adminClient.send<{
-        tva_rate: number;
         commission_standard_percent: number;
         commission_large_event_percent: number;
         large_event_threshold: number;
@@ -291,7 +367,6 @@ export class EventController {
       }>("admin.get_platform_config", {}),
     );
     return {
-      tva_rate: config.tva_rate,
       commission_standard_percent: config.commission_standard_percent,
       commission_large_event_percent: config.commission_large_event_percent,
       large_event_threshold: config.large_event_threshold,

@@ -24,6 +24,8 @@ interface IssuedCreditNote {
     billing_city: string | null;
     billing_postal_code: string | null;
     billing_country: string | null;
+    /** Taux de TVA de la commande (fraction). */
+    vat_rate?: string | number;
   };
 }
 
@@ -63,7 +65,6 @@ export class CreditNoteIssuer {
 
     const config = await firstValueFrom(
       this.adminClient.send<{
-        tva_rate: number;
         platform_legal_name: string;
         platform_siret: string;
         platform_vat_number: string;
@@ -78,7 +79,8 @@ export class CreditNoteIssuer {
       invoice_reference: order.reference,
       reason: note.reason,
       event_name: order.event_name,
-      tva_rate: config.tva_rate,
+      // Taux de la facture d'origine (celui de la commande).
+      tva_rate: Number(order.vat_rate ?? 0.2),
       billing_first_name: order.billing_first_name,
       billing_last_name: order.billing_last_name,
       billing_email: order.billing_email,

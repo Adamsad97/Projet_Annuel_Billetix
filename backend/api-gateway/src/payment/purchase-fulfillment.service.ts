@@ -99,7 +99,6 @@ export class PurchaseFulfillmentService {
 
     const platformConfig = await firstValueFrom(
       this.adminClient.send<{
-        tva_rate: number;
         stripe_fee_percent: number;
         stripe_fee_fixed_eur: number;
         paypal_fee_percent: number;
@@ -116,7 +115,6 @@ export class PurchaseFulfillmentService {
         ticket_pdf_wait_delay_seconds: number;
       }>("admin.get_platform_config", {}),
     ).catch(() => ({
-      tva_rate: 0.2,
       stripe_fee_percent: 2.9,
       stripe_fee_fixed_eur: 0.3,
       paypal_fee_percent: 3.4,
@@ -282,7 +280,6 @@ export class PurchaseFulfillmentService {
     items: Array<Record<string, any>>,
     orderId: string,
     platformConfig: {
-      tva_rate: number;
       platform_legal_name: string;
       platform_siret: string;
       platform_vat_number: string;
@@ -293,7 +290,8 @@ export class PurchaseFulfillmentService {
       order_id: orderId,
       reference: order.reference,
       paid_at: new Date().toISOString(),
-      tva_rate: platformConfig.tva_rate,
+      // Taux de l'événement, recopié sur la commande à l'achat.
+      tva_rate: Number(order.vat_rate ?? 0.2),
       billing_first_name: order.billing_first_name,
       billing_last_name: order.billing_last_name,
       billing_email: order.billing_email,

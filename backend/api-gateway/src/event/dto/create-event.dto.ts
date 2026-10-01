@@ -12,6 +12,7 @@ import {
   Min,
   MinLength,
   ValidateIf,
+  IsUUID,
 } from "class-validator";
 
 export enum RefundPolicy {
@@ -73,6 +74,10 @@ export class CreateEventDto {
 
   @ApiPropertyOptional() @IsOptional()
   venue_latitude?: number;
+
+  /** Taux de TVA choisi dans la liste de l'admin (GET /events/vat-rates) ; absent : taux par défaut. */
+  @ApiPropertyOptional() @IsOptional() @IsUUID()
+  vat_rate_id?: string;
 
   @ApiPropertyOptional() @IsOptional()
   venue_longitude?: number;

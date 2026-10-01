@@ -11,6 +11,7 @@ import {
   Min,
   MinLength,
   ValidateIf,
+  IsUUID,
 } from "class-validator";
 import { RefundPolicy } from "./create-event.dto";
 
@@ -71,6 +72,10 @@ export class UpdateEventDto {
 
   @ApiPropertyOptional() @IsOptional()
   venue_longitude?: number;
+
+  /** Taux de TVA choisi dans la liste de l'admin (GET /events/vat-rates) ; absent : taux par défaut. */
+  @ApiPropertyOptional() @IsOptional() @IsUUID()
+  vat_rate_id?: string;
 
   // require_tld: false — cf. create-event.dto.ts (URLs MinIO en localhost).
   @ApiPropertyOptional() @IsUrl({ require_tld: false }) @IsOptional()
