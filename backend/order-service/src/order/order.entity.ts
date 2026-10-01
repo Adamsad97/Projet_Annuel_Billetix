@@ -15,12 +15,8 @@ export enum OrderStatus {
 }
 
 export enum PaymentMethod {
+  // Carte bancaire, Apple Pay ou Google Pay : tous passent par Stripe.
   STRIPE = 'STRIPE',
-  PAYPAL = 'PAYPAL',
-  APPLE_PAY = 'APPLE_PAY',
-  GOOGLE_PAY = 'GOOGLE_PAY',
-  ORANGE_MONEY = 'ORANGE_MONEY',
-  WAVE = 'WAVE',
   // Commande à 0 € : réservation confirmée sans aucun prestataire de paiement.
   FREE = 'FREE',
 }
