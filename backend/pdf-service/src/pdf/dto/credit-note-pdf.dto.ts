@@ -1,4 +1,4 @@
-import { IsDateString, IsEmail, IsNumber, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsDateString, IsNumber, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
 /** Avoir d'une commande remboursée (tout ou partie de sa facture). */
 export class CreditNotePdfDto {
@@ -32,9 +32,6 @@ export class CreditNotePdfDto {
 
   @IsString()
   billing_last_name: string;
-
-  @IsEmail()
-  billing_email: string;
 
   @IsOptional()
   @IsString()

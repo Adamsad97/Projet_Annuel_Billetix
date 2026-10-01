@@ -28,7 +28,6 @@ describe('InvoicePdfService', () => {
       tva_rate: 0.2,
       billing_first_name: 'Éloïse',
       billing_last_name: 'Martin',
-      billing_email: 'eloise@example.com',
       billing_address_line1: '1 rue Test',
       billing_city: 'Paris',
       billing_postal_code: '75001',
@@ -50,6 +49,11 @@ describe('InvoicePdfService', () => {
       expect(html).toContain('Simple &amp; sûr !');
       expect(html).toContain('<svg viewBox="0 0 44 34"');
       expect(html).not.toMatch(/<img|https?:\/\/(?!www\.w3\.org)/);
+    });
+
+    it("n'affiche jamais d'adresse email (sécurité), même si la passerelle en transmet une", () => {
+      const html = buildHtml({ ...data, billing_email: 'eloise@example.com' } as InvoicePdfData);
+      expect(html).not.toContain('@');
     });
 
     it('utilise la couleur de marque du site, plus l’ancien violet', () => {
@@ -92,7 +96,6 @@ describe('InvoicePdfService', () => {
       tva_rate: 0.2,
       billing_first_name: 'Awa',
       billing_last_name: 'Diallo',
-      billing_email: 'awa@example.com',
       billing_address_line1: '1 rue de Paris',
       billing_city: 'Paris',
       billing_postal_code: '75001',
@@ -115,6 +118,11 @@ describe('InvoicePdfService', () => {
       expect(html).toContain('-120.00 €');
       expect(html).toContain('-19.60 €');
       expect(html).toContain('Motif :</strong> Événement annulé');
+    });
+
+    it("n'affiche jamais d'adresse email (sécurité)", () => {
+      const html = service.buildCreditNoteHtml({ ...note, billing_email: 'awa@example.com' } as typeof note);
+      expect(html).not.toContain('@');
     });
 
     it("échappe les champs saisis (nom d'événement)", () => {

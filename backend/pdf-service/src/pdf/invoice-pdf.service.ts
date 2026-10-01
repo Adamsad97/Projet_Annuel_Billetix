@@ -21,7 +21,6 @@ export interface InvoicePdfData {
 
   billing_first_name: string;
   billing_last_name: string;
-  billing_email: string;
   billing_address_line1: string;
   billing_address_line2?: string | null;
   billing_city: string;
@@ -195,7 +194,6 @@ export class InvoicePdfService {
       <div class="party-label">Client</div>
       ${this.esc(note.billing_first_name)} ${this.esc(note.billing_last_name)}<br/>
       ${address.map((line) => this.esc(String(line)) + '<br/>').join('')}
-      ${this.esc(note.billing_email)}
     </div>
   </div>
 
@@ -311,8 +309,7 @@ export class InvoicePdfService {
       ${this.esc(invoiceData.billing_address_line1)}<br/>
       ${invoiceData.billing_address_line2 ? this.esc(invoiceData.billing_address_line2) + '<br/>' : ''}
       ${this.esc(invoiceData.billing_postal_code)} ${this.esc(invoiceData.billing_city)}<br/>
-      ${this.esc(invoiceData.billing_country)}<br/>
-      ${this.esc(invoiceData.billing_email)}
+      ${this.esc(invoiceData.billing_country)}
     </div>
   </div>
 

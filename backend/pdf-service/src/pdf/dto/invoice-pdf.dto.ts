@@ -3,7 +3,6 @@ import {
   ArrayMinSize,
   IsArray,
   IsDateString,
-  IsEmail,
   IsInt,
   IsNumber,
   IsOptional,
@@ -59,9 +58,6 @@ export class InvoicePdfDto {
 
   @IsString()
   billing_last_name: string;
-
-  @IsEmail()
-  billing_email: string;
 
   @IsString()
   billing_address_line1: string;
