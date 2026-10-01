@@ -117,10 +117,10 @@ export function CheckoutFlow() {
           Votre panier est vide ou votre réservation a expiré.
         </p>
         <Link
-          href="/catalogue"
+          href="/evenements"
           className={buttonClass("primary", "mt-4 inline-flex rounded-full px-5 py-2.5 text-sm")}
         >
-          Retour au catalogue
+          Voir les événements
         </Link>
       </div>
     );

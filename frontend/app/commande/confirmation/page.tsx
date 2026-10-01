@@ -10,7 +10,7 @@ export default async function OrderConfirmationPage({
 
   return (
     <div className="flex flex-1 flex-col bg-page">
-      <Navbar active="/catalogue" />
+      <Navbar active="/evenements" />
 
       {!order_id ? (
         <main className="flex flex-1 items-center justify-center px-6 py-10 text-center text-sm text-ink-5">

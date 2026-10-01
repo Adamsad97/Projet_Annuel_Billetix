@@ -46,7 +46,7 @@ export default function AdminDashboardPage() {
   function handleApprove(id: string) {
     setDialog({
       title: "Valider cet événement ?",
-      message: "Il sera publié immédiatement sur le catalogue.",
+      message: "Il sera publié immédiatement et visible par tous.",
       confirmLabel: "✓ Valider",
       onConfirm: async () => {
         setBusyId(id);

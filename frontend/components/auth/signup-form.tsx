@@ -31,7 +31,7 @@ const accountTypes = [
     id: "buyer",
     icon: "🎫",
     label: "Acheter des billets",
-    description: "Accès au catalogue",
+    description: "Accès aux événements",
   },
   {
     id: "organizer",

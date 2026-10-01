@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
   },
 
+  // Ancienne adresse de la liste des événements : liens déjà partagés
+  // redirigés (filtres conservés, la requête suit la redirection).
+  async redirects() {
+    return [{ source: '/catalogue', destination: '/evenements', permanent: true }];
+  },
+
   // Optimisation des images
   images: {
     remotePatterns: [

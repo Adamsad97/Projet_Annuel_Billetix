@@ -39,7 +39,7 @@ export default async function Home() {
 
   return (
     <div className="flex flex-1 flex-col bg-page">
-      <Navbar active="/catalogue" />
+      <Navbar active="/evenements" />
       <main className="flex-1">
         <Hero />
         <FeaturedEvents events={featured} />

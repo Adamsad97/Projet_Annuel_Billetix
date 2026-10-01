@@ -73,7 +73,7 @@ export function FeaturedEvents({ events: initialEvents }: { events: FeaturedEven
         <h2 className="text-2xl font-bold text-ink-1">À la une</h2>
         <div className="flex items-center gap-3">
           <Link
-            href={`/catalogue${filtersToUrl(search.filters)}`}
+            href={`/evenements${filtersToUrl(search.filters)}`}
             className="mr-1 hidden text-sm font-medium text-link transition-colors hover:text-link-hover sm:inline"
           >
             Voir tout →

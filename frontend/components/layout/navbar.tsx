@@ -25,7 +25,7 @@ import { buttonClass } from "@/components/ui/button";
 // ORGANIZER ne parcourt pas le catalogue comme un acheteur). `allowGuest` : visible sans être connecté
 // (vitrine publique) ; `roles` s'applique seulement une fois connecté.
 const navLinks: Array<{ href: string; label: string; allowGuest?: boolean; roles: UserRole[] }> = [
-  { href: "/catalogue", label: "Catalogue", allowGuest: true, roles: ["BUYER"] },
+  { href: "/evenements", label: "Événements", allowGuest: true, roles: ["BUYER"] },
   // Revente réservée aux acheteurs connectés : plus visible des visiteurs.
   { href: "/revente", label: "Revente", roles: ["BUYER"] },
   { href: "/profil/billets", label: "Mes billets", roles: ["BUYER"] },
@@ -37,7 +37,7 @@ const navLinks: Array<{ href: string; label: string; allowGuest?: boolean; roles
   { href: "/admin", label: "Back-office", roles: ["ADMIN", "SUPER_ADMIN"] },
 ];
 
-export function Navbar({ active = "/catalogue" }: { active?: string }) {
+export function Navbar({ active = "/evenements" }: { active?: string }) {
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null | undefined>(undefined);
 

@@ -164,7 +164,7 @@ export default async function EventDetailPage({
 
   return (
     <div className="flex flex-1 flex-col bg-page">
-      <Navbar active="/catalogue" />
+      <Navbar active="/evenements" />
 
       <main className={`flex-1 ${showMobileBar ? "pb-24 md:pb-0" : ""}`}>
         <EventHeader event={event} purchasable={purchasable} />

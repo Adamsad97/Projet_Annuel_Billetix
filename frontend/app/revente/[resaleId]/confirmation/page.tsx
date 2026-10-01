@@ -46,7 +46,7 @@ export default function ResaleConfirmationPage({
 
   return (
     <div className="flex flex-1 flex-col bg-page">
-      <Navbar active="/catalogue" />
+      <Navbar active="/evenements" />
 
       <main className="flex-1 px-6 py-10">
         {status === "loading" ? (

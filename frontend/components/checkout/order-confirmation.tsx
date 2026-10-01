@@ -131,10 +131,10 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
               Voir mes billets
             </Link>
             <Link
-              href="/catalogue"
+              href="/evenements"
               className={buttonClass("secondary", "flex-1 rounded-full py-3 text-sm")}
             >
-              Retour au catalogue
+              Voir les événements
             </Link>
           </div>
         </div>

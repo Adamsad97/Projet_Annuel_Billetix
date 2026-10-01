@@ -84,7 +84,7 @@ export function EventAdminControls({ event, onChanged }: { event: ApiAdminEvent;
     setDialog({
       title: "Masquer l'événement au public",
       message:
-        "L'événement disparaît du catalogue, sa page publique devient indisponible et les ventes sont bloquées. Les billets déjà vendus restent valables.",
+        "L'événement disparaît de la liste des événements, sa page publique devient indisponible et les ventes sont bloquées. Les billets déjà vendus restent valables.",
       confirmLabel: "Masquer",
       danger: true,
       showReason: true,

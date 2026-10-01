@@ -470,7 +470,7 @@ export default function DashboardEventDetailPage({
                       <p className="font-semibold text-ink-1">Événement masqué au public par l&apos;administration</p>
                       {event.hidden_reason ? <p className="mt-1">« {event.hidden_reason} »</p> : null}
                       <p className="mt-1 text-xs text-ink-4">
-                        Il n&apos;apparaît plus dans le catalogue, sa page publique est indisponible et les ventes sont bloquées.
+                        Il n&apos;apparaît plus dans la liste des événements, sa page publique est indisponible et les ventes sont bloquées.
                         Les billets déjà vendus restent valables.
                       </p>
                     </div>
