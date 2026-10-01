@@ -73,6 +73,8 @@ export enum AuditEntityType {
   PAYOUT  = 'PAYOUT',
   DISPUTE = 'DISPUTE',
   SETTING = 'SETTING',
+  // Référentiels de l'admin : catégories d'événement et noms de billets.
+  CATEGORY = 'CATEGORY',
 }
 
 @Entity({ name: 'audit_logs', schema: 'admin_logs' })
