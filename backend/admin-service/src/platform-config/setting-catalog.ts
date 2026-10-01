@@ -66,12 +66,6 @@ export const SETTING_SECTIONS: SettingSection[] = [
     keys: [
       'stripe_fee_percent',
       'stripe_fee_fixed_eur',
-      'paypal_fee_percent',
-      'paypal_fee_fixed_eur',
-      'orange_money_fee_percent',
-      'orange_money_fee_fixed_eur',
-      'wave_fee_percent',
-      'wave_fee_fixed_eur',
     ],
   },
   {

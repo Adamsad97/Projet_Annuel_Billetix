@@ -16,12 +16,6 @@ export interface PlatformConfig {
   platform_bic: string;
   stripe_fee_percent: number;
   stripe_fee_fixed_eur: number;
-  paypal_fee_percent: number;
-  paypal_fee_fixed_eur: number;
-  orange_money_fee_percent: number;
-  orange_money_fee_fixed_eur: number;
-  wave_fee_percent: number;
-  wave_fee_fixed_eur: number;
   stock_reservation_ttl_seconds: number;
   cancel_deadline_hours: number;
   postponement_refund_days: number;
@@ -67,7 +61,17 @@ export interface PlatformConfig {
 //    n'existe plus de QR fixe à autoriser.
 // agent_session_hours : la « session » d'agent n'a jamais servi à l'écran de scan.
 // tva_rate : remplacé par la liste des taux de TVA (event-service), un taux par événement.
-const OBSOLETE_KEYS = ['ticket_qr_rotation_enabled', 'agent_session_hours', 'tva_rate'];
+const OBSOLETE_KEYS = [
+  'ticket_qr_rotation_enabled',
+  'agent_session_hours',
+  'tva_rate',
+  'paypal_fee_percent',
+  'paypal_fee_fixed_eur',
+  'orange_money_fee_percent',
+  'orange_money_fee_fixed_eur',
+  'wave_fee_percent',
+  'wave_fee_fixed_eur',
+];
 
 const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'free_ticket_fee_eur',            value: '0.50',          type: 'number',  description: 'Frais fixes par billet gratuit (€)' },
@@ -78,12 +82,6 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'iban_change_payout_hold_hours',  value: '72',            type: 'number',  description: 'Reversements suspendus après un changement d\'IBAN (heures), le temps que l\'organisateur réagisse à l\'email d\'alerte' },
   { key: 'stripe_fee_percent',             value: '2.9',           type: 'number',  description: 'Taux de frais Stripe (%)' },
   { key: 'stripe_fee_fixed_eur',           value: '0.30',          type: 'number',  description: 'Frais fixe Stripe par transaction (€)' },
-  { key: 'paypal_fee_percent',             value: '3.4',           type: 'number',  description: 'Taux de frais PayPal (%)' },
-  { key: 'paypal_fee_fixed_eur',           value: '0.35',          type: 'number',  description: 'Frais fixe PayPal par transaction (€)' },
-  { key: 'orange_money_fee_percent',       value: '2.0',           type: 'number',  description: 'Taux de frais Orange Money (%)' },
-  { key: 'orange_money_fee_fixed_eur',     value: '0',             type: 'number',  description: 'Frais fixe Orange Money par transaction (€)' },
-  { key: 'wave_fee_percent',               value: '1.0',           type: 'number',  description: 'Taux de frais Wave (%)' },
-  { key: 'wave_fee_fixed_eur',             value: '0',             type: 'number',  description: 'Frais fixe Wave par transaction (€)' },
   { key: 'stock_reservation_ttl_seconds',  value: '600',           type: 'number',  description: 'Durée de validité de la réservation de stock (secondes)' },
   { key: 'cancel_deadline_hours',          value: '24',            type: 'number',  description: 'Délai avant l\'événement au-delà duquel l\'annulation est bloquée (heures)' },
   { key: 'postponement_refund_days',       value: '14',            type: 'number',  description: 'Délai pour demander le remboursement après l’annonce de la nouvelle date d’un événement reporté (jours)' },
@@ -156,12 +154,6 @@ export class PlatformConfigService implements OnModuleInit {
       iban_change_payout_hold_hours:  parseInt(map.iban_change_payout_hold_hours ?? '72'),
       stripe_fee_percent:             parseFloat(map.stripe_fee_percent ?? '2.9'),
       stripe_fee_fixed_eur:           parseFloat(map.stripe_fee_fixed_eur ?? '0.30'),
-      paypal_fee_percent:             parseFloat(map.paypal_fee_percent ?? '3.4'),
-      paypal_fee_fixed_eur:           parseFloat(map.paypal_fee_fixed_eur ?? '0.35'),
-      orange_money_fee_percent:       parseFloat(map.orange_money_fee_percent ?? '2.0'),
-      orange_money_fee_fixed_eur:     parseFloat(map.orange_money_fee_fixed_eur ?? '0'),
-      wave_fee_percent:               parseFloat(map.wave_fee_percent ?? '1.0'),
-      wave_fee_fixed_eur:             parseFloat(map.wave_fee_fixed_eur ?? '0'),
       stock_reservation_ttl_seconds:  parseInt(map.stock_reservation_ttl_seconds ?? '600'),
       cancel_deadline_hours:          parseInt(map.cancel_deadline_hours ?? '24'),
       postponement_refund_days:       parseInt(map.postponement_refund_days ?? '14'),
