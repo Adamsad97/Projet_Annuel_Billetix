@@ -1,3 +1,4 @@
+import type { ApiCategory } from "@/lib/api/categories";
 import type { ApiEvent, ApiTicketCategory } from "@/lib/api/events";
 import { apiCategoryMeta } from "@/lib/constants/events";
 import type { EventDetail, TicketOption } from "@/lib/constants/event-details";
@@ -17,6 +18,17 @@ function lowestPrice(categories: ApiTicketCategory[]): number | null {
     .map((c) => Number(c.price_ttc));
   if (activePrices.length === 0) return null;
   return Math.min(...activePrices);
+}
+
+/**
+ * Libellé et emoji de la catégorie : ceux du référentiel géré par l'admin
+ * (ex. « Spectacle »), la table figée du code ne servant qu'en dernier recours
+ * (référentiel injoignable).
+ */
+function categoryDisplay(code: string, referential: ApiCategory[]): { label: string; emoji: string } {
+  const meta = apiCategoryMeta[code] ?? apiCategoryMeta.AUTRE;
+  const category = referential.find((c) => c.code === code);
+  return { label: category?.label ?? meta.label, emoji: category?.emoji || meta.emoji };
 }
 
 /** Mention sur le visuel : ventes suspendues, complet ou dernières places. */
@@ -99,8 +111,13 @@ export interface FeaturedEvent {
   suspendedNotice: string | null;
 }
 
-export function apiEventToFeatured(event: ApiEvent, categories: ApiTicketCategory[]): FeaturedEvent {
+export function apiEventToFeatured(
+  event: ApiEvent,
+  categories: ApiTicketCategory[],
+  referential: ApiCategory[] = [],
+): FeaturedEvent {
   const meta = apiCategoryMeta[event.category] ?? apiCategoryMeta.AUTRE;
+  const display = categoryDisplay(event.category, referential);
   const min = lowestPrice(categories);
   return {
     id: event.id,
@@ -115,8 +132,8 @@ export function apiEventToFeatured(event: ApiEvent, categories: ApiTicketCategor
     priceLabel: min === null ? null : min === 0 ? "Gratuit" : `Dès ${currency.format(min)}`,
     badge: availabilityBadge(event, categories),
     categoryCode: event.category,
-    categoryLabel: meta.label,
-    categoryEmoji: meta.emoji,
+    categoryLabel: display.label,
+    categoryEmoji: display.emoji,
     band: meta.band,
     suspendedNotice: event.status === "SUSPENDED" ? event.suspension_reason ?? "" : null,
   };
@@ -126,8 +143,13 @@ export function apiEventToFeatured(event: ApiEvent, categories: ApiTicketCategor
  * Convertit un événement réel + ses catégories en détail complet pour la
  * page /evenements/[id].
  */
-export function apiEventToDetail(event: ApiEvent, categories: ApiTicketCategory[]): EventDetail {
+export function apiEventToDetail(
+  event: ApiEvent,
+  categories: ApiTicketCategory[],
+  referential: ApiCategory[] = [],
+): EventDetail {
   const meta = apiCategoryMeta[event.category] ?? apiCategoryMeta.AUTRE;
+  const display = categoryDisplay(event.category, referential);
   const start = new Date(event.start_date);
   const totalRemaining = categories.reduce((sum, c) => sum + c.remaining_quota, 0);
 
@@ -147,8 +169,8 @@ export function apiEventToDetail(event: ApiEvent, categories: ApiTicketCategory[
 
   return {
     id: event.id,
-    categoryLabel: meta.label,
-    categoryEmoji: meta.emoji,
+    categoryLabel: display.label,
+    categoryEmoji: display.emoji,
     title: event.title,
     venueName: event.venue_name,
     dateLabel: `${fullDateFormatter.format(start)} — ${timeFormatter.format(start)}`,
@@ -160,7 +182,7 @@ export function apiEventToDetail(event: ApiEvent, categories: ApiTicketCategory[
     salesEndAt: event.sales_end_date,
     remainingLabel: `${totalRemaining} places restantes`,
     statusLabel: "Validé",
-    heroEmoji: meta.emoji,
+    heroEmoji: display.emoji,
     band: meta.band,
     description: event.description,
     accessConditions: event.access_conditions ?? "Aucune condition d'accès particulière.",

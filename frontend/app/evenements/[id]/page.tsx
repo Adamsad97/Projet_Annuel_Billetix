@@ -93,12 +93,12 @@ const SUGGESTIONS_LIMIT = 3;
 /** Autres événements publiés (jamais celui affiché) — la fiche reste utilisable si ça échoue. */
 async function loadSuggestions(currentId: string): Promise<FeaturedEvent[]> {
   try {
-    const { data } = await listPublishedEvents({});
+    const [{ data }, referential] = await Promise.all([listPublishedEvents({}), listCategories().catch(() => [])]);
     return await Promise.all(
       data
         .filter((e) => e.id !== currentId)
         .slice(0, SUGGESTIONS_LIMIT)
-        .map(async (e) => apiEventToFeatured(e, await getEventCategories(e.id).catch(() => []))),
+        .map(async (e) => apiEventToFeatured(e, await getEventCategories(e.id).catch(() => []), referential)),
     );
   } catch {
     return [];
@@ -130,9 +130,7 @@ export default async function EventDetailPage({
       // Libellé de la catégorie tel que défini par l'administration.
       listCategories().catch(() => []),
     ]);
-    event = apiEventToDetail(apiEvent, categories);
-    const category = referential.find((c) => c.code === apiEvent.category);
-    if (category) event = { ...event, categoryLabel: category.label };
+    event = apiEventToDetail(apiEvent, categories, referential);
     organizerId = apiEvent.organizer_id;
     availability = unavailability(
       apiEvent.status,

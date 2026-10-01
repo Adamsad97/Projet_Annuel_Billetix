@@ -2,6 +2,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Hero } from "@/components/home/hero";
 import { FeaturedEvents } from "@/components/home/featured-events";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { listCategories } from "@/lib/api/categories";
 import { getEventCategories, listPublishedEvents } from "@/lib/api/events";
 import { apiEventToFeatured, type FeaturedEvent } from "@/lib/mappers/event-mappers";
 
@@ -19,11 +20,15 @@ const FEATURED_LIMIT = 10;
 export default async function Home() {
   let featured: FeaturedEvent[] = [];
   try {
-    const { data } = await listPublishedEvents({});
+    const [{ data }, referential] = await Promise.all([
+      listPublishedEvents({}),
+      // Libellés des catégories tels que définis par l'administration.
+      listCategories().catch(() => []),
+    ]);
     const withCategories = await Promise.all(
       data.slice(0, FEATURED_LIMIT).map(async (event) => {
         const categories = await getEventCategories(event.id).catch(() => []);
-        return apiEventToFeatured(event, categories);
+        return apiEventToFeatured(event, categories, referential);
       }),
     );
     featured = withCategories;
