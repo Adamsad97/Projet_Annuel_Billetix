@@ -697,6 +697,15 @@ export function unhideEvent(id: string): Promise<ApiEvent> {
   return apiPost(`/admin/events/${id}/unhide`, {});
 }
 
+/** Mise « À la une » de l'accueil (événement publié et visible). */
+export function featureEvent(id: string): Promise<ApiEvent> {
+  return apiPost(`/admin/events/${id}/feature`, {});
+}
+
+export function unfeatureEvent(id: string): Promise<ApiEvent> {
+  return apiPost(`/admin/events/${id}/unfeature`, {});
+}
+
 /** Annulation directe : événement annulé, acheteurs remboursés. */
 export function cancelEventAsAdmin(id: string, reason: string): Promise<ApiEvent> {
   return apiPost(`/admin/events/${id}/cancel`, { reason });

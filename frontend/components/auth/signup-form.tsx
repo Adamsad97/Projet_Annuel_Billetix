@@ -140,7 +140,7 @@ export function SignupForm() {
           Créer un compte <span>✨</span>
         </h1>
         <p className="mt-1 text-sm text-accent/70">
-          Créez votre compte BilleTix
+          Retrouvez vos billets et vos commandes au même endroit.
         </p>
       </div>
 

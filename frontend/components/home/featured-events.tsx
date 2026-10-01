@@ -8,6 +8,9 @@ import { filtersToUrl } from "@/lib/catalogue/filters";
 import { useEventSearch } from "@/lib/catalogue/use-event-search";
 import type { FeaturedEvent } from "@/lib/mappers/event-mappers";
 
+// Sélection de l'admin (stable : ne relance pas la recherche à chaque rendu).
+const CURATED_PARAMS = { featured: true } as const;
+
 // Délai entre deux défilements automatiques (réglage d'interface, pas un
 // paramètre métier).
 const AUTOPLAY_DELAY_MS = 5000;
@@ -18,9 +21,17 @@ const AUTOPLAY_DELAY_MS = 5000;
  * survol / au focus clavier / onglet masqué, et aucun défilement auto si
  * l'utilisateur a demandé à réduire les animations.
  */
-export function FeaturedEvents({ events: initialEvents }: { events: FeaturedEvent[] }) {
-  // Mêmes filtres que le catalogue, appliqués directement au carrousel.
-  const search = useEventSearch({ initialEvents });
+export function FeaturedEvents({
+  events: initialEvents,
+  curated = false,
+}: {
+  events: FeaturedEvent[];
+  /** Sélection faite par l'admin : montrée tant qu'aucun filtre n'est actif. */
+  curated?: boolean;
+}) {
+  // Mêmes filtres que le catalogue, appliqués directement au carrousel. Sans
+  // filtre : la sélection « À la une » de l'admin ; avec : tous les événements.
+  const search = useEventSearch({ initialEvents, unfilteredParams: curated ? CURATED_PARAMS : undefined });
   const { events, loading, hasActiveFilters, resetAll } = search;
   const trackRef = useRef<HTMLUListElement>(null);
   const [paused, setPaused] = useState(false);
@@ -74,7 +85,7 @@ export function FeaturedEvents({ events: initialEvents }: { events: FeaturedEven
       </div>
 
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold text-ink-1">À la une</h2>
+        <h2 className="text-2xl font-bold text-ink-1">{hasActiveFilters ? "Résultats" : "À la une"}</h2>
         <div className="flex items-center gap-3">
           {overflowing ? (
             <>

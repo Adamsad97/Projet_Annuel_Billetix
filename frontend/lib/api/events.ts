@@ -54,6 +54,8 @@ export interface ApiEvent {
   poster_url: string | null;
   /** Couverture horizontale (16:9) des cartes ; à défaut, l'affiche. */
   cover_url: string | null;
+  /** Mis « À la une » de l'accueil par un admin (null : non). */
+  featured_at?: string | null;
   total_capacity: number;
   sales_start_date: string;
   sales_end_date: string;
@@ -118,6 +120,8 @@ export interface ListEventsParams {
   radius_km?: number;
   /** « Plus de X km » : au-delà de cette distance (avec lat et lng). */
   min_distance_km?: number;
+  /** Seulement les événements mis « À la une » par un admin. */
+  featured?: boolean;
   // Période (ISO 8601) : événements qui se déroulent au moins en partie dedans.
   date_from?: string;
   date_to?: string;

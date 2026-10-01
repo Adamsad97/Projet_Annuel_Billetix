@@ -6,7 +6,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCategoryCounts, listCategories, type ApiCategory } from "@/lib/api/categories";
-import { countEventsByPeriod, getEventCategories, listPublishedEvents } from "@/lib/api/events";
+import { countEventsByPeriod, getEventCategories, listPublishedEvents, type ListEventsParams } from "@/lib/api/events";
 import { ApiError } from "@/lib/api/http-error";
 import {
   DEFAULT_FILTERS,
@@ -26,9 +26,11 @@ export interface EventSearchOptions {
   syncUrl?: boolean;
   /** Événements déjà rendus par le serveur : pas de rechargement tant qu'aucun filtre n'est touché. */
   initialEvents?: FeaturedEvent[];
+  /** Paramètres ajoutés tant qu'aucun filtre n'est actif (ex. sélection « À la une »). */
+  unfilteredParams?: ListEventsParams;
 }
 
-export function useEventSearch({ syncUrl = false, initialEvents }: EventSearchOptions = {}) {
+export function useEventSearch({ syncUrl = false, initialEvents, unfilteredParams }: EventSearchOptions = {}) {
   const [filters, setFilters] = useState<CatalogueFilters>(DEFAULT_FILTERS);
   const [ready, setReady] = useState(!syncUrl);
   const [categories, setCategories] = useState<ApiCategory[]>([]);
@@ -76,8 +78,17 @@ export function useEventSearch({ syncUrl = false, initialEvents }: EventSearchOp
     window.history.replaceState(null, "", `${window.location.pathname}${filtersToUrl(filters)}`);
   }, [filters, ready, syncUrl]);
 
+  const hasActiveFilters =
+    filters.q.trim() !== "" ||
+    filters.city.trim() !== "" ||
+    filters.category !== "" ||
+    filters.when !== "all" ||
+    filters.price !== "all" ||
+    nearMe !== null;
+
   const apiParams = useMemo(
     () => ({
+      ...(hasActiveFilters ? {} : unfilteredParams),
       ...toApiParams(filters),
       ...(nearMe
         ? {
@@ -87,7 +98,7 @@ export function useEventSearch({ syncUrl = false, initialEvents }: EventSearchOp
           }
         : {}),
     }),
-    [filters, nearMe, radiusKm],
+    [filters, nearMe, radiusKm, hasActiveFilters, unfilteredParams],
   );
 
   const fetchPage = useCallback(
@@ -171,14 +182,6 @@ export function useEventSearch({ syncUrl = false, initialEvents }: EventSearchOp
       { enableHighAccuracy: false, timeout: 10_000 },
     );
   }
-
-  const hasActiveFilters =
-    filters.q.trim() !== "" ||
-    filters.city.trim() !== "" ||
-    filters.category !== "" ||
-    filters.when !== "all" ||
-    filters.price !== "all" ||
-    nearMe !== null;
 
   function resetAll() {
     setFilters({ ...DEFAULT_FILTERS, sort: filters.sort });

@@ -19,12 +19,17 @@ const FEATURED_LIMIT = 10;
 
 export default async function Home() {
   let featured: FeaturedEvent[] = [];
+  // Sélection « À la une » de l'admin ; s'il n'en a fait aucune, les
+  // prochains événements (l'accueil n'est jamais vide).
+  let curated = false;
   try {
-    const [{ data }, referential] = await Promise.all([
-      listPublishedEvents({}),
+    const [selection, referential] = await Promise.all([
+      listPublishedEvents({ featured: true }),
       // Libellés des catégories tels que définis par l'administration.
       listCategories().catch(() => []),
     ]);
+    curated = selection.data.length > 0;
+    const { data } = curated ? selection : await listPublishedEvents({});
     const withCategories = await Promise.all(
       data.slice(0, FEATURED_LIMIT).map(async (event) => {
         const categories = await getEventCategories(event.id).catch(() => []);
@@ -42,7 +47,7 @@ export default async function Home() {
       <Navbar active="/evenements" />
       <main className="flex-1">
         <Hero />
-        <FeaturedEvents events={featured} />
+        <FeaturedEvents events={featured} curated={curated} />
       </main>
       <SiteFooter />
     </div>

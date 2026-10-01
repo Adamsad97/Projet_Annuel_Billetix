@@ -9,8 +9,10 @@ import { CancellationThread } from "@/components/events/cancellation-thread";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import {
   cancelEventAsAdmin,
+  featureEvent,
   hideEvent,
   suspendEvent,
+  unfeatureEvent,
   unhideEvent,
   unsuspendEvent,
   type ApiAdminEvent,
@@ -158,6 +160,12 @@ export function EventAdminControls({ event, onChanged }: { event: ApiAdminEvent;
           {event.suspension_reason ? <p className="mt-1">Message public : « {event.suspension_reason} »</p> : null}
         </div>
       ) : null}
+      {event.featured_at ? (
+        <div className="mb-4 rounded-2xl border border-blue-500/30 bg-blue-500/10 px-5 py-4 text-sm text-ink-2">
+          <p className="font-semibold text-ink-1">★ À la une de l&apos;accueil</p>
+          <p className="mt-1">Cet événement fait partie de la sélection « À la une » montrée aux visiteurs.</p>
+        </div>
+      ) : null}
       {event.is_hidden ? (
         <div className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-5 py-4 text-sm text-ink-2">
           <p className="font-semibold text-ink-1">Masqué au public</p>
@@ -185,6 +193,25 @@ export function EventAdminControls({ event, onChanged }: { event: ApiAdminEvent;
                 className={positiveClass}
               >
                 Réactiver les ventes
+              </button>
+            ) : null}
+            {event.featured_at ? (
+              <button
+                type="button"
+                onClick={() => run(() => unfeatureEvent(event.id), "Impossible de retirer l'événement de la une.")}
+                disabled={busy}
+                className={buttonClass}
+              >
+                ★ Retirer de la une
+              </button>
+            ) : (event.status === "PUBLISHED" || event.status === "SUSPENDED") && !event.is_hidden ? (
+              <button
+                type="button"
+                onClick={() => run(() => featureEvent(event.id), "Impossible de mettre l'événement à la une.")}
+                disabled={busy}
+                className={positiveClass}
+              >
+                ☆ Mettre à la une
               </button>
             ) : null}
             {event.is_hidden ? (
