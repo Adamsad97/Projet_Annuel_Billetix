@@ -3,6 +3,7 @@
 // liste gérée depuis l'espace Admin, cf. backend/event-service/src/category).
 
 import { getApiBaseUrl } from "./base-url";
+import { eventsQueryString, type ListEventsParams } from "./events";
 import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
 import { ApiError, extractErrorMessage } from "./http-error";
 
@@ -43,9 +44,12 @@ export function listCategories(): Promise<ApiCategory[]> {
   return getPublicJson<ApiCategory[]>("/events/categories");
 }
 
-/** Nombre d'événements à venir par code de catégorie (badges du filtre). */
-export function getCategoryCounts(): Promise<Record<string, number>> {
-  return getPublicJson<Record<string, number>>("/events/categories/counts");
+/**
+ * Nombre d'événements par code de catégorie (badges du filtre), avec les
+ * autres filtres choisis (la catégorie choisie est ignorée par le serveur).
+ */
+export function getCategoryCounts(filters: ListEventsParams = {}): Promise<Record<string, number>> {
+  return getPublicJson<Record<string, number>>(`/events/categories/counts${eventsQueryString(filters)}`);
 }
 
 /** Toutes les catégories, y compris désactivées — réservé à l'espace Admin. */

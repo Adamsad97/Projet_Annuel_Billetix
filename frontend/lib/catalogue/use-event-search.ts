@@ -64,12 +64,6 @@ export function useEventSearch({ syncUrl = false, initialEvents, unfilteredParam
     listCategories()
       .then((list) => setCategories([...list].sort((a, b) => a.display_order - b.display_order)))
       .catch(() => undefined);
-    getCategoryCounts()
-      .then(setCategoryCounts)
-      .catch(() => undefined);
-    countEventsByPeriod(presetPeriods())
-      .then(setPeriodCounts)
-      .catch(() => undefined);
   }, [syncUrl]);
 
   // URL toujours à jour : lien partageable et retour arrière cohérent.
@@ -143,6 +137,32 @@ export function useEventSearch({ syncUrl = false, initialEvents, unfilteredParam
     }, 300);
     return () => clearTimeout(timeout);
   }, [fetchPage, ready]);
+
+  // Nombres des filtres Catégorie et Date, selon les autres filtres choisis :
+  // recalculés après une pause de frappe, comme la liste. Une réponse arrivée
+  // après un nouveau changement de filtre est ignorée.
+  useEffect(() => {
+    if (!ready) return;
+    let cancelled = false;
+    // Le tri ne change pas les nombres : retiré de la requête.
+    const countFilters = { ...apiParams, sort: undefined };
+    const timeout = setTimeout(() => {
+      getCategoryCounts(countFilters)
+        .then((counts) => {
+          if (!cancelled) setCategoryCounts(counts);
+        })
+        .catch(() => undefined);
+      countEventsByPeriod(presetPeriods(), countFilters)
+        .then((counts) => {
+          if (!cancelled) setPeriodCounts(counts);
+        })
+        .catch(() => undefined);
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [apiParams, ready]);
 
   async function loadMore() {
     const id = requestId.current;

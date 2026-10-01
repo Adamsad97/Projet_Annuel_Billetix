@@ -2,6 +2,7 @@
 // (backend/api-gateway/src/admin/admin.controller.ts). Câblage réel.
 
 import { apiGet, apiPatch, apiPost } from "./client";
+import { withCountsRefresh } from "@/lib/admin/count-events";
 import type { ApiEvent, CreateEventDto, CreateTicketCategoryDto } from "./events";
 import type { ApiOrder } from "./orders";
 
@@ -225,11 +226,11 @@ export function getPendingKycCount(): Promise<{ count: number }> {
 }
 
 export function approveOrganizerKyc(userId: string): Promise<ApiOrganizerProfile> {
-  return apiPost<ApiOrganizerProfile>(`/admin/kyc/${userId}/approve`);
+  return withCountsRefresh(apiPost<ApiOrganizerProfile>(`/admin/kyc/${userId}/approve`));
 }
 
 export function rejectOrganizerKyc(userId: string, reason: string): Promise<ApiOrganizerProfile> {
-  return apiPost<ApiOrganizerProfile>(`/admin/kyc/${userId}/reject`, { reason });
+  return withCountsRefresh(apiPost<ApiOrganizerProfile>(`/admin/kyc/${userId}/reject`, { reason }));
 }
 
 export function createEventForOrganizer(organizerId: string, dto: CreateEventDto): Promise<ApiEvent> {
@@ -389,11 +390,11 @@ export function confirmBankTransfers(
   ids: string[],
   reference: string,
 ): Promise<{ confirmed: string[]; failed: Array<{ id: string; message: string }> }> {
-  return apiPost("/admin/bank-transfers/confirm", { ids, reference });
+  return withCountsRefresh(apiPost("/admin/bank-transfers/confirm", { ids, reference }));
 }
 
 export function cancelBankTransfer(id: string, reason: string): Promise<unknown> {
-  return apiPost(`/admin/bank-transfers/${id}/cancel`, { reason });
+  return withCountsRefresh(apiPost(`/admin/bank-transfers/${id}/cancel`, { reason }));
 }
 
 export type AdminPayoutSort = "scheduled_desc" | "scheduled_asc" | "amount_desc";
@@ -430,7 +431,7 @@ export function unblockPayout(id: string): Promise<ApiPayout> {
 }
 
 export function processPayout(id: string): Promise<ApiPayout> {
-  return apiPost(`/admin/payouts/${id}/process`);
+  return withCountsRefresh(apiPost(`/admin/payouts/${id}/process`));
 }
 
 export function approveEarlyPayout(id: string): Promise<ApiPayout> {

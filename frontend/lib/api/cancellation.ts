@@ -4,6 +4,7 @@
 // remboursés. Report accepté : acheteurs prévenus, remboursement sur demande.
 
 import { apiGet, apiPost } from "./client";
+import { withCountsRefresh } from "@/lib/admin/count-events";
 
 export type CancellationStatus = "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
 export type ChangeRequestKind = "CANCELLATION" | "POSTPONEMENT";
@@ -120,9 +121,9 @@ export function adminReplyToCancellation(requestId: string, message: string): Pr
 }
 
 export function approveCancellation(requestId: string, message?: string): Promise<ApiCancellationRequest> {
-  return apiPost(`/admin/cancellation-requests/${requestId}/approve`, { message });
+  return withCountsRefresh(apiPost(`/admin/cancellation-requests/${requestId}/approve`, { message }));
 }
 
 export function rejectCancellation(requestId: string, message: string): Promise<ApiCancellationRequest> {
-  return apiPost(`/admin/cancellation-requests/${requestId}/reject`, { message });
+  return withCountsRefresh(apiPost(`/admin/cancellation-requests/${requestId}/reject`, { message }));
 }

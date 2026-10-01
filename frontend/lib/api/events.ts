@@ -162,15 +162,19 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 /** Nombre d'événements par période nommée (filtre Date), en une requête. */
+/**
+ * Nombre d'événements par période nommée (filtre Date), en une requête, avec
+ * les autres filtres choisis (la période vient de chaque ligne du menu).
+ */
 export function countEventsByPeriod(
   periods: Array<{ key: string; from: string; to?: string }>,
+  filters: ListEventsParams = {},
 ): Promise<Record<string, number>> {
-  return apiPost<Record<string, number>>("/events/counts/by-period", { periods });
+  return apiPost<Record<string, number>>(`/events/counts/by-period${eventsQueryString(filters)}`, { periods });
 }
 
-export function listPublishedEvents(
-  params: ListEventsParams = {},
-): Promise<ListEventsResult> {
+/** « ?q=afro&city=paris » à partir des filtres renseignés (« » si aucun). */
+export function eventsQueryString(params: ListEventsParams = {}): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== "" && value !== null) {
@@ -178,7 +182,13 @@ export function listPublishedEvents(
     }
   }
   const qs = search.toString();
-  return getJson<ListEventsResult>(`/events${qs ? `?${qs}` : ""}`);
+  return qs ? `?${qs}` : "";
+}
+
+export function listPublishedEvents(
+  params: ListEventsParams = {},
+): Promise<ListEventsResult> {
+  return getJson<ListEventsResult>(`/events${eventsQueryString(params)}`);
 }
 
 export function getEvent(id: string): Promise<ApiEvent> {

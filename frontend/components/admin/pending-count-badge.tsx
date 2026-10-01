@@ -5,6 +5,7 @@
 // à émettre aux organisateurs payés par IBAN).
 
 import { useEffect, useState } from "react";
+import { onAdminCountsChanged } from "@/lib/admin/count-events";
 import { getPayoutStats, getPendingKycCount } from "@/lib/api/admin";
 import { getPendingCancellationCount } from "@/lib/api/cancellation";
 
@@ -20,9 +21,13 @@ export function PendingCountBadge({ counter }: { counter: PendingCounter }) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    COUNTERS[counter]()
-      .then((result) => setCount(result.count))
-      .catch(() => setCount(0));
+    const load = () =>
+      COUNTERS[counter]()
+        .then((result) => setCount(result.count))
+        .catch(() => setCount(0));
+    load();
+    // Décision prise ailleurs dans l'admin : compteur rechargé aussitôt.
+    return onAdminCountsChanged(load);
   }, [counter]);
 
   if (count === 0) return null;
