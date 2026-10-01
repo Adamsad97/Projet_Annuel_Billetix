@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { InfoCard } from "@/components/event-detail/info-card";
 import { CategoryPicker } from "@/components/create-event/category-picker";
 import { TicketingTypeToggle } from "@/components/create-event/ticketing-type-toggle";
+import { CoverDropzone } from "@/components/create-event/cover-dropzone";
 import { PosterDropzone } from "@/components/create-event/poster-dropzone";
 import { LocationPicker } from "@/components/map/location-picker";
 import { AddressAutocomplete } from "@/components/create-event/address-autocomplete";
@@ -103,6 +104,7 @@ export function CreateEventForm({
   const [salesEndAt, setSalesEndAt] = useState("");
   const [refundPolicy, setRefundPolicy] = useState<"NON_REFUNDABLE" | "REFUNDABLE">("NON_REFUNDABLE");
   const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [isNonProfit, setIsNonProfit] = useState(false);
   // Événement gratuit : toutes les catégories à 0 €.
   const [isFree, setIsFree] = useState(false);
@@ -176,6 +178,7 @@ export function CreateEventForm({
     setSubmitting(true);
     try {
       const { url: posterUrl } = await uploadPoster(posterFile);
+      const coverUrl = coverFile ? (await uploadPoster(coverFile)).url : undefined;
       const nonProfitDocumentUrl =
         isNonProfit && nonProfitFile ? (await uploadDocument(nonProfitFile)).url : undefined;
 
@@ -194,6 +197,7 @@ export function CreateEventForm({
           ? { venue_latitude: latitude, venue_longitude: longitude }
           : {}),
         poster_url: posterUrl,
+        ...(coverUrl ? { cover_url: coverUrl } : {}),
         total_capacity: Number(totalCapacity),
         sales_start_date: salesStartIso,
         sales_end_date: salesEndIso,
@@ -387,6 +391,10 @@ export function CreateEventForm({
 
       <InfoCard icon="🖼️" title="Affiche de l'événement">
         <PosterDropzone onFileSelected={setPosterFile} />
+      </InfoCard>
+
+      <InfoCard icon="🌄" title="Image de couverture (facultatif)">
+        <CoverDropzone onFileSelected={setCoverFile} onRemove={() => setCoverFile(null)} />
       </InfoCard>
 
       {/* Dépôt de justificatif réservé à l'organisateur lui-même (pièce privée,

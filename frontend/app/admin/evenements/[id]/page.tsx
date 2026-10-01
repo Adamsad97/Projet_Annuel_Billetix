@@ -204,6 +204,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
           <DocumentGrid
             documents={[
               { id: "poster", label: "Affiche de l'événement", url: event.poster_url ?? "" },
+              ...(event.cover_url ? [{ id: "cover", label: "Image de couverture", url: event.cover_url }] : []),
               ...(event.non_profit_document_url
                 ? [{ id: "non-profit", label: "Justificatif à but non lucratif", url: event.non_profit_document_url }]
                 : []),

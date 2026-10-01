@@ -17,7 +17,15 @@ export function FeaturedEventCard({ event }: { event: FeaturedEvent }) {
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-hairline-2 bg-card transition-shadow hover:shadow-xl hover:shadow-black/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand"
     >
       <div className="relative aspect-[16/9.5] overflow-hidden">
-        {event.posterUrl ? (
+        {event.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- couverture hébergée sur MinIO, hors domaines gérés par next/image
+          <img
+            src={event.coverUrl}
+            alt={`Couverture : ${event.title}`}
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          />
+        ) : event.posterUrl ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element -- affiche hébergée sur MinIO, fond décoratif flouté */}
             <img

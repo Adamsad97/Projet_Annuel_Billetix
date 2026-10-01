@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { InfoCard } from "@/components/event-detail/info-card";
 import { CategoryPicker } from "@/components/create-event/category-picker";
+import { CoverDropzone } from "@/components/create-event/cover-dropzone";
 import { PosterDropzone } from "@/components/create-event/poster-dropzone";
 import { LocationPicker } from "@/components/map/location-picker";
 import { AddressAutocomplete } from "@/components/create-event/address-autocomplete";
@@ -113,6 +114,9 @@ export function EditEventForm({
   const [refundPolicy, setRefundPolicy] = useState(event.refund_policy);
   const [accessConditions, setAccessConditions] = useState(event.access_conditions ?? "");
   const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  // Couverture enregistrée à retirer (les cartes reprennent l'affiche).
+  const [removeCover, setRemoveCover] = useState(false);
 
   // Billetterie : modifiable en brouillon (événement jamais soumis, ou rejeté),
   // en lecture seule ensuite.
@@ -212,6 +216,8 @@ export function EditEventForm({
         const result = await uploadPoster(posterFile);
         posterUrl = result.url;
       }
+      const coverUrl = coverFile ? (await uploadPoster(coverFile)).url : undefined;
+      const coverChange = coverUrl ? { cover_url: coverUrl } : removeCover && event.cover_url ? { cover_url: null } : {};
       const nonProfitDocumentUrl =
         isDraft && isNonProfit && nonProfitFile ? (await uploadDocument(nonProfitFile)).url : undefined;
 
@@ -240,17 +246,21 @@ export function EditEventForm({
               ? { non_profit_document_url: nonProfitDocumentUrl ?? event.non_profit_document_url ?? undefined }
               : {}),
             ...(posterUrl ? { poster_url: posterUrl } : {}),
+            ...coverChange,
           }
         : {
             description,
             access_conditions: accessConditions || undefined,
             ...(posterUrl ? { poster_url: posterUrl } : {}),
+            ...coverChange,
           };
 
       const updated = await updateEvent(event.id, dto);
       if (isDraft) await syncTicketCategories();
       setEvent(updated);
       setPosterFile(null);
+      setCoverFile(null);
+      setRemoveCover(false);
       setNonProfitFile(null);
       setSaved(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -358,6 +368,20 @@ export function EditEventForm({
 
       <InfoCard icon="🖼️" title="Affiche">
         <PosterDropzone onFileSelected={setPosterFile} initialPreviewUrl={event.poster_url} />
+      </InfoCard>
+
+      <InfoCard icon="🌄" title="Image de couverture (facultatif)">
+        <CoverDropzone
+          onFileSelected={(file) => {
+            setCoverFile(file);
+            setRemoveCover(false);
+          }}
+          initialPreviewUrl={removeCover ? null : event.cover_url}
+          onRemove={() => {
+            setCoverFile(null);
+            setRemoveCover(true);
+          }}
+        />
       </InfoCard>
 
       <InfoCard icon="📅" title="Dates">

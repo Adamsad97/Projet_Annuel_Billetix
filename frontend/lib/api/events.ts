@@ -52,6 +52,8 @@ export interface ApiEvent {
   venue_latitude: string | null;
   venue_longitude: string | null;
   poster_url: string | null;
+  /** Couverture horizontale (16:9) des cartes ; à défaut, l'affiche. */
+  cover_url: string | null;
   total_capacity: number;
   sales_start_date: string;
   sales_end_date: string;
@@ -216,6 +218,7 @@ export interface CreateEventDto {
   venue_latitude?: number;
   venue_longitude?: number;
   poster_url: string;
+  cover_url?: string;
   total_capacity: number;
   sales_start_date: string;
   sales_end_date: string;
@@ -236,7 +239,7 @@ export function createEvent(dto: CreateEventDto): Promise<ApiEvent> {
 //   (description, affiche, conditions d'accès) — les acheteurs déjà
 //   inscrits ne doivent pas voir prix/dates/lieu changer sous eux.
 // - Statut suspendu/annulé/terminé/archivé : non modifiable du tout.
-export const EVENT_COSMETIC_FIELDS = ["description", "poster_url", "access_conditions"] as const;
+export const EVENT_COSMETIC_FIELDS = ["description", "poster_url", "cover_url", "access_conditions"] as const;
 
 // Distinct de CreateEventDto (frontend) : le formulaire de création ne
 // collecte pas access_conditions, alors que c'est justement l'un des 3
@@ -259,6 +262,8 @@ export interface UpdateEventDto {
   venue_latitude?: number;
   venue_longitude?: number;
   poster_url?: string;
+  /** null : couverture retirée. */
+  cover_url?: string | null;
   total_capacity?: number;
   sales_start_date?: string;
   sales_end_date?: string;

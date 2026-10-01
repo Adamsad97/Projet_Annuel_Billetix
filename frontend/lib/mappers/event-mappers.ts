@@ -94,6 +94,8 @@ export interface FeaturedEvent {
   city: string;
   country: string;
   posterUrl: string | null;
+  /** Couverture horizontale : remplit tout le visuel de la carte. */
+  coverUrl: string | null;
   /** Ex. "10 oct. 2026, 14:00" */
   dateLabel: string;
   /** null tant qu'aucune catégorie de billet active n'existe. */
@@ -127,6 +129,7 @@ export function apiEventToFeatured(
     city: event.venue_city,
     country: event.venue_country,
     posterUrl: event.poster_url,
+    coverUrl: event.cover_url ?? null,
     dateLabel: formatFeaturedDate(event.start_date, event.timezone),
     isFree: min === null ? null : min === 0,
     priceLabel: min === null ? null : min === 0 ? "Gratuit" : `Dès ${currency.format(min)}`,
