@@ -1,9 +1,6 @@
-import { CategoryFilters } from "@/components/home/category-filters";
-import { SearchBar } from "@/components/home/search-bar";
-
 export function Hero() {
   return (
-    <section className="relative overflow-hidden px-6 pb-16 pt-20 text-center">
+    <section className="relative overflow-hidden px-6 pb-10 pt-20 text-center">
       <div className="relative mx-auto flex max-w-3xl flex-col items-center gap-6">
         <span className="inline-flex items-center gap-2 rounded-full bg-blue-500/10 px-4 py-1.5 text-sm font-medium text-accent ring-1 ring-inset ring-blue-500/30">
           🎟️ Plateforme de billetterie sécurisée
@@ -21,12 +18,6 @@ export function Hero() {
           Concerts, festivals, spectacles près de chez vous. Paiement sécurisé
           et billet QR code reçu par email en 5 minutes.
         </p>
-
-        <SearchBar />
-
-        <div className="mt-2">
-          <CategoryFilters />
-        </div>
       </div>
     </section>
   );
