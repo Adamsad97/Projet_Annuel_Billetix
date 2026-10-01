@@ -68,7 +68,6 @@ export function apiTicketToDetail(ticket: ApiTicket): TicketDetail {
     dateLabel: dateFormatter.format(start),
     timeLabel: timeFormatter.format(start),
     holderName: `${ticket.holder_first_name} ${ticket.holder_last_name}`,
-    buyerEmail: ticket.buyer_email,
     categoryName: ticket.ticket_category_name,
     priceLabel: Number(ticket.unit_price_ttc) === 0 ? "Gratuit" : currency.format(Number(ticket.unit_price_ttc)),
     // Statut d'affichage complet : en revente, annulé ou remboursé, pas seulement utilisé ou valide.

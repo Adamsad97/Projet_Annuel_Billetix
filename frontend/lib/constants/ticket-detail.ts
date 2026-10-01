@@ -13,7 +13,6 @@ export interface TicketDetail {
   dateLabel: string;
   timeLabel: string;
   holderName: string;
-  buyerEmail: string;
   categoryName: string;
   priceLabel: string;
   status: TicketStatus;

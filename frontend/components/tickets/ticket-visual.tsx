@@ -41,7 +41,6 @@ export function TicketVisual({ ticket }: { ticket: TicketDetail }) {
       <div className="border-t border-dashed border-hairline-2 bg-card px-6 py-4">
         <p className="text-xs uppercase tracking-wide text-ink-5">Porteur du billet</p>
         <p className="font-bold text-ink-1">{ticket.holderName}</p>
-        <p className="text-xs text-ink-5">{ticket.buyerEmail}</p>
       </div>
 
       <div className="flex flex-col items-center gap-3 border-t border-dashed border-hairline-2 px-6 py-6">
