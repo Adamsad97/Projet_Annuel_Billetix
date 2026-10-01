@@ -54,6 +54,8 @@ describe("CreditNoteIssuer — avoir après un remboursement", () => {
       "pdf.generate_credit_note",
       expect.objectContaining({ number: "AV-2026-00001", invoice_reference: "ORD-2026-ABCDE", amount_ttc: 120, tva_rate: 0.2 }),
     );
+    // Sécurité : l'email de l'acheteur n'est jamais transmis pour figurer sur l'avoir.
+    expect(pdfClient.emit.mock.calls[0][1]).not.toHaveProperty("billing_email");
   });
 
   it("rien à émettre (réservation gratuite ou facture déjà couverte) : pas de PDF", async () => {
