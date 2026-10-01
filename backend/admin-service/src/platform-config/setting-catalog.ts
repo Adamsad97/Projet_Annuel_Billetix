@@ -54,7 +54,6 @@ export const SETTING_SECTIONS: SettingSection[] = [
     id: 'fees',
     super_admin_only: true,
     keys: [
-      'tva_rate',
       'commission_standard_percent',
       'commission_large_event_percent',
       'large_event_threshold',
@@ -117,7 +116,6 @@ export function sectionOf(key: string): { id: string; super_admin_only: boolean 
 /** Bornes métier des réglages numériques (au-delà du simple « c'est un nombre »). */
 export function numericBoundsError(key: string, value: number): string | null {
   if (value < 0) return 'la valeur ne peut pas être négative';
-  if (key === 'tva_rate' && value > 1) return 'taux attendu entre 0 et 1 (ex. 0.20 pour 20 %)';
   if (key.endsWith('_percent') && value > 100) return 'pourcentage attendu entre 0 et 100';
   return null;
 }

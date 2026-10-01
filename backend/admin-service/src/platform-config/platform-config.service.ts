@@ -6,7 +6,6 @@ import { PlatformSetting } from './platform-config.entity';
 import { numericBoundsError, sectionOf } from './setting-catalog';
 
 export interface PlatformConfig {
-  tva_rate: number;
   free_ticket_fee_eur: number;
   commission_standard_percent: number;
   commission_large_event_percent: number;
@@ -67,10 +66,10 @@ export interface PlatformConfig {
 //  - ticket_qr_rotation_enabled : le QR est toujours éphémère (BTX2), il
 //    n'existe plus de QR fixe à autoriser.
 // agent_session_hours : la « session » d'agent n'a jamais servi à l'écran de scan.
-const OBSOLETE_KEYS = ['ticket_qr_rotation_enabled', 'agent_session_hours'];
+// tva_rate : remplacé par la liste des taux de TVA (event-service), un taux par événement.
+const OBSOLETE_KEYS = ['ticket_qr_rotation_enabled', 'agent_session_hours', 'tva_rate'];
 
 const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
-  { key: 'tva_rate',                       value: '0.20',          type: 'number',  description: 'Taux de TVA applicable (ex: 0.20 = 20%)' },
   { key: 'free_ticket_fee_eur',            value: '0.50',          type: 'number',  description: 'Frais fixes par billet gratuit (€)' },
   { key: 'commission_standard_percent',    value: '10',            type: 'number',  description: 'Commission standard prélevée sur le prix HT (%)' },
   { key: 'commission_large_event_percent', value: '8',             type: 'number',  description: 'Commission grande jauge (> seuil) (%)' },
@@ -149,7 +148,6 @@ export class PlatformConfigService implements OnModuleInit {
     for (const setting of settings) map[setting.key] = setting.value;
 
     return {
-      tva_rate:                       parseFloat(map.tva_rate ?? '0.20'),
       free_ticket_fee_eur:            parseFloat(map.free_ticket_fee_eur ?? '0.50'),
       commission_standard_percent:    parseFloat(map.commission_standard_percent ?? '10'),
       commission_large_event_percent: parseFloat(map.commission_large_event_percent ?? '8'),
@@ -209,7 +207,7 @@ export class PlatformConfigService implements OnModuleInit {
   /**
    * Bug corrigé : aucune validation n'était faite sur la nouvelle valeur —
    * un admin pouvait écrire n'importe quelle chaîne sur un paramètre
-   * "number" (ex: "abc" sur tva_rate), silencieusement transformée en NaN
+   * "number" (ex: "abc" sur un taux), silencieusement transformée en NaN
    * par tous les parseFloat/parseInt des services consommateurs, corrompant
    * un calcul plateforme entier sans aucune erreur visible sur le coup.
    */

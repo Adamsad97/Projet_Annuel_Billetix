@@ -25,7 +25,7 @@ describe('Validation des messages internes (admin-service)', () => {
   });
 
   it('refuse une clé de paramètre mal formée', async () => {
-    await expect(run(UpdateSettingPayload, { key: 'tva_rate; DROP TABLE', value: '0.2' })).rejects.toBeInstanceOf(RpcException);
-    await expect(run(UpdateSettingPayload, { key: 'tva_rate', value: '0.2', actor_role: 'SUPER_ADMIN' })).resolves.toBeDefined();
+    await expect(run(UpdateSettingPayload, { key: 'stripe_fee_percent; DROP TABLE', value: '0.2' })).rejects.toBeInstanceOf(RpcException);
+    await expect(run(UpdateSettingPayload, { key: 'stripe_fee_percent', value: '2.9', actor_role: 'SUPER_ADMIN' })).resolves.toBeDefined();
   });
 });

@@ -28,7 +28,7 @@ describe('PlatformConfigService', () => {
 
   describe('onModuleInit', () => {
     it('ne recrée pas un paramètre déjà présent en base (pas de valeur écrasée)', async () => {
-      repo.findOne.mockResolvedValue({ key: 'tva_rate', value: '0.18' });
+      repo.findOne.mockResolvedValue({ key: 'stripe_fee_percent', value: '3.1' });
 
       await service.onModuleInit();
 
@@ -107,7 +107,7 @@ describe('PlatformConfigService', () => {
   describe('droits par section et bornes', () => {
     it('réserve les sections sensibles au super admin (lecture)', async () => {
       repo.find.mockResolvedValue([
-        { key: 'tva_rate', value: '0.20', type: 'number' },
+        { key: 'stripe_fee_percent', value: '2.9', type: 'number' },
         { key: 'ticket_qr_display_seconds', value: '60', type: 'number' },
       ]);
 
@@ -116,30 +116,28 @@ describe('PlatformConfigService', () => {
 
       const forSuperAdmin = await service.list('SUPER_ADMIN');
       expect(forSuperAdmin).toEqual(
-        expect.arrayContaining([expect.objectContaining({ key: 'tva_rate', section: 'fees', super_admin_only: true })]),
+        expect.arrayContaining([expect.objectContaining({ key: 'stripe_fee_percent', section: 'payment_fees', super_admin_only: true })]),
       );
     });
 
     it("refuse à un admin la modification d'un réglage sensible", async () => {
-      repo.findOne.mockResolvedValue({ key: 'tva_rate', value: '0.20', type: 'number' });
-      await expect(service.update('tva_rate', '0.21', 'ADMIN')).rejects.toThrow('réservé au super administrateur');
+      repo.findOne.mockResolvedValue({ key: 'stripe_fee_percent', value: '2.9', type: 'number' });
+      await expect(service.update('stripe_fee_percent', '3.1', 'ADMIN')).rejects.toThrow('réservé au super administrateur');
     });
 
     it("renvoie l'ancienne valeur pour la traçabilité", async () => {
-      repo.findOne.mockResolvedValue({ key: 'tva_rate', value: '0.20', type: 'number' });
-      await expect(service.update('tva_rate', '0.21', 'SUPER_ADMIN')).resolves.toMatchObject({
-        value: '0.21',
-        previous_value: '0.20',
+      repo.findOne.mockResolvedValue({ key: 'stripe_fee_percent', value: '2.9', type: 'number' });
+      await expect(service.update('stripe_fee_percent', '3.1', 'SUPER_ADMIN')).resolves.toMatchObject({
+        value: '3.1',
+        previous_value: '2.9',
       });
     });
 
-    it('refuse une valeur hors bornes (négative, pourcentage > 100, TVA > 1)', async () => {
+    it('refuse une valeur hors bornes (négative, pourcentage > 100)', async () => {
       repo.findOne.mockResolvedValue({ key: 'ticket_qr_display_seconds', value: '60', type: 'number' });
       await expect(service.update('ticket_qr_display_seconds', '-5', 'ADMIN')).rejects.toThrow('négative');
       repo.findOne.mockResolvedValue({ key: 'stripe_fee_percent', value: '2.9', type: 'number' });
       await expect(service.update('stripe_fee_percent', '150', 'SUPER_ADMIN')).rejects.toThrow('entre 0 et 100');
-      repo.findOne.mockResolvedValue({ key: 'tva_rate', value: '0.20', type: 'number' });
-      await expect(service.update('tva_rate', '20', 'SUPER_ADMIN')).rejects.toThrow('entre 0 et 1');
     });
   });
 });
