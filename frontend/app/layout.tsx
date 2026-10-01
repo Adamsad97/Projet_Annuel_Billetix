@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   metadataBase: SITE_URL,
   title: "BilleTix — Votre prochain événement commence ici",
   description:
-    "Des milliers d'événements. Billets QR code à usage unique envoyés en 5 minutes.",
+    "Concerts, festivals, spectacles près de chez vous. Paiement sécurisé et billet QR code reçu par email en 5 minutes.",
   openGraph: { ...SHARED_OPEN_GRAPH, url: "/" },
 };
 

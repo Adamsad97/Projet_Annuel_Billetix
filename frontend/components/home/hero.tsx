@@ -18,8 +18,8 @@ export function Hero() {
         </h1>
 
         <p className="max-w-xl text-lg text-ink-4">
-          Des milliers d&apos;événements. Billets QR code à usage unique
-          envoyés en 5 minutes.
+          Concerts, festivals, spectacles près de chez vous. Paiement sécurisé
+          et billet QR code reçu par email en 5 minutes.
         </p>
 
         <SearchBar />
