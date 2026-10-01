@@ -300,6 +300,7 @@ describe('OrderService', () => {
     function mockEventClient(overrides: {
       commission_rate?: number;
       organizer_id?: string;
+      vat_rate?: string;
       categories?: Array<{ id: string; name: string; price_ht: number }>;
       promoResult?: {
         valid: boolean;
@@ -314,7 +315,7 @@ describe('OrderService', () => {
       ];
       eventClient.send.mockImplementation((pattern: string) => {
         if (pattern === 'event.get') {
-          return of({ commission_rate: overrides.commission_rate ?? 10, organizer_id: overrides.organizer_id });
+          return of({ commission_rate: overrides.commission_rate ?? 10, organizer_id: overrides.organizer_id, vat_rate: overrides.vat_rate });
         }
         if (pattern === 'event.get_categories') return of(categories);
         if (pattern === 'event.validate_promo_code') return of(overrides.promoResult);
@@ -372,6 +373,22 @@ describe('OrderService', () => {
 
       expect(order.total_commission).toBe(0);
       expect(order.net_organizer_amount).toBe(100);
+    });
+
+    it("applique le taux de TVA de l'événement et le recopie sur la commande", async () => {
+      mockEventClient({ vat_rate: '0.0550', categories: [{ id: 'cat-1', name: 'Standard', price_ht: 20 }] });
+
+      const { order, items } = await service.create(baseDto);
+
+      // 2 billets à 20 € HT, TVA 5,5 % : 21,10 € TTC l'unité, 42,20 € au total.
+      expect(items[0]).toMatchObject({ unit_price_ttc: 21.1, total_price_ttc: 42.2 });
+      expect(order).toMatchObject({ total_amount_ttc: 42.2, vat_rate: '0.0550' });
+    });
+
+    it('événement antérieur à la liste des taux : 20 %', async () => {
+      mockEventClient({ categories: [{ id: 'cat-1', name: 'Standard', price_ht: 20 }] });
+      const { order } = await service.create(baseDto);
+      expect(order).toMatchObject({ total_amount_ttc: 48, vat_rate: '0.2000' });
     });
 
     it("ne facture rien à l'acheteur pour un billet gratuit — le frais fixe est déduit du net organisateur, pas ajouté au TTC", async () => {

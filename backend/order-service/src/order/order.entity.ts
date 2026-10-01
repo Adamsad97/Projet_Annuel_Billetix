@@ -55,6 +55,11 @@ export class Order {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   total_amount_ttc: number;
 
+  // Taux de TVA appliqué (fraction : 0.055 pour 5,5 %), celui de l'événement
+  // au moment de l'achat : factures et avoirs le reprennent tel quel.
+  @Column({ type: 'decimal', precision: 6, scale: 4, default: 0.2 })
+  vat_rate: string;
+
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   total_commission: number;
 

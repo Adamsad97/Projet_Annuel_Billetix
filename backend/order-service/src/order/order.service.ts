@@ -9,6 +9,12 @@ import { CreateOrderDto, CreateResaleOrderDto } from './dto/create-order.dto';
 import { OrderItem } from './order-item.entity';
 import { Order, OrderStatus, PaymentMethod, PaymentStatus } from './order.entity';
 
+/** Taux de TVA de l'événement (fraction) ; 20 % pour un événement antérieur à la liste. */
+function vatRateOf(event: { vat_rate?: string | number | null }): number {
+  const rate = Number(event.vat_rate);
+  return Number.isFinite(rate) && event.vat_rate !== null && event.vat_rate !== undefined ? rate : 0.2;
+}
+
 @Injectable()
 export class OrderService {
   constructor(
@@ -30,11 +36,14 @@ export class OrderService {
     // event-service à partir des réglages admin (platform_settings) — un
     // acheteur ne peut donc jamais imposer un taux de son choix (ex: 0%).
     const event = await firstValueFrom(
-      this.eventClient.send<{ commission_rate: number; organizer_id: string }>('event.get', {
+      this.eventClient.send<{ commission_rate: number; organizer_id: string; vat_rate?: string }>('event.get', {
         id: reservation.event_id,
       }),
     );
     const commission_rate = Number(event.commission_rate);
+    // Taux de TVA de l'événement (choisi dans la liste de l'admin), recopié
+    // sur la commande : factures et avoirs le reprennent tel quel.
+    const vat_rate = vatRateOf(event);
 
     // Bug corrigé (règle produit) : rien n'empêchait un organisateur
     // d'acheter un billet pour son propre événement — gonflait
@@ -110,7 +119,7 @@ export class OrderService {
         }
 
         const unit_ht = Number(category.price_ht);
-        const unit_ttc = parseFloat((unit_ht * (1 + config.tva_rate)).toFixed(2));
+        const unit_ttc = parseFloat((unit_ht * (1 + vat_rate)).toFixed(2));
         const total_ht = parseFloat((unit_ht * itemInput.quantity).toFixed(2));
         const total_ttc = parseFloat((unit_ttc * itemInput.quantity).toFixed(2));
         subtotal_ht += total_ht;
@@ -141,7 +150,7 @@ export class OrderService {
       // (total_ht = 0) n'affiche aucune page de paiement. Ce frais est à la
       // charge de l'organisateur, déduit directement de son net reversé,
       // au même titre que la commission.
-      const total_ttc = parseFloat((total_ht * (1 + config.tva_rate)).toFixed(2));
+      const total_ttc = parseFloat((total_ht * (1 + vat_rate)).toFixed(2));
       const commission = parseFloat((total_ht * (commission_rate / 100)).toFixed(2));
       free_ticket_fees = parseFloat(free_ticket_fees.toFixed(2));
       const net_organizer = parseFloat((total_ht - commission - free_ticket_fees).toFixed(2));
@@ -164,6 +173,7 @@ export class OrderService {
         reference: this.generateReference(),
         buyer_id: dto.buyer_id,
         event_id: reservation.event_id,
+        vat_rate: vat_rate.toFixed(4),
         organizer_id: dto.organizer_id ?? null,
         event_name: dto.event_name,
         event_start_at: dto.event_start_at,
@@ -257,8 +267,6 @@ export class OrderService {
       });
     }
 
-    const config = await this.platformConfig.get();
-
     const event = await firstValueFrom(
       this.eventClient.send<{
         commission_rate: number;
@@ -270,9 +278,11 @@ export class OrderService {
         venue_city: string;
         poster_url: string;
         organizer_id: string;
+        vat_rate?: string;
       }>('event.get', { id: resale.event_id }),
     );
     const commission_rate = Number(event.commission_rate);
+    const vat_rate = vatRateOf(event);
 
     // Best-effort : le nom de catégorie n'est qu'informatif (facture/email),
     // jamais utilisé pour le prix — une catégorie désactivée après la vente
@@ -297,7 +307,7 @@ export class OrderService {
     // cher que ce plafond. resale_price est déjà le prix TTC affiché/plafonné
     // au moment de la mise en vente ; le HT en est dérivé par calcul inverse.
     const unit_ttc = Number(resale.resale_price);
-    const unit_ht = parseFloat((unit_ttc / (1 + config.tva_rate)).toFixed(2));
+    const unit_ht = parseFloat((unit_ttc / (1 + vat_rate)).toFixed(2));
     const commission = parseFloat((unit_ht * (commission_rate / 100)).toFixed(2));
     const net_organizer = parseFloat((unit_ht - commission).toFixed(2));
 
@@ -306,6 +316,7 @@ export class OrderService {
         reference: this.generateReference(),
         buyer_id: dto.buyer_id,
         event_id: resale.event_id,
+        vat_rate: vat_rate.toFixed(4),
         is_resale: true,
         resale_id: dto.resale_id,
         organizer_id: event.organizer_id ?? null,
