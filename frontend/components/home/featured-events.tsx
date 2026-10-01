@@ -127,7 +127,7 @@ export function FeaturedEvents({
           onFocus={() => setPaused(true)}
           onBlur={() => setPaused(false)}
           aria-busy={loading}
-          className={`flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2 transition-opacity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${loading ? "opacity-50" : ""}`}
+          className={`-mx-3 -mt-3 flex snap-x snap-mandatory scroll-px-3 gap-5 overflow-x-auto scroll-smooth px-3 pb-6 pt-3 transition-opacity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${loading ? "opacity-50" : ""}`}
         >
           {events.map((event) => (
             <li

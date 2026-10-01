@@ -14,7 +14,7 @@ export function FeaturedEventCard({ event }: { event: FeaturedEvent }) {
   return (
     <Link
       href={eventPath(event)}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-hairline-2 bg-card transition-shadow hover:shadow-xl hover:shadow-black/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-hairline-2 bg-card transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.02] hover:border-hairline-4 hover:shadow-2xl hover:shadow-black/15 focus-visible:-translate-y-1.5 focus-visible:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:hover:scale-100"
     >
       <div className="relative aspect-[16/9.5] overflow-hidden">
         {event.coverUrl ? (
