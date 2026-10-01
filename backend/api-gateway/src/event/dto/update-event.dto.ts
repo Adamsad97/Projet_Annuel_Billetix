@@ -76,6 +76,10 @@ export class UpdateEventDto {
   @ApiPropertyOptional() @IsUrl({ require_tld: false }) @IsOptional()
   poster_url?: string;
 
+  /** null : couverture retirée (les cartes reprennent l'affiche). */
+  @ApiPropertyOptional({ nullable: true }) @IsUrl({ require_tld: false }) @IsOptional()
+  cover_url?: string | null;
+
   @ApiPropertyOptional() @IsInt() @Min(1) @IsOptional()
   total_capacity?: number;
 

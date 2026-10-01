@@ -84,6 +84,10 @@ export class CreateEventDto {
   @ApiProperty() @IsUrl({ require_tld: false })
   poster_url: string;
 
+  // Couverture horizontale (16:9) des cartes, facultative : POST /upload/poster.
+  @ApiPropertyOptional() @IsOptional() @IsUrl({ require_tld: false })
+  cover_url?: string | null;
+
   @ApiProperty() @IsInt() @Min(1)
   total_capacity: number;
 
