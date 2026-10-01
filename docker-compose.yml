@@ -336,12 +336,6 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       APP_URL: ${APP_URL:-http://localhost:4000}
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
-      # Appelé par TwoFactorService.disable() pour vérifier qu'aucun IBAN
-      # organisateur n'est enregistré avant d'autoriser la désactivation
-      # (CDC §2.3). Pas de depends_on ici : user-service dépend déjà de
-      # auth-service (voir plus bas), un depends_on inverse créerait un cycle.
-      USER_SERVICE_HOST: user-service
-      USER_SERVICE_PORT: 3002
       # Config plateforme (seuil/durée de verrouillage de compte) — voir
       # PlatformConfigCache. Pas de cycle : admin-service ne dépend de rien
       # côté auth.

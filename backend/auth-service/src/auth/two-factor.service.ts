@@ -24,7 +24,6 @@ export class TwoFactorService {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(BackupCode) private readonly backupCodeRepo: Repository<BackupCode>,
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
-    @Inject("USER_SERVICE") private readonly userClient: ClientProxy,
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
   ) {}
 
