@@ -42,6 +42,8 @@ export class PayoutSchedulerService {
 
     this.logger.log(`Reversements à échéance : ${duePayouts.length}`);
     const config = await this.platformConfig.get();
+    // Reversements passés « À virer » pendant ce cycle : un seul email aux admins.
+    let preparedCount = 0;
 
     // État réel de chaque événement, lu une fois par cycle : un événement
     // reporté n'est jamais reversé, et une fin déplacée plus tard reprogramme
@@ -103,6 +105,7 @@ export class PayoutSchedulerService {
             continue;
           }
           const prepared = await this.payoutService.prepareBankTransfer(payout.id);
+          if (prepared.status === PayoutStatus.TO_TRANSFER) preparedCount += 1;
           this.logger.log(`Reversement ${payout.id} : ${prepared.status === PayoutStatus.TO_TRANSFER ? 'à virer' : 'soldé par compensation'}`);
           continue;
         }
@@ -135,6 +138,50 @@ export class PayoutSchedulerService {
       } catch (error) {
         this.logger.error(`Échec du traitement du reversement ${payout.id} : ${error?.message}`);
       }
+    }
+
+    if (preparedCount > 0) {
+      this.notifyAdminsToTransfer(preparedCount).catch((error) =>
+        this.logger.error(`Alerte « virements à effectuer » non envoyée : ${error?.message}`),
+      );
+    }
+  }
+
+  /**
+   * Virements à émettre par l'admin (organisateurs payés par IBAN) : un
+   * récapitulatif par cycle à chaque admin actif, avec le total en attente.
+   */
+  private async notifyAdminsToTransfer(newCount: number): Promise<void> {
+    const pending = await this.payoutService.getToTransfer();
+    const total = pending.reduce((sum, payout) => sum + Number(payout.net_amount) - Number(payout.offset_amount), 0);
+    const euros = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
+    const pages = await Promise.all(
+      (['ADMIN', 'SUPER_ADMIN'] as const).map((role) =>
+        firstValueFrom(
+          this.authClient.send<{ data: Array<{ email: string; first_name: string }> }>('auth.list_users', {
+            role,
+            status: 'active',
+            limit: 100,
+          }),
+        ),
+      ),
+    );
+    const admins = new Map(pages.flatMap((page) => page.data).map((admin) => [admin.email.toLowerCase(), admin]));
+    const plural = newCount > 1;
+    for (const admin of admins.values()) {
+      this.notificationClient.emit('notification.admin_notice', {
+        email: admin.email,
+        firstName: admin.first_name,
+        subject: `${newCount} reversement${plural ? 's' : ''} à virer`,
+        headline: 'Virements à effectuer',
+        intro: `${newCount} reversement${plural ? 's sont passés' : ' est passé'} « À virer » aujourd'hui. Téléchargez le fichier de virements SEPA, importez-le dans la banque de la plateforme, puis marquez les virements comme versés.`,
+        details: [
+          `Reversements en attente de virement : ${pending.length}`,
+          `Montant total à virer : ${euros.format(total)}`,
+        ],
+        ctaLabel: 'Ouvrir les reversements',
+        ctaPath: '/admin/reversements',
+      });
     }
   }
 

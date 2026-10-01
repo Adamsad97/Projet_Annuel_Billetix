@@ -13,6 +13,7 @@ describe('PayoutSchedulerService', () => {
     getDuePayouts: jest.Mock;
     process: jest.Mock;
     prepareBankTransfer: jest.Mock;
+    getToTransfer: jest.Mock;
     getExpiredBlockedPayouts: jest.Mock;
     unblock: jest.Mock;
   };
@@ -36,6 +37,7 @@ describe('PayoutSchedulerService', () => {
       getDuePayouts: jest.fn().mockResolvedValue([duePayout]),
       process: jest.fn().mockResolvedValue(completedPayout),
       prepareBankTransfer: jest.fn().mockResolvedValue({ ...completedPayout, status: PayoutStatus.TO_TRANSFER }),
+      getToTransfer: jest.fn().mockResolvedValue([{ net_amount: '50', offset_amount: '3' }, { net_amount: '20', offset_amount: '0' }]),
       getExpiredBlockedPayouts: jest.fn().mockResolvedValue([]),
       unblock: jest.fn(),
       holdForEvent: jest.fn(),
@@ -178,6 +180,31 @@ describe('PayoutSchedulerService', () => {
   describe('organisateur payé par virement bancaire', () => {
     const bankAccount = (overrides: object = {}) =>
       of({ payout_method: 'BANK_TRANSFER', has_iban: true, iban_updated_at: null, kyc_status: 'VERIFIED', ...overrides });
+
+    it('prévient les admins une fois, avec le total à virer', async () => {
+      userClient.send.mockReturnValue(bankAccount());
+      authClient.send.mockImplementation((pattern: string, data: { role?: string }) =>
+        pattern === 'auth.list_users'
+          ? of({ data: data.role === 'ADMIN' ? [{ email: 'admin@test.com', first_name: 'Awa' }] : [{ email: 'ADMIN@test.com', first_name: 'Awa' }, { email: 'super@test.com', first_name: 'Sam' }] })
+          : of({ email: 'org@test.com', first_name: 'Marie' }),
+      );
+      await service.processDuePayouts();
+      await new Promise((resolve) => setImmediate(resolve));
+      const notices = notificationClient.emit.mock.calls.filter(([pattern]) => pattern === 'notification.admin_notice');
+      expect(notices.map(([, payload]) => payload.email)).toEqual(['ADMIN@test.com', 'super@test.com']);
+      expect(notices[0][1]).toMatchObject({
+        subject: '1 reversement à virer',
+        ctaPath: '/admin/reversements',
+        details: ['Reversements en attente de virement : 2', 'Montant total à virer : 67,00 €'],
+      });
+    });
+
+    it("aucun email aux admins si rien n'est passé « À virer »", async () => {
+      userClient.send.mockReturnValue(bankAccount({ has_iban: false }));
+      await service.processDuePayouts();
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(notificationClient.emit).not.toHaveBeenCalledWith('notification.admin_notice', expect.anything());
+    });
 
     it('passe le reversement « À virer » sans virement Stripe', async () => {
       userClient.send.mockReturnValue(bankAccount());
