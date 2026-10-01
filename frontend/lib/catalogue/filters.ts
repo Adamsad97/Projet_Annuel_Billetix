@@ -53,6 +53,14 @@ export const SORT_OPTIONS: { id: SortOrder; label: string }[] = [
 
 export const RADIUS_OPTIONS_KM = [5, 10, 25, 50, 100] as const;
 export const DEFAULT_RADIUS_KM = 25;
+/** Choix « Plus de X km » (X = plus grand rayon proposé) : au-delà de cette distance. */
+export const BEYOND_MAX_RADIUS = -1;
+export const MAX_RADIUS_KM = RADIUS_OPTIONS_KM[RADIUS_OPTIONS_KM.length - 1];
+
+/** « À moins de 25 km » ou « Plus de 100 km ». */
+export function distanceLabel(radiusKm: number): string {
+  return radiusKm === BEYOND_MAX_RADIUS ? `Plus de ${MAX_RADIUS_KM} km` : `À moins de ${radiusKm} km`;
+}
 
 function startOfDay(date: Date): Date {
   const d = new Date(date);

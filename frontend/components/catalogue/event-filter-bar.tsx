@@ -9,7 +9,10 @@ import { FilterMenu, FilterOption } from "@/components/ui/filter-menu";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import { filterSelectClass } from "@/components/ui/field";
 import {
+  BEYOND_MAX_RADIUS,
+  MAX_RADIUS_KM,
   RADIUS_OPTIONS_KM,
+  distanceLabel,
   SORT_OPTIONS,
   WHEN_OPTIONS,
   priceLabel,
@@ -196,7 +199,7 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
               )}
             </FilterMenu>
 
-            <FilterMenu label="Distance" value={`À moins de ${search.radiusKm} km`} active={search.nearMe !== null}>
+            <FilterMenu label="Distance" value={distanceLabel(search.radiusKm)} active={search.nearMe !== null}>
               {(close) => (
                 <div className="flex flex-col gap-3 p-2">
                   <p className="text-sm text-ink-3">Événements autour de votre position actuelle.</p>
@@ -212,6 +215,7 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
                           {km} km
                         </option>
                       ))}
+                      <option value={BEYOND_MAX_RADIUS}>Plus de {MAX_RADIUS_KM} km</option>
                     </select>
                   </label>
                   {search.locateError ? <p className="text-xs text-danger">{search.locateError}</p> : null}

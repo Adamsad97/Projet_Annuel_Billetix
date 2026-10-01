@@ -10,7 +10,9 @@ import { countEventsByPeriod, getEventCategories, listPublishedEvents } from "@/
 import { ApiError } from "@/lib/api/http-error";
 import {
   DEFAULT_FILTERS,
+  BEYOND_MAX_RADIUS,
   DEFAULT_RADIUS_KM,
+  MAX_RADIUS_KM,
   filtersFromUrl,
   filtersToUrl,
   presetPeriods,
@@ -77,7 +79,13 @@ export function useEventSearch({ syncUrl = false, initialEvents }: EventSearchOp
   const apiParams = useMemo(
     () => ({
       ...toApiParams(filters),
-      ...(nearMe ? { lat: nearMe.lat, lng: nearMe.lng, radius_km: radiusKm } : {}),
+      ...(nearMe
+        ? {
+            lat: nearMe.lat,
+            lng: nearMe.lng,
+            ...(radiusKm === BEYOND_MAX_RADIUS ? { min_distance_km: MAX_RADIUS_KM } : { radius_km: radiusKm }),
+          }
+        : {}),
     }),
     [filters, nearMe, radiusKm],
   );

@@ -114,6 +114,8 @@ export interface ListEventsParams {
   lat?: number;
   lng?: number;
   radius_km?: number;
+  /** « Plus de X km » : au-delà de cette distance (avec lat et lng). */
+  min_distance_km?: number;
   // Période (ISO 8601) : événements qui se déroulent au moins en partie dedans.
   date_from?: string;
   date_to?: string;
