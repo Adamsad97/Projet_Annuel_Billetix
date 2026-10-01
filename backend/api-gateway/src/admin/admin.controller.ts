@@ -1102,6 +1102,24 @@ export class AdminController {
     return result;
   }
 
+  @Post("events/:id/feature")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Mettre un événement « À la une » de l'accueil (ADMIN)" })
+  async featureEvent(@CurrentUser() user: JwtPayload, @Req() req: Request, @Param("id", UuidPipe) id: string) {
+    const result = await firstValueFrom(this.eventClient.send("event.feature", { id, admin_id: user.sub }));
+    this.audit(user, req, "CUSTOM", "EVENT", id, "Événement mis à la une de l'accueil.");
+    return result;
+  }
+
+  @Post("events/:id/unfeature")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Retirer un événement de « À la une » (ADMIN)" })
+  async unfeatureEvent(@CurrentUser() user: JwtPayload, @Req() req: Request, @Param("id", UuidPipe) id: string) {
+    const result = await firstValueFrom(this.eventClient.send("event.unfeature", { id }));
+    this.audit(user, req, "CUSTOM", "EVENT", id, "Événement retiré de la une de l'accueil.");
+    return result;
+  }
+
   @Post("events/:id/unhide")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Rendre un événement de nouveau visible (ADMIN)" })
