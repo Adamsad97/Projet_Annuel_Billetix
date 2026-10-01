@@ -21,10 +21,7 @@ describe('StockReservationService', () => {
     redis = {
       get: jest.fn(),
       set: jest.fn(),
-      // Cas nominal : le DEL supprime effectivement la clé (aucune course
-      // avec une autre restauration concurrente) — cf. describe('release —
-      // verrou atomique contre restoreExpiredReservations()') pour le cas
-      // inverse (0, clé déjà supprimée par ailleurs).
+      // Cas nominal : le DEL supprime bien la clé (voir le verrou atomique pour le cas inverse).
       del: jest.fn().mockResolvedValue(1),
       zadd: jest.fn(),
       zrangebyscore: jest.fn().mockResolvedValue([]),
@@ -59,9 +56,7 @@ describe('StockReservationService', () => {
         id: 'cat-1',
         quantity: 2,
       });
-      // TTL de la clé = ttl configuré + marge de grâce (120s, cf.
-      // GRACE_SECONDS) pour laisser le temps au cron de restauration de
-      // traiter l'entrée d'index avant l'expiration effective de la clé.
+      // TTL de la clé = TTL configuré + 120 s de grâce pour le cron de restauration.
       expect(redis.set).toHaveBeenCalledWith(
         expect.stringContaining('reservation:'),
         expect.any(String),

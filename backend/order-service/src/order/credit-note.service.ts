@@ -10,11 +10,7 @@ const SEQUENCE = 'orders.credit_note_seq';
 
 const round = (value: number) => Math.round(value * 100) / 100;
 
-/**
- * Avoirs des commandes remboursées. Montant HT et TVA calculés au
- * prorata de la facture d'origine ; le total des avoirs d'une commande ne
- * dépasse jamais son montant facturé.
- */
+/** Avoirs au prorata de la facture d'origine, sans jamais dépasser le montant facturé. */
 @Injectable()
 export class CreditNoteService implements OnModuleInit {
   constructor(
@@ -26,11 +22,7 @@ export class CreditNoteService implements OnModuleInit {
     await this.dataSource.query(`CREATE SEQUENCE IF NOT EXISTS ${SEQUENCE}`);
   }
 
-  /**
-   * Émet l'avoir d'un remboursement. amountTtc absent : solde non encore
-   * couvert par un avoir (remboursement total). null si rien à émettre :
-   * commande gratuite (sans facture) ou déjà entièrement couverte.
-   */
+  /** Émet l'avoir d'un remboursement (solde restant si amountTtc absent) ; null si rien à émettre. */
   async issue(
     orderId: string,
     amountTtc: number | undefined,

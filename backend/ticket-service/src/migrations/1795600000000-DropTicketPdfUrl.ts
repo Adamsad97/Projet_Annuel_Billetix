@@ -1,9 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * Plus de billet PDF : le billet n'existe que dans l'application (QR
- * éphémère) ; la preuve d'achat est la facture de la commande.
- */
+/** Plus de billet PDF : le billet n'existe que dans l'application, la preuve d'achat est la facture. */
 export class DropTicketPdfUrl1795600000000 implements MigrationInterface {
   name = 'DropTicketPdfUrl1795600000000';
 

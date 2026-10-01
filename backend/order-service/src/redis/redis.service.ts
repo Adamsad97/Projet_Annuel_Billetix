@@ -24,9 +24,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.client.get(key);
   }
 
-  // Renvoie le nombre de clés effectivement supprimées (0 ou 1 pour une
-  // clé unique) — nécessaire pour transformer un DEL en verrou atomique
-  // "premier arrivé, premier servi" (voir StockReservationService).
+  // Nombre de clés supprimées, pour faire d'un DEL un verrou atomique.
   async del(key: string): Promise<number> {
     return this.client.del(key);
   }
@@ -41,9 +39,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.client.ttl(key);
   }
 
-  // Nécessaire pour l'index des réservations à restaurer (voir
-  // StockReservationService) : les clés à TTL seul ne laissent aucune trace
-  // exploitable une fois expirées, un cron ne peut donc rien y retrouver.
+  // Index des réservations à restaurer : une clé à TTL ne laisse aucune trace après expiration.
   async zadd(key: string, score: number, member: string): Promise<void> {
     await this.client.zadd(key, score, member);
   }

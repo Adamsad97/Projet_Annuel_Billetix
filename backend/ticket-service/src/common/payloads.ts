@@ -20,10 +20,7 @@ import { ResaleStatus } from '../resale/ticket-resale.entity';
 import { TransferRevertSource } from '../transfer/ticket-transfer.entity';
 import { RevertRequestStatus } from '../transfer/transfer-revert-request.entity';
 
-/**
- * Messages internes de ticket-service (TCP entre services). Chaque
- * identifiant est vérifié ici une fois pour toutes.
- */
+/** Messages internes de ticket-service, chaque identifiant vérifié ici. */
 const TEXT_MAX = 2000;
 const NAME_MAX = 100;
 

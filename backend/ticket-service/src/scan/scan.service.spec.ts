@@ -102,9 +102,7 @@ describe('ScanService', () => {
 
   it('détecte un double scan (billet déjà utilisé) et retrouve le bon ticket_id via qr_token_history, pas le dernier log de l\'événement', async () => {
     ticketService.verifyQr.mockRejectedValue({ error: { code: 'ALREADY_USED', message: 'Billet déjà utilisé' } });
-    // Un autre billet a été scanné juste avant sur le même événement — si le
-    // code retombait sur "dernier log de l'événement" (ancien bug), il
-    // renverrait ticket_id "un-autre-ticket" au lieu du bon.
+    // Un autre billet a été scanné juste avant : vérifie qu'on ne reprend pas le dernier log de l'événement.
     logRepo.findOne.mockResolvedValue({ ticket_id: 'un-autre-ticket' });
 
     const result = await service.scan(baseDto);

@@ -1,10 +1,7 @@
 import { plainToInstance, Type } from 'class-transformer';
 import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, validateSync } from 'class-validator';
 
-/**
- * Configuration requise par ticket-service, vérifiée au démarrage : une
- * variable manquante arrête le service avec un message clair.
- */
+/** Configuration requise par ticket-service, vérifiée au démarrage (variable manquante = arrêt avec message clair). */
 class TicketServiceEnvironment {
   @IsString() @IsNotEmpty() DATABASE_URL: string;
   // Clé privée Ed25519 (PKCS#8, DER, base64) qui signe les QR codes.

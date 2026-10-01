@@ -25,8 +25,6 @@ export class AddMultiProviderPaymentFields1783700000005 implements MigrationInte
     await queryRunner.query(
       `ALTER TABLE payments.payments DROP COLUMN IF EXISTS provider_redirect_url`,
     );
-    // Retrait d'une valeur d'enum Postgres non supporté nativement (down
-    // volontairement partiel — cohérent avec les autres migrations d'enum
-    // de ce projet, ex: WrongEventScanResult).
+    // Rollback partiel : Postgres ne sait pas retirer une valeur d'ENUM.
   }
 }

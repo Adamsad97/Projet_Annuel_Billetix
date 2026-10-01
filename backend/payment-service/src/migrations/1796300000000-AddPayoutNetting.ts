@@ -1,9 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * Frais des billets gratuits portés par le reversement, et compensation des
- * montants dus par l'organisateur sur ses reversements suivants.
- */
+/** Frais des billets gratuits portés par le reversement, et compensation des montants dus par l'organisateur. */
 export class AddPayoutNetting1796300000000 implements MigrationInterface {
   name = 'AddPayoutNetting1796300000000';
 

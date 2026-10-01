@@ -1,10 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * Stripe devient le seul prestataire de paiement : les commandes sont
- * réglées par Stripe ou gratuites. Échoue volontairement si une commande
- * utilise encore un autre moyen de paiement.
- */
+/** Stripe seul prestataire : commandes Stripe ou gratuites ; échoue si une commande utilise un autre moyen. */
 export class StripeOnlyPaymentMethod1796800000000 implements MigrationInterface {
   name = 'StripeOnlyPaymentMethod1796800000000';
 

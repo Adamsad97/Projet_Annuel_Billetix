@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Réservation gratuite : moyen de paiement « FREE » (aucun prestataire) et
-// adresse de facturation facultative (exigée seulement pour une commande
-// payante, cf. OrderService.create).
+// Réservation gratuite : moyen de paiement FREE et adresse de facturation facultative.
 export class FreeReservation1795900000000 implements MigrationInterface {
   name = 'FreeReservation1795900000000';
 

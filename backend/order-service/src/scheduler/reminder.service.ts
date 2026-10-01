@@ -19,12 +19,7 @@ export class ReminderService {
     private readonly userClient: ClientProxy,
   ) {}
 
-  /**
-   * Préférences niveau 2 (CDC — désactivation réelle des envois) : un échec
-   * de lecture des préférences ne doit jamais bloquer le rappel — on envoie
-   * par défaut (fail-open), comme le ferait l'absence de toute préférence
-   * enregistrée (voir user-service BuyerService.getNotificationPrefs).
-   */
+  /** Échec de lecture des préférences : on envoie quand même le rappel (fail-open). */
   private async wantsEventReminder(buyerId: string): Promise<boolean> {
     try {
       const prefs = await firstValueFrom(
@@ -53,11 +48,7 @@ export class ReminderService {
     const tomorrowEnd = new Date(tomorrow);
     tomorrowEnd.setUTCHours(23, 59, 59, 999);
 
-    // Bug corrigé : ni protection contre un double envoi (redémarrage du
-    // service juste après le cron, ré-exécution manuelle — reminder_sent
-    // filtre désormais les commandes déjà notifiées), ni dédoublonnage par
-    // acheteur (un acheteur ayant passé 2 commandes pour le même événement
-    // recevait le rappel 2 fois).
+    // reminder_sent évite un double envoi, et un acheteur ne reçoit qu'un rappel par événement.
     const ordersToRemind = await this.orderRepo.find({
       where: {
         event_start_at: Between(tomorrowStart, tomorrowEnd),

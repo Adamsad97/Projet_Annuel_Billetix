@@ -4,9 +4,7 @@ export interface TicketItemDto {
   ticket_category_name: string;
   unit_price_ttc: number;
   quantity: number;
-  // Optionnels : CreateOrderDto (order-service) ne les rend pas obligatoires
-  // — l'acheteur ne nomme pas forcément chaque titulaire de billet. Quand
-  // absents, TicketService.generate() retombe sur buyer_first_name/last_name.
+  // Optionnels : à défaut, le titulaire est l'acheteur.
   holder_first_name?: string;
   holder_last_name?: string;
   seat_info?: string;

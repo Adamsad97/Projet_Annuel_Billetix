@@ -1,11 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Table de correspondance jeton QR opaque -> billet. Le QR n'embarque plus
-// aucune information exploitable (ticket_id/event_id/horodatage signés) :
-// une valeur aléatoire pure n'a de sens que via cette table côté serveur.
-// Conserve aussi l'historique des jetons remplacés (is_current = false)
-// pour distinguer un billet revendu (SUPERSEDED) d'un code jamais émis
-// (INVALID) — cf. verifyQr() dans ticket.service.ts.
+// Correspondance jeton QR opaque → billet, avec l'historique des jetons remplacés (SUPERSEDED vs INVALID).
 export class AddQrTokenHistory1789000000000 implements MigrationInterface {
   name = 'AddQrTokenHistory1789000000000';
 

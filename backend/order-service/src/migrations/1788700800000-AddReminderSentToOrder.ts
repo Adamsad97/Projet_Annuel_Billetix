@@ -1,10 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * Bug corrigé : le rappel J-1 (ReminderService) n'avait aucune protection
- * contre un double envoi (redémarrage du service juste après le cron,
- * ré-exécution manuelle).
- */
+/** Protège le rappel J-1 contre un double envoi (redémarrage, ré-exécution manuelle). */
 export class AddReminderSentToOrder1788700800000 implements MigrationInterface {
   name = 'AddReminderSentToOrder1788700800000';
 

@@ -51,15 +51,7 @@ export class ScanService {
     @Inject('EVENT_SERVICE') private readonly eventClient: ClientProxy,
   ) {}
 
-  /**
-   * Vérification de l'événement au moment du scan : ouvert au public
-   * (publié, non masqué, ni suspendu ni annulé) et dans la fenêtre de
-   * contrôle (réglages admin). null si l'entrée est permise.
-   *
-   * event-service injoignable : on ne bloque pas l'entrée de tout un
-   * public sur une panne interne — la fenêtre horaire est alors jugée sur
-   * les dates recopiées dans le billet, et l'incident est journalisé.
-   */
+  /** Événement ouvert et dans la fenêtre de contrôle ; si event-service est injoignable, on juge sur les dates du billet. */
   private async eventGate(ticket: Ticket, at: Date): Promise<ScanResult | null> {
     const event = await firstValueFrom(
       this.eventClient.send<EventSnapshot>('event.get', { id: ticket.event_id }).pipe(timeout(EVENT_LOOKUP_TIMEOUT_MS)),
@@ -80,12 +72,7 @@ export class ScanService {
     return null;
   }
 
-  /**
-   * Paquet hors ligne de l'appareil de contrôle : de quoi vérifier un QR
-   * signé sans réseau (clé publique, empreintes et statuts des billets) et
-   * appliquer les mêmes règles qu'en ligne (état et dates de l'événement,
-   * fenêtre de contrôle). Réservé à l'organisateur et aux agents affectés.
-   */
+  /** Paquet hors ligne pour vérifier un QR sans réseau, réservé à l'organisateur et aux agents affectés. */
   async getOfflinePack(eventId: string, requesterId: string, isOrganizer: boolean) {
     await this.assertCanControl(eventId, requesterId, isOrganizer);
     const [pack, event, config] = await Promise.all([
@@ -126,11 +113,7 @@ export class ScanService {
   }
 
   async scan(dto: ScanDto): Promise<ScanResponse> {
-    // Bug corrigé : n'importe quel utilisateur avec le rôle global AGENT
-    // pouvait scanner les billets de N'IMPORTE QUEL événement, y compris un
-    // événement dont il n'a jamais été l'agent assigné (ou dont il vient
-    // d'être révoqué via ticket.remove_agent) — le rôle JWT était vérifié,
-    // mais jamais l'affectation réelle à CET événement (CDC §6.2).
+    // CDC §6.2 : un agent ne scanne que les événements auxquels il est affecté.
     if (!dto.is_organizer) {
       const isAssigned = await this.controlAgentService.isAssigned(dto.agent_id, dto.event_id);
       if (!isAssigned) {
@@ -148,10 +131,7 @@ export class ScanService {
     let scannedTicket: Ticket | undefined;
 
     try {
-      // Résolution en premier : identifie le billet visé même si le scan
-      // échoue ensuite (déjà utilisé/annulé) — avant, un double scan
-      // reprenait par erreur le tout dernier log de l'événement, pas
-      // forcément le billet réellement présenté.
+      // Identifie d'abord le billet visé, même si le scan échoue ensuite.
       ticketId = await this.ticketService.resolveTicketId(dto.qr_token);
 
       const { ticket } = await this.ticketService.verifyQr(dto.qr_token, scannedAt);

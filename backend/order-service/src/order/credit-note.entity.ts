@@ -1,10 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
-/**
- * Avoir : annule tout ou partie de la facture d'une commande remboursée.
- * Numéro continu et sans trou (séquence orders.credit_note_seq), jamais
- * modifié ni supprimé une fois émis — seul le PDF est rattaché ensuite.
- */
+/** Avoir sur la facture d'une commande remboursée : numérotation continue, jamais modifié ni supprimé. */
 @Entity({ name: 'credit_notes', schema: 'orders' })
 export class CreditNote {
   @PrimaryGeneratedColumn('uuid')

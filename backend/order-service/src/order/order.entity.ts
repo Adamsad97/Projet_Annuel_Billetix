@@ -119,19 +119,14 @@ export class Order {
   @Column({ nullable: true })
   refunded_at: Date | null;
 
-  // Montant TTC déjà remboursé sans annuler la commande (ex. un billet
-  // revendu : son vendeur récupère le prix de revente, les autres billets de
-  // la commande restent valables). Déduit des chiffres d'affaires.
+  // Montant TTC remboursé sans annuler la commande (ex. billet revendu), déduit du chiffre d'affaires.
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   refunded_amount: number;
 
   @Column({ nullable: true })
   invoice_url: string | null;
 
-  // Bug corrigé : le rappel J-1 (ReminderService) n'avait aucune protection
-  // contre un double envoi (redémarrage du service juste après le cron
-  // quotidien, ré-exécution manuelle) — un acheteur aurait pu recevoir le
-  // même rappel plusieurs fois.
+  // Protège le rappel J-1 contre un double envoi.
   @Column({ default: false })
   reminder_sent: boolean;
 

@@ -15,9 +15,7 @@ describe('RecommendationService — suggestions hebdomadaires par email', () => 
   const baseOrder = {
     id: 'order-1',
     buyer_id: 'buyer-A',
-    // Volontairement différent du compte réel (auth-service) ci-dessous :
-    // vérifie qu'on n'utilise jamais ces champs, potentiellement fautifs ou
-    // périmés (saisis en texte libre à l'achat).
+    // Volontairement différent du compte réel : ces champs saisis à l'achat ne doivent jamais servir.
     buyer_email: 'ancien-email-errone@test.com',
     buyer_first_name: 'PrenomPerime',
     event_id: 'event-purchased',

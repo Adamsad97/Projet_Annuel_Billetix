@@ -6,15 +6,9 @@ import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { RedisService } from '../redis/redis.service';
 
 const KEY_PREFIX = 'reservation:';
-// Index (sorted set, sans TTL) des réservations en cours, score = échéance
-// (epoch ms) — sans lui, une réservation qui expire sans jamais devenir une
-// commande (client parti sans payer) laisse le quota décrémenté à vie : la
-// clé Redis à TTL disparaît sans laisser de trace exploitable pour restaurer
-// le stock. Bug corrigé — voir restoreExpiredReservations() ci-dessous.
+// Index des réservations en cours (score = échéance) pour restaurer le stock des réservations expirées.
 const INDEX_KEY = 'reservations:pending_index';
-// Marge de grâce sur le TTL de la clé principale : le cron doit pouvoir
-// encore lire les items à restaurer un peu après l'échéance logique — sans
-// ça, la clé aurait déjà disparu (TTL Redis) au moment où le cron la cherche.
+// Marge de grâce : la clé reste lisible par le cron un peu après l'échéance.
 const GRACE_SECONDS = 120;
 
 export interface ReservationItem {
@@ -57,13 +51,7 @@ export class StockReservationService {
     } catch (quotaError) {
       // Rollback des décrémentations déjà faites
       await this.rollback(decremented);
-      // Bug corrigé : l'erreur propagée par firstValueFrom() pour une
-      // RpcException distante a directement la forme { statusCode, message }
-      // — le code lisait quotaError.error.message (un niveau d'imbrication
-      // en trop, toujours undefined), donc le VRAI message d'event-service
-      // (places insuffisantes, catégorie inactive, dépassement de
-      // max_per_order...) n'était jamais montré, silencieusement remplacé
-      // par le message générique par défaut.
+      // L'erreur distante a la forme { statusCode, message } : on affiche le vrai message d'event-service.
       throw new RpcException({
         statusCode: quotaError?.statusCode ?? 409,
         message: quotaError?.message ?? 'Places insuffisantes',
@@ -95,9 +83,7 @@ export class StockReservationService {
     }
 
     const data: ReservationData = JSON.parse(raw);
-    // Expiration logique vérifiée explicitement : la clé peut encore exister
-    // pendant la marge de grâce (GRACE_SECONDS) réservée au cron de
-    // restauration, elle ne doit pas rester utilisable pour autant.
+    // Expiration vérifiée explicitement : la clé encore présente pendant la grâce n'est plus utilisable.
     if (new Date(data.expires_at).getTime() <= Date.now()) {
       throw new RpcException({
         statusCode: 410,
@@ -116,23 +102,7 @@ export class StockReservationService {
     await this.redis.zrem(INDEX_KEY, token);
   }
 
-  /**
-   * Retourne { success: true } plutôt que void — bug corrigé : c'est le
-   * seul point de ce fichier exposé directement en @MessagePattern
-   * (order.release_reservation) ; un retour void fait planter
-   * firstValueFrom() côté gateway (RxJS EmptyError: "no elements in
-   * sequence") alors que la libération elle-même s'est bien exécutée — le
-   * client recevait une 500 malgré un succès réel.
-   *
-   * Bug corrigé : release() (déclenché par l'acheteur) et
-   * restoreExpiredReservations() (cron, chaque minute) pouvaient tous deux
-   * traiter la même réservation venant d'expirer (fenêtre de grâce de
-   * GRACE_SECONDS) et restaurer CHACUN le quota — doublant artificiellement
-   * le stock disponible. Le DEL sert désormais de verrou atomique : seul
-   * l'appelant dont le DEL supprime effectivement la clé (renvoie > 0)
-   * restaure le quota ; l'autre trouve la clé déjà supprimée (0) et ne fait
-   * rien.
-   */
+  /** Renvoie { success: true } (un void casse firstValueFrom) ; le DEL sert de verrou contre une double restauration. */
   async release(token: string): Promise<{ success: boolean }> {
     const raw = await this.redis.get(`${KEY_PREFIX}${token}`);
     if (!raw) return { success: true };
@@ -146,21 +116,14 @@ export class StockReservationService {
     return { success: true };
   }
 
-  /**
-   * Restaure le quota des réservations expirées jamais devenues une commande
-   * (client parti sans payer) — appelée périodiquement par un cron. Sans
-   * cette méthode, le quota décrémenté à la réservation ne revenait jamais :
-   * la clé Redis expirait silencieusement sans déclencher de restauration.
-   */
+  /** Restaure le quota des réservations expirées sans commande, appelée par un cron. */
   async restoreExpiredReservations(): Promise<number> {
     const expiredTokens = await this.redis.zrangebyscore(INDEX_KEY, 0, Date.now());
     let restored = 0;
     for (const token of expiredTokens) {
       const raw = await this.redis.get(`${KEY_PREFIX}${token}`);
       if (raw) {
-        // Même verrou atomique que release() : ne restaure que si CE DEL a
-        // effectivement supprimé la clé (évite une double restauration si
-        // l'acheteur appelle release() au même instant sur le même jeton).
+        // Même verrou atomique que release() : restaure seulement si ce DEL a supprimé la clé.
         const deleted = await this.redis.del(`${KEY_PREFIX}${token}`);
         if (deleted > 0) {
           const data: ReservationData = JSON.parse(raw);
@@ -175,12 +138,7 @@ export class StockReservationService {
     return restored;
   }
 
-  /**
-   * Restitue le quota de places pour des items déjà consommés (commande
-   * créée, réservation Redis déjà supprimée) — utilisé lors de l'annulation
-   * d'une commande, contrairement à release() qui vise une réservation
-   * encore en attente de paiement.
-   */
+  /** Restitue le quota d'items déjà consommés, lors de l'annulation d'une commande. */
   async restoreItems(items: ReservationItem[]): Promise<void> {
     await this.rollback(items);
   }

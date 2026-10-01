@@ -32,14 +32,7 @@ export class TicketService {
     private readonly qrSigner: QrSigner,
   ) {}
 
-  /**
-   * QR à afficher dans l'espace acheteur : `BTX3.<données>.<signature>`,
-   * signé Ed25519 par ticket-service. Il atteste le billet, l'événement,
-   * la période de validité et l'empreinte du jeton du porteur — aucune
-   * donnée personnelle, et impossible à fabriquer sans la clé privée.
-   * Vérifiable hors ligne par l'appareil de contrôle (clé publique).
-   * Signature déterministe : même code pendant toute la période.
-   */
+  /** QR signé Ed25519 (BTX3) : billet, événement, validité et empreinte du porteur, sans donnée personnelle. */
   async getDisplayQr(id: string): Promise<{ qr_code_url: string; refresh_in_seconds: number }> {
     const ticket = await this.getById(id);
     const { ticket_qr_rotation_seconds: period } = await this.platformConfig.get();
@@ -61,11 +54,7 @@ export class TicketService {
     };
   }
 
-  /**
-   * Entrées d'un événement, tous appareils confondus : billets déjà scannés
-   * sur l'ensemble des billets valables (hors annulés et remboursés ; un
-   * billet en revente reste attendu à l'entrée).
-   */
+  /** Entrées d'un événement : billets scannés sur l'ensemble des billets valables. */
   async getEntryStats(eventId: string): Promise<{ admitted: number; expected: number }> {
     const rows: Array<{ status: TicketStatus; count: string }> = await this.repo
       .createQueryBuilder('t')
@@ -85,12 +74,7 @@ export class TicketService {
     return { admitted, expected };
   }
 
-  /**
-   * Paquet hors ligne d'un événement, téléchargé par l'appareil de contrôle
-   * avant l'ouverture des portes : clé publique de vérification, réglages de
-   * validité, et pour chaque billet son empreinte de porteur et son statut.
-   * Aucun jeton, aucune donnée personnelle.
-   */
+  /** Paquet hors ligne : clé publique, réglages et empreinte et statut de chaque billet, sans donnée personnelle. */
   async getOfflinePack(eventId: string): Promise<{
     algorithm: 'Ed25519';
     public_key: string;
@@ -144,9 +128,7 @@ export class TicketService {
           order_item_id: orderItem.order_item_id,
           buyer_id: dto.buyer_id,
           buyer_email: dto.buyer_email,
-          // Repli sur l'acheteur si aucun titulaire n'a été précisé pour ce
-          // billet (holder_first_name/last_name sont optionnels côté
-          // CreateOrderDto — bug corrigé : NOT NULL en base sinon violé).
+          // Titulaire par défaut : l'acheteur, si aucun n'a été précisé pour ce billet.
           holder_first_name: orderItem.holder_first_name ?? dto.buyer_first_name,
           holder_last_name: orderItem.holder_last_name ?? dto.buyer_last_name,
           // Événement
@@ -192,8 +174,7 @@ export class TicketService {
     return this.repo.find({ where: { order_id: orderId } });
   }
 
-  /** Liste des billets d'un événement — alimente la page "Gestion d'un
-   * événement" côté organisateur (participants + statut de chacun). */
+  /** Billets d'un événement, pour la page de gestion côté organisateur. */
   async getByEvent(eventId: string): Promise<Ticket[]> {
     return this.repo.find({ where: { event_id: eventId }, order: { created_at: 'ASC' } });
   }
@@ -232,13 +213,7 @@ export class TicketService {
     };
   }
 
-  /**
-   * Retrouve l'ID du billet visé par un QR scanné — QR signé (BTX3), ancien
-   * code éphémère (BTX2, qr_display_codes) ou ancien QR fixe (jeton,
-   * qr_token_history), ces deux derniers étant ensuite refusés par verifyQr(). Utilisé par ScanService
-   * pour journaliser le bon billet même quand le scan échoue ensuite (déjà
-   * utilisé, expiré…), sans dépendre d'un texte d'erreur.
-   */
+  /** ID du billet visé par un QR (BTX3, ancien BTX2 ou ancien QR fixe), pour journaliser le bon billet. */
   async resolveTicketId(raw: string): Promise<string> {
     const claims = this.qrSigner.verify(raw);
     if (claims) return claims.ticketId;
@@ -252,14 +227,7 @@ export class TicketService {
     return ticketId;
   }
 
-  /**
-   * Vérification d'un QR scanné, dans l'ordre : signature (cryptographique),
-   * période de validité, billet (porteur actuel, statut).
-   *
-   * @param raw contenu du QR scanné (texte envoyé tel quel par l'application de contrôle)
-   * @param at  heure du scan — celle du scan hors ligne lors d'une
-   *            synchronisation, pour juger si le code était valable.
-   */
+  /** Vérifie un QR : signature, validité puis billet ; at est l'heure du scan (hors ligne compris). */
   async verifyQr(raw: string, at: Date = new Date()): Promise<{ valid: boolean; ticket: Ticket }> {
     const claims = this.qrSigner.verify(raw);
     if (!claims) {
@@ -325,18 +293,9 @@ export class TicketService {
     return { success: true };
   }
 
-  /**
-   * Transition atomique GENERATED/SENT -> USED (UPDATE conditionnel, pas de
-   * lecture puis écriture séparées) — deux scans quasi simultanés du même
-   * billet ne peuvent plus tous les deux réussir : seul le premier UPDATE
-   * affecte une ligne, le second reçoit ALREADY_USED même s'il a lu le
-   * statut via verifyQr() avant que le premier n'ait écrit.
-   */
+  /** Passage atomique à USED : de deux scans simultanés, seul le premier réussit. */
   async markUsed(id: string, agentId: string, deviceInfo?: string, expectedToken?: string): Promise<Ticket> {
-    // `expectedToken` : jeton du porteur lu à la vérification du QR. Le
-    // repasser dans le même UPDATE rend vérification et consommation
-    // indissociables — une revente ou un transfert survenu entre les deux
-    // ne peut plus laisser entrer l'ancien titulaire.
+    // expectedToken rend vérification et consommation indissociables face à une revente ou un transfert.
     const rows = await this.dataSource.query(
       `UPDATE tickets.tickets
        SET status = 'USED', scanned_at = $1, scanned_by = $2, scan_device_info = $3
@@ -385,13 +344,7 @@ export class TicketService {
     return this.repo.save(ticket);
   }
 
-  /**
-   * Appelé quand le nouvel acheteur a payé — transfert du billet.
-   * Bug corrigé : buyer_email/holder_first_name/holder_last_name n'étaient
-   * jamais mis à jour — le billet gardait le nom/email de l'ancien
-   * propriétaire après une revente, y compris pour l'agent de contrôle
-   * (nom affiché au scan) et toute notification ultérieure.
-   */
+  /** Revente payée : transfert du billet avec mise à jour de l'email et du titulaire. */
   async transferToNewBuyer(
     id: string,
     newBuyerId: string,
@@ -410,10 +363,7 @@ export class TicketService {
     ticket.holder_first_name = newHolderFirstName;
     ticket.holder_last_name = newHolderLastName;
     ticket.status = TicketStatus.SENT;
-    // Nouveau jeton QR pour invalider l'ancien : celui-ci reste dans
-    // qr_token_history (is_current=false) — verifyQr() le reconnaît donc
-    // comme SUPERSEDED plutôt qu'INVALID — pendant que le nouveau devient
-    // le seul jeton is_current pour ce billet.
+    // Nouveau jeton courant ; l'ancien reste dans l'historique et ressort SUPERSEDED.
     await this.qrHistoryRepo.update({ token: ticket.qr_code_token }, { is_current: false });
     const newToken = this.generateOpaqueToken();
     await this.recordQrToken(ticket.id, newToken);
@@ -426,13 +376,7 @@ export class TicketService {
     await this.repo.update(id, { status: TicketStatus.SENT });
   }
 
-  /**
-   * Bug corrigé : un remboursement complet (admin ou webhook) ne marquait
-   * jamais les billets de la commande comme invalides — ils restaient
-   * GENERATED/SENT, donc toujours scannables. Un acheteur remboursé pouvait
-   * malgré tout se présenter à l'événement avec un billet valide. Statut
-   * REFUNDED déjà défini sur l'entité mais jamais utilisé jusqu'ici.
-   */
+  /** Remboursement complet : les billets de la commande passent REFUNDED et ne sont plus scannables. */
   async cancelByOrder(orderId: string): Promise<{ cancelled_count: number }> {
     const result = await this.repo
       .createQueryBuilder()
@@ -446,10 +390,7 @@ export class TicketService {
     return { cancelled_count: result.affected ?? 0 };
   }
 
-  /**
-   * Événement reporté : les billets suivent la nouvelle date (fenêtre de
-   * contrôle hors ligne, revente, délai d'annulation s'y réfèrent).
-   */
+  /** Événement reporté : les billets suivent la nouvelle date. */
   async syncEventDates(eventId: string, startAt: Date, endAt: Date): Promise<{ updated: number }> {
     const result = await this.repo.update({ event_id: eventId }, { event_start_at: startAt, event_end_at: endAt });
     return { updated: result.affected ?? 0 };
@@ -511,23 +452,12 @@ export class TicketService {
     return `TKT-${year}-${random}`;
   }
 
-  /**
-   * Jeton = 32 octets aléatoires (CSPRNG), encodés en base64url. Ne contient
-   * ni ticket_id, ni event_id, ni horodatage — aucune information n'est
-   * extractible du jeton lui-même. Bug corrigé (CDC — confidentialité du
-   * QR) : l'ancien format signait ces champs par HMAC mais les laissait en
-   * clair dans le payload (juste encodé en base64, pas chiffré) —
-   * décoder le QR suffisait à récupérer ticket_id/event_id/horodatage.
-   * Le jeton n'a désormais aucun sens hors de qr_token_history (cf.
-   * recordQrToken()/resolveTicketId()) : une valeur opaque, pas un
-   * contenant à décoder.
-   */
+  /** Jeton de 32 octets aléatoires en base64url, sans aucune information extractible. */
   private generateOpaqueToken(): string {
     return newOpaqueToken();
   }
 
-  /** Enregistre un nouveau jeton comme jeton courant du billet dans
-   * qr_token_history — voir resolveTicketId()/verifyQr(). */
+  /** Enregistre un nouveau jeton courant dans qr_token_history. */
   private async recordQrToken(ticketId: string, token: string): Promise<void> {
     await this.qrHistoryRepo.save(
       this.qrHistoryRepo.create({ token, ticket_id: ticketId, is_current: true }),

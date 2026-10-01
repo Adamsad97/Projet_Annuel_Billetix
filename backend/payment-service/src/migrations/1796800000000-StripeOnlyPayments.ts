@@ -1,10 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * Stripe devient le seul prestataire de paiement : retrait de PayPal,
- * Orange Money et Wave (valeurs d'enum et colonnes de redirection/jeton).
- * Échoue volontairement si un paiement utilise encore l'un d'eux.
- */
+/** Stripe seul prestataire : retire PayPal, Orange Money et Wave ; échoue si un paiement les utilise encore. */
 export class StripeOnlyPayments1796800000000 implements MigrationInterface {
   name = 'StripeOnlyPayments1796800000000';
 

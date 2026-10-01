@@ -14,13 +14,7 @@ export interface ConnectAccountStatus {
   bank: { bank_name: string | null; last4: string } | null;
 }
 
-/**
- * Bug corrigé : « prêt » valait details_submitted && charges_enabled — or
- * un compte Express créé avec la seule capacité « transferts » n'est pas
- * autorisé à encaisser : charges_enabled pouvait rester faux et bloquer à
- * vie les reversements. Ce qui compte ici : formulaire complété, virements
- * vers la banque ouverts, capacité « transferts » active.
- */
+/** Compte prêt : formulaire complété, virements vers la banque ouverts et capacité « transferts » active. */
 export function connectAccountStatus(account: Stripe.Account): ConnectAccountStatus {
   const details_submitted = account.details_submitted === true;
   const payouts_enabled = account.payouts_enabled === true;

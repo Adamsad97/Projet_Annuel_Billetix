@@ -24,12 +24,7 @@ export class PaymentController {
     @Inject('USER_SERVICE') private readonly userClient: ClientProxy,
   ) {}
 
-  /**
-   * Bug corrigé (CDC §7) : aucun flux d'onboarding Stripe Connect n'existait
-   * — crée le compte Connect au premier appel (jamais recréé ensuite,
-   * réutilise l'existant), puis génère un lien d'onboarding à chaque appel
-   * (les liens expirent après quelques minutes côté Stripe).
-   */
+  /** CDC §7 : crée le compte Connect au premier appel puis génère un nouveau lien d'onboarding à chaque appel. */
   @MessagePattern('payment.create_connect_onboarding_link')
   async createConnectOnboardingLink(
     @Payload()
@@ -54,11 +49,7 @@ export class PaymentController {
     return { account_id: accountId, url };
   }
 
-  /**
-   * État du compte Connect lu directement chez Stripe : ne dépend pas du
-   * webhook account.updated, qui peut ne jamais arriver (poste de
-   * développement sans tunnel, webhook mal configuré en production).
-   */
+  /** État du compte Connect lu chez Stripe, sans dépendre du webhook account.updated. */
   @MessagePattern('payment.get_connect_status')
   async getConnectStatus(@Payload() data: ConnectAccountPayload) {
     return connectAccountStatus(await this.stripe.retrieveAccount(data.account_id));
@@ -86,9 +77,7 @@ export class PaymentController {
       throw new RpcException({ statusCode: 400, message: 'Signature webhook invalide' });
     }
 
-    // Suit la progression de l'onboarding Connect d'un organisateur —
-    // Stripe renvoie cet événement à chaque changement d'état du compte
-    // connecté (formulaire complété, vérification d'identité, etc.).
+    // Suit la progression de l'onboarding Connect d'un organisateur.
     if (event.type === 'account.updated') {
       const account = event.data.object as Stripe.Account;
       await firstValueFrom(
@@ -152,14 +141,7 @@ export class PaymentController {
     };
   }
 
-  /**
-   * Bug corrigé : la confirmation d'un paiement Stripe reposait uniquement
-   * sur le webhook. S'il n'arrive pas (Stripe ne peut pas joindre un
-   * serveur local, panne réseau, webhook mal configuré), un paiement bien
-   * encaissé restait « en attente » : ni billets ni email. Vérification de
-   * secours : on demande à Stripe l'état réel du PaymentIntent, puis même
-   * traitement (idempotent) que le webhook.
-   */
+  /** Vérification de secours sans webhook : interroge Stripe puis applique le même traitement idempotent. */
   @MessagePattern('payment.sync_stripe_status')
   async syncStripeStatus(@Payload() data: OrderIdPayload) {
     const payment = await this.paymentService.findLatestStripeByOrder(data.order_id);

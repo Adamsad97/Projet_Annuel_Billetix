@@ -304,9 +304,7 @@ describe('TicketService', () => {
       });
 
       expect(ticket.qr_code_token).toBeDefined();
-      // Le jeton ne doit contenir aucune structure exploitable (pas de
-      // ':', pas de '.' séparant un payload d'une signature) — une valeur
-      // aléatoire base64url pure.
+      // Le jeton est une valeur aléatoire base64url pure, sans structure exploitable.
       expect(ticket.qr_code_token).toMatch(/^[A-Za-z0-9_-]+$/);
       expect(savedHistory).toMatchObject({ token: ticket.qr_code_token, ticket_id: ticket.id, is_current: true });
 

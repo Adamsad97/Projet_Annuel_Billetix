@@ -11,18 +11,9 @@ export enum ScanResult {
   ALREADY_USED = 'ALREADY_USED',
   INVALID = 'INVALID',
   CANCELLED = 'CANCELLED',
-  // Billet valide et non utilisé, mais présenté au contrôle d'un autre
-  // événement — distinct d'INVALID (faux/falsifié) : retour orange dédié
-  // côté application de contrôle, cf. CDC section 6.2.
+  // Billet valide présenté au contrôle d'un autre événement (retour orange, CDC §6.2).
   WRONG_EVENT = 'WRONG_EVENT',
-  // Signature cryptographique authentique (donc pas un faux code — un
-  // ticketId/eventId totalement inventé échoue plus tôt, en INVALID), mais
-  // ce n'est plus le QR actuellement valide pour ce billet — cas concret :
-  // le vendeur présente son ancien email après avoir revendu son billet
-  // (transferToNewBuyer régénère le token). Distinct d'INVALID pour que
-  // l'agent voie "billet revendu" plutôt qu'un rejet générique opaque.
-  // Même résultat après un transfert (billet offert) : l'ancien titulaire
-  // ne peut plus entrer avec.
+  // Ancien QR d'un billet revendu ou offert : l'agent voit « billet revendu » plutôt qu'un rejet générique.
   SUPERSEDED = 'SUPERSEDED',
   // Événement annulé, suspendu, masqué ou pas encore publié : aucune entrée.
   EVENT_UNAVAILABLE = 'EVENT_UNAVAILABLE',

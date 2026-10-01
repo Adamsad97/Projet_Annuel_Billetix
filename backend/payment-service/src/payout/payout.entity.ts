@@ -28,19 +28,11 @@ export class Payout {
   @Column()
   event_id: string;
 
-  // Date de fin de l'événement — nécessaire pour vérifier la règle CDC §7.2
-  // « demande anticipée possible après J+2 post-événement » (requestEarly()).
-  // Nullable : les ajustements négatifs créés par recalculateForRefund()
-  // n'ont pas de date de fin d'événement propre (pas éligibles à une
-  // demande anticipée, ce sont déjà des correctifs comptables).
+  // Fin de l'événement, pour la demande anticipée après J+2 (CDC §7.2) ; null pour les ajustements négatifs.
   @Column({ type: 'timestamptz', nullable: true })
   event_end_at: Date | null;
 
-  // Lien vers la commande d'origine — permet de retrouver le payout à
-  // ajuster lors d'un remboursement (une commande = un payout, cf.
-  // PayoutService.create() appelé une fois par commande confirmée).
-  // Nullable : les ajustements négatifs créés après remboursement d'un
-  // payout déjà versé référencent aussi la commande via ce même champ.
+  // Commande d'origine, pour retrouver le reversement à ajuster lors d'un remboursement.
   @Column({ nullable: true })
   order_id: string | null;
 
@@ -56,9 +48,7 @@ export class Payout {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   payment_fees_amount: number;
 
-  // Frais des billets gratuits (free_ticket_fee_eur par billet), à la charge
-  // de l'organisateur. Réservation entièrement gratuite : net négatif, repris
-  // sur ses prochains reversements.
+  // Frais des billets gratuits à la charge de l'organisateur ; un net négatif est repris sur les reversements suivants.
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   free_ticket_fees_amount: number;
 

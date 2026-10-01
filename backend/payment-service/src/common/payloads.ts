@@ -20,11 +20,7 @@ import {
 import { DisputeReason, DisputeStatus } from '../dispute/dispute.entity';
 import { PayoutStatus } from '../payout/payout.entity';
 
-/**
- * Messages internes de payment-service (TCP entre services). Les corps de
- * webhook restent des textes bruts : ils ne sont jamais transformés, pour que
- * la vérification de signature porte sur l'octet près.
- */
+/** Messages internes de payment-service ; les corps de webhook restent bruts pour vérifier la signature à l'octet près. */
 const WEBHOOK_MAX = 1_000_000;
 const TEXT_MAX = 2000;
 

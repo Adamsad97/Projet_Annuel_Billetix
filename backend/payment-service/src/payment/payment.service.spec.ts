@@ -225,9 +225,7 @@ describe('PaymentService', () => {
     });
 
     it('empêche le cumul au-delà du montant payé sur des appels successifs (comportement garanti par le verrou en concurrence réelle)', async () => {
-      // dataSource.transaction + verrou pessimiste garantissent qu'un second
-      // remboursement concurrent ne lit le solde qu'après le commit du
-      // premier — on simule ici cet ordonnancement avec un état partagé.
+      // Simule l'ordonnancement garanti par le verrou : le second remboursement lit le solde après le premier commit.
       let currentRefunded = 0;
       refundQueryBuilder.getOne.mockImplementation(() =>
         Promise.resolve({ ...paidPayment, refunded_amount: currentRefunded }),

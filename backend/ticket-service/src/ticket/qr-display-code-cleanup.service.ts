@@ -5,11 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
 import { QrDisplayCode } from './qr-display-code.entity';
 
-/**
- * Efface les codes d'affichage expirés une fois passé le délai de
- * synchronisation des scans hors ligne (OFFLINE_SYNC_MAX_HOURS) — au-delà,
- * plus aucun scan ne peut légitimement les présenter.
- */
+/** Efface les codes d'affichage expirés après le délai de synchronisation hors ligne. */
 @Injectable()
 export class QrDisplayCodeCleanupService {
   private readonly logger = new Logger(QrDisplayCodeCleanupService.name);

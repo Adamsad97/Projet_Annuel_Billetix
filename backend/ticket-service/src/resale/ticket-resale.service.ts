@@ -32,10 +32,7 @@ export class TicketResaleService {
       throw new RpcException({ statusCode: 400, message: 'L\'événement est déjà passé' });
     }
 
-    // Bug corrigé : le prix de revente n'était jamais vérifié côté serveur —
-    // seul le formulaire (mock, jamais branché) affichait la règle "plafonné
-    // à la valeur faciale" (cf. FAQ) sans jamais l'appliquer. N'importe quel
-    // appel direct à cet endpoint pouvait donc revendre à profit.
+    // Prix de revente plafonné à la valeur faciale, vérifié côté serveur.
     const faceValue = Number(ticket.unit_price_ttc);
     if (!(data.resale_price > 0) || data.resale_price > faceValue) {
       throw new RpcException({
@@ -79,9 +76,7 @@ export class TicketResaleService {
       .getMany();
   }
 
-  /** Toutes les annonces actives, tous événements confondus — marketplace
-   * globale (/revente), par opposition à listByEvent() qui ne sert que
-   * l'onglet revente d'un événement précis. */
+  /** Toutes les annonces actives, pour la page /revente. */
   async listAllActive(): Promise<TicketResale[]> {
     return this.repo
       .createQueryBuilder('r')
@@ -92,9 +87,7 @@ export class TicketResaleService {
       .getMany();
   }
 
-  /** L'annonce active (LISTED) d'un billet donné, pour que son propriétaire
-   * puisse la gérer (voir le prix, la retirer) depuis la page du billet —
-   * null si ce billet n'est pas actuellement en vente. */
+  /** Annonce active d'un billet pour que son propriétaire la gère, ou null. */
   async getActiveByTicketId(ticketId: string): Promise<TicketResale | null> {
     return this.repo.findOne({
       where: { ticket_id: ticketId, status: ResaleStatus.LISTED },
@@ -107,12 +100,7 @@ export class TicketResaleService {
     return resale;
   }
 
-  /**
-   * Réserve atomiquement une offre pour le temps du paiement — évite que
-   * deux acheteurs créent chacun une commande sur la même offre encore
-   * LISTED. Une réservation expirée (paiement jamais finalisé) redevient
-   * automatiquement réclamable, sans attendre le cron de nettoyage.
-   */
+  /** Réserve atomiquement une offre pendant le paiement ; une réservation expirée redevient réclamable. */
   async reserve(resaleId: string, buyerId: string): Promise<TicketResale> {
     const config = await this.platformConfig.get();
     const expiresAt = new Date(Date.now() + config.resale_reservation_minutes * 60 * 1000);
@@ -170,10 +158,7 @@ export class TicketResaleService {
   }): Promise<{ resale: TicketResale; originalOrderId: string }> {
     const resale = await this.getById(data.resale_id);
 
-    // L'offre doit avoir été réservée par ce même acheteur via reserve()
-    // (appelé par order-service à la création de la commande) — un statut
-    // LISTED ici signifierait un paiement complété sans être passé par la
-    // réservation, ce qui ne doit plus arriver avec le flux actuel.
+    // L'offre doit avoir été réservée par ce même acheteur via reserve().
     if (
       resale.status !== ResaleStatus.RESERVED ||
       resale.reserved_by_buyer_id !== data.new_buyer_id
@@ -205,10 +190,7 @@ export class TicketResaleService {
 
   // ─── Historique (vendeur, acheteur, administration) ──────────────────────
 
-  /**
-   * Ajoute aux annonces les infos lisibles du billet (référence, événement,
-   * catégorie, titulaire actuel) : l'annonce ne stocke que des identifiants.
-   */
+  /** Ajoute aux annonces les infos lisibles du billet (l'annonce ne stocke que des identifiants). */
   private async withTicketInfo(resales: TicketResale[]) {
     const tickets = resales.length
       ? await this.dataSource.getRepository(Ticket).findBy({ id: In([...new Set(resales.map((r) => r.ticket_id))]) })
@@ -259,12 +241,7 @@ export class TicketResaleService {
     return this.withTicketInfo(resales);
   }
 
-  /**
-   * Vue administration : toutes les annonces, filtrables par statut et par
-   * recherche libre : référence de billet, événement, ou compte vendeur /
-   * acheteur (user_ids : comptes dont le nom ou l'email correspond à la
-   * recherche, résolus par l'api-gateway auprès de l'auth-service).
-   */
+  /** Vue admin de toutes les annonces, filtrables par statut et recherche (billet, événement, vendeur, acheteur). */
   async listForAdmin(filters: {
     status?: ResaleStatus;
     q?: string;

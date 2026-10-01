@@ -1,10 +1,7 @@
 import { Type } from 'class-transformer';
 import { IsBoolean, IsDateString, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
 
-/**
- * Messages internes d'order-service (TCP entre services). Chaque identifiant
- * est vérifié ici une fois pour toutes.
- */
+/** Messages internes d'order-service, chaque identifiant vérifié ici. */
 export class IdPayload {
   @IsUUID() id: string;
 }

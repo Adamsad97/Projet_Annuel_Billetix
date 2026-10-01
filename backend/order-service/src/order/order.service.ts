@@ -31,10 +31,7 @@ export class OrderService {
     const reservation = await this.reservationService.validate(dto.reservation_token, dto.buyer_id);
     const config = await this.platformConfig.get();
 
-    // Le taux de commission ne vient JAMAIS du client : il est relu depuis
-    // l'événement, seule source de vérité, calculé dynamiquement côté
-    // event-service à partir des réglages admin (platform_settings) — un
-    // acheteur ne peut donc jamais imposer un taux de son choix (ex: 0%).
+    // Taux de commission jamais fourni par le client : relu depuis l'événement.
     const event = await firstValueFrom(
       this.eventClient.send<{ commission_rate: number; organizer_id: string; vat_rate?: string }>('event.get', {
         id: reservation.event_id,
@@ -45,13 +42,7 @@ export class OrderService {
     // sur la commande : factures et avoirs le reprennent tel quel.
     const vat_rate = vatRateOf(event);
 
-    // Bug corrigé (règle produit) : rien n'empêchait un organisateur
-    // d'acheter un billet pour son propre événement — gonflait
-    // artificiellement les ventes/le taux de remplissage affichés sur son
-    // propre dashboard. Même principe déjà appliqué à la revente (un
-    // vendeur ne peut pas racheter son propre billet, cf. createFromResale
-    // ci-dessous) — organizer_id relu depuis l'événement réel, jamais
-    // depuis dto.organizer_id (optionnel, fourni par le client).
+    // Un organisateur ne peut pas acheter de billet pour son propre événement (organizer_id relu depuis l'événement).
     if (event.organizer_id === dto.buyer_id) {
       await this.reservationService.release(dto.reservation_token);
       throw new RpcException({
@@ -60,10 +51,7 @@ export class OrderService {
       });
     }
 
-    // Prix unitaire : jamais accepté depuis le client — relu depuis les
-    // catégories de billets réelles de l'événement (event-service), seule
-    // source de vérité pour price_ht/name. Un acheteur ne peut donc jamais
-    // imposer son propre prix ou usurper le nom d'une catégorie.
+    // Prix et nom relus depuis les catégories réelles de l'événement, jamais depuis le client.
     const categories = await firstValueFrom(
       this.eventClient.send<Array<{ id: string; name: string; price_ht: number }>>(
         'event.get_categories',
@@ -72,9 +60,7 @@ export class OrderService {
     );
     const categoryById = new Map(categories.map((category) => [category.id, category]));
 
-    // Remise : jamais de discount_amount/promo_code_id fournis par le client
-    // — seul le code (chaîne saisie par l'acheteur) est accepté, revalidé et
-    // recalculé ici via event-service (mêmes règles que pour la commission).
+    // Remise recalculée ici à partir du seul code promo saisi par l'acheteur.
     let validatedPromo: {
       discount_type: 'PERCENTAGE' | 'FIXED';
       discount_value: number;
@@ -145,19 +131,13 @@ export class OrderService {
         : 0;
 
       const total_ht = parseFloat((subtotal_ht - discount).toFixed(2));
-      // Le frais fixe billet gratuit (0,50€/billet) n'est jamais facturé à
-      // l'acheteur — le CDC exige qu'un événement entièrement gratuit
-      // (total_ht = 0) n'affiche aucune page de paiement. Ce frais est à la
-      // charge de l'organisateur, déduit directement de son net reversé,
-      // au même titre que la commission.
+      // Les frais par billet gratuit sont à la charge de l'organisateur, jamais de l'acheteur.
       const total_ttc = parseFloat((total_ht * (1 + vat_rate)).toFixed(2));
       const commission = parseFloat((total_ht * (commission_rate / 100)).toFixed(2));
       free_ticket_fees = parseFloat(free_ticket_fees.toFixed(2));
       const net_organizer = parseFloat((total_ht - commission - free_ticket_fees).toFixed(2));
 
-      // Réservation gratuite (total calculé ici, jamais annoncé par le
-      // client) : aucun moyen de paiement, adresse facultative. Payante :
-      // adresse complète obligatoire, « gratuit » refusé.
+      // Réservation gratuite : aucun moyen de paiement, adresse facultative ; payante : adresse complète, « gratuit » refusé.
       const isFree = total_ttc === 0;
       const hasAddress = [dto.billing_address_line1, dto.billing_city, dto.billing_postal_code, dto.billing_country].every(
         (field) => typeof field === 'string' && field.trim() !== '',
@@ -229,18 +209,9 @@ export class OrderService {
     return { order, items };
   }
 
-  /**
-   * Achat d'un billet en revente (marché secondaire). Distinct de create() :
-   * aucune réservation de stock (le billet existe déjà, aucune place n'est
-   * décomptée) et le prix payé est celui de l'offre de revente — jamais celui
-   * de la catégorie d'origine, jamais fourni par le client. Tout est relu
-   * depuis ticket-service (l'offre) et event-service (le taux de commission).
-   */
+  /** Achat en revente : pas de réservation de stock, prix de l'offre et commission relus depuis les services. */
   async createFromResale(dto: CreateResaleOrderDto): Promise<{ order: Order; items: OrderItem[] }> {
-    // Réserve atomiquement l'offre (statut LISTED -> RESERVED) le temps du
-    // paiement — un second acheteur ne peut plus créer de commande sur la
-    // même offre tant que celle-ci n'est pas libérée (paiement échoué/annulé)
-    // ou expirée (voir ResaleCleanupService côté ticket-service).
+    // Réserve atomiquement l'offre (LISTED → RESERVED) le temps du paiement.
     const resale = await firstValueFrom(
       this.ticketClient.send<{
         id: string;
@@ -252,11 +223,7 @@ export class OrderService {
       }>('ticket.reserve_resale', { resale_id: dto.resale_id, buyer_id: dto.buyer_id }),
     );
 
-    // Bug corrigé : rien n'empêchait le vendeur de racheter son propre
-    // billet mis en revente — la réservation atomique ne vérifie que la
-    // disponibilité de l'offre, pas l'identité de l'acheteur. On libère
-    // aussitôt la réservation pour ne pas bloquer inutilement l'offre 15
-    // minutes suite à cette tentative.
+    // Le vendeur ne peut pas racheter son propre billet : on libère aussitôt la réservation.
     if (resale.original_buyer_id === dto.buyer_id) {
       this.ticketClient
         .send('ticket.release_resale_reservation', { resale_id: dto.resale_id })
@@ -284,9 +251,7 @@ export class OrderService {
     const commission_rate = Number(event.commission_rate);
     const vat_rate = vatRateOf(event);
 
-    // Best-effort : le nom de catégorie n'est qu'informatif (facture/email),
-    // jamais utilisé pour le prix — une catégorie désactivée après la vente
-    // d'origine ne doit pas empêcher la revente.
+    // Nom de catégorie seulement informatif : une catégorie désactivée n'empêche pas la revente.
     let categoryName = 'Billet revendu';
     try {
       const categories = await firstValueFrom(
@@ -299,13 +264,7 @@ export class OrderService {
       // non bloquant
     }
 
-    // Bug corrigé : resale_price était traité comme un prix HT (comme le
-    // price_ht d'une catégorie de billet normale), puis la TVA était
-    // réappliquée par-dessus pour obtenir le TTC facturé à l'acheteur — un
-    // billet plafonné à sa valeur faciale (déjà TTC, cf.
-    // TicketResaleService.requestResale) finissait donc facturé ~20% plus
-    // cher que ce plafond. resale_price est déjà le prix TTC affiché/plafonné
-    // au moment de la mise en vente ; le HT en est dérivé par calcul inverse.
+    // resale_price est déjà le prix TTC plafonné : le HT en est dérivé par calcul inverse.
     const unit_ttc = Number(resale.resale_price);
     const unit_ht = parseFloat((unit_ttc / (1 + vat_rate)).toFixed(2));
     const commission = parseFloat((unit_ht * (commission_rate / 100)).toFixed(2));
@@ -450,16 +409,7 @@ export class OrderService {
     };
   }
 
-  /**
-   * Tendance ventes/billets/chiffre d'affaires par jour sur une plage de
-   * dates arbitraire — dashboard admin (sélecteur de métrique + plage de
-   * dates).
-   *
-   * Deux agrégats calculés séparément puis recombinés par jour (FULL OUTER
-   * JOIN) plutôt qu'un simple LEFT JOIN order_items sur une seule requête :
-   * joindre les items multiplierait les lignes "orders" par item, faussant
-   * SUM(total_amount_ttc) (bug qu'un LEFT JOIN naïf aurait introduit ici).
-   */
+  /** Tendance quotidienne (ventes, billets, CA) sur une plage : deux agrégats recombinés par FULL OUTER JOIN pour ne pas fausser les sommes. */
   async getSalesTrend(
     from: Date,
     to: Date,
@@ -517,9 +467,7 @@ export class OrderService {
     const order = await this.orderRepo.findOne({ where: { id } });
     if (!order) throw new RpcException({ statusCode: 404, message: 'Commande introuvable' });
 
-    // Défense en profondeur : payment-service garantit déjà qu'un webhook
-    // Stripe dupliqué ne rappelle jamais confirmPayment() deux fois, mais si
-    // c'était le cas, ne jamais soustraire les frais une seconde fois.
+    // Défense en profondeur : ne jamais soustraire les frais deux fois.
     if (order.payment_status === PaymentStatus.PAID) {
       return order;
     }
@@ -551,9 +499,7 @@ export class OrderService {
     if (order.status === OrderStatus.CANCELLED || order.status === OrderStatus.REFUNDED) {
       throw new RpcException({ statusCode: 400, message: 'Commande déjà annulée ou remboursée' });
     }
-    // Une commande déjà payée doit passer par le remboursement (admin), pas
-    // par une simple annulation — sinon l'argent encaissé ne serait jamais
-    // rendu tout en libérant le stock comme si de rien n'était.
+    // Une commande payée passe par le remboursement, pas par une simple annulation.
     if (order.status !== OrderStatus.PENDING_PAYMENT) {
       throw new RpcException({
         statusCode: 400,
@@ -566,9 +512,7 @@ export class OrderService {
     order.cancellation_reason = reason ?? null;
     const saved = await this.orderRepo.save(order);
 
-    // Une commande de revente ne réserve aucun quota de catégorie (le billet
-    // existe déjà) — restaurer un quota serait un bug (place fantôme en plus).
-    // C'est la réservation de l'offre elle-même qu'il faut libérer.
+    // Commande de revente : on libère la réservation de l'offre, pas un quota de catégorie.
     if (order.is_resale) {
       if (order.resale_id) {
         this.ticketClient
@@ -585,19 +529,11 @@ export class OrderService {
     return saved;
   }
 
-  /**
-   * Annule et libère le stock des commandes restées en attente de paiement
-   * au-delà du délai configuré — un acheteur qui abandonne son panier sans
-   * jamais payer ne doit pas bloquer indéfiniment le quota de la catégorie.
-   * Appelée périodiquement par OrderCleanupService.
-   */
+  /** Annule les commandes en attente de paiement au-delà du délai et libère leur stock (OrderCleanupService). */
   async releaseAbandoned(): Promise<number> {
     const { order_abandon_timeout_minutes, resale_reservation_minutes } = await this.platformConfig.get();
     const threshold = new Date(Date.now() - order_abandon_timeout_minutes * 60 * 1000);
-    // Une commande de revente doit être abandonnée au même rythme que la
-    // réservation de l'offre côté ticket-service, sinon la commande reste
-    // PENDING_PAYMENT alors que l'offre est déjà redevenue LISTED pour un
-    // autre acheteur.
+    // Commande de revente abandonnée au même rythme que la réservation de l'offre côté ticket-service.
     const resaleThreshold = new Date(Date.now() - resale_reservation_minutes * 60 * 1000);
 
     const abandoned = await this.orderRepo
@@ -632,24 +568,12 @@ export class OrderService {
     return abandoned.length;
   }
 
-  /**
-   * restoreStock=false : cas du remboursement déclenché par une revente
-   * complétée (ticket.complete_resale rembourse le vendeur original) — le
-   * billet n'a pas été annulé, il a été transféré à l'acheteur de la
-   * revente, qui occupe toujours légitimement la place. Restaurer le quota
-   * ici créerait une place fantôme (double comptage). Sur tout autre
-   * remboursement (admin, litige), restoreStock reste true par défaut.
-   */
+  /** restoreStock=false pour un remboursement dû à une revente : la place reste occupée par l'acheteur. */
   async markRefunded(id: string, restoreStock = true): Promise<Order> {
     const order = await this.orderRepo.findOne({ where: { id } });
     if (!order) throw new RpcException({ statusCode: 404, message: 'Commande introuvable' });
 
-    // Bug corrigé : appelé depuis 4 points d'entrée indépendants (remboursement
-    // admin, remboursement acheteur, annulation en cascade d'événement, revente),
-    // sans garde d'idempotence contrairement à confirmPayment() — un second
-    // appel (retry réseau, double-clic admin) restaurait le stock une deuxième
-    // fois, créant des places fantômes vendables alors qu'aucune place réelle
-    // n'existait.
+    // Idempotent : un second appel ne restaure pas le stock une deuxième fois.
     if (order.status === OrderStatus.REFUNDED) {
       return order;
     }
@@ -659,12 +583,7 @@ export class OrderService {
     order.refunded_at = new Date();
     const saved = await this.orderRepo.save(order);
 
-    // Bug corrigé : un remboursement complet ne restaurait jamais le stock
-    // décrémenté à la réservation — les places restaient perdues pour de bon
-    // même si l'acheteur avait bien été remboursé. Même logique que
-    // cancel() ; ne s'applique pas à une commande de revente (aucun quota
-    // de catégorie n'a été décrémenté, le billet existait déjà) ni à un
-    // remboursement suite à revente (voir ci-dessus).
+    // Remboursement complet : restaure le stock, sauf pour une revente.
     if (!order.is_resale && restoreStock) {
       const items = await this.itemRepo.find({ where: { order_id: id } });
       await this.reservationService.restoreItems(
@@ -675,11 +594,7 @@ export class OrderService {
     return saved;
   }
 
-  /**
-   * Remboursement partiel sans annulation (billet revendu) : la commande
-   * reste confirmée, ses autres billets restent valables ; seul le montant
-   * remboursé est enregistré, et déduit des chiffres d'affaires.
-   */
+  /** Remboursement partiel sans annulation (billet revendu) : seul le montant est enregistré et déduit du CA. */
   async recordPartialRefund(id: string, amountTtc: number): Promise<Order> {
     const order = await this.orderRepo.findOne({ where: { id } });
     if (!order) throw new RpcException({ statusCode: 404, message: 'Commande introuvable' });

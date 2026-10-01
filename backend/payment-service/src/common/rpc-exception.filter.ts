@@ -8,18 +8,7 @@ function isRpcError(value: unknown): value is RpcError {
   return typeof value === 'object' && value !== null && typeof (value as RpcError).statusCode === 'number';
 }
 
-/**
- * Filtre global des messages internes. Sans lui, toute erreur qui n'est pas
- * une RpcException — en particulier la réponse d'erreur d'un autre service
- * appelé ({ statusCode: 404, message: "Commande introuvable" }) — était
- * remplacée par « Internal server error » : le vrai motif et son statut
- * étaient perdus. Ici :
- *   - RpcException : transmise telle quelle ;
- *   - erreur d'un service appelé : relayée avec son statut et son message ;
- *   - HttpException (levée par erreur dans un service) : convertie ;
- *   - toute autre erreur : journalisée, puis 500 générique (aucun détail
- *     technique renvoyé à l'appelant).
- */
+/** Filtre des messages internes : relaie statut et motif réels des erreurs, 500 générique sans détail sinon. */
 @Catch()
 export class AllRpcExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger('RpcExceptions');

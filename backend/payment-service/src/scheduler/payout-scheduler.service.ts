@@ -45,9 +45,7 @@ export class PayoutSchedulerService {
     // Reversements passés « À virer » pendant ce cycle : un seul email aux admins.
     let preparedCount = 0;
 
-    // État réel de chaque événement, lu une fois par cycle : un événement
-    // reporté n'est jamais reversé, et une fin déplacée plus tard reprogramme
-    // le reversement, même si la passerelle n'a pas pu le faire.
+    // État réel des événements lu à chaque cycle : jamais de reversement d'un événement reporté.
     const events = new Map<string, { status?: string; end_date?: string } | null>();
     for (const payout of duePayouts) {
       try {
@@ -147,10 +145,7 @@ export class PayoutSchedulerService {
     }
   }
 
-  /**
-   * Virements à émettre par l'admin (organisateurs payés par IBAN) : un
-   * récapitulatif par cycle à chaque admin actif, avec le total en attente.
-   */
+  /** Récapitulatif des virements à émettre envoyé à chaque admin actif. */
   private async notifyAdminsToTransfer(newCount: number): Promise<void> {
     const pending = await this.payoutService.getToTransfer();
     const total = pending.reduce((sum, payout) => sum + Number(payout.net_amount) - Number(payout.offset_amount), 0);
@@ -185,10 +180,7 @@ export class PayoutSchedulerService {
     }
   }
 
-  // Tous les jours à 10h30 UTC — un reversement bloqué pour litige ne doit
-  // jamais rester bloqué indéfiniment (CDC §7.2 : « fonds bloqués jusqu'à
-  // résolution, 30 jours maximum »). Débloque automatiquement ceux dont le
-  // délai configuré (dispute_payout_block_max_days) est dépassé, résolu ou non.
+  // Tous les jours à 10h30 UTC : débloque les reversements bloqués pour litige au-delà du délai maximum.
   @Cron('30 10 * * *')
   async unblockExpiredDisputePayouts(): Promise<void> {
     const config = await this.platformConfig.get();

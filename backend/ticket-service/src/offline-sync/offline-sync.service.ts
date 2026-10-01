@@ -55,9 +55,7 @@ export class OfflineSyncService {
         } else if (scanResult.result === ScanResult.SUCCESS) {
           synced++;
         } else {
-          // Bug corrigé : seuls INVALID/CANCELLED/WRONG_EVENT étaient
-          // comptés en erreur — un QR expiré, revendu, fixe, ou un scan
-          // hors fenêtre / événement fermé passait pour « synchronisé ».
+          // Tout résultat autre que SUCCESS est compté en erreur de synchronisation.
           status = SyncStatus.ERROR;
           conflictDetail = `Scan refusé : ${scanResult.result}`;
           errors++;

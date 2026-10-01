@@ -12,13 +12,7 @@ export enum TransferRevertSource {
   PLATFORM = 'PLATFORM',
 }
 
-/**
- * Transfert gratuit d'un billet (« offrir mon billet ») — une ligne par
- * transfert, jamais modifiée ni supprimée : c'est la trace commune à
- * l'expéditeur, au bénéficiaire et à l'administration. Les infos du billet
- * sont figées au moment du transfert : l'expéditeur garde un historique
- * lisible sans plus avoir accès au billet lui-même.
- */
+/** Trace immuable d'un billet offert, avec les infos du billet figées au moment du transfert. */
 @Entity({ schema: 'tickets', name: 'ticket_transfers' })
 export class TicketTransfer {
   @PrimaryGeneratedColumn('uuid')

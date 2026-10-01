@@ -33,11 +33,7 @@ export class PayoutService {
     const net = data.gross_amount - data.commission_amount - data.payment_fees_amount - freeTicketFees;
 
     const base = data.event_end_at ? new Date(data.event_end_at) : new Date();
-    // Bug corrigé : le CDC §7.2 exige explicitement des jours OUVRÉS
-    // ("Reversement automatique J+5 ouvrés"), mais le calcul ajoutait des
-    // jours calendaires bruts (samedi/dimanche comptaient comme des jours
-    // de délai) — la date annoncée aux organisateurs ne correspondait pas
-    // à la réalité.
+    // CDC §7.2 : reversement à J+5 ouvrés, week-ends exclus.
     const scheduled = this.addBusinessDays(base, config.payout_delay_days);
 
     return this.repo.save(
@@ -56,15 +52,7 @@ export class PayoutService {
     );
   }
 
-  /**
-   * Recalcule le reversement d'une commande après remboursement (total ou
-   * partiel). Si le payout n'a pas encore été versé (PENDING/BLOCKED), son
-   * montant est directement réduit au prorata du remboursement. S'il est
-   * déjà en cours ou versé (PROCESSING/COMPLETED), impossible de le modifier
-   * rétroactivement — un virement Stripe déjà émis ne peut pas être annulé
-   * localement — donc un ajustement compensatoire séparé (montant négatif)
-   * est créé à la place, à récupérer sur un prochain cycle de reversement.
-   */
+  /** Après remboursement : réduit le reversement non versé, sinon crée un ajustement négatif à récupérer plus tard. */
   async recalculateForRefund(
     orderId: string,
     refundedAmount: number,
@@ -131,11 +119,7 @@ export class PayoutService {
     return { held: result.affected ?? 0 };
   }
 
-  /**
-   * Nouvelle date d'un événement reporté : reversements reprogrammés sur la
-   * nouvelle fin (+ payout_delay_days ouvrés), attente levée, demande
-   * anticipée éventuelle annulée (elle portait sur l'ancienne date).
-   */
+  /** Événement reporté : reversements reprogrammés sur la nouvelle fin, demande anticipée annulée. */
   async rescheduleForEvent(eventId: string, eventEndAt: Date): Promise<{ rescheduled: number }> {
     const config = await this.platformConfig.get();
     const payouts = await this.repo.find({
@@ -209,8 +193,7 @@ export class PayoutService {
     return this.repo.find({ where: { organizer_id: organizerId }, order: { scheduled_at: 'DESC' } });
   }
 
-  /** Cartes KPI de la page admin des reversements — un seul aller-retour SQL
-   * plutôt que trois (pending/versé ce mois-ci/bloqué). */
+  /** Cartes KPI des reversements en un seul aller-retour SQL. */
   async getStats(): Promise<{
     pending_total: number;
     paid_this_month_total: number;
@@ -248,9 +231,7 @@ export class PayoutService {
     };
   }
 
-  /** Liste globale pour l'admin (tous organisateurs confondus), paginée et
-   * filtrable par statut — distincte de getByOrganizer (un seul organisateur,
-   * pas de pagination car volume par compte toujours restreint). */
+  /** Liste admin de tous les reversements, paginée et filtrable par statut. */
   async listAll(filters: {
     status?: PayoutStatus;
     /** Recherche résolue par la passerelle : organisateurs ou événements correspondants. */
@@ -295,11 +276,7 @@ export class PayoutService {
   }
 
   async getDuePayouts(): Promise<Payout[]> {
-    // net_amount > 0 uniquement : un virement Stripe ne peut pas être négatif
-    // ou nul. Les ajustements négatifs créés par recalculateForRefund() (sur
-    // un payout déjà versé) restent PENDING mais ne sont jamais transférés
-    // automatiquement — ils doivent être récupérés sur un futur reversement
-    // positif du même organisateur, ou réconciliés manuellement par un admin.
+    // Seul un net positif est viré ; les ajustements négatifs sont récupérés sur un futur reversement.
     return this.repo
       .createQueryBuilder('payout')
       .where('payout.status = :status', { status: PayoutStatus.PENDING })
@@ -309,11 +286,7 @@ export class PayoutService {
       .getMany();
   }
 
-  /**
-   * Montants dus par l'organisateur, échus et non suspendus (frais de billets
-   * gratuits, remboursements survenus après un versement), du plus ancien au
-   * plus récent.
-   */
+  /** Montants dus par l'organisateur, échus et non suspendus, du plus ancien au plus récent. */
   async getOutstandingDebts(organizerId: string): Promise<Payout[]> {
     const pending = await this.repo.find({
       where: {
@@ -328,12 +301,7 @@ export class PayoutService {
     return pending.filter((payout) => Number(payout.net_amount) < 0 && new Date(payout.scheduled_at).getTime() <= now);
   }
 
-  /**
-   * Versement d'un reversement, après compensation des montants dus par
-   * l'organisateur : seul le reste est viré. Un montant dû couvert en partie
-   * est scindé (part réglée soldée, reste toujours dû), pour que l'historique
-   * des versements reste juste. Virement refusé : rien n'est compensé.
-   */
+  /** Versement après compensation des montants dus (scindés si couverts en partie) ; rien n'est compensé si refusé. */
   async process(id: string, stripeAccountId: string): Promise<Payout> {
     const payout = await this.getById(id);
     if (payout.status !== PayoutStatus.PENDING) {
@@ -381,12 +349,7 @@ export class PayoutService {
     return { available, settlements };
   }
 
-  /**
-   * Organisateur payé par virement bancaire : le montant à virer est arrêté
-   * (compensation faite) et le reversement passe « À virer ». Les montants
-   * dus imputés sont réservés à ce reversement et soldés à la confirmation
-   * du virement. Rien à virer après compensation : soldé immédiatement.
-   */
+  /** Organisateur payé par virement : montant arrêté après compensation, reversement « À virer ». */
   async prepareBankTransfer(id: string): Promise<Payout> {
     const payout = await this.getById(id);
     if (payout.status !== PayoutStatus.PENDING) {
@@ -433,10 +396,7 @@ export class PayoutService {
     return saved;
   }
 
-  /**
-   * Virement rejeté par la banque ou annulé : le reversement redevient
-   * « En attente » et les montants dus réservés sont libérés.
-   */
+  /** Virement rejeté ou annulé : retour « En attente », montants dus réservés libérés. */
   async releaseBankTransfer(id: string): Promise<Payout> {
     const payout = await this.getById(id);
     if (payout.status !== PayoutStatus.TO_TRANSFER) {
@@ -452,10 +412,7 @@ export class PayoutService {
     return saved;
   }
 
-  /**
-   * Solde les montants dus imputés sur `by`. `completed = false` : réservés
-   * seulement (restent dus tant que le virement n'est pas confirmé).
-   */
+  /** Solde les montants dus imputés sur by ; completed = false les réserve seulement. */
   private async settleDebts(settlements: Settlement[], by: Payout, completed = true): Promise<void> {
     const now = new Date();
     const status = completed ? PayoutStatus.COMPLETED : PayoutStatus.PENDING;
@@ -503,14 +460,7 @@ export class PayoutService {
     return this.repo.save(payout);
   }
 
-  /**
-   * Bloque automatiquement le reversement lié à une commande lorsqu'un
-   * litige s'ouvre (CDC §7.2 : « litige en cours → fonds bloqués jusqu'à
-   * résolution »). Ne bloque que si le reversement est encore PENDING —
-   * un reversement déjà versé ne peut pas être rappelé, et un reversement
-   * déjà bloqué/en cours n'a pas à être re-bloqué. `blocked_by: null`
-   * distingue ce blocage automatique d'un blocage manuel par un admin.
-   */
+  /** CDC §7.2 : bloque automatiquement un reversement PENDING à l'ouverture d'un litige (blocked_by null). */
   async blockByOrder(orderId: string, reason: string): Promise<Payout | null> {
     const payout = await this.repo.findOne({ where: { order_id: orderId } });
     if (!payout || payout.status !== PayoutStatus.PENDING) return null;
@@ -521,13 +471,7 @@ export class PayoutService {
     return this.repo.save(payout);
   }
 
-  /**
-   * Débloque un reversement (litige résolu, ou expiration du délai max —
-   * cf. PayoutSchedulerService.unblockExpiredDisputePayouts). Repasse en
-   * PENDING : `scheduled_at` n'est pas modifié, il a déjà été calculé
-   * correctement à la création — s'il est déjà échu, le prochain cycle de
-   * reversement le traitera directement.
-   */
+  /** Débloque un reversement : retour en PENDING sans changer scheduled_at. */
   async unblock(id: string): Promise<Payout> {
     const payout = await this.getById(id);
     if (payout.status !== PayoutStatus.BLOCKED) {
@@ -554,13 +498,7 @@ export class PayoutService {
     });
   }
 
-  /**
-   * Demande de reversement anticipé (CDC §7.2 : « possible après J+2
-   * post-événement, soumise à validation admin »). Le délai minimum est
-   * vérifié ici, pas seulement le rôle — sans ça, un organisateur pourrait
-   * demander une avance dès la création du reversement, avant même la fin
-   * de l'événement.
-   */
+  /** CDC §7.2 : demande de reversement anticipé possible après J+2, soumise à validation admin. */
   async requestEarly(id: string, organizerId: string): Promise<Payout> {
     const payout = await this.getById(id);
     if (payout.organizer_id !== organizerId) {
@@ -612,11 +550,7 @@ export class PayoutService {
     return this.repo.save(payout);
   }
 
-  /**
-   * Ajoute des jours OUVRÉS (lundi-vendredi) à une date — samedi/dimanche ne
-   * comptent pas dans le délai. Pas de jours fériés (hors périmètre d'un
-   * projet étudiant) : "ouvrés" ici = hors week-end uniquement.
-   */
+  /** Ajoute des jours ouvrés (hors week-end, sans jours fériés). */
   private addBusinessDays(date: Date, days: number): Date {
     const result = new Date(date);
     let remaining = days;

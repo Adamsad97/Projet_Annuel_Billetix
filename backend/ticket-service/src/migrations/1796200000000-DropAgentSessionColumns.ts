@@ -1,11 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * Plus de « session » d'agent : jamais utilisée par l'écran de scan, dont
- * l'accès est borné par l'affectation à l'événement et la fenêtre de scan
- * (scan_opens_before_minutes / scan_closes_after_minutes). last_activity_at
- * est conservée : elle date désormais le dernier scan de l'agent.
- */
+/** Plus de session d'agent ; last_activity_at date désormais son dernier scan. */
 export class DropAgentSessionColumns1796200000000 implements MigrationInterface {
   name = 'DropAgentSessionColumns1796200000000';
 

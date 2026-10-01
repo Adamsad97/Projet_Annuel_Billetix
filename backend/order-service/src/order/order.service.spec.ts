@@ -355,9 +355,7 @@ describe('OrderService', () => {
     });
 
     it("refuse qu'un organisateur achète un billet pour son propre événement (libère aussitôt la réservation)", async () => {
-      // organizer_id relu depuis l'événement réel (event-service), pas
-      // depuis un champ du DTO — un client ne peut pas contourner en
-      // omettant simplement organizer_id de sa requête.
+      // organizer_id relu depuis l'événement réel, jamais depuis le DTO.
       mockEventClient({ organizer_id: 'buyer-1' });
 
       await expect(service.create({ ...baseDto, buyer_id: 'buyer-1' } as any)).rejects.toThrow(RpcException);
@@ -548,10 +546,7 @@ describe('OrderService', () => {
         buyer_id: 'buyer-2',
       });
       expect(reservationService.validate).not.toHaveBeenCalled();
-      // Bug corrigé : resale_price (60) est le prix TTC affiché/plafonné à
-      // la mise en vente, pas un prix HT — le HT en est dérivé (60 / 1.2 =
-      // 50), sinon la TVA était réappliquée par-dessus un prix déjà plafonné,
-      // facturant l'acheteur ~20% au-dessus du plafond annoncé.
+      // resale_price est un prix TTC plafonné : le HT en est dérivé (60 / 1,2 = 50).
       expect(order.total_amount_ht).toBe(50);
       expect(order.total_commission).toBe(5);
       expect(order.net_organizer_amount).toBe(45);

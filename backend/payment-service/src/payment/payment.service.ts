@@ -33,9 +33,7 @@ export class PaymentService {
       throw new RpcException({ statusCode: 409, message: 'Commande déjà payée' });
     }
 
-    // Le montant à payer n'est jamais fourni par le client — toujours relu
-    // depuis order-service (source de vérité) pour empêcher un acheteur de
-    // payer le montant de son choix pour n'importe quelle commande.
+    // Montant relu depuis order-service, jamais fourni par le client.
     const { order } = await firstValueFrom(
       this.orderClient.send('order.get', { id: data.order_id }),
     ) as { order: { buyer_id: string; total_amount_ttc: number; payment_method: string } };
@@ -44,11 +42,7 @@ export class PaymentService {
       throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
     }
 
-    // Défense en profondeur : une commande entièrement gratuite ne doit
-    // jamais passer par un prestataire de paiement (cf. tunnel gratuit CDC
-    // §4.1 — aucun moyen de paiement sollicité). Le flux normal
-    // (api-gateway) ne crée pas d'intent pour ces commandes ; ce garde-fou
-    // empêche seulement un appel direct erroné/malveillant à ce endpoint.
+    // Défense en profondeur : une commande gratuite ne passe jamais par Stripe (CDC §4.1).
     if (Number(order.total_amount_ttc) === 0) {
       throw new RpcException({
         statusCode: 400,
@@ -88,13 +82,7 @@ export class PaymentService {
     };
   }
 
-  /**
-   * Transition atomique vers PAID, uniquement depuis un statut non-payé.
-   * Les webhooks sont parfois redélivrés (timeout, retry) — sans cette
-   * garde au niveau SQL, deux appels quasi simultanés liraient tous deux
-   * `status != PAID` avant que l'un des deux ne sauvegarde, provoquant une
-   * double génération de billets et un double reversement.
-   */
+  /** Passage atomique à PAID : un webhook redélivré ne génère jamais deux fois billets et reversement. */
   private async markPaidIdempotent(payment: Payment): Promise<boolean> {
     const result = await this.repo
       .createQueryBuilder()
@@ -121,10 +109,7 @@ export class PaymentService {
     return Object.assign(payment, { _wasAlreadyPaid: wasAlreadyPaid });
   }
 
-  /**
-   * Appelé sur `payment_intent.payment_failed` — ne fait jamais régresser un
-   * paiement déjà confirmé (webhooks Stripe parfois désordonnés/rejoués).
-   */
+  /** payment_intent.payment_failed : ne fait jamais régresser un paiement déjà confirmé. */
   async markFailed(paymentIntentId: string, reason: string): Promise<Payment | null> {
     const payment = await this.repo.findOne({ where: { provider_payment_id: paymentIntentId } });
     if (!payment || payment.status === PaymentStatus.PAID) {
@@ -139,11 +124,7 @@ export class PaymentService {
     return this.repo.findOne({ where: { provider_payment_id: paymentIntentId } });
   }
 
-  /**
-   * Contestation bancaire perdue : la banque a repris le montant. Enregistré
-   * comme un remboursement (sans appel au prestataire, déjà débité) ; le
-   * reversement de l'organisateur est ajusté d'autant.
-   */
+  /** Contestation perdue : enregistrée comme remboursement sans appel à Stripe, reversement ajusté. */
   async recordChargeback(orderId: string, amount: number): Promise<Payment> {
     return this.dataSource.transaction(async (manager) => {
       const payment = await manager
@@ -180,11 +161,7 @@ export class PaymentService {
   }
 
   async refund(orderId: string, amount_cents?: number): Promise<Payment> {
-    // Verrou pessimiste sur la ligne du paiement — deux remboursements admin
-    // quasi simultanés sur le même paiement ne doivent jamais tous les deux
-    // lire le même refunded_amount et cumuler un montant total supérieur au
-    // payé. Le second appel attend que le premier ait committé, puis relit
-    // le solde à jour.
+    // Verrou pessimiste : deux remboursements simultanés ne dépassent jamais le montant payé.
     return this.dataSource.transaction(async (manager) => {
       const payment = await manager
         .createQueryBuilder(Payment, 'payment')
@@ -230,9 +207,7 @@ export class PaymentService {
 
       const saved = await manager.save(payment);
 
-      // Recalcule le reversement organisateur correspondant — ne doit jamais
-      // faire échouer le remboursement lui-même si le payout est introuvable
-      // ou si payment-service rencontre un souci ponctuel.
+      // Recalcule le reversement ; un échec ne fait jamais échouer le remboursement.
       await this.payoutService
         .recalculateForRefund(orderId, requestedAmount, Number(payment.amount))
         .catch(() => undefined);

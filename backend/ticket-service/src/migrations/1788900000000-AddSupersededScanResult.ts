@@ -10,8 +10,6 @@ export class AddSupersededScanResult1788900000000 implements MigrationInterface 
   }
 
   public async down(): Promise<void> {
-    // Retirer une valeur d'un type ENUM Postgres nécessiterait de le
-    // recréer entièrement — rollback volontairement non destructif,
-    // cohérent avec le reste du repo.
+    // Rollback non destructif : Postgres ne sait pas retirer une valeur d'ENUM sans recréer le type.
   }
 }

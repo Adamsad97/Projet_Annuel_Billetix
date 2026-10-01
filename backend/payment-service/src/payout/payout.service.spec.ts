@@ -6,10 +6,7 @@ import { StripeService } from '../stripe/stripe.service';
 import { Payout, PayoutStatus } from './payout.entity';
 import { PayoutService } from './payout.service';
 
-// Reflète PayoutService.addBusinessDays() (privée, jours ouvrés lundi-
-// vendredi) — un +5 calendaire naïf ne correspond pas au calcul réel dès
-// qu'un week-end tombe dans la fenêtre (ex: samedi + 5j ouvrés = vendredi
-// suivant, pas jeudi).
+// Reflète addBusinessDays() : jours ouvrés du lundi au vendredi.
 function addBusinessDays(date: Date, days: number): Date {
   const result = new Date(date);
   let remaining = days;

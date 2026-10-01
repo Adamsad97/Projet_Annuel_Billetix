@@ -6,12 +6,7 @@ export enum RevertRequestStatus {
   REJECTED = 'REJECTED',
 }
 
-/**
- * Demande d'annulation d'un transfert, faite par l'expéditeur depuis la
- * plateforme. Traitée par un admin : acceptée (billet rendu) ou refusée.
- * Les demandes par téléphone sont traitées directement par l'admin, sans
- * passer par cette table (source PHONE sur le transfert).
- */
+/** Demande d'annulation d'un transfert par l'expéditeur, traitée par un admin ; le téléphone passe par l'admin directement. */
 @Entity({ schema: 'tickets', name: 'transfer_revert_requests' })
 export class TransferRevertRequest {
   @PrimaryGeneratedColumn('uuid')

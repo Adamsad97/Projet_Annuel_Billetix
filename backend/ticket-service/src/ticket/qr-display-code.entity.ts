@@ -1,13 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryColumn } from 'typeorm';
 
-/**
- * Code affiché dans le QR d'un billet — valeur aléatoire éphémère (128 bits),
- * renouvelée à chaque période (platform_settings.ticket_qr_rotation_seconds).
- * Le QR ne contient QUE ce code (`BTX2.<code>`) : aucun jeton, identifiant,
- * nom ou événement — il ne prend son sens qu'à travers cette table côté
- * serveur. Conservé le temps de la synchronisation des scans hors ligne
- * (OFFLINE_SYNC_MAX_HOURS), puis effacé (QrDisplayCodeCleanupService).
- */
+/** Code aléatoire éphémère affiché dans le QR (BTX2.code), seul contenu du QR, renouvelé à chaque période. */
 @Entity({ schema: 'tickets', name: 'qr_display_codes' })
 export class QrDisplayCode {
   @PrimaryColumn()

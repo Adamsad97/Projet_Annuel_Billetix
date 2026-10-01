@@ -93,10 +93,7 @@ export class Ticket {
 
   // ─── QR code ──────────────────────────────────────────────────────────────────
 
-  // Jeton interne du billet (aléatoire, change à chaque revente ou
-  // transfert) — ne
-  // quitte jamais le serveur : le QR affiché ne contient qu'un code
-  // éphémère (cf. QrDisplayCode).
+  // Jeton interne du billet, changé à chaque revente ou transfert ; ne quitte jamais le serveur.
   @Column({ unique: true })
   qr_code_token: string;
 
@@ -129,10 +126,7 @@ export class Ticket {
   @UpdateDateColumn()
   updated_at: Date;
 
-  /**
-   * Sérialisation des réponses RPC (JSON) : le jeton interne ne quitte
-   * jamais le ticket-service — ni vers l'acheteur, ni vers l'organisateur.
-   */
+  /** Le jeton interne n'est jamais sérialisé dans les réponses RPC. */
   toJSON(): Omit<Ticket, 'qr_code_token' | 'toJSON'> {
     const { qr_code_token: _token, ...publicFields } = this as Ticket;
     return publicFields;

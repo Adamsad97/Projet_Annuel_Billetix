@@ -40,9 +40,7 @@ export class DisputeService {
 
     const dispute = await this.repo.save(this.repo.create(data));
 
-    // CDC §7.2 : « litige en cours → fonds bloqués jusqu'à résolution ».
-    // Blocage automatique du reversement de la commande concernée — pas
-    // d'action manuelle admin requise à l'ouverture du litige.
+    // CDC §7.2 : bloque automatiquement le reversement de la commande à l'ouverture d'un litige.
     await this.payoutService.blockByOrder(
       data.order_id,
       `Litige ouvert (#${dispute.id})`,
@@ -95,10 +93,7 @@ export class DisputeService {
     return this.repo.save(dispute);
   }
 
-  /**
-   * Contestation bancaire clôturée par la banque (webhook Stripe) : gagnée,
-   * les fonds restent acquis ; perdue, ils sont repris par la banque.
-   */
+  /** Contestation clôturée par la banque : gagnée, les fonds restent acquis ; perdue, ils sont repris. */
   async closeFromStripe(stripeDisputeId: string, won: boolean): Promise<Dispute | null> {
     const dispute = await this.repo.findOne({ where: { stripe_dispute_id: stripeDisputeId } });
     if (!dispute) return null;
@@ -128,9 +123,7 @@ export class DisputeService {
     dispute.resolution_notes = data.resolution_notes ?? null;
     const saved = await this.repo.save(dispute);
 
-    // Litige tranché : débloque le reversement s'il l'était encore
-    // (sinon il reste bloqué au maximum dispute_payout_block_max_days,
-    // cf. PayoutSchedulerService.unblockExpiredDisputePayouts).
+    // Litige tranché : débloque le reversement s'il l'était encore.
     await this.payoutService.unblockByOrder(dispute.order_id);
 
     return saved;

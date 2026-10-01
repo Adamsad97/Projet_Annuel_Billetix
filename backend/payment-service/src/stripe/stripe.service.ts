@@ -25,11 +25,7 @@ export class StripeService implements OnModuleInit {
       currency: data.currency,
       metadata: { order_id: data.order_id },
       receipt_email: data.buyer_email,
-      // Active automatiquement toutes les méthodes de paiement configurées
-      // sur le compte Stripe (carte, Apple Pay, Google Pay...) — Apple Pay
-      // et Google Pay ne sont pas des prestataires distincts, ce sont des
-      // méthodes de paiement au sein du même PaymentIntent Stripe, choisies
-      // par le navigateur/l'appareil de l'acheteur côté frontend.
+      // Active les méthodes du compte Stripe (carte, Apple Pay, Google Pay) dans un même PaymentIntent.
       automatic_payment_methods: { enabled: true },
     });
     return { client_secret: intent.client_secret, payment_intent_id: intent.id };
@@ -59,14 +55,7 @@ export class StripeService implements OnModuleInit {
     });
   }
 
-  /**
-   * Bug corrigé (CDC §7) : aucun flux d'onboarding Stripe Connect n'existait
-   * nulle part — stripe_connect_account_id/onboarded n'étaient jamais
-   * renseignés, donc PayoutSchedulerService.processDuePayouts() ignorait
-   * systématiquement tous les reversements (aucun organisateur ne pouvait
-   * jamais être payé). Compte Express : le minimum de friction pour un
-   * organisateur individuel (Stripe héberge le formulaire KYC bancaire).
-   */
+  /** CDC §7 : compte Connect Express, Stripe héberge le formulaire bancaire de l'organisateur. */
   async createConnectAccount(email: string): Promise<string> {
     const account = await this.stripe.accounts.create({
       type: 'express',
@@ -94,10 +83,7 @@ export class StripeService implements OnModuleInit {
     return this.stripe.accounts.retrieve(accountId);
   }
 
-  /**
-   * Lien à usage unique vers le tableau de bord Express de l'organisateur,
-   * où il modifie lui-même son compte bancaire (jamais saisi chez nous).
-   */
+  /** Lien à usage unique vers le tableau de bord Express, où l'organisateur gère son compte bancaire. */
   async createLoginLink(accountId: string): Promise<string> {
     const link = await this.stripe.accounts.createLoginLink(accountId);
     return link.url;

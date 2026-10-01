@@ -197,9 +197,7 @@ describe('TicketResaleService — réservation atomique (anti double-achat)', ()
     });
 
     it('reprend une réservation expirée (paiement jamais finalisé par le premier acheteur)', async () => {
-      // La requête SQL elle-même gère la condition d'expiration ; on vérifie
-      // simplement que le service ne fait aucune vérification supplémentaire
-      // qui bloquerait ce cas (délégué entièrement à la clause WHERE atomique).
+      // L'expiration est gérée par la clause WHERE atomique : le service n'ajoute aucune vérification.
       dataSource.query.mockResolvedValue([[{ id: 'resale-1' }]]);
       repo.findOne.mockResolvedValue({ id: 'resale-1', status: ResaleStatus.RESERVED, reserved_by_buyer_id: 'buyer-2' });
 

@@ -1,11 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * QR code sans donnée sensible : le QR ne contient plus qu'un code aléatoire
- * éphémère (tickets.qr_display_codes), renouvelé toutes les quelques
- * secondes. L'image du QR fixe (qui encodait le jeton permanent du billet)
- * n'est plus générée ni stockée : colonne qr_code_url supprimée.
- */
+/** Le QR ne contient plus qu'un code aléatoire éphémère ; l'image du QR fixe n'est plus stockée. */
 export class QrDisplayCodes1795300000000 implements MigrationInterface {
   name = 'QrDisplayCodes1795300000000';
 

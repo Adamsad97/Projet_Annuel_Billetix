@@ -34,11 +34,7 @@ export interface RevertTransferInput {
   request_id?: string;
 }
 
-/**
- * « Offrir mon billet » : transfert gratuit et immédiat à un autre compte
- * BilleTix, sans acceptation. Pour revendre un billet, on passe par la
- * revente (prix plafonné) — jamais par ce transfert.
- */
+/** « Offrir mon billet » : transfert gratuit et immédiat, sans acceptation ; la revente passe par la revente. */
 @Injectable()
 export class TicketTransferService {
   constructor(
@@ -133,11 +129,7 @@ export class TicketTransferService {
     });
   }
 
-  /**
-   * Change le titulaire d'un billet avec un nouveau jeton interne : tout QR
-   * affiché par l'ancien titulaire devient SUPERSEDED au contrôle (l'ancien
-   * jeton reste dans l'historique).
-   */
+  /** Change le titulaire avec un nouveau jeton : l'ancien QR ressort SUPERSEDED au contrôle. */
   private async reassign(
     manager: EntityManager,
     ticket: Ticket,
@@ -151,11 +143,7 @@ export class TicketTransferService {
     return manager.save(ticket);
   }
 
-  /**
-   * Conditions communes à une demande et à une annulation : transfert
-   * encore actif, billet toujours chez le bénéficiaire, pas utilisé, pas en
-   * revente, événement pas encore commencé.
-   */
+  /** Conditions communes : transfert actif, billet chez le bénéficiaire, non utilisé, non revendu, événement à venir. */
   private assertRevertible(transfer: TicketTransfer, ticket: Ticket | null): asserts ticket is Ticket {
     if (transfer.status === TicketTransferStatus.REVERTED) {
       throw new RpcException({ statusCode: 409, message: 'Ce transfert a déjà été annulé.' });
@@ -210,10 +198,7 @@ export class TicketTransferService {
     );
   }
 
-  /**
-   * Annulation par un admin (demande par téléphone ou depuis la plateforme) :
-   * le billet revient à l'expéditeur, au nom de son titulaire d'origine.
-   */
+  /** Annulation par un admin : le billet revient à l'expéditeur. */
   async revert(input: RevertTransferInput): Promise<{ ticket: Ticket; transfer: TicketTransfer }> {
     return this.dataSource.transaction(async (manager) => {
       const transfer = await manager.findOne(TicketTransfer, {

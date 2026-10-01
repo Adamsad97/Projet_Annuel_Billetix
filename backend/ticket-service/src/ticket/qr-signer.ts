@@ -56,11 +56,7 @@ function decodeClaims(payload: Buffer): QrClaims | null {
   };
 }
 
-/**
- * Signature Ed25519 des QR codes. La clé privée ne quitte jamais
- * ticket-service ; la clé publique est distribuée aux appareils de contrôle
- * (paquet hors ligne), qui vérifient ainsi un QR sans réseau.
- */
+/** Signature Ed25519 des QR ; la clé publique permet aux appareils de contrôle de vérifier sans réseau. */
 @Injectable()
 export class QrSigner {
   private readonly privateKey: KeyObject;

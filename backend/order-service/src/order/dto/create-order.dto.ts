@@ -19,9 +19,7 @@ export class OrderItemInputDto {
   @IsInt() @Min(1)
   quantity: number;
 
-  // Ni le nom ni le prix de la catégorie ne sont acceptés depuis le client :
-  // OrderService les relit depuis event-service (TicketCategory.name/price_ht),
-  // seule source de vérité — voir OrderService.create().
+  // Nom et prix relus par OrderService depuis event-service, jamais acceptés du client.
 
   @IsString() @IsOptional()
   holder_first_name?: string;
@@ -49,16 +47,11 @@ export class CreateOrderDto {
   @Type(() => OrderItemInputDto)
   items: OrderItemInputDto[];
 
-  // Le code promo saisi par l'acheteur (ex: "SUMMER10") — jamais son ID ni
-  // une remise déjà calculée : OrderService le revalide et recalcule la
-  // remise lui-même via event-service (mêmes principes que la commission).
+  // Code promo saisi par l'acheteur, revalidé et recalculé par OrderService.
   @IsString() @IsOptional()
   promo_code?: string;
 
-  // Le taux de commission n'est JAMAIS accepté depuis le client : il est
-  // relu depuis l'Event (event-service), qui le calcule déjà dynamiquement
-  // depuis platform_settings (commission_standard_percent/large_event/etc.)
-  // — voir OrderService.create(). Un champ ici serait une porte de fraude.
+  // Pas de taux de commission ici : il est relu depuis l'événement (sinon porte de fraude).
 
   // Snapshot événement (transmis depuis api-gateway)
   @IsUUID() @IsOptional()
@@ -122,9 +115,7 @@ export class CreateOrderDto {
   payment_method: PaymentMethod;
 }
 
-// DTO dédié à l'étape 1 (réservation de stock, avant paiement) — distinct
-// de OrderItemInputDto même si leur forme se ressemble aujourd'hui, les deux
-// étapes ayant des cycles de vie et des validations différents.
+// DTO de la réservation de stock, distinct d'OrderItemInputDto (cycles de vie différents).
 export class ReserveStockItemDto {
   @IsUUID()
   ticket_category_id: string;
@@ -146,10 +137,7 @@ export class ReserveStockDto {
   items: ReserveStockItemDto[];
 }
 
-// Achat d'un billet en revente — pas de réservation de stock (le billet
-// existe déjà, aucune place n'est décomptée), pas de prix/commission fournis
-// par le client : tout est relu depuis l'offre de revente (ticket-service)
-// et l'événement (event-service) — voir OrderService.createFromResale().
+// Achat en revente : ni réservation, ni prix ou commission fournis par le client.
 export class CreateResaleOrderDto {
   @IsUUID()
   buyer_id: string;

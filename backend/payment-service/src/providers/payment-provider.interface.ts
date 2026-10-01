@@ -17,10 +17,7 @@ export interface RefundResult {
   refundId: string;
 }
 
-/**
- * Contrat du prestataire de paiement acheteur (Stripe). La confirmation
- * passe par le webhook signé, hors de ce contrat.
- */
+/** Contrat du prestataire de paiement acheteur (Stripe), confirmé par webhook signé. */
 export interface PaymentProviderPort {
   createPayment(params: CreatePaymentParams): Promise<CreatePaymentResult>;
   refund(providerPaymentId: string, amountCents?: number): Promise<RefundResult>;

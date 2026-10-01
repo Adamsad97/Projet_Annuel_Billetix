@@ -41,11 +41,7 @@ export class ControlAgentService {
     return !!agent;
   }
 
-  /**
-   * Dernier scan de l'agent pour cet événement (affiché à l'organisateur).
-   * GREATEST : un scan hors ligne synchronisé après coup ne fait pas
-   * reculer la date d'un scan plus récent.
-   */
+  /** Dernier scan de l'agent ; GREATEST évite qu'un scan hors ligne synchronisé ne recule la date. */
   async recordActivity(userId: string, eventId: string, at: Date): Promise<void> {
     await this.repo
       .createQueryBuilder()

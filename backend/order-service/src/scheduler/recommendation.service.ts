@@ -26,12 +26,7 @@ export class RecommendationService {
     private readonly authClient: ClientProxy,
   ) {}
 
-  /**
-   * Contrairement aux autres préférences (opt-out par défaut, fail-open),
-   * celle-ci est opt-in (defaultEnabled: false côté frontend, cf.
-   * notification-prefs.ts) — l'absence de clé, ou une erreur de lecture,
-   * signifie donc "ne pas envoyer", pas l'inverse.
-   */
+  /** Recommandations en opt-in : sans clé ou en cas d'erreur, on n'envoie pas. */
   private async wantsRecommendations(buyerId: string): Promise<boolean> {
     try {
       const prefs = await firstValueFrom(
@@ -77,10 +72,7 @@ export class RecommendationService {
       const candidates = await this.findCandidates(categories, purchasedEventIds);
       if (candidates.length === 0) continue;
 
-      // Bug évité : buyer_email/buyer_first_name viennent du formulaire de
-      // facturation saisi à l'achat (texte libre, potentiellement fautif ou
-      // périmé) — l'email réel du compte (auth-service) est la seule source
-      // fiable pour une notification adressée au compte, pas à une commande.
+      // Email réel du compte (auth-service), pas celui saisi dans la facturation.
       const buyer = await firstValueFrom(
         this.authClient.send<{ email: string; first_name: string } | null>('auth.get_user', {
           id: buyerId,
@@ -110,9 +102,7 @@ export class RecommendationService {
     this.logger.log(`Recommandations hebdomadaires : ${sent} email(s) envoyé(s)`);
   }
 
-  /** Catégories des événements déjà achetés par ce compte — best-effort, un
-   * événement introuvable (supprimé, event-service temporairement injoignable)
-   * est simplement ignoré plutôt que de faire échouer tout le lot. */
+  /** Catégories des événements déjà achetés ; un événement introuvable est ignoré. */
   private async resolveCategories(eventIds: string[]): Promise<string[]> {
     const events = await Promise.all(
       eventIds.map((id) =>
