@@ -12,7 +12,6 @@ import { getCart, cartTotal, clearCart, type Cart } from "@/lib/checkout/cart";
 import { createPaymentIntent } from "@/lib/api/payments";
 import { ApiError } from "@/lib/api/http-error";
 import { getStripe } from "@/lib/stripe/client";
-import { paymentMethods } from "@/lib/constants/checkout";
 import { euros as currency } from "@/lib/format/money";
 import { Alert } from "@/components/ui/alert";
 import { MutedMessage } from "@/components/ui/muted-message";
@@ -153,39 +152,12 @@ export function CheckoutFlow() {
         ) : null}
 
         {step === "payment" && clientSecret && orderId ? (
-          <>
-            <div className={cardClass("p-5")}>
-              <h2 className="mb-3 text-sm font-semibold text-ink-2">Moyen de paiement</h2>
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-                {paymentMethods.map((method) => {
-                  const isCard = method.id === "card";
-                  return (
-                    <div
-                      key={method.id}
-                      title={isCard ? undefined : "Pas encore câblé — carte bancaire uniquement pour l'instant"}
-                      className={
-                        isCard
-                          ? "flex flex-col items-center gap-1.5 rounded-xl border border-blue-500 bg-blue-500/10 py-3"
-                          : "flex flex-col items-center gap-1.5 rounded-xl border border-hairline-2 bg-hairline-1 py-3 opacity-40"
-                      }
-                    >
-                      <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-sm font-bold ${method.glyphClassName}`}>
-                        {method.glyph}
-                      </span>
-                      <span className="text-[11px] font-medium text-ink-3">{method.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <Elements
-              stripe={getStripe()}
-              options={{ clientSecret, locale: "fr" }}
-            >
-              <StripePaymentForm orderId={orderId} amountLabel={currency.format(cartTotal(cart))} />
-            </Elements>
-          </>
+          <Elements
+            stripe={getStripe()}
+            options={{ clientSecret, locale: "fr" }}
+          >
+            <StripePaymentForm orderId={orderId} amountLabel={currency.format(cartTotal(cart))} />
+          </Elements>
         ) : null}
       </div>
     </div>

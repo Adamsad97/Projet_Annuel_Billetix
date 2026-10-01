@@ -111,11 +111,6 @@ export function apiOrderToProfileOrder(order: ApiOrder, ticketCount: number): Pr
 
 const paymentMethodLabels: Record<ApiPaymentMethod, string> = {
   STRIPE: "Carte bancaire",
-  PAYPAL: "PayPal",
-  APPLE_PAY: "Apple Pay",
-  GOOGLE_PAY: "Google Pay",
-  ORANGE_MONEY: "Orange Money",
-  WAVE: "Wave",
   FREE: "Gratuit",
 };
 

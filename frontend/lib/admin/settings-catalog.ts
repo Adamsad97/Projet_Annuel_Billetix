@@ -123,12 +123,6 @@ export const FIELDS: Record<string, FieldMeta> = {
   // Frais de paiement
   stripe_fee_percent: { label: "Stripe — frais variables", unit: "%" },
   stripe_fee_fixed_eur: { label: "Stripe — frais fixes", unit: "€ par paiement" },
-  paypal_fee_percent: { label: "PayPal — frais variables", unit: "%" },
-  paypal_fee_fixed_eur: { label: "PayPal — frais fixes", unit: "€ par paiement" },
-  orange_money_fee_percent: { label: "Orange Money — frais variables", unit: "%" },
-  orange_money_fee_fixed_eur: { label: "Orange Money — frais fixes", unit: "€ par paiement" },
-  wave_fee_percent: { label: "Wave — frais variables", unit: "%" },
-  wave_fee_fixed_eur: { label: "Wave — frais fixes", unit: "€ par paiement" },
   // Reversements et litiges
   payout_delay_days: { label: "Délai de reversement après l'événement", unit: "jours" },
   iban_change_payout_hold_hours: { label: "Reversements suspendus après un changement d'IBAN", unit: "heures" },

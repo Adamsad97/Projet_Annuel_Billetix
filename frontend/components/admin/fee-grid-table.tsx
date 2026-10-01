@@ -10,12 +10,7 @@ import { ApiError } from "@/lib/api/http-error";
 import { euros as euro } from "@/lib/format/money";
 import { cardClass } from "@/components/ui/card";
 
-const PROVIDERS = [
-  { id: "stripe", label: "Carte bancaire (Stripe)", emoji: "💳" },
-  { id: "paypal", label: "PayPal", emoji: "🅿️" },
-  { id: "orange_money", label: "Orange Money", emoji: "🟠" },
-  { id: "wave", label: "Wave", emoji: "🌊" },
-];
+const PROVIDERS = [{ id: "stripe", label: "Carte bancaire (Stripe)", emoji: "💳" }];
 
 const number = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 });
 

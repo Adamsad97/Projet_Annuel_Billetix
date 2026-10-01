@@ -27,7 +27,7 @@ export const faqCategories: FaqCategory[] = [
       {
         question: "Quels moyens de paiement sont acceptés ?",
         answer:
-          "Carte bancaire, PayPal, Apple Pay, Google Pay, Orange Money et Wave.",
+          "La carte bancaire, via la plateforme de paiement sécurisée Stripe.",
       },
       {
         question: "Puis-je annuler ma commande ?",
@@ -71,7 +71,7 @@ export const faqCategories: FaqCategory[] = [
       {
         question: "Quelle commission BilleTix prélève-t-elle ?",
         answer:
-          "5,5 % + 0,30 € par transaction en carte bancaire ou PayPal. Les événements associatifs à but non lucratif peuvent être exonérés sur justificatif.",
+          "5,5 % + 0,30 € par transaction en carte bancaire. Les événements associatifs à but non lucratif peuvent être exonérés sur justificatif.",
       },
     ],
   },

@@ -5,12 +5,8 @@ import { apiDelete, apiDownload, apiGet, apiPost } from "./client";
 import { syncOrderPayment } from "./payments";
 
 export type ApiPaymentMethod =
+  // Carte bancaire, Apple Pay ou Google Pay : tous passent par Stripe.
   | "STRIPE"
-  | "PAYPAL"
-  | "APPLE_PAY"
-  | "GOOGLE_PAY"
-  | "ORANGE_MONEY"
-  | "WAVE"
   // Réservation gratuite : aucun paiement.
   | "FREE";
 

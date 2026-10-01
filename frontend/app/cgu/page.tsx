@@ -24,8 +24,8 @@ export default function CguPage() {
         <p>
           Chaque billet acheté est associé à un QR code signé et à usage
           unique, envoyé par email dans les 5 minutes suivant le paiement.
-          Les moyens de paiement acceptés sont la carte bancaire, PayPal,
-          Apple Pay, Google Pay, Orange Money et Wave.
+          Le paiement se fait par carte bancaire, via la plateforme de
+          paiement sécurisée Stripe.
         </p>
       </LegalSection>
 
