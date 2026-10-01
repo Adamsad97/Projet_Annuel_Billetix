@@ -491,10 +491,11 @@ export function ScanConsole() {
           ) : null}
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-              online ? "bg-emerald-400/15 text-emerald-300" : "bg-amber-400/20 text-amber-200"
+              // En-tête toujours sombre : couleurs fixes, hors des nuances adaptées au thème clair.
+              online ? "bg-[#34d399]/15 text-[#6ee7b7]" : "bg-[#fbbf24]/20 text-[#fde68a]"
             }`}
           >
-            <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${online ? "bg-emerald-400" : "bg-amber-300 animate-pulse"}`} />
+            <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${online ? "bg-[#34d399]" : "bg-[#fcd34d] animate-pulse"}`} />
             {online ? "En ligne" : "Hors ligne"}
           </span>
           </div>

@@ -80,7 +80,7 @@ export function CountdownDigits({
           key={unit.label}
           className="flex flex-col items-center rounded-xl border border-emerald-500/20 bg-black/40 py-3"
         >
-          <span className="font-mono text-2xl font-bold tabular-nums text-emerald-400 [text-shadow:0_0_8px_rgba(16,185,129,0.6)]">
+          <span className="font-mono text-2xl font-bold tabular-nums text-[#34d399] [text-shadow:0_0_8px_rgba(16,185,129,0.6)]">
             {pad(unit.value)}
           </span>
           <span className="mt-1 text-[10px] uppercase tracking-wider text-ink-5">
