@@ -3,7 +3,7 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { EventService } from './event.service';
 import { RescheduleEventPayload } from '../common/module-payloads';
 import { AdminActionPayload, AdminIdPayload, IdPayload, IdsPayload, OrganizerPayload, OwnedIdPayload, SlugPayload } from '../common/payloads';
-import { CancelEventPayload, CreateEventPayload, ListAllEventsPayload, ListPublishedPayload, RecommendationPayload, RequestInfoPayload, RespondToInfoPayload, UpdateEventPayload, VerifyNonProfitPayload } from './dto/event-payloads';
+import { CancelEventPayload, CreateEventPayload, ListAllEventsPayload, ListPublishedPayload, RecommendationPayload, RequestInfoPayload, RespondToInfoPayload, UpdateEventPayload, VerifyNonProfitPayload, CountInPeriodsPayload } from './dto/event-payloads';
 
 @Controller()
 export class EventController {
@@ -42,6 +42,11 @@ export class EventController {
   @MessagePattern('event.count_by_category')
   countByCategory() {
     return this.eventService.countUpcomingByCategory();
+  }
+
+  @MessagePattern('event.count_in_periods')
+  countInPeriods(@Payload() data: CountInPeriodsPayload) {
+    return this.eventService.countInPeriods(data.periods);
   }
 
   @MessagePattern('event.list_for_recommendation')

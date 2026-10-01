@@ -457,6 +457,32 @@ export class EventService implements OnApplicationBootstrap {
     return Object.fromEntries(rows.map((row) => [row.category, Number(row.count)]));
   }
 
+  /**
+   * Nombre d'événements par période (filtre Date du site), en une requête :
+   * même règle que la liste publique — un événement compte s'il se déroule
+   * au moins en partie dans la période (fin après le début de la période,
+   * début avant sa fin).
+   */
+  async countInPeriods(periods: Array<{ key: string; from: string; to?: string }>): Promise<Record<string, number>> {
+    if (periods.length === 0) return {};
+    const qb = this.repo
+      .createQueryBuilder('e')
+      .select([])
+      .where('e.status IN (:...statuses)', { statuses: [EventStatus.PUBLISHED, EventStatus.SUSPENDED] })
+      .andWhere('e.is_hidden = false');
+    periods.forEach((period, index) => {
+      const conditions = [`e.end_date >= :from${index}`];
+      qb.setParameter(`from${index}`, new Date(period.from));
+      if (period.to) {
+        conditions.push(`e.start_date <= :to${index}`);
+        qb.setParameter(`to${index}`, new Date(period.to));
+      }
+      qb.addSelect(`COUNT(*) FILTER (WHERE ${conditions.join(' AND ')})`, `p${index}`);
+    });
+    const row = await qb.getRawOne<Record<string, string>>();
+    return Object.fromEntries(periods.map((period, index) => [period.key, Number(row?.[`p${index}`] ?? 0)]));
+  }
+
   /** Événements candidats pour la recommandation par email (CDC — suggestions
    * basées sur les achats précédents) : publiés, à venir, d'une catégorie
    * donnée, en excluant ceux déjà achetés par ce destinataire. */

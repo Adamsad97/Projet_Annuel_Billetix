@@ -719,4 +719,23 @@ describe('EventService', () => {
       expect(qb.groupBy).toHaveBeenCalledWith('e.category');
     });
   });
+
+  describe('countInPeriods', () => {
+    it("compte chaque période en une requête, avec la règle de la liste publique", async () => {
+      const qb = queryBuilder as unknown as Record<string, jest.Mock>;
+      qb.addSelect = jest.fn().mockReturnThis();
+      qb.setParameter = jest.fn().mockReturnThis();
+      qb.getRawOne = jest.fn().mockResolvedValue({ p0: '3', p1: '1' });
+
+      const counts = await service.countInPeriods([
+        { key: 'all', from: '2026-10-01T10:00:00.000Z' },
+        { key: 'today', from: '2026-10-01T10:00:00.000Z', to: '2026-10-01T21:59:59.999Z' },
+      ]);
+
+      expect(counts).toEqual({ all: 3, today: 1 });
+      expect(qb.addSelect).toHaveBeenCalledWith('COUNT(*) FILTER (WHERE e.end_date >= :from0)', 'p0');
+      expect(qb.addSelect).toHaveBeenCalledWith('COUNT(*) FILTER (WHERE e.end_date >= :from1 AND e.start_date <= :to1)', 'p1');
+      expect(qb.andWhere).toHaveBeenCalledWith('e.is_hidden = false');
+    });
+  });
 });

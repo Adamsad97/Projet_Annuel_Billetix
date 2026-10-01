@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -11,6 +12,7 @@ import {
   IsString,
   IsUrl,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -57,6 +59,17 @@ export class UpdateEventDto {
 
 export class UpdateEventPayload extends OwnedIdPayload {
   @ValidateNested() @Type(() => UpdateEventDto) dto: UpdateEventDto;
+}
+
+/** Période nommée (« today », « weekend »…) dont on compte les événements. */
+export class PeriodPayload {
+  @IsString() @Matches(/^[a-z_]{1,20}$/) key: string;
+  @IsDateString() from: string;
+  @IsOptional() @IsDateString() to?: string;
+}
+
+export class CountInPeriodsPayload {
+  @IsArray() @ArrayMaxSize(10) @ValidateNested({ each: true }) @Type(() => PeriodPayload) periods: PeriodPayload[];
 }
 
 /** Filtres du catalogue public. */
