@@ -98,7 +98,7 @@ export class AuthService {
     if (age < minimum_signup_age) {
       throw new RpcException({
         statusCode: 403,
-        message: `L'inscription sur BilletiX est réservée aux personnes d'au moins ${minimum_signup_age} ans.`,
+        message: `L'inscription sur BilleTix est réservée aux personnes d'au moins ${minimum_signup_age} ans.`,
       });
     }
   }
@@ -605,7 +605,7 @@ export class AuthService {
     // (obligatoire dès qu'un IBAN organisateur est enregistré, CDC §2.3)
     // restait entièrement ouvert via Google/Facebook, y compris pour un
     // attaquant qui n'aurait compromis que le compte Google/Facebook de la
-    // victime, jamais son mot de passe ni sa 2FA BilletiX.
+    // victime, jamais son mot de passe ni sa 2FA BilleTix.
     //
     // Flux par redirection (pas de formulaire synchrone comme login()) :
     // pas de tokens ici, juste une référence opaque à usage unique vers ce

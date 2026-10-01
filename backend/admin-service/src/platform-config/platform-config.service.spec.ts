@@ -73,7 +73,7 @@ describe('PlatformConfigService', () => {
 
       expect(config.commission_standard_percent).toBe(10);
       expect(config.fill_thresholds).toEqual([25, 50, 75, 100]);
-      expect(config.platform_legal_name).toBe('BilletiX SAS');
+      expect(config.platform_legal_name).toBe('BilleTix SAS');
     });
 
     it('lit les infos légales de la plateforme depuis la base', async () => {

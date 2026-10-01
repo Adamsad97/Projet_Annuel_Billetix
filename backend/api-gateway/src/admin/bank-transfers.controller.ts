@@ -205,7 +205,7 @@ export class BankTransfersController {
         amount,
         creditorName: bank.bank_owner_name,
         creditorIban: bank.iban,
-        remittance: `BilletiX reversement ${events.get(payout.event_id)?.title ?? ""}`,
+        remittance: `BilleTix reversement ${events.get(payout.event_id)?.title ?? ""}`,
       });
       included.push(payout.id);
     }

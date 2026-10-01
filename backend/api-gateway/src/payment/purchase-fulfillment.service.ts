@@ -125,7 +125,7 @@ export class PurchaseFulfillmentService {
       orange_money_fee_fixed_eur: 0,
       wave_fee_percent: 1.0,
       wave_fee_fixed_eur: 0,
-      platform_legal_name: "BilletiX SAS",
+      platform_legal_name: "BilleTix SAS",
       platform_siret: "",
       platform_vat_number: "",
       platform_address: "",

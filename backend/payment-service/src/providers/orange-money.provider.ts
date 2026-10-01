@@ -83,7 +83,7 @@ export class OrangeMoneyProvider implements PaymentProviderPort {
           cancel_url: params.cancelUrl,
           notif_url: `${params.returnUrl.split('/orders/')[0]}/payments/webhook/orange-money`,
           lang: 'fr',
-          reference: 'BilletiX',
+          reference: 'BilleTix',
         }),
       },
     );

@@ -5,9 +5,9 @@ describe("fichier de virements SEPA", () => {
     messageId: "BTX-20261001100000",
     createdAt: new Date("2026-10-01T10:00:00Z"),
     executionDate: "2026-10-01",
-    debtor: { name: "BilletiX SAS", iban: "FR76 3000 6000 0112 3456 7890 189", bic: "" },
+    debtor: { name: "BilleTix SAS", iban: "FR76 3000 6000 0112 3456 7890 189", bic: "" },
     credits: [
-      { endToEndId: "BTX1", amount: 120.5, creditorName: "Awa Diallo", creditorIban: "FR7630006000011234567890189", remittance: "BilletiX reversement Fête" },
+      { endToEndId: "BTX1", amount: 120.5, creditorName: "Awa Diallo", creditorIban: "FR7630006000011234567890189", remittance: "BilleTix reversement Fête" },
       { endToEndId: "BTX2", amount: 30.25, creditorName: "Société <Éclair> & Cie", creditorIban: "BE71096123456769", remittance: "x" },
     ],
   });
@@ -25,7 +25,7 @@ describe("fichier de virements SEPA", () => {
 
   it("n'utilise que le jeu de caractères SEPA", () => {
     expect(xml).toContain("<Nm>Societe Eclair Cie</Nm>");
-    expect(xml).toContain("BilletiX reversement Fete");
+    expect(xml).toContain("BilleTix reversement Fete");
     expect(sepaText("Élodie   Müller", 70)).toBe("Elodie Muller");
   });
 

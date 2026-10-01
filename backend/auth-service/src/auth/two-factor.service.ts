@@ -54,7 +54,7 @@ export class TwoFactorService {
     }
 
     const secret = authenticator.generateSecret();
-    const appName = "BilletiX";
+    const appName = "BilleTix";
     const otpauthUrl = authenticator.keyuri(user.email, appName, secret);
     const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
 

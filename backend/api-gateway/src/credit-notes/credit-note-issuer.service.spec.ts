@@ -4,7 +4,7 @@ import { CreditNoteIssuer } from "./credit-note-issuer.service";
 describe("CreditNoteIssuer — avoir après un remboursement", () => {
   const config = {
     tva_rate: 0.2,
-    platform_legal_name: "BilletiX SAS",
+    platform_legal_name: "BilleTix SAS",
     platform_siret: "",
     platform_vat_number: "",
     platform_address: "",

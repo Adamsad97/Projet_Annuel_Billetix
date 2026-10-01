@@ -65,7 +65,7 @@ export class AdminBootstrapService implements OnModuleInit {
         email,
         password_hash,
         first_name: "Admin",
-        last_name: "BilletiX",
+        last_name: "BilleTix",
         role: UserRole.SUPER_ADMIN,
         is_email_verified: true,
       }),

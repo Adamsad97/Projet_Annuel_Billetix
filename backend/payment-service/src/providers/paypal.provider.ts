@@ -86,7 +86,7 @@ export class PaypalProvider implements PaymentProviderPort {
           },
         ],
         application_context: {
-          brand_name: 'BilletiX',
+          brand_name: 'BilleTix',
           return_url: params.returnUrl,
           cancel_url: params.cancelUrl,
           user_action: 'PAY_NOW',

@@ -101,7 +101,7 @@ describe('InvoicePdfService', () => {
       tva_amount: 19.6,
       fees_amount: 2.4,
       amount_ttc: 120,
-      platform_legal_name: 'BilletiX SAS',
+      platform_legal_name: 'BilleTix SAS',
       platform_siret: '',
       platform_vat_number: '',
       platform_address: '',

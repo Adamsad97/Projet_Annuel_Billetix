@@ -37,8 +37,8 @@ async function bootstrap() {
   app.setGlobalPrefix("api/v1", { exclude: ["health"] });
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle("BilletiX API")
-    .setDescription("API de la plateforme de billetterie électronique BilletiX")
+    .setTitle("BilleTix API")
+    .setDescription("API de la plateforme de billetterie électronique BilleTix")
     .setVersion("1.0")
     .addBearerAuth()
     .addTag("auth", "Authentification et sessions")
