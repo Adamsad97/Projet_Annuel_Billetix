@@ -507,6 +507,18 @@ describe('EventService', () => {
       expect(event.description).toBe('Description mise à jour');
     });
 
+    it("autorise l'ajout ou le retrait de la couverture sur un événement publié", async () => {
+      repo.findOne.mockResolvedValue({ id: '11111111-1111-4111-8111-111111111111', organizer_id: 'organizer-1', status: EventStatus.PUBLISHED, cover_url: null });
+
+      const added = await service.update('11111111-1111-4111-8111-111111111111', 'organizer-1', {
+        cover_url: 'http://example.com/cover.jpg',
+      } as any);
+      expect(added.cover_url).toBe('http://example.com/cover.jpg');
+
+      const removed = await service.update('11111111-1111-4111-8111-111111111111', 'organizer-1', { cover_url: null } as any);
+      expect(removed.cover_url).toBeNull();
+    });
+
     it('refuse un champ sensible (date, lieu, capacité...) sur un événement publié', async () => {
       repo.findOne.mockResolvedValue({ id: '11111111-1111-4111-8111-111111111111', organizer_id: 'organizer-1', status: EventStatus.PUBLISHED });
 

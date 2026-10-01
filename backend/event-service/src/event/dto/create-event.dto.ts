@@ -74,6 +74,11 @@ export class CreateEventDto {
   @IsUrl({ require_tld: false })
   poster_url: string;
 
+  // Couverture horizontale facultative (cartes) — même stockage que l'affiche.
+  @IsOptional()
+  @IsUrl({ require_tld: false })
+  cover_url?: string | null;
+
   @IsInt() @Min(1)
   total_capacity: number;
 

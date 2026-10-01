@@ -21,6 +21,7 @@ import { firstFreeSlug, slugify } from './slug';
 const COSMETIC_FIELDS: Array<keyof CreateEventDto> = [
   'description',
   'poster_url',
+  'cover_url',
   'access_conditions',
   // Nouveau justificatif après un refus : n'affecte ni billets ni commandes.
   'non_profit_document_url',
@@ -48,6 +49,7 @@ const UPDATABLE_FIELDS: Array<keyof CreateEventDto> = [
   'venue_latitude',
   'venue_longitude',
   'poster_url',
+  'cover_url',
   'total_capacity',
   'sales_start_date',
   'sales_end_date',
@@ -740,6 +742,7 @@ export class EventService implements OnApplicationBootstrap {
       venue_latitude: original.venue_latitude,
       venue_longitude: original.venue_longitude,
       poster_url: original.poster_url,
+      cover_url: original.cover_url,
       total_capacity: original.total_capacity,
       sales_start_date: original.sales_start_date,
       sales_end_date: original.sales_end_date,

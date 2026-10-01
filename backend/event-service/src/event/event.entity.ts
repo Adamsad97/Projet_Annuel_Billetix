@@ -116,6 +116,10 @@ export class Event {
   @Column()
   poster_url: string;
 
+  // Couverture horizontale (16:9) des cartes ; à défaut, l'affiche.
+  @Column({ type: 'varchar', nullable: true })
+  cover_url: string | null;
+
   @Column({ type: 'int' })
   total_capacity: number;
 

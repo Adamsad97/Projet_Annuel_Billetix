@@ -49,6 +49,8 @@ export class UpdateEventDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(-90) @Max(90) venue_latitude?: number;
   @IsOptional() @Type(() => Number) @IsNumber() @Min(-180) @Max(180) venue_longitude?: number;
   @IsOptional() @IsUrl({ require_tld: false }) poster_url?: string;
+  /** null : couverture retirée (les cartes reprennent l'affiche). */
+  @IsOptional() @IsUrl({ require_tld: false }) cover_url?: string | null;
   @IsOptional() @IsInt() @Min(1) total_capacity?: number;
   @IsOptional() @IsDateString() sales_start_date?: string;
   @IsOptional() @IsDateString() sales_end_date?: string;
