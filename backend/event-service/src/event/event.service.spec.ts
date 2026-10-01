@@ -727,7 +727,7 @@ describe('EventService', () => {
 
       await expect(service.countUpcomingByCategory()).resolves.toEqual({ CONCERT: 2, SPECTAVLE: 1 });
       expect(qb.andWhere).toHaveBeenCalledWith('e.is_hidden = false');
-      expect(qb.andWhere).toHaveBeenCalledWith('e.end_date >= :now', expect.objectContaining({ now: expect.any(Date) }));
+      expect(qb.andWhere).toHaveBeenCalledWith('e.end_date >= :dateFrom', expect.objectContaining({ dateFrom: expect.any(Date) }));
       expect(qb.groupBy).toHaveBeenCalledWith('e.category');
     });
   });
@@ -775,6 +775,92 @@ describe('EventService', () => {
       repo.findOne.mockResolvedValue({ id, featured_at: new Date(), featured_by: 'admin-1' });
       const event = await service.unfeature(id);
       expect(event).toMatchObject({ featured_at: null, featured_by: null });
+    });
+  });
+
+  describe('listPublished — tri par prix, distance et « À la une »', () => {
+    let qb: Record<string, jest.Mock>;
+
+    beforeEach(() => {
+      qb = queryBuilder as unknown as Record<string, jest.Mock>;
+      for (const method of ['addSelect', 'setParameter', 'setParameters', 'addOrderBy', 'skip']) {
+        qb[method] = jest.fn().mockReturnThis();
+      }
+      qb.getManyAndCount = jest.fn().mockResolvedValue([[], 0]);
+    });
+
+    it("prix croissant : prix « à partir de » des billets publics et actifs, sans billet en dernier", async () => {
+      await service.listPublished({ sort: 'price_asc' });
+
+      const [subQuery, alias] = qb.addSelect.mock.calls[0];
+      expect(alias).toBe('from_price');
+      const sub = { select: jest.fn().mockReturnThis(), from: jest.fn().mockReturnThis(), where: jest.fn().mockReturnThis(), andWhere: jest.fn().mockReturnThis() };
+      subQuery(sub);
+      expect(sub.select).toHaveBeenCalledWith('MIN(tc.price_ht)');
+      expect(sub.andWhere).toHaveBeenCalledWith('tc.visibility = :sortVisibility');
+      expect(sub.andWhere).toHaveBeenCalledWith('tc.is_active = true');
+      expect(qb.orderBy).toHaveBeenCalledWith('from_price', 'ASC', 'NULLS LAST');
+      expect(qb.addOrderBy).toHaveBeenCalledWith('e.start_date', 'ASC');
+    });
+
+    it('prix décroissant : même règle, ordre inverse', async () => {
+      await service.listPublished({ sort: 'price_desc' });
+      expect(qb.orderBy).toHaveBeenCalledWith('from_price', 'DESC', 'NULLS LAST');
+    });
+
+    it('tri par date : aucun calcul de prix', async () => {
+      await service.listPublished({ sort: 'date' });
+      expect(qb.addSelect).not.toHaveBeenCalled();
+      expect(qb.orderBy).toHaveBeenCalledWith('e.start_date', 'ASC');
+    });
+
+    it('« Plus de 100 km » : distance strictement supérieure, coordonnées connues seulement', async () => {
+      await service.listPublished({ lat: 45.76, lng: 4.84, min_distance_km: 100 });
+      expect(qb.setParameters).toHaveBeenCalledWith({ lat: 45.76, lng: 4.84 });
+      expect(qb.andWhere).toHaveBeenCalledWith('e.venue_latitude IS NOT NULL');
+      expect(qb.andWhere).toHaveBeenCalledWith(expect.stringMatching(/> :minDistanceKm$/), { minDistanceKm: 100 });
+      expect(qb.andWhere).not.toHaveBeenCalledWith(expect.stringMatching(/<= :radiusKm$/), expect.anything());
+    });
+
+    it('« À moins de 25 km » : distance inférieure ou égale au rayon', async () => {
+      await service.listPublished({ lat: 48.85, lng: 2.35, radius_km: 25 });
+      expect(qb.andWhere).toHaveBeenCalledWith(expect.stringMatching(/<= :radiusKm$/), { radiusKm: 25 });
+    });
+
+    it('position sans rayon ni distance minimale : aucun filtre de distance', async () => {
+      await service.listPublished({ lat: 48.85, lng: 2.35 });
+      expect(qb.setParameters).not.toHaveBeenCalled();
+    });
+
+    it("« À la une » : seulement les événements choisis par l'admin", async () => {
+      await service.listPublished({ featured: true });
+      expect(qb.andWhere).toHaveBeenCalledWith('e.featured_at IS NOT NULL');
+    });
+  });
+
+  describe('nombres des filtres selon les autres filtres', () => {
+    let qb: Record<string, jest.Mock>;
+
+    beforeEach(() => {
+      qb = queryBuilder as unknown as Record<string, jest.Mock>;
+      for (const method of ['addSelect', 'groupBy', 'setParameter', 'setParameters']) qb[method] = jest.fn().mockReturnThis();
+      qb.getRawOne = jest.fn().mockResolvedValue({ p0: '1' });
+    });
+
+    it("catégories : les autres filtres s'appliquent, pas la catégorie choisie", async () => {
+      await service.countUpcomingByCategory({ category: 'CONCERT', q: 'afro', featured: true });
+      expect(qb.andWhere).toHaveBeenCalledWith(expect.stringContaining('LIKE :q'), { q: '%afro%' });
+      expect(qb.andWhere).toHaveBeenCalledWith('e.featured_at IS NOT NULL');
+      expect(qb.andWhere).not.toHaveBeenCalledWith('e.category = :category', expect.anything());
+    });
+
+    it("périodes : les autres filtres s'appliquent, pas la période choisie", async () => {
+      await service.countInPeriods([{ key: 'today', from: '2026-10-01T10:00:00Z', to: '2026-10-01T22:00:00Z' }], {
+        category: 'CONCERT',
+        date_from: '2026-11-01T00:00:00Z',
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith('e.category = :category', { category: 'CONCERT' });
+      expect(qb.andWhere).not.toHaveBeenCalledWith('e.end_date >= :dateFrom', expect.anything());
     });
   });
 });

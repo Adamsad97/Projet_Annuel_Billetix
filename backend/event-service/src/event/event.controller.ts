@@ -40,13 +40,13 @@ export class EventController {
   }
 
   @MessagePattern('event.count_by_category')
-  countByCategory() {
-    return this.eventService.countUpcomingByCategory();
+  countByCategory(@Payload() filters: ListPublishedPayload) {
+    return this.eventService.countUpcomingByCategory(filters);
   }
 
   @MessagePattern('event.count_in_periods')
   countInPeriods(@Payload() data: CountInPeriodsPayload) {
-    return this.eventService.countInPeriods(data.periods);
+    return this.eventService.countInPeriods(data.periods, data.filters);
   }
 
   @MessagePattern('event.list_for_recommendation')

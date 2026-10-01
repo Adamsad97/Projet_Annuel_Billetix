@@ -66,6 +66,23 @@ function pickUpdatableFields(dto: Partial<CreateEventDto>): Partial<CreateEventD
   return picked;
 }
 
+/** Filtres publics des événements (liste du site et nombres des filtres). */
+export interface PublicEventFilters {
+  category?: string;
+  city?: string;
+  q?: string;
+  min_price?: number;
+  max_price?: number;
+  lat?: number;
+  lng?: number;
+  radius_km?: number;
+  min_distance_km?: number;
+  /** Seulement les événements mis « À la une » par un admin. */
+  featured?: boolean;
+  date_from?: string;
+  date_to?: string;
+}
+
 /** Filtres de la liste admin des événements (event.list_all). */
 export interface AdminEventListFilters {
   status?: EventStatus;
@@ -312,32 +329,13 @@ export class EventService implements OnApplicationBootstrap {
   }
 
   /**
-   * Bug corrigé (CDC §3.4 : "recherche par mots-clés, filtre prix, filtre
-   * distance") : le catalogue public ne proposait que catégorie/ville — pas
-   * de recherche texte, pas de filtre prix, et les coordonnées GPS
-   * (venue_latitude/longitude) étaient stockées mais jamais exploitées.
+   * Événements visibles du public avec les filtres du site (recherche, ville,
+   * catégorie, prix, distance, période, « À la une »). Partagé par la liste
+   * et par les nombres des filtres : un nombre correspond toujours à la liste.
+   * Un événement désactivé par un admin reste affiché (avec son message,
+   * ventes bloquées) ; seul le masquage le retire.
    */
-  async listPublished(filters: {
-    category?: string;
-    city?: string;
-    page?: number;
-    q?: string;
-    min_price?: number;
-    max_price?: number;
-    lat?: number;
-    lng?: number;
-    radius_km?: number;
-    min_distance_km?: number;
-    /** Seulement les événements mis « À la une » par un admin. */
-    featured?: boolean;
-    date_from?: string;
-    date_to?: string;
-    sort?: 'date' | 'recent' | 'price_asc' | 'price_desc';
-  }): Promise<{ data: Event[]; total: number }> {
-    const page = filters.page ?? 1;
-    const limit = 20;
-    // Un événement désactivé par un admin reste affiché (avec son message,
-    // ventes bloquées) ; seul le masquage le retire du catalogue.
+  private async publicEventsQuery(filters: PublicEventFilters) {
     const queryBuilder = this.repo.createQueryBuilder('e')
       .where('e.status IN (:...statuses)', { statuses: [EventStatus.PUBLISHED, EventStatus.SUSPENDED] })
       .andWhere('e.is_hidden = false');
@@ -427,6 +425,22 @@ export class EventService implements OnApplicationBootstrap {
       queryBuilder.andWhere('e.start_date <= :dateTo', { dateTo });
     }
 
+    return queryBuilder;
+  }
+
+  /**
+   * Bug corrigé (CDC §3.4 : "recherche par mots-clés, filtre prix, filtre
+   * distance") : le catalogue public ne proposait que catégorie/ville — pas
+   * de recherche texte, pas de filtre prix, et les coordonnées GPS
+   * (venue_latitude/longitude) étaient stockées mais jamais exploitées.
+   */
+  async listPublished(
+    filters: PublicEventFilters & { page?: number; sort?: 'date' | 'recent' | 'price_asc' | 'price_desc' },
+  ): Promise<{ data: Event[]; total: number }> {
+    const page = filters.page ?? 1;
+    const limit = 20;
+    const queryBuilder = await this.publicEventsQuery(filters);
+
     if (filters.sort === 'price_asc' || filters.sort === 'price_desc') {
       // Prix « à partir de » : billet public et actif le moins cher. La TVA
       // est la même pour tous les événements, l'ordre HT suffit. Un événement
@@ -455,18 +469,19 @@ export class EventService implements OnApplicationBootstrap {
   }
 
   /**
-   * Nombre d'événements à venir par catégorie (filtre Catégorie du site) :
-   * mêmes événements que la liste publique sans autre filtre — publiés ou
-   * ventes suspendues, non masqués, pas encore terminés.
+   * Nombre d'événements par catégorie (filtre Catégorie du site), avec les
+   * autres filtres choisis : seul le filtre Catégorie lui-même est ignoré.
+   * Sans période choisie, les événements pas encore terminés.
    */
-  async countUpcomingByCategory(): Promise<Record<string, number>> {
-    const rows = await this.repo
-      .createQueryBuilder('e')
+  async countUpcomingByCategory(filters: PublicEventFilters = {}): Promise<Record<string, number>> {
+    const queryBuilder = await this.publicEventsQuery({
+      ...filters,
+      category: undefined,
+      date_from: filters.date_from ?? new Date().toISOString(),
+    });
+    const rows = await queryBuilder
       .select('e.category', 'category')
       .addSelect('COUNT(*)', 'count')
-      .where('e.status IN (:...statuses)', { statuses: [EventStatus.PUBLISHED, EventStatus.SUSPENDED] })
-      .andWhere('e.is_hidden = false')
-      .andWhere('e.end_date >= :now', { now: new Date() })
       .groupBy('e.category')
       .getRawMany<{ category: string; count: string }>();
     return Object.fromEntries(rows.map((row) => [row.category, Number(row.count)]));
@@ -478,13 +493,13 @@ export class EventService implements OnApplicationBootstrap {
    * au moins en partie dans la période (fin après le début de la période,
    * début avant sa fin).
    */
-  async countInPeriods(periods: Array<{ key: string; from: string; to?: string }>): Promise<Record<string, number>> {
+  async countInPeriods(
+    periods: Array<{ key: string; from: string; to?: string }>,
+    filters: PublicEventFilters = {},
+  ): Promise<Record<string, number>> {
     if (periods.length === 0) return {};
-    const qb = this.repo
-      .createQueryBuilder('e')
-      .select([])
-      .where('e.status IN (:...statuses)', { statuses: [EventStatus.PUBLISHED, EventStatus.SUSPENDED] })
-      .andWhere('e.is_hidden = false');
+    // Autres filtres choisis ; la période est celle de chaque ligne du menu.
+    const qb = (await this.publicEventsQuery({ ...filters, date_from: undefined, date_to: undefined })).select([]);
     periods.forEach((period, index) => {
       const conditions = [`e.end_date >= :from${index}`];
       qb.setParameter(`from${index}`, new Date(period.from));

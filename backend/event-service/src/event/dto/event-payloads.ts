@@ -63,17 +63,6 @@ export class UpdateEventPayload extends OwnedIdPayload {
   @ValidateNested() @Type(() => UpdateEventDto) dto: UpdateEventDto;
 }
 
-/** Période nommée (« today », « weekend »…) dont on compte les événements. */
-export class PeriodPayload {
-  @IsString() @Matches(/^[a-z_]{1,20}$/) key: string;
-  @IsDateString() from: string;
-  @IsOptional() @IsDateString() to?: string;
-}
-
-export class CountInPeriodsPayload {
-  @IsArray() @ArrayMaxSize(10) @ValidateNested({ each: true }) @Type(() => PeriodPayload) periods: PeriodPayload[];
-}
-
 /** Filtres du catalogue public. */
 export class ListPublishedPayload {
   @IsOptional() @IsString() @MaxLength(60) category?: string;
@@ -94,6 +83,19 @@ export class ListPublishedPayload {
 }
 
 /** Liste admin de tous les événements. */
+/** Période nommée (« today », « weekend »…) dont on compte les événements. */
+export class PeriodPayload {
+  @IsString() @Matches(/^[a-z_]{1,20}$/) key: string;
+  @IsDateString() from: string;
+  @IsOptional() @IsDateString() to?: string;
+}
+
+export class CountInPeriodsPayload {
+  @IsArray() @ArrayMaxSize(10) @ValidateNested({ each: true }) @Type(() => PeriodPayload) periods: PeriodPayload[];
+  /** Autres filtres choisis sur le site (la période vient de chaque ligne). */
+  @IsOptional() @ValidateNested() @Type(() => ListPublishedPayload) filters?: ListPublishedPayload;
+}
+
 export class ListAllEventsPayload {
   @IsOptional() @IsEnum(EventStatus) status?: EventStatus;
   @IsOptional() @IsString() @MaxLength(60) category?: string;
