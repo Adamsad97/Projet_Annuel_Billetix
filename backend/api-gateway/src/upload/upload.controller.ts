@@ -38,10 +38,7 @@ const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024; // 10 MB
 const DOCUMENT_FILE_NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(pdf|png|jpg|webp)$/;
 const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
 
-/**
- * Vérifie le type réel du fichier (ses premiers octets) : le type annoncé
- * par le navigateur n'est qu'une déclaration de l'utilisateur.
- */
+/** Vérifie le type réel du fichier par ses premiers octets. */
 function checkedType(
   file: Express.Multer.File | undefined,
   allowed: DetectedType[],
@@ -96,12 +93,7 @@ export class UploadController {
     return { url };
   }
 
-  /**
-   * Faille corrigée : les pièces justificatives (identité KYC, justificatif
-   * « but non lucratif ») étaient déposées dans un bucket en lecture
-   * publique, sans contrôle de format. Elles sont désormais privées, rangées
-   * par propriétaire, et lues uniquement via GET upload/documents/…
-   */
+  /** Pièces justificatives privées, rangées par propriétaire, lues via GET upload/documents. */
   @Post("document")
   @HttpCode(HttpStatus.CREATED)
   @Roles("ORGANIZER")

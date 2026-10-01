@@ -108,10 +108,7 @@ export class AuthController {
     return firstValueFrom(this.authClient.send("auth.refresh", dto));
   }
 
-  // Public : ne fait que révoquer le refresh token fourni (signature
-  // vérifiée par auth-service — le détenir prouve la titularité). Exiger un
-  // access token rendait la révocation impossible justement après une
-  // inactivité (access token de 15 min déjà expiré).
+  // Public : révoque le refresh token fourni, même après expiration de l'access token.
   @Public()
   @Post("logout")
   @HttpCode(HttpStatus.OK)
@@ -209,18 +206,12 @@ export class AuthController {
       last_name: string;
     };
 
-    // Bug corrigé (faille de sécurité) : auth.oauth_login peut désormais
-    // renvoyer soit des tokens, soit { requires_2fa, pending_token } si le
-    // compte a la 2FA activée — le résultat entier transite tel quel vers le
-    // code d'échange (avant, seuls access_token/refresh_token étaient
-    // transmis, perdant silencieusement le cas 2FA).
+    // Le résultat OAuth (jetons ou 2FA requise) transite tel quel vers le code d'échange.
     const result = await firstValueFrom(
       this.authClient.send("auth.oauth_login", oauthUser),
     );
 
-    // Jamais les tokens (ni le pending_token 2FA) en clair dans l'URL
-    // (historique, logs, Referer) — un code d'échange opaque, court et à
-    // usage unique à la place.
+    // Jamais de jetons en clair dans l'URL : code d'échange opaque à usage unique.
     const code = await firstValueFrom(
       this.authClient.send("auth.create_oauth_exchange_code", result),
     );
@@ -276,9 +267,7 @@ export class AuthController {
     );
   }
 
-  // Première connexion Google/Facebook (ou compte antérieur à la règle
-  // d'âge) : date de naissance exigée avant toute création de compte ou
-  // délivrance de tokens — un mineur n'obtient jamais de compte.
+  // Première connexion Google/Facebook : date de naissance exigée avant toute création de compte.
   @Public()
   @Post("oauth/complete-birth-date")
   @HttpCode(HttpStatus.OK)
@@ -293,9 +282,7 @@ export class AuthController {
     );
   }
 
-  // Bug corrigé (faille de sécurité) : la connexion OAuth ne demandait
-  // jamais la 2FA. Second temps du flux quand le compte l'a activée — le
-  // pending_token vient de exchangeOAuthCode() ci-dessus (requires_2fa: true).
+  // Second temps d'une connexion OAuth avec 2FA (pending_token issu de l'échange).
   @Public()
   @Post("oauth/verify-2fa")
   @HttpCode(HttpStatus.OK)

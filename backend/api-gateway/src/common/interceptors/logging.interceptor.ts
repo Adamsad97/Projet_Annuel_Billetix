@@ -6,12 +6,7 @@ import { tap } from "rxjs/operators";
 
 export const REQUEST_ID_HEADER = "x-request-id";
 
-/**
- * Journal de chaque requête (méthode, route, statut, durée) avec un
- * identifiant de corrélation : repris de l'en-tête x-request-id s'il est
- * fourni, sinon généré, et renvoyé dans la réponse pour relier une erreur
- * signalée par un utilisateur aux journaux.
- */
+/** Journal de chaque requête avec un identifiant de corrélation (x-request-id), renvoyé dans la réponse. */
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger("HTTP");

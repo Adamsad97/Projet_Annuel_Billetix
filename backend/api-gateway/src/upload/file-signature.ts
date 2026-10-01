@@ -1,8 +1,4 @@
-/**
- * Type réel d'un fichier, lu dans ses premiers octets (signature), et non
- * dans le type annoncé par le navigateur, que l'utilisateur contrôle : un
- * fichier HTML renommé en « photo.png » est ainsi refusé.
- */
+/** Type réel d'un fichier lu dans ses premiers octets, pas dans le type annoncé par le navigateur. */
 export type DetectedType = "application/pdf" | "image/png" | "image/jpeg" | "image/webp";
 
 export const EXTENSIONS: Record<DetectedType, string> = {

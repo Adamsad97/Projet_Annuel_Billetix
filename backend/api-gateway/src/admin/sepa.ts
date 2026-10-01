@@ -1,8 +1,4 @@
-/**
- * Fichier de virements SEPA (ISO 20022 pain.001.001.03), à importer dans
- * l'espace bancaire de la plateforme : un ordre groupé, une ligne par
- * reversement.
- */
+/** Fichier de virements SEPA (pain.001.001.03) : un ordre groupé, une ligne par reversement. */
 
 export interface SepaDebtor {
   name: string;

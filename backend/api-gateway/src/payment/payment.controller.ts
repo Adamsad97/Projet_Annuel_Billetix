@@ -69,12 +69,7 @@ export class PaymentController {
     );
   }
 
-  // Bug corrigé (fuite de contrôle d'accès) : cette route renvoyait le
-  // paiement de n'importe quelle commande à n'importe quel utilisateur
-  // authentifié, provider_client_secret compris — sans même vérifier que
-  // l'appelant est bien l'acheteur de la commande. Jamais appelée par le
-  // frontend jusqu'ici (retrouvée en construisant la reprise de paiement),
-  // mais restait un endpoint réel et atteignable.
+  // Paiement d'une commande réservé à son acheteur.
   @Get("order/:orderId")
   @ApiOperation({ summary: "Paiement d'une commande (le titulaire, ou un admin)" })
   async getByOrder(@CurrentUser() user: JwtPayload, @Param("orderId", UuidPipe) orderId: string) {
@@ -91,12 +86,7 @@ export class PaymentController {
     );
   }
 
-  /**
-   * Vérification de secours quand le webhook Stripe n'arrive pas (serveur
-   * local injoignable par Stripe, panne…) : appelée par la page de
-   * confirmation tant que la commande est en attente. Même traitement que
-   * le webhook — idempotent, les billets ne sont jamais générés deux fois.
-   */
+  /** Vérification de secours sans webhook, appelée par la page de confirmation (idempotente). */
   @Post("orders/:orderId/sync")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Vérifier auprès de Stripe l'état du paiement d'une commande (titulaire)" })
@@ -169,9 +159,7 @@ export class PaymentController {
       }),
     )) as Array<{ event_id: string; [key: string]: unknown }>;
 
-    // Le reversement ne connaît que l'event_id — enrichi ici (titre, lieu)
-    // plutôt que de faire un aller-retour par l'organisateur côté frontend,
-    // même pattern que enrichResaleListings (ticket.controller.ts).
+    // Reversements enrichis du titre et du lieu de l'événement.
     const eventIds = [...new Set(payouts.map((payout) => payout.event_id))];
     const events = await Promise.all(
       eventIds.map((eventId) =>

@@ -31,12 +31,7 @@ interface SecurityConfig {
   sensitive_action_reauth_minutes: number;
 }
 
-/**
- * Compte de reversement de l'organisateur : IBAN (virement bancaire, par
- * défaut) ou Stripe Connect (facultatif). Un changement d'IBAN exige le mot
- * de passe, prévient l'organisateur par email et suspend ses reversements
- * pendant iban_change_payout_hold_hours.
- */
+/** Compte de reversement : IBAN par défaut ou Stripe Connect ; changer d'IBAN suspend les reversements un temps. */
 @ApiTags("users")
 @ApiBearerAuth()
 @Roles("ORGANIZER")

@@ -51,10 +51,7 @@ export class TicketsGateway
     }
   }
 
-  // Le frontend organisateur appelle ceci en visualisant le dashboard d'un
-  // événement précis — l'autorisation réelle reste portée par la route REST
-  // (GET /events/:id/dashboard vérifie la propriété), ce canal ne pousse
-  // qu'un signal de rafraîchissement, jamais de données sensibles.
+  // Abonnement au dashboard d'un événement : simple signal, les données passent par la route REST.
   @SubscribeMessage("dashboard:subscribe")
   handleDashboardSubscribe(
     @ConnectedSocket() client: Socket,
@@ -87,9 +84,7 @@ export class TicketsGateway
     this.server.to(`buyer:${buyerId}`).emit("ticket:scanned", ticketData);
   }
 
-  // Appelé après une vente (paiement confirmé) ou un scan — signal léger,
-  // le frontend organisateur doit refaire GET /events/:id/dashboard pour les
-  // données à jour (pas de données métier poussées directement dans le socket).
+  // Signal de rafraîchissement après une vente ou un scan, sans données métier.
   notifyDashboardUpdate(eventId: string, reason: "sale" | "scan") {
     this.server
       .to(`event:${eventId}`)

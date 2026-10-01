@@ -48,12 +48,7 @@ interface TransferConfig {
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
-/**
- * Reversements des organisateurs payés par virement bancaire : l'admin
- * télécharge le fichier SEPA des reversements « À virer », l'importe dans
- * la banque de la plateforme, puis confirme les virements avec leur
- * référence (reversement versé, email à l'organisateur).
- */
+/** Virements des reversements : fichier SEPA à importer à la banque, puis confirmation avec référence. */
 @ApiTags("admin")
 @ApiBearerAuth()
 @Roles("ADMIN")

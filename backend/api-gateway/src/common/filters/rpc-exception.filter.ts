@@ -15,17 +15,7 @@ interface ServiceError {
   code?: string;
 }
 
-/**
- * Traduit en réponse HTTP les erreurs des microservices, en conservant leur
- * code métier (ex. SESSION_IDLE) : le site adapte sa réaction sans dépendre
- * du texte du message.
- *
- * Bug corrigé : une erreur renvoyée par un microservice n'arrive pas ici
- * comme une RpcException mais comme un simple objet { statusCode, message,
- * code } — le filtre par défaut de Nest n'en gardait que statusCode et
- * message, le code était perdu. Toute autre erreur (HttpException, erreur
- * inattendue) reste traitée par le filtre par défaut.
- */
+/** Traduit les erreurs des microservices ({ statusCode, message, code }) en HTTP en gardant leur code métier. */
 @Catch()
 export class RpcExceptionFilter extends BaseExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {

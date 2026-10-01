@@ -18,10 +18,7 @@ const DEFAULT_TIMEOUT_MS = 20_000;
 /** Délai propre à une route plus longue que la moyenne (envoi de masse, fichier…). */
 export const RequestTimeout = (ms: number) => SetMetadata(REQUEST_TIMEOUT_KEY, ms);
 
-/**
- * Si un microservice ne répond pas, la requête échoue proprement (504) au
- * lieu de rester suspendue jusqu'à la coupure du navigateur.
- */
+/** Microservice muet : la requête échoue proprement en 504. */
 @Injectable()
 export class TimeoutInterceptor implements NestInterceptor {
   private readonly defaultMs: number;

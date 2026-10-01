@@ -11,12 +11,7 @@ export interface CancelledEventSnapshot {
   venue_name: string;
 }
 
-/**
- * Conséquences d'une annulation d'événement : billets annulés, commandes
- * payées remboursées une par une, acheteurs prévenus. Partagé entre
- * l'annulation directe par un admin et l'acceptation d'une demande
- * d'annulation de l'organisateur.
- */
+/** Conséquences d'une annulation : billets annulés, commandes remboursées, acheteurs prévenus. */
 @Injectable()
 export class EventRefundService {
   private readonly logger = new Logger(EventRefundService.name);

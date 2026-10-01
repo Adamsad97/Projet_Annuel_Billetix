@@ -15,10 +15,7 @@ import {
 } from "class-validator";
 import { RefundPolicy } from "./create-event.dto";
 
-// Tous les champs sont optionnels (mise à jour partielle) mais restent
-// strictement typés — c'est ce typage qui permet au ValidationPipe global
-// (whitelist:true) de filtrer toute clé étrangère au DTO (ex: status,
-// commission_rate, validated_by) avant même d'atteindre event-service.
+// Champs optionnels mais typés : whitelist retire toute clé étrangère (status, commission_rate…).
 export class UpdateEventDto {
   @ApiPropertyOptional() @IsString() @MinLength(5) @MaxLength(120) @IsOptional()
   title?: string;
@@ -32,9 +29,7 @@ export class UpdateEventDto {
   @ApiPropertyOptional() @IsBoolean() @IsOptional()
   is_non_profit?: boolean;
 
-  // Bug corrigé : justificatif optionnel même en cas de déclaration "à but
-  // non lucratif" — sans lui, l'admin n'a rien à vérifier avant d'accorder
-  // l'exonération de commission (cf. event-service EventService.computeCommissionRate).
+  // Justificatif obligatoire en cas de déclaration « à but non lucratif ».
   @ApiPropertyOptional()
   @ValidateIf((dto: UpdateEventDto) => dto.is_non_profit === true)
   @IsUrl({ require_tld: false }, { message: 'Un justificatif est requis pour une déclaration à but non lucratif' })

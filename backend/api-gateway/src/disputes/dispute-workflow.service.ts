@@ -59,11 +59,7 @@ export interface StripeDisputeEvent {
 
 const PAID_ORDER_STATUSES = ["CONFIRMED", "TICKETS_SENT"];
 
-/**
- * Cycle de vie d'un litige : ouverture par l'acheteur (sur SA commande payée)
- * ou par une contestation bancaire, examen et décision de l'admin (avec
- * remboursement éventuel), acheteur et organisateur prévenus à chaque étape.
- */
+/** Cycle de vie d'un litige : ouverture, décision de l'admin, acheteur et organisateur prévenus à chaque étape. */
 @Injectable()
 export class DisputeWorkflow {
   private readonly logger = new Logger(DisputeWorkflow.name);
@@ -91,11 +87,7 @@ export class DisputeWorkflow {
 
   // ─── Ouverture ────────────────────────────────────────────────────────────
 
-  /**
-   * L'acheteur signale un problème sur sa commande. Seul le titulaire d'une
-   * commande payée peut le faire : un litige bloque le reversement de
-   * l'organisateur, il ne doit pas pouvoir viser la commande d'un tiers.
-   */
+  /** Seul le titulaire d'une commande payée peut ouvrir un litige (il bloque le reversement). */
   async openByBuyer(buyerId: string, dto: { order_id: string; reason: string; description?: string }) {
     const order = await this.order(dto.order_id);
     if (order.buyer_id !== buyerId) throw new ForbiddenException("Cette commande ne vous appartient pas");
@@ -212,10 +204,7 @@ export class DisputeWorkflow {
     return { status: result.status, amount };
   }
 
-  /**
-   * Suite d'un remboursement : total, billets annulés et commande remboursée
-   * (quota restitué) ; partiel, montant enregistré, billets toujours valables.
-   */
+  /** Suite d'un remboursement : total, billets annulés et quota restitué ; partiel, billets toujours valables. */
   private async settleOrderAfterRefund(order: OrderSnapshot, amount: number, reason: string, full?: boolean): Promise<void> {
     const isFull = full ?? amount >= Number(order.total_amount_ttc) - Number(order.refunded_amount ?? 0) - 0.01;
     if (isFull) {
@@ -235,10 +224,7 @@ export class DisputeWorkflow {
     return firstValueFrom(this.paymentClient.send<DisputeSnapshot>("payment.start_dispute_review", { id: disputeId }));
   }
 
-  /**
-   * Décision de l'admin. LOST (acheteur dans son droit) peut s'accompagner
-   * d'un remboursement, total ou partiel, effectué avant la clôture.
-   */
+  /** Décision de l'admin ; LOST peut s'accompagner d'un remboursement avant la clôture. */
   async resolve(
     adminId: string,
     disputeId: string,

@@ -59,10 +59,7 @@ export class SyncOfflineScansDto extends EventRefDto {
   entries: OfflineScanEntryDto[];
 }
 
-/**
- * Invitation d'un agent de contrôle par son email. Prénom et nom servent à
- * créer son compte s'il n'en a pas encore (ignorés sinon).
- */
+/** Invitation d'un agent ; prénom et nom servent seulement à créer son compte. */
 export class AssignAgentDto {
   @ApiProperty() @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   @IsEmail({}, { message: "L'adresse email de l'agent n'est pas valide." }) @MaxLength(254)

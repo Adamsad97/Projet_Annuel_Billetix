@@ -141,9 +141,7 @@ export class EventController {
     );
   }
 
-  // Déclarées avant ":id" — une route statique à un seul segment ("categories")
-  // placée après une route paramétrée du même type ("/:id") serait engloutie
-  // par elle (bug déjà rencontré sur /tickets/resale, cf. ticket.controller.ts).
+  // Déclarées avant « :id », sinon la route paramétrée les avalerait.
 
   @Public()
   @Get("categories")
@@ -346,12 +344,7 @@ export class EventController {
       .subscribe({ error: () => undefined });
   }
 
-  /**
-   * Taux appliqués à un prix de billet (réglages admin) : l'organisateur
-   * voit, pendant la saisie, le prix payé par le client (TTC) et ce qu'il
-   * percevra (après commission et frais de paiement). Déclarée avant
-   * @Get(":id") (sinon « pricing-policy » serait pris pour un identifiant).
-   */
+  /** Taux appliqués au prix d'un billet, pour l'aperçu TTC et net ; déclarée avant « :id ». */
   @Get("pricing-policy")
   @Roles("ORGANIZER", "ADMIN")
   @ApiOperation({ summary: "Taux appliqués au prix d'un billet (commission, frais) — la TVA est celle de l'événement" })
@@ -384,11 +377,7 @@ export class EventController {
     return this.assertVisible(event, req);
   }
 
-  /**
-   * Page publique par son adresse lisible (/evenements/afro-vibes-festival-2026),
-   * mêmes règles de visibilité que GET :id. Deux segments : aucun conflit
-   * avec les routes « :id ».
-   */
+  /** Page publique par son adresse lisible, mêmes règles de visibilité que GET :id. */
   @Public()
   @Get("by-slug/:slug")
   @ApiOperation({ summary: "Détail d'un événement par son adresse lisible" })
@@ -431,12 +420,7 @@ export class EventController {
 
   // --- Routes organisateur ---
 
-  /**
-   * Nouvelles dates : aucun agent déjà affecté ne doit se retrouver sur deux
-   * événements qui se chevauchent (même règle qu'à l'affectation). Seulement
-   * pour l'organisateur de l'événement — event-service refuse les autres, et
-   * les agents d'un événement tiers ne sont jamais révélés.
-   */
+  /** Nouvelles dates : aucun agent affecté ne doit se retrouver sur deux événements qui se chevauchent. */
   private async assertAgentsStillAvailable(eventId: string, organizerId: string, dto: UpdateEventDto): Promise<void> {
     if (dto.start_date === undefined && dto.end_date === undefined) return;
     const current = await firstValueFrom(
@@ -663,13 +647,7 @@ export class EventController {
       }),
     )) as { id: string; title: string; status: string };
 
-    // Bug corrigé (CDC §9 : notification "modification d'événement" jamais
-    // envoyée) — une fois publié, seuls description/affiche/conditions
-    // d'accès restent modifiables (cf. event-service EventService.update),
-    // mais ces changements restent pertinents pour les détenteurs de billet
-    // (ex : conditions d'accès à l'entrée). Fire-and-forget, ne bloque
-    // jamais la réponse de mise à jour elle-même.
-    // Le justificatif « but non lucratif » ne concerne pas les acheteurs.
+    // CDC §9 : détenteurs prévenus d'une modification d'un événement publié, sans bloquer la réponse.
     const publicChanges = Object.keys(dto).filter((key) => key !== "non_profit_document_url" && key !== "is_non_profit");
     if (updatedEvent.status === "PUBLISHED" && publicChanges.length > 0) {
       this.notifyBuyersOfEventUpdate(updatedEvent).catch((err) =>
@@ -886,9 +864,7 @@ export class EventController {
     return cancelledEvent;
   }
 
-  // --- Demandes d'annulation ou de report (organisateur) ---
-  // L'organisateur ne peut ni annuler ni reporter seul : il demande, un admin
-  // accepte ou refuse, après échange de messages.
+  // --- Demandes d'annulation ou de report : l'organisateur demande, un admin accepte ou refuse ---
 
   @Post(":id/cancellation-requests")
   @Roles("ORGANIZER")
@@ -920,11 +896,7 @@ export class EventController {
     return request;
   }
 
-  /**
-   * Admins prévenus par email d'une demande d'annulation ou de report (ou
-   * d'une réponse de l'organisateur) : la demande n'attend plus qu'on pense
-   * à ouvrir la page des demandes. Sans effet sur la réponse en cas d'échec.
-   */
+  /** Admins prévenus par email d'une demande ou d'une réponse de l'organisateur, sans effet en cas d'échec. */
   private notifyAdminsOfRequest(request: ChangeRequestSnapshot, action: "NEW" | "MESSAGE", text: string): void {
     (async () => {
       const [event, organizer, admins] = await Promise.all([

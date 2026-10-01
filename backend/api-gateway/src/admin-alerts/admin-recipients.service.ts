@@ -7,11 +7,7 @@ export interface AdminRecipient {
   first_name: string;
 }
 
-/**
- * Comptes à prévenir d'une action à traiter (demande d'annulation ou de
- * report, vérification d'identité…) : admins et super admins actifs, une
- * seule fois par adresse.
- */
+/** Comptes à prévenir d'une action à traiter : admins et super admins actifs, une fois par adresse. */
 @Injectable()
 export class AdminRecipients {
   private readonly logger = new Logger(AdminRecipients.name);
@@ -33,10 +29,7 @@ export class AdminRecipients {
     return [...byEmail.values()];
   }
 
-  /**
-   * Alerte générique (modèle admin-notice) à chaque admin, sans bloquer
-   * l'appelant. ctaPath : page d'administration à ouvrir (/admin/…).
-   */
+  /** Alerte générique à chaque admin, sans bloquer l'appelant ; ctaPath est la page admin à ouvrir. */
   noticeInBackground(notice: {
     subject: string;
     headline: string;

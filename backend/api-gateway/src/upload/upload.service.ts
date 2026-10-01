@@ -31,11 +31,7 @@ export class UploadService implements OnModuleInit {
     const ssl = this.config.get("MINIO_USE_SSL", "false") === "true";
     const internalBase = `${ssl ? "https" : "http"}://${endpoint}:${port}`;
 
-    // Bug corrigé : les URLs de posters/avatars/documents renvoyées au
-    // navigateur pointaient vers le nom d'hôte interne au réseau Docker
-    // (minio), injoignable depuis l'extérieur — d'où des images cassées.
-    // MINIO_PUBLIC_ENDPOINT est l'hôte réellement joignable (localhost en
-    // dev), distinct de l'endpoint interne utilisé par le client S3 lui-même.
+    // URLs publiques construites avec MINIO_PUBLIC_ENDPOINT, joignable depuis le navigateur.
     const publicEndpoint = this.config.get("MINIO_PUBLIC_ENDPOINT", "localhost");
     this.publicBase = `${ssl ? "https" : "http"}://${publicEndpoint}:${port}`;
 
@@ -49,10 +45,7 @@ export class UploadService implements OnModuleInit {
       forcePathStyle: true,
     });
 
-    // Faille corrigée : le bucket des pièces justificatives (identité KYC,
-    // justificatif « but non lucratif ») recevait une règle de lecture
-    // publique. Il est remis en privé à chaque démarrage, y compris s'il a
-    // été créé avec l'ancienne règle.
+    // Bucket des pièces justificatives remis en privé à chaque démarrage.
     await this.ensureBucket(this.documentBucket, "private").catch((err) =>
       this.logger.warn(`Bucket ${this.documentBucket} non vérifié au démarrage : ${err?.message}`),
     );
@@ -62,11 +55,7 @@ export class UploadService implements OnModuleInit {
     return this.documentBucket;
   }
 
-  /**
-   * Lit un fichier privé (billet, facture) à partir de l'adresse stockée en
-   * base — adresse jamais servie telle quelle au navigateur : l'appelant
-   * vérifie d'abord que l'utilisateur en est le titulaire.
-   */
+  /** Lit un fichier privé après vérification du titulaire par l'appelant. */
   async readStoredFile(storedUrl: string): Promise<Buffer> {
     const path = new URL(storedUrl).pathname.replace(/^\/+/, "");
     const [bucket, ...keyParts] = path.split("/");
@@ -89,10 +78,7 @@ export class UploadService implements OnModuleInit {
     }
   }
 
-  /**
-   * Dépose un fichier. Le nom est généré (jamais celui fourni par
-   * l'utilisateur) ; `prefix` range les documents privés par propriétaire.
-   */
+  /** Dépose un fichier sous un nom généré ; prefix range les documents privés par propriétaire. */
   async upload(
     buffer: Buffer,
     extension: string,
@@ -116,9 +102,7 @@ export class UploadService implements OnModuleInit {
     return `${this.publicBase}/${bucket}/${key}`;
   }
 
-  // Bucket public (affiches, avatars) : lecture anonyme pour que le
-  // navigateur les affiche directement. Bucket privé : aucune règle publique,
-  // lecture uniquement via la passerelle après contrôle d'accès.
+  // Bucket public en lecture anonyme ; bucket privé lu uniquement via la passerelle.
   private async ensureBucket(bucket: string, visibility: BucketVisibility): Promise<void> {
     try {
       await this.client.send(new HeadBucketCommand({ Bucket: bucket }));

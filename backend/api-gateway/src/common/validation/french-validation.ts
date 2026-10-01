@@ -1,10 +1,6 @@
 import { BadRequestException, ValidationError } from "@nestjs/common";
 
-/**
- * Messages de validation en français (vouvoiement), quelle que soit la
- * contrainte class-validator : un message explicite déclaré sur le décorateur
- * reste prioritaire ; sinon il est traduit ici à partir de la contrainte.
- */
+/** Messages de validation en français ; un message déclaré sur le décorateur reste prioritaire. */
 const TRANSLATIONS: Record<string, (field: string, error: ValidationError) => string> = {
   isDefined: (field) => `Le champ « ${field} » est obligatoire.`,
   isNotEmpty: (field) => `Le champ « ${field} » est obligatoire.`,

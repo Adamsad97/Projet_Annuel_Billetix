@@ -1,11 +1,7 @@
 import { plainToInstance, Type } from "class-transformer";
 import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, MinLength, validateSync } from "class-validator";
 
-/**
- * Configuration requise par la passerelle, vérifiée au démarrage : une
- * variable manquante ou invalide arrête le service avec un message clair,
- * au lieu d'une erreur obscure à la première requête qui en dépend.
- */
+/** Configuration requise par la passerelle, vérifiée au démarrage (variable manquante ou invalide = arrêt). */
 class GatewayEnvironment {
   @IsString()
   @MinLength(32, { message: "JWT_ACCESS_SECRET doit contenir au moins 32 caractères." })

@@ -8,13 +8,7 @@ export type AccessLogAction =
   | "TICKET_TRANSFERRED"
   | "TICKET_TRANSFER_REVERT_REQUESTED";
 
-/**
- * Consigne un accès du titulaire à son billet ou à sa facture dans le
- * journal d'audit (admin-service) : qui, quand, depuis quelle IP et quel
- * appareil — pour pouvoir traiter une contestation (« je n'ai jamais
- * affiché ce billet »). Fire-and-forget : un échec de journalisation ne
- * bloque jamais l'accès.
- */
+/** Journalise l'accès du titulaire à son billet ou sa facture (IP, appareil), sans jamais bloquer l'accès. */
 /** IP du client (derrière le reverse proxy : première entrée de X-Forwarded-For). */
 export function clientIp(req: Request): string | null {
   const forwarded = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim();

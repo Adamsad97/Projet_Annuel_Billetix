@@ -116,11 +116,7 @@ export class UserController {
       }),
     );
 
-    // Bug corrigé : un acheteur ne pouvait devenir organisateur que par
-    // intervention d'un admin (auth.change_role) — aucune bascule
-    // self-service n'existait. On la déclenche ici, juste après la
-    // création réussie du profil, et on renvoie les nouveaux tokens (rôle
-    // à jour) pour que le client n'ait pas besoin de se reconnecter.
+    // Bascule self-service en organisateur, avec de nouveaux jetons.
     if (user.role === "BUYER") {
       const { access_token, refresh_token, user: updatedUser } =
         await firstValueFrom(
@@ -202,15 +198,7 @@ export class UserController {
     return profile;
   }
 
-  /**
-   * Bug corrigé (CDC §7) : aucun flux ne permettait jamais à un
-   * organisateur de connecter un compte Stripe — sans ça,
-   * stripe_connect_account_id/onboarded restaient éternellement vides et
-   * aucun reversement automatique n'était jamais possible pour personne.
-   * Réutilisable pour reprendre un onboarding interrompu (Stripe expire
-   * les liens après quelques minutes) : ne recrée jamais le compte Connect
-   * si un existe déjà, génère juste un nouveau lien.
-   */
+  /** CDC §7 : onboarding Stripe Connect, réutilisable pour reprendre un lien expiré. */
   @Post("organizer/stripe-connect/onboard")
   @HttpCode(HttpStatus.OK)
   @Roles("ORGANIZER")
@@ -235,12 +223,7 @@ export class UserController {
     return result;
   }
 
-  /**
-   * Statut du compte de reversement, lu chez Stripe et reporté sur le profil
-   * s'il a changé : ne dépend pas du webhook account.updated, qui peut ne
-   * jamais arriver (poste de développement, webhook mal configuré). Jamais
-   * le numéro de compte complet : banque et 4 derniers chiffres seulement.
-   */
+  /** Statut du compte lu chez Stripe ; seuls la banque et les 4 derniers chiffres sont renvoyés. */
   @Get("organizer/stripe-connect/status")
   @Roles("ORGANIZER")
   @ApiOperation({ summary: "Statut du compte de reversement (Stripe Connect)" })
@@ -334,9 +317,7 @@ export class UserController {
     @Req() req: Request,
     @Body() dto: DeleteAccountDto,
   ) {
-    // Un organisateur avec des obligations en cours ne peut pas supprimer son
-    // compte tant qu'elles ne sont pas résolues (événements à venir déjà
-    // publiés, ou reversement en attente de versement).
+    // Suppression du compte impossible tant qu'il reste des obligations en cours.
     if (user.role === "ORGANIZER") {
       const events = (await firstValueFrom(
         this.eventClient.send("event.list_by_organizer", {

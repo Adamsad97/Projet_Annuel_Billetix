@@ -2,9 +2,7 @@ import { BadRequestException } from "@nestjs/common";
 import { of } from "rxjs";
 import { AdminController } from "./admin.controller";
 
-// Instanciation directe (pas de TestingModule) : aucun test existant pour ce
-// contrôleur, et seules les routes newsletter sont visées ici — pas besoin
-// de câbler les guards/décorateurs HTTP pour ça.
+// Instanciation directe : seules les routes newsletter sont testées ici.
 describe("AdminController — newsletter", () => {
   let controller: AdminController;
   let adminClient: { send: jest.Mock };

@@ -89,10 +89,7 @@ export class BillingDto extends BuyerIdentityDto {
   billing_country: string;
 }
 
-/**
- * Étape 2 : création de la commande. Prix, commission et informations de
- * l'événement ne sont jamais acceptés du client : ils sont relus côté serveur.
- */
+/** Étape 2 : prix, commission et infos de l'événement relus côté serveur. */
 export class CreateOrderDto extends BuyerIdentityDto {
   // Adresse facultative ici : exigée par order-service pour une commande
   // payante, inutile pour une réservation gratuite.

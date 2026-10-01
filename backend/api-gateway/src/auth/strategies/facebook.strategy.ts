@@ -7,10 +7,7 @@ import { Profile, Strategy } from "passport-facebook";
 export class FacebookStrategy extends PassportStrategy(Strategy, "facebook") {
   constructor(config: ConfigService) {
     super({
-      // OAuth2Strategy (base de passport-facebook) plante au démarrage si vide —
-      // valeur de repli non vide pour ne jamais bloquer le boot de la gateway
-      // quand Facebook OAuth n'est pas configuré ; l'échec réel se produira
-      // seulement si quelqu'un utilise réellement la route /auth/facebook.
+      // Valeur de repli pour démarrer même si Facebook OAuth n'est pas configuré.
       clientID: config.get<string>("FACEBOOK_APP_ID", "") || "not_configured",
       clientSecret:
         config.get<string>("FACEBOOK_APP_SECRET", "") || "not_configured",
@@ -18,9 +15,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, "facebook") {
         "FACEBOOK_CALLBACK_URL",
         "http://localhost:3000/api/v1/auth/facebook/callback",
       ),
-      // passport-facebook pointe par défaut sur l'API Graph v3.2, dépréciée
-      // depuis longtemps chez Meta — cause l'erreur "Invalid Scopes: email"
-      // au niveau du dialogue OAuth. Version courante en 2026 : v25.0.
+      // API Graph v25.0 : la v3.2 par défaut provoque « Invalid Scopes: email ».
       graphAPIVersion: "v21.0",
       profileFields: ["id", "emails", "name"],
       scope: ["public_profile", "email"],

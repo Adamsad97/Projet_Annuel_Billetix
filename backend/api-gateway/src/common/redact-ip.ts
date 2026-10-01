@@ -1,11 +1,6 @@
 import { JwtPayload } from "./decorators/current-user.decorator";
 
-/**
- * L'adresse IP est une donnée personnelle (RGPD, minimisation) : elle reste
- * enregistrée pour les enquêtes, mais n'est renvoyée qu'au super admin, qui
- * traite les litiges et incidents de sécurité. Les autres admins voient
- * l'appareil, pas l'IP. Retire récursivement tout champ `ip_address`.
- */
+/** RGPD : l'IP n'est renvoyée qu'au super admin ; retire récursivement tout champ ip_address. */
 export function redactIpUnlessSuperAdmin<T>(user: JwtPayload | undefined, value: T): T {
   if (user?.role === "SUPER_ADMIN") return value;
   return strip(value) as T;

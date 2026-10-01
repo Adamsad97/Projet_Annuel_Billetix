@@ -89,10 +89,7 @@ export class AdminController {
     );
   }
 
-  /**
-   * Transferts de billets (billets offerts) : qui, à qui, quand, depuis
-   * quelle IP — filtrables par référence, email ou événement.
-   */
+  /** Transferts de billets : qui, à qui, quand, depuis quelle IP ; filtrables par référence, email ou événement. */
   @Get("tickets/transfers")
   @ApiOperation({ summary: "Historique des billets offerts (tous les comptes)" })
   async listTicketTransfers(
@@ -132,11 +129,7 @@ export class AdminController {
     return redactIpUnlessSuperAdmin(user, result);
   }
 
-  /**
-   * Annule un transfert : le billet revient à l'expéditeur (au nom de son
-   * titulaire d'origine, nouveau QR), le bénéficiaire le perd. Sur demande
-   * de l'expéditeur, par téléphone ou depuis la plateforme.
-   */
+  /** Annule un transfert : le billet revient à l'expéditeur avec un nouveau QR, le bénéficiaire le perd. */
   @Post("tickets/transfers/:id/revert")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Annuler un transfert de billet (billet rendu à l'expéditeur)" })
@@ -223,11 +216,7 @@ export class AdminController {
     return { success: true, request };
   }
 
-  /**
-   * Reventes (toutes annonces) : vendeur, acheteur, prix, dates, statut.
-   * Recherche libre : référence de billet, événement, ou nom / email (même
-   * partiel) du vendeur ou de l'acheteur.
-   */
+  /** Toutes les reventes, avec recherche par billet, événement, vendeur ou acheteur. */
   @Get("resales")
   @ApiOperation({ summary: "Historique des reventes de billets" })
   async listResales(
@@ -431,13 +420,7 @@ export class AdminController {
     };
   }
 
-  /**
-   * CDC — dashboard admin : tri par ventes totales/billets vendus/chiffre
-   * d'affaires sur une plage de dates au choix. Séparé de GET /admin/dashboard
-   * (qui reste un instantané KPI figé) pour permettre au frontend de
-   * recharger uniquement le graphique quand la plage change, sans
-   * redemander tous les KPIs.
-   */
+  /** Tendance des ventes sur une plage de dates, séparée du dashboard pour ne recharger que le graphique. */
   @Get("sales-trend")
   @ApiOperation({ summary: "Tendance ventes/billets/CA par jour sur une plage de dates" })
   getSalesTrend(@Query("from") from?: string, @Query("to") to?: string) {
@@ -494,17 +477,8 @@ export class AdminController {
     );
   }
 
-  /**
-   * Bug corrigé (CDC §9) : aucune de ces 5 actions admin sur un compte
-   * (suspension, levée, déverrouillage, reset 2FA, activation) ne notifiait
-   * jamais le titulaire — il ne l'apprenait qu'en échouant à se connecter,
-   * ou pas du tout pour un reset 2FA (risque de sécurité passé inaperçu si
-   * ce n'était pas lui qui l'avait demandé). Les RPC auth.* renvoient déjà
-   * l'utilisateur sanitizé (email/first_name inclus), pas de RPC supplémentaire.
-   */
-  /** Détail d'un compte pour la page admin/utilisateurs/:id — inclut le
-   * profil organisateur (IBAN, KYC) quand le rôle le justifie, sans RPC
-   * supplémentaire côté frontend à orchestrer. */
+  /** CDC §9 : le titulaire est prévenu de chaque action admin sur son compte. */
+  /** Détail d'un compte, avec le profil organisateur (IBAN, KYC) quand le rôle le justifie. */
   @Get("users/:id")
   @ApiOperation({ summary: "Détail d'un utilisateur (+ profil organisateur si applicable)" })
   async getUserDetail(@Param("id", UuidPipe) id: string) {
@@ -522,8 +496,7 @@ export class AdminController {
     return { user, organizer_profile: organizerProfile };
   }
 
-  /** Commandes d'un acheteur — alimente le renvoi de billets support depuis
-   * la fiche compte (POST /admin/orders/:id/resend-tickets ci-dessous). */
+  /** Commandes d'un acheteur, pour le renvoi de billets depuis la fiche compte. */
   @Get("users/:id/transfers")
   @ApiOperation({ summary: "Billets offerts et reçus par ce compte" })
   async getUserTransfers(@Param("id", UuidPipe) id: string, @CurrentUser() user?: JwtPayload) {
@@ -699,15 +672,7 @@ export class AdminController {
 
   // ─── Modération des événements ────────────────────────────────────────────────
 
-  /**
-   * CDC — accueil physique : un organisateur venu directement au bureau peut
-   * demander à un admin de créer son événement pour lui plutôt que de
-   * passer par le formulaire en ligne. Le compte organisateur doit déjà
-   * exister (recherché via GET /admin/users) ; l'événement est créé DRAFT
-   * sous son compte, exactement comme s'il l'avait fait lui-même — l'admin
-   * enchaîne ensuite avec les catégories de billets, la soumission puis sa
-   * propre validation (POST .../submit puis .../approve, déjà existants).
-   */
+  /** Accueil physique : l'admin crée l'événement en brouillon sous le compte d'un organisateur existant. */
   @Post("events")
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: "Créer un événement au nom d'un organisateur (accueil physique)" })
@@ -748,16 +713,8 @@ export class AdminController {
     );
   }
 
-  /**
-   * Bug corrigé : la page admin "Événements" (gestion globale, tous
-   * statuts) n'a jamais été reliée au backend — elle affichait des données
-   * 100% fictives (lib/mock/admin-events.ts côté frontend), aucun
-   * événement réel n'y apparaissait jamais, y compris ceux fraîchement
-   * publiés par un organisateur.
-   */
-  /** Enrichissement organisateur/catégorie/remplissage partagé par la liste
-   * globale et la fiche détail — un seul aller-retour par info, batché sur
-   * tous les événements passés (jamais un par ligne côté frontend). */
+  /** Liste admin réelle de tous les événements, tous statuts. */
+  /** Enrichissement (organisateur, catégorie, remplissage) par lot pour la liste et la fiche détail. */
   private async enrichAdminEvents<
     T extends { id: string; organizer_id: string; category: string },
   >(events: T[]): Promise<
@@ -771,9 +728,7 @@ export class AdminController {
       firstValueFrom(this.eventClient.send("event.category.list_all", {})).catch(
         () => [],
       ) as Promise<Array<{ code: string; label: string; emoji: string | null }>>,
-      // Un aller-retour par événement (comme le dashboard organisateur,
-      // event.controller.ts getOrganizerDashboard) — pas de table
-      // d'agrégats dédiée, volume admin restant modeste.
+      // Un aller-retour par événement, le volume admin restant modeste.
       Promise.all(
         events.map((event) =>
           firstValueFrom(this.eventClient.send("event.get_fill_stats", { event_id: event.id })).catch(
@@ -801,13 +756,7 @@ export class AdminController {
     });
   }
 
-  /**
-   * Bug corrigé : la page admin "Événements" (gestion globale, tous
-   * statuts) n'a jamais été reliée au backend — elle affichait des données
-   * 100% fictives (lib/mock/admin-events.ts côté frontend), aucun
-   * événement réel n'y apparaissait jamais, y compris ceux fraîchement
-   * publiés par un organisateur.
-   */
+  /** Liste admin réelle de tous les événements, tous statuts. */
   @Get("events")
   @ApiOperation({ summary: "Tous les événements, tous statuts confondus (gestion globale)" })
   async listAllEvents(@Query() query: AdminEventsQueryDto) {
@@ -860,17 +809,8 @@ export class AdminController {
     });
   }
 
-  // Bug corrigé : la fiche détail (app/admin/evenements/[id]) était elle
-  // aussi 100% mock — un clic sur "Détails" depuis la liste désormais réelle
-  // menait à un événement introuvable (id mock vs UUID réel). Déclarée
-  // après "events/pending" — une route ":id" placée avant avalerait
-  // "pending" comme si c'était un id (même piège que /tickets/resale).
-  /**
-   * Tout ce dont l'admin a besoin pour consulter ou agir sur un événement :
-   * organisateur, ventes, finances, reversement, billets, participants,
-   * demandes de complément et historique des actions. Chaque source est
-   * facultative : une panne partielle n'empêche pas d'afficher le reste.
-   */
+  // Fiche détail admin d'un événement ; déclarée après « events/pending » pour ne pas l'avaler comme un id.
+  /** Tout ce qu'il faut pour consulter ou agir sur un événement ; chaque source est facultative. */
   @Get("events/:id/overview")
   @ApiOperation({ summary: "Vue complète d'un événement pour l'administration" })
   async getAdminEventOverview(@Param("id", UuidPipe) id: string, @CurrentUser() user?: JwtPayload) {
@@ -953,13 +893,7 @@ export class AdminController {
     return result;
   }
 
-  /**
-   * Bug corrigé (CDC §3.2) : la commission 0% "à but non lucratif" était
-   * accordée automatiquement dès que l'organisateur cochait is_non_profit
-   * (auto-déclaratif), sans qu'aucun admin ne vérifie le justificatif.
-   * Étape désormais distincte de l'approbation générale de l'événement — à
-   * faire avant POST /events/:id/approve pour que l'exonération s'applique.
-   */
+  /** CDC §3.2 : vérification admin du justificatif « but non lucratif », avant l'approbation de l'événement. */
   @Post("events/:id/verify-non-profit")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Vérifier le justificatif \"à but non lucratif\" d'un événement" })
@@ -1156,10 +1090,7 @@ export class AdminController {
     return result;
   }
 
-  /**
-   * Prévient l'organisateur par email d'une action de l'administration sur
-   * son événement. Ne bloque ni ne fait échouer l'action elle-même.
-   */
+  /** Prévient l'organisateur par email d'une action admin sur son événement, sans bloquer l'action. */
   private notifyOrganizerOfEvent(
     event: { id: string; title?: string; organizer_id?: string } | null | undefined,
     kind: string,
@@ -1350,10 +1281,7 @@ export class AdminController {
     return firstValueFrom(this.paymentClient.send("payment.get_payout_stats", {}));
   }
 
-  /** Liste globale enrichie (nom organisateur, titre événement) — les deux
-   * n'existent que dans auth-service/event-service, jamais dénormalisés sur
-   * le Payout lui-même, résolus ici par lot (get_users_by_ids/get_by_ids)
-   * plutôt qu'un aller-retour par ligne. */
+  /** Liste enrichie (organisateur, événement) résolue par lot. */
   private async enrichPayouts<T extends { organizer_id: string; event_id: string }>(
     payouts: T[],
   ): Promise<Array<T & { organizer_name: string; organizer_email: string | null; event_name: string }>> {
@@ -1483,13 +1411,7 @@ export class AdminController {
     return result;
   }
 
-  /**
-   * Déclenchement manuel d'un reversement en attente, sans attendre le
-   * prochain passage du cron quotidien (10h00) — mêmes vérifications que
-   * PayoutSchedulerService.processDuePayouts : KYC validé, puis virement
-   * Stripe, ou passage « À virer » pour un organisateur payé par IBAN
-   * (hors suspension après un changement d'IBAN).
-   */
+  /** Versement manuel d'un reversement, avec les mêmes vérifications que le cycle automatique. */
   @Post("payouts/:id/process")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Déclencher manuellement le virement d'un reversement" })
@@ -1777,15 +1699,7 @@ export class AdminController {
 
   // ─── Support commandes ──────────────────────────────────────────────────────
 
-  /**
-   * Équivalent admin de POST /orders/:id/resend-tickets (order.controller.ts,
-   * réservé à l'acheteur lui-même) — pour le cas où c'est le support qui
-   * doit renvoyer l'email au nom d'un acheteur n'ayant rien reçu (spam,
-   * mauvaise adresse corrigée depuis, etc.), sans que celui-ci ait besoin
-   * d'agir. Même logique (notification.ticket_ready, billets déjà générés),
-   * dupliquée plutôt que partagée : les deux contrôleurs n'ont pas de
-   * service commun injectable sans réorganisation plus large.
-   */
+  /** Renvoi des billets par le support au nom d'un acheteur (même logique que la route acheteur). */
   @Post("orders/:id/resend-tickets")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Renvoyer l'email des billets d'une commande, au nom du support" })

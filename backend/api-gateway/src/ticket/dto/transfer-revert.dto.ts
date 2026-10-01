@@ -13,11 +13,7 @@ export class RequestTransferRevertDto {
   reason: string;
 }
 
-/**
- * Annulation par un admin (demande par téléphone ou depuis la plateforme).
- * Accepter une demande ne demande aucune saisie : le motif est facultatif
- * (celui de la demande en ligne de l'expéditeur est conservé).
- */
+/** Annulation par un admin ; motif facultatif, celui de la demande en ligne est conservé. */
 export class RevertTransferDto {
   @ApiProperty({ required: false, example: "Erreur de destinataire" })
   @IsOptional()

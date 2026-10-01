@@ -21,14 +21,7 @@ const EVENT_OWNER_KEY = "eventOwner";
 /** Où lire l'identifiant de l'événement dans la requête. */
 export type EventIdSource = { param: string } | { body: string };
 
-/**
- * Réserve la route à l'organisateur de l'événement visé. Les autres rôles
- * autorisés par @Roles (admin, agent…) ne sont pas concernés : leurs droits
- * sont vérifiés par RolesGuard et par le service métier.
- *
- *   @Roles("ORGANIZER", "ADMIN")
- *   @EventOwner({ param: "eventId" })
- */
+/** Réserve la route à l'organisateur de l'événement visé, ex. @EventOwner({ param: "eventId" }). */
 export function EventOwner(source: EventIdSource) {
   return applyDecorators(SetMetadata(EVENT_OWNER_KEY, source), UseGuards(EventOwnerGuard));
 }

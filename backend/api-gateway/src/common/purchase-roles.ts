@@ -1,10 +1,6 @@
 import { ForbiddenException } from "@nestjs/common";
 
-/**
- * Rôles sans billets : un compte administrateur reste purement administratif,
- * un compte agent ne sert qu'au contrôle des entrées. Ni achat, ni revente,
- * ni billet reçu en cadeau.
- */
+/** Rôles sans billets : admin et agent ne peuvent ni acheter, ni revendre, ni recevoir de billet. */
 const NON_BUYER_ROLES: Record<string, string> = {
   ADMIN: "Un compte administrateur ne peut pas acheter de billets.",
   SUPER_ADMIN: "Un compte administrateur ne peut pas acheter de billets.",

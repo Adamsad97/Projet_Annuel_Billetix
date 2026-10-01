@@ -9,12 +9,7 @@ export interface ScheduledEvent {
   status?: string;
 }
 
-/**
- * Un agent ne contrôle qu'un événement à la fois : renvoie l'événement déjà
- * affecté dont le créneau recoupe celui visé (le nouveau commence avant la
- * fin de l'autre et finit après son début), sinon null. Des créneaux qui se
- * touchent (fin de l'un = début de l'autre) ne se chevauchent pas.
- */
+/** Créneau d'un autre événement de l'agent qui chevauche celui visé, sinon null (se toucher n'est pas chevaucher). */
 export function findScheduleConflict(target: ScheduledEvent, assigned: ScheduledEvent[]): ScheduledEvent | null {
   const start = new Date(target.start_date).getTime();
   const end = new Date(target.end_date ?? target.start_date).getTime();

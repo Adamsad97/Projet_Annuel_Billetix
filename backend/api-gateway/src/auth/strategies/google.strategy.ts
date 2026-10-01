@@ -7,16 +7,11 @@ import { Profile, Strategy } from "passport-google-oauth20";
 export class GoogleStrategy extends PassportStrategy(Strategy, "google") {
   constructor(config: ConfigService) {
     super({
-      // OAuth2Strategy (base de passport-google-oauth20) plante au démarrage si
-      // vide — valeur de repli non vide pour ne jamais bloquer le boot de la
-      // gateway quand Google OAuth n'est pas configuré.
+      // Valeur de repli pour démarrer même si Google OAuth n'est pas configuré.
       clientID: config.get<string>("GOOGLE_CLIENT_ID", "") || "not_configured",
       clientSecret:
         config.get<string>("GOOGLE_CLIENT_SECRET", "") || "not_configured",
-      // Bug corrigé : ce fallback pointait vers le port 3000 (frontend) au
-      // lieu de 4000 (api-gateway, seul service à exposer /api/v1/auth/...)
-      // — sans conséquence dans ce docker-compose (GOOGLE_CALLBACK_URL y est
-      // toujours fourni), mais un piège si ce service tournait autrement.
+      // Callback par défaut sur la gateway (port 4000), seule à exposer /api/v1/auth.
       callbackURL: config.get<string>(
         "GOOGLE_CALLBACK_URL",
         "http://localhost:4000/api/v1/auth/google/callback",

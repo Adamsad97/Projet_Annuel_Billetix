@@ -5,12 +5,7 @@ import { TicketsGateway } from "../events/tickets.gateway";
 import { UploadService } from "../upload/upload.service";
 import { DEFAULT_EVENT_TIMEZONE, formatEventDate } from "../common/event-date";
 
-/**
- * Orchestration post-achat (génération billets/PDF/facture, notifications,
- * reversement organisateur) — partagée entre le webhook Stripe (achat payant)
- * et la confirmation immédiate d'une commande entièrement gratuite (aucun
- * paiement Stripe impliqué, cf. tunnel gratuit du CDC §4.1).
- */
+/** Traitement post-achat (billets, facture, notifications, reversement), payant comme gratuit. */
 
 /** Libellés des moyens de paiement affichés sur la facture envoyée par email. */
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
@@ -114,9 +109,7 @@ export class PurchaseFulfillmentService {
       ticket_pdf_wait_delay_seconds: 2,
     }));
 
-    // Un événement entièrement gratuit (total_amount_ttc = 0) ne passe jamais
-    // par un prestataire de paiement (cf. tunnel gratuit CDC §4.1 : aucun
-    // moyen de paiement sollicité) — donc aucun frais réel n'est jamais prélevé.
+    // Commande gratuite : aucun frais de paiement.
     const feeGrid = { percent: platformConfig.stripe_fee_percent, fixed: platformConfig.stripe_fee_fixed_eur };
     const paymentFees =
       Number(order.total_amount_ttc) === 0
@@ -138,9 +131,7 @@ export class PurchaseFulfillmentService {
       }),
     );
 
-    // Bug corrigé (CDC §9 : notification "première vente" jamais envoyée) —
-    // bascule atomique côté event-service (jamais notifié deux fois même en
-    // cas d'appels concurrents), fire-and-forget.
+    // CDC §9 : notification « première vente » une seule fois, sans attente.
     if (order.organizer_id) {
       this.notifyIfFirstSale(order.organizer_id, order.event_id, order.event_name).catch(
         (err) => this.logger.error(`Erreur notification première vente event ${order.event_id}: ${err?.message}`),
@@ -149,14 +140,7 @@ export class PurchaseFulfillmentService {
 
     this.createOrganizerPayout(order, orderId, paymentFees);
 
-    // Bug corrigé : une commande de revente n'a pas de nouveau billet à
-    // générer — le billet existant est transféré via POST
-    // /tickets/resale/:id/complete, appelé par le frontend juste après la
-    // confirmation Stripe (transfert + remboursement du vendeur + notification
-    // déjà gérés là-bas). Ce webhook tentait quand même ticket.generate()
-    // pour ces commandes, ce qui échouait systématiquement (erreur silencieuse,
-    // seulement journalisée) et empêchait surtout la création du reversement
-    // organisateur ci-dessus de s'exécuter (jamais atteinte à cause du throw).
+    // Commande de revente : pas de nouveau billet, il est transféré par la finalisation de la revente.
     if (order.is_resale) {
       // La facture est la preuve d'achat (plus de billet PDF) : l'acheteur
       // en revente en reçoit une, comme pour un achat classique.
@@ -188,11 +172,7 @@ export class PurchaseFulfillmentService {
         event_poster_url: order.event_poster_url,
         artist_name: order.artist_name,
         artist_description: order.artist_description,
-        // ticket-service attend chaque item avec la clé `order_item_id`
-        // (nom de la colonne NOT NULL côté Ticket) — `items` ici est la liste
-        // brute des OrderItem (order-service), dont la clé primaire est `id`.
-        // Bug corrigé : sans ce mapping, order_item_id était toujours
-        // undefined et l'INSERT du ticket échouait systématiquement (23502).
+        // Mappe id → order_item_id attendu par ticket-service.
         items: items.map((item) => ({ ...item, order_item_id: item.id })),
       }),
     )) as Array<{
@@ -208,9 +188,7 @@ export class PurchaseFulfillmentService {
     // Signal temps réel — le dashboard organisateur ouvert sur cet événement se rafraîchit
     this.ticketsGateway.notifyDashboardUpdate(order.event_id, "sale");
 
-    // Sécurité (demande produit) : ni billet ni QR code par email. Un email
-    // d'accès (bouton vers l'application, connexion exigée à chaque clic) et,
-    // plus bas, la facture détaillée une fois générée.
+    // Sécurité : ni billet ni QR par email, seulement un accès à l'application puis la facture.
     this.notifClient.emit("notification.ticket_ready", {
       email: order.buyer_email,
       firstName: order.buyer_first_name,
@@ -238,10 +216,7 @@ export class PurchaseFulfillmentService {
     );
   }
 
-  /**
-   * Facture PDF de la commande (pdf-service) — seule pièce jointe et seul
-   * document téléchargeable : le billet n'existe que dans l'application.
-   */
+  /** Facture PDF : seule pièce jointe, le billet n'existe que dans l'application. */
   private emitInvoice(
     order: Record<string, any>,
     items: Array<Record<string, any>>,
@@ -267,9 +242,7 @@ export class PurchaseFulfillmentService {
       billing_city: order.billing_city,
       billing_postal_code: order.billing_postal_code,
       billing_country: order.billing_country,
-      // Colonnes decimal Postgres renvoyées en string : sans ce cast,
-      // pdf-service rejetait le message et invoice_url restait null
-      // indéfiniment (facture jamais générée).
+      // Decimals Postgres reçus en texte : conversion obligatoire pour pdf-service.
       items: items.map((item) => ({
         ticket_category_name: item.ticket_category_name,
         quantity: item.quantity,
@@ -289,14 +262,7 @@ export class PurchaseFulfillmentService {
     });
   }
 
-  /**
-   * Facture d'achat par email : tout le détail de la commande, et le PDF
-   * joint dès que pdf-service l'a généré (attente bornée par les réglages
-   * d'attente des PDF de platform_settings ; sans PDF à temps, l'email part
-   * quand même, la facture restant disponible dans l'espace client).
-   * Remplace les anciens emails « commande confirmée » et « paiement
-   * confirmé » (demande produit).
-   */
+  /** Facture d'achat par email, PDF joint s'il est prêt à temps (sinon disponible dans l'espace client). */
   private async sendInvoiceEmail(
     order: Record<string, any>,
     items: Array<Record<string, any>>,
@@ -354,11 +320,7 @@ export class PurchaseFulfillmentService {
     });
   }
 
-  /** Reversement organisateur — commun aux commandes normales et de revente
-   * (l'organisateur touche sa commission sur une revente comme sur une vente
-   * initiale). Les frais des billets gratuits y sont déduits ; réservation
-   * entièrement gratuite : reversement négatif, repris par compensation sur
-   * les reversements suivants de l'organisateur (cf. PayoutService.process). */
+  /** Reversement organisateur, ventes et reventes ; un net négatif est compensé plus tard. */
   private createOrganizerPayout(
     order: {
       organizer_id?: string;
@@ -404,11 +366,7 @@ export class PurchaseFulfillmentService {
     return null;
   }
 
-  /**
-   * Notifie l'organisateur uniquement si cette commande est la toute
-   * première vente réellement confirmée de l'événement (event.mark_first_sale
-   * ne retourne is_first_sale=true qu'une seule fois, atomiquement).
-   */
+  /** Notifie l'organisateur seulement pour la toute première vente confirmée. */
   private async notifyIfFirstSale(
     organizerId: string,
     eventId: string,

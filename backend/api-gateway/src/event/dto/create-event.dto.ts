@@ -27,9 +27,7 @@ export class CreateEventDto {
   @ApiProperty() @IsString() @MinLength(10)
   description: string;
 
-  // Le format est vérifié ici ; l'existence/l'activation réelle du code
-  // (liste gérée depuis l'espace Admin, GET /events/categories) est vérifiée
-  // côté event-service.
+  // Format vérifié ici ; existence et activation du code vérifiées par event-service.
   @ApiProperty({ description: "Code d'une catégorie active (cf. GET /events/categories)" })
   @IsString() @IsNotEmpty()
   category: string;
@@ -37,9 +35,7 @@ export class CreateEventDto {
   @ApiPropertyOptional() @IsBoolean() @IsOptional()
   is_non_profit?: boolean;
 
-  // Bug corrigé : justificatif optionnel même en cas de déclaration "à but
-  // non lucratif" — sans lui, l'admin n'a rien à vérifier avant d'accorder
-  // l'exonération de commission (cf. event-service EventService.computeCommissionRate).
+  // Justificatif obligatoire en cas de déclaration « à but non lucratif ».
   @ApiPropertyOptional()
   @ValidateIf((dto: CreateEventDto) => dto.is_non_profit === true)
   @IsUrl({ require_tld: false }, { message: 'Un justificatif est requis pour une déclaration à but non lucratif' })
@@ -82,10 +78,7 @@ export class CreateEventDto {
   @ApiPropertyOptional() @IsOptional()
   venue_longitude?: number;
 
-  // Bug corrigé : @IsUrl() sans option rejette "localhost" par défaut
-  // (require_tld implicite) — les URLs MinIO en dev (http://localhost:9000/
-  // posters/...) échouaient systématiquement à la validation avec "poster_url
-  // must be a URL address", alors que l'upload lui-même avait réussi.
+  // require_tld: false, sinon les URLs MinIO en localhost sont refusées.
   @ApiProperty() @IsUrl({ require_tld: false })
   poster_url: string;
 

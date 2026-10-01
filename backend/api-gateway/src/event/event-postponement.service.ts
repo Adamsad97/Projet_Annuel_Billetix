@@ -45,13 +45,7 @@ const REFUNDABLE_TICKET_STATUSES = ["GENERATED", "SENT"];
 const PAID_ORDER_STATUSES = ["CONFIRMED", "TICKETS_SENT"];
 const DAY_MS = 24 * 3600 * 1000;
 
-/**
- * Conséquences d'un report accepté : billets, commandes et reversements à la
- * nouvelle date (reversements en attente tant qu'elle est à venir),
- * détenteurs prévenus ; puis remboursement d'une commande à la demande de
- * son acheteur, tant que la date est à venir ou pendant le délai réglé par
- * l'admin (postponement_refund_days) après l'annonce de la nouvelle date.
- */
+/** Conséquences d'un report : tout suit la nouvelle date, détenteurs prévenus, remboursement possible dans le délai. */
 @Injectable()
 export class EventPostponementService {
   private readonly logger = new Logger(EventPostponementService.name);

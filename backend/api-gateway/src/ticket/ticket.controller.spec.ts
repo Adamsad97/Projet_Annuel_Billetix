@@ -4,9 +4,7 @@ import { TicketController } from "./ticket.controller";
 import type { JwtPayload } from "../common/decorators/current-user.decorator";
 import type { TicketsGateway } from "../events/tickets.gateway";
 
-// Instanciation directe (pas de TestingModule) : aucun test existant pour ce
-// contrôleur, et seule notifyResaleSold()/wantsResaleUpdates() sont visées
-// ici — pas besoin de câbler les guards/décorateurs HTTP pour ça.
+// Instanciation directe : seules notifyResaleSold() et wantsResaleUpdates() sont testées ici.
 describe("TicketController — notification de revente (préférences niveau 2)", () => {
   let controller: TicketController;
   let ticketClient: { send: jest.Mock };

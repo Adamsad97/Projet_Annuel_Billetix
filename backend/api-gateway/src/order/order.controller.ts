@@ -52,11 +52,7 @@ export class OrderController {
     private readonly postponement: EventPostponementService,
   ) {}
 
-  /**
-   * Bug corrigé (faille de contrôle d'accès) : le détail d'une commande et
-   * sa facture étaient renvoyés à n'importe quel compte connecté connaissant
-   * son identifiant — nom, adresse de facturation, montants d'un tiers.
-   */
+  /** Détail et facture d'une commande réservés à son acheteur. */
   private async getOwnedOrder<T extends { buyer_id: string }>(
     id: string,
     user: JwtPayload,
@@ -71,10 +67,7 @@ export class OrderController {
     return result;
   }
 
-  /**
-   * Étape 1 du tunnel d'achat — réserve le stock atomiquement dans Redis (TTL 10 min).
-   * Retourne un reservation_token à passer dans POST /orders.
-   */
+  /** Étape 1 du tunnel : réserve le stock dans Redis et renvoie un reservation_token. */
   @Post("reserve")
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: "Réserver le stock (étape 1 — TTL 10 min)" })
@@ -83,11 +76,7 @@ export class OrderController {
     @Body()
     dto: ReserveStockDto,
   ) {
-    // Bug corrigé : un compte ADMIN/SUPER_ADMIN reste purement administratif,
-    // jamais acheteur (cf. commit 220f98e) — la règle n'était appliquée que
-    // côté front (nav, page Profil). Rien n'empêchait un admin d'appeler
-    // directement cette route. Bloqué dès la réservation de stock (étape 1)
-    // pour couper court à tout le tunnel d'achat.
+    // Un compte admin n'achète jamais : bloqué dès la réservation de stock.
     assertCanBuyTickets(user.role);
     return firstValueFrom(
       this.orderClient.send("order.reserve_stock", {
@@ -98,9 +87,7 @@ export class OrderController {
     );
   }
 
-  /**
-   * Abandon panier — libère le stock réservé.
-   */
+  /** Abandon panier : libère le stock réservé. */
   @Delete("reserve/:token")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Libérer une réservation (abandon panier)" })
@@ -112,19 +99,7 @@ export class OrderController {
     );
   }
 
-  /**
-   * Étape 2 — crée la commande en DB (valide le reservation_token).
-   * La validation du code promo et le calcul de la remise/commission sont
-   * entièrement recalculés côté order-service (jamais de confiance dans une
-   * valeur envoyée par le client) — la gateway ne fait que transmettre.
-   *
-   * Tunnel gratuit (CDC §4.1.2) : une commande dont total_amount_ttc = 0
-   * (tous les billets sont à prix 0€) ne passe jamais par Stripe — aucune
-   * page de paiement, aucun moyen de paiement sollicité. La confirmation,
-   * la génération des billets et les notifications sont déclenchées
-   * immédiatement ici, via le même service que le webhook Stripe utilise
-   * pour les commandes payantes.
-   */
+  /** Étape 2 : crée la commande ; à 0 €, confirmation immédiate sans Stripe (CDC §4.1.2). */
   @Post()
   @ApiOperation({
     summary: "Passer une commande (étape 2 — après réservation stock)",
@@ -136,12 +111,7 @@ export class OrderController {
     // Défense en profondeur : même blocage qu'à l'étape reserve() ci-dessus.
     assertCanBuyTickets(user.role);
 
-    // Snapshot événement/organisateur — jamais fourni par le client (bug
-    // corrigé : dto.event_name/dto.event_venue_name/etc. n'étaient jamais
-    // renseignés en pratique, laissant ces colonnes NULL sur la commande,
-    // ce qui faisait ensuite échouer systématiquement ticket-service sur
-    // ses colonnes NOT NULL équivalentes). Relu ici depuis les seules
-    // sources de vérité (event-service, user-service), jamais depuis dto.
+    // Infos de l'événement et de l'organisateur relues depuis les services, jamais depuis le client.
     const event = await firstValueFrom(
       this.eventClient.send<{
         title: string;
@@ -198,10 +168,7 @@ export class OrderController {
         ),
       );
     }
-    // Commande payante : plus d'email « confirmation de commande » avant le
-    // paiement (demande produit) — l'acheteur reçoit, une fois le paiement
-    // reçu, la facture détaillée puis l'email d'accès à ses billets (cf.
-    // PurchaseFulfillmentService).
+    // Commande payante : facture puis accès aux billets seulement après paiement.
 
     return result;
   }
@@ -288,12 +255,7 @@ export class OrderController {
     logAccess(this.adminClient, user, req, "INVOICE_DOWNLOADED", { type: "ORDER", id, reference: note.number });
   }
 
-  /**
-   * Bug corrigé (CDC §9 : "renvoi de billets") : fonctionnalité totalement
-   * absente — un acheteur ayant perdu/pas reçu son email de billets n'avait
-   * aucun moyen de se les faire renvoyer. Réutilise notification.ticket_ready
-   * (même template que l'email initial) avec les billets déjà générés.
-   */
+  /** CDC §9 : renvoi des billets avec le même modèle que l'email initial. */
   @Post(":id/resend-tickets")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { ttl: 60_000, limit: 3 } })

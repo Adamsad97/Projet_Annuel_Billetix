@@ -2,12 +2,7 @@ import { BadRequestException } from "@nestjs/common";
 
 const OWN_DOCUMENT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(pdf|png|jpg|webp)$/;
 
-/**
- * Un justificatif déclaré (KYC, but non lucratif) doit être un fichier que
- * l'organisateur a lui-même déposé via POST /upload/document : sinon il
- * pourrait présenter le document d'un autre, ou une adresse quelconque, à
- * l'admin chargé de la vérification.
- */
+/** Un justificatif doit être un fichier déposé par l'organisateur lui-même. */
 export function assertOwnDocumentUrl(url: string, ownerId: string, bucket: string): void {
   let path: string;
   try {

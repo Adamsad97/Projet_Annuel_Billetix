@@ -1,12 +1,7 @@
 import { Global, Module } from "@nestjs/common";
 import { ClientsModule, Transport } from "@nestjs/microservices";
 
-/**
- * Enregistrement centralisé et global des clients TCP/RMQ vers les microservices.
- * @Global() : évite d'avoir à ré-enregistrer ces clients dans chaque module métier
- * qui les consomme (source d'une classe de bugs de résolution de dépendances —
- * un module féature qui injecte 'XXX_SERVICE' sans l'avoir localement importé).
- */
+/** Clients TCP/RMQ des microservices, enregistrés une fois en @Global() pour tous les modules. */
 @Global()
 @Module({
   imports: [

@@ -136,12 +136,7 @@ export class TicketController {
     private readonly creditNotes: CreditNoteIssuer,
   ) {}
 
-  /**
-   * Préférences niveau 2 (CDC — désactivation réelle des envois) : un échec
-   * de lecture des préférences ne doit jamais empêcher la notification de
-   * vente, ni surtout le remboursement lui-même — on envoie par défaut
-   * (fail-open) en cas d'erreur.
-   */
+  /** Échec de lecture des préférences : on notifie quand même (fail-open), sans bloquer le remboursement. */
   private async wantsResaleUpdates(buyerId: string): Promise<boolean> {
     try {
       const prefs = await firstValueFrom(
@@ -157,11 +152,7 @@ export class TicketController {
 
   // ─── Acheteur ────────────────────────────────────────────────────────────────
 
-  /**
-   * Bug corrigé : aucune vérification que la commande appartient bien à
-   * l'appelant — n'importe quel compte connecté pouvait lister les billets
-   * de n'importe quelle commande en devinant/récupérant son ID.
-   */
+  /** Billets d'une commande réservés à son acheteur. */
   @Get("order/:orderId")
   @ApiOperation({ summary: "Billets d'une commande (le sien uniquement)" })
   async getByOrder(@CurrentUser() user: JwtPayload, @Param("orderId", UuidPipe) orderId: string) {
@@ -179,10 +170,7 @@ export class TicketController {
       ),
       firstValueFrom(this.ticketClient.send<ResaleRecord[]>("ticket.resales_sold_from_order", { order_id: orderId })),
     ]);
-    // Billet offert depuis : reste listé dans la commande d'origine, marqué
-    // comme transféré (plus accessible à l'acheteur, cf. GET /tickets/mine).
-    // Billet revendu : rattaché à la commande de l'acheteur après la vente,
-    // on en garde une trace (sans accès au billet) dans la commande d'origine.
+    // Billet offert ou revendu : reste visible dans la commande d'origine, sans accès au billet.
     return [
       ...tickets.map((ticket) => ({ ...ticket, transferred: ticket.buyer_id !== user.sub })),
       ...resold.map((resale) => ({
@@ -197,12 +185,7 @@ export class TicketController {
     ];
   }
 
-  /**
-   * Billets du compte connecté : ceux dont il est titulaire (achetés,
-   * reçus, rachetés en revente) et l'historique des billets qu'il a offerts
-   * ou reçus. Déclarée avant @Get(":id") (sinon « mine » serait pris pour
-   * un identifiant).
-   */
+  /** Billets du compte et historique des billets offerts ou reçus ; déclarée avant « :id ». */
   @Get("mine")
   @ApiOperation({ summary: "Mes billets et l'historique de mes transferts" })
   async getMine(@CurrentUser() user: JwtPayload) {
@@ -301,11 +284,7 @@ export class TicketController {
     };
   }
 
-  /**
-   * L'expéditeur demande l'annulation d'un transfert (erreur de
-   * destinataire, litige…) : la demande est traitée par un admin, qui rend
-   * le billet ou refuse. Il peut aussi appeler le support.
-   */
+  /** L'expéditeur demande l'annulation d'un transfert, traitée par un admin. */
   @Post("transfers/:transferId/revert-request")
   @ApiOperation({ summary: "Demander l'annulation d'un billet offert" })
   async requestTransferRevert(
@@ -348,13 +327,7 @@ export class TicketController {
     return { success: true, request: { id: request.id, status: request.status, at: request.created_at } };
   }
 
-  // Bug corrigé : déclarée après @Get(":id") (ordre d'enregistrement des
-  // routes Nest/Express), "/tickets/resale" était donc intercepté par la
-  // route générique @Get(":id") — avec id="resale" — avant même d'atteindre
-  // ce handler, renvoyant 401 "Token manquant" (getById n'est pas @Public).
-  // Revente réservée aux acheteurs connectés (demande produit) : plus de
-  // consultation anonyme des annonces, ni via le site ni via l'API.
-  // ADMIN : consultation en mode aperçu du back-office (achat toujours bloqué).
+  // Déclarée avant « :id » ; revente réservée aux acheteurs connectés, aperçu seul pour un admin.
   @Roles("BUYER", "ADMIN")
   @Get("resale")
   @ApiOperation({ summary: "Toutes les annonces de revente actives, tous événements confondus (acheteur connecté)" })
@@ -366,12 +339,7 @@ export class TicketController {
   }
 
 
-  /**
-   * QR code du billet, fourni uniquement sur demande explicite du titulaire
-   * (bouton « Afficher mon QR code ») et seulement tant que le billet est
-   * utilisable — jamais dans les réponses de liste/détail. Durée
-   * d'affichage avant masquage : platform_settings.
-   */
+  /** QR fourni seulement sur demande du titulaire et tant que le billet est utilisable. */
   @Get(":id/qr")
   @ApiOperation({ summary: "QR code d'un billet valide (le sien uniquement, sur demande)" })
   async getQr(
@@ -418,14 +386,7 @@ export class TicketController {
     };
   }
 
-  /**
-   * Bug corrigé : aucune vérification du propriétaire — n'importe quel
-   * compte connecté pouvait consulter le détail (et donc le QR/PDF en
-   * cours de validité) de n'importe quel billet en devinant/récupérant son
-   * ID. Après une revente, ça permettait notamment à l'ancien propriétaire
-   * de continuer à voir le QR — désormais celui du nouvel acheteur — via un
-   * lien déjà en sa possession (email, PDF, historique de navigateur).
-   */
+  /** Détail d'un billet réservé à son titulaire actuel. */
   @Get(":id")
   @ApiOperation({ summary: "Détail d'un billet (le sien uniquement, sans QR code)" })
   async getById(@CurrentUser() user: JwtPayload, @Param("id", UuidPipe) id: string) {
@@ -460,12 +421,7 @@ export class TicketController {
 
   // ─── Revente ────────────────────────────────────────────────────────────────
 
-  /**
-   * Offrir son billet à un autre compte BilleTix : transfert gratuit,
-   * immédiat et irréversible. Exige une connexion récente (identifiants
-   * ressaisis), un compte bénéficiaire actif et vérifié. Trace : historique
-   * du billet (ticket-service), journal d'audit, email aux deux parties.
-   */
+  /** Offrir son billet : transfert immédiat et irréversible, connexion récente et bénéficiaire vérifié exigés. */
   @Post(":id/gift")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Offrir son billet à un autre compte (irréversible)" })
@@ -593,9 +549,7 @@ export class TicketController {
       ),
     );
 
-    // Confirme au vendeur que la mise en vente a bien été prise en compte —
-    // fire-and-forget, ne doit jamais faire échouer la mise en vente
-    // elle-même (déjà actée à ce stade).
+    // Confirme la mise en vente au vendeur, sans jamais la faire échouer.
     this.notifyResaleListed(user.sub, resale).catch((err) =>
       this.logger.error(`Erreur notification mise en vente ${resale.id}: ${err?.message}`),
     );
@@ -637,13 +591,7 @@ export class TicketController {
     return enriched;
   }
 
-  /**
-   * Les annonces de revente ne stockent que des ID (event_id,
-   * ticket_category_id) — dénormalisées côté ticket-service uniquement pour
-   * ce qui lui sert en interne (transfert du billet). L'affichage marketplace
-   * a besoin du nom/lieu/affiche de l'événement et du nom de catégorie, d'où
-   * cet enrichissement ici plutôt que de dupliquer ces données partout.
-   */
+  /** Annonces enrichies du nom, du lieu et de l'affiche de l'événement et du nom de catégorie. */
   private async enrichResaleListings<
     T extends { event_id: string; ticket_category_id: string },
   >(listings: T[]): Promise<
@@ -697,10 +645,7 @@ export class TicketController {
     });
   }
 
-  /**
-   * Achat d'un billet en revente — crée une nouvelle commande + payment intent.
-   * Le frontend complète le paiement via Stripe.js puis appelle POST /resale/:id/complete.
-   */
+  /** Achat en revente : crée la commande et le paiement, finalisés par POST /resale/:id/complete. */
   @Post("resale/:resaleId/purchase")
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: "Acheter un billet en revente" })
@@ -710,13 +655,9 @@ export class TicketController {
     @Body()
     dto: BillingDto,
   ) {
-    // Même règle que la réservation classique (order.controller.ts) : un
-    // compte administrateur n'achète jamais, revente comprise — y compris
-    // depuis le mode aperçu du back-office.
+    // Un compte admin n'achète jamais, revente comprise.
     assertCanBuyTickets(user.role);
-    // Créer la commande pour le nouvel acheteur — order-service relit
-    // lui-même l'offre de revente (prix, catégorie, événement) et le taux de
-    // commission ; le prix n'est jamais accepté depuis ce endpoint.
+    // order-service relit l'offre et la commission ; le prix n'est jamais accepté ici.
     const { order } = await firstValueFrom(
       this.orderClient.send("order.create_resale", {
         buyer_id: user.sub,
@@ -741,10 +682,7 @@ export class TicketController {
     };
   }
 
-  /**
-   * Finalisation après paiement confirmé par Stripe.
-   * Transfère le billet + rembourse l'acheteur original.
-   */
+  /** Finalisation après paiement : transfère le billet et rembourse le vendeur. */
   @Post("resale/:resaleId/complete")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Finaliser l'achat d'une revente après paiement" })
@@ -763,11 +701,7 @@ export class TicketController {
       return { success: false, message: "Paiement non encore confirmé" };
     }
 
-    // Bug corrigé : le billet transféré gardait l'email/nom de l'ancien
-    // titulaire (jamais mis à jour) — l'agent de contrôle aurait vu le
-    // mauvais nom, et l'acheteur n'avait de toute façon aucune notification.
-    // Les coordonnées saisies à l'achat (order-service) sont la source de
-    // vérité pour le nouveau titulaire.
+    // Coordonnées du nouveau titulaire reprises de la commande de revente.
     const { order: newOrder } = await firstValueFrom(
       this.orderClient.send("order.get", { id: dto.order_id }),
     );
@@ -784,13 +718,7 @@ export class TicketController {
       }),
     );
 
-    // 3. Rembourser le vendeur du prix de revente de CE billet.
-    // Bug corrigé : le remboursement portait sur toute la commande d'origine
-    // (tous ses billets), et la commande entière était marquée remboursée
-    // alors que ses autres billets restent valables. Désormais : remboursement
-    // partiel du seul prix de revente (plafonné au prix d'achat), sur le
-    // moyen de paiement d'origine ; le reversement de l'organisateur est
-    // réduit d'autant (payment-service), la commande de revente le compensant.
+    // 3. Rembourse au vendeur le seul prix de revente de ce billet ; le reversement est réduit d'autant.
     const resaleAmount = Number(resale.resale_price);
     if (resaleAmount > 0) {
       try {
@@ -829,9 +757,7 @@ export class TicketController {
       this.logger.error(`Erreur notification revente vendue ${resale.id}: ${err?.message}`),
     );
 
-    // Bug corrigé : l'acheteur ne recevait jamais rien. Même email "billet
-    // prêt" que pour un achat classique (la facture part avec le
-    // post-paiement) — fire-and-forget, la revente est déjà actée.
+    // L'acheteur reçoit l'email « billet prêt », sans attente.
     this.notifyBuyerResalePurchase(resale.ticket_id).catch((err) =>
       this.logger.error(`Erreur notification acheteur revente ${resale.id}: ${err?.message}`),
     );
@@ -888,9 +814,7 @@ export class TicketController {
     });
   }
 
-  /** Confirme au vendeur que sa mise en vente a bien été prise en compte —
-   * même préférence que notifyResaleSold (« Suivi de revente » couvre tout
-   * le cycle de vie de l'annonce, pas seulement la vente). */
+  /** Confirme la mise en vente au vendeur (préférence « Suivi de revente »). */
   private async notifyResaleListed(
     sellerId: string,
     resale: { ticket_id: string; resale_price: number },
@@ -929,9 +853,7 @@ export class TicketController {
       }),
     )) as { ticket_id: string };
 
-    // Bug corrigé : aucune confirmation n'était envoyée au vendeur après un
-    // retrait — symétrique à notifyResaleListed/notifyResaleSold qui, eux,
-    // couvrent déjà tout le reste du cycle de vie de l'annonce.
+    // Confirme le retrait de l'annonce au vendeur.
     this.notifyResaleWithdrawn(user.sub, resale.ticket_id).catch((err) =>
       this.logger.error(`Erreur notification retrait revente ${resaleId}: ${err?.message}`),
     );
@@ -994,10 +916,7 @@ export class TicketController {
       });
       this.ticketsGateway.notifyDashboardUpdate(dto.event_id, "scan");
 
-      // Bug corrigé (CDC §9) : notification.ticket_scanned avait son DTO,
-      // son template et son handler prêts côté notification-service, mais
-      // n'était jamais émise — seul le push WebSocket existait (perdu si
-      // l'acheteur n'a pas l'app ouverte au moment du scan).
+      // CDC §9 : email au titulaire lors du scan de son billet.
       if (scannedTicket.buyer_email) {
         // Fuseau de l'événement (heure affichée = heure locale du lieu).
         const eventTimezone = await firstValueFrom(
@@ -1036,13 +955,7 @@ export class TicketController {
     return response;
   }
 
-  /**
-   * Paquet hors ligne de l'appareil de contrôle, à télécharger avant
-   * l'ouverture des portes : clé publique de vérification des QR signés,
-   * empreintes et statuts des billets, état et dates de l'événement, fenêtre
-   * de contrôle. Aucun jeton ni donnée personnelle. Organisateur de
-   * l'événement ou agent affecté (vérifié par ticket-service).
-   */
+  /** Paquet hors ligne de l'appareil de contrôle, réservé à l'organisateur et aux agents affectés. */
   @Get("event/:eventId/offline-pack")
   @Roles("AGENT", "ORGANIZER")
   @EventOwner({ param: "eventId" })
@@ -1111,17 +1024,8 @@ export class TicketController {
 
   // ─── Organisateur : gestion des agents ──────────────────────────────────────
 
-  /**
-   * Bug corrigé (CDC §6.2) : ces 3 endpoints ne vérifiaient que le rôle JWT
-   * global ORGANIZER, jamais que l'appelant est bien l'organisateur DE CET
-   * événement précis — un organisateur pouvait assigner/lister/révoquer les
-   * agents de contrôle de n'importe quel autre organisateur.
-   */
-  /**
-   * Invite un agent de contrôle par son email : compte agent créé au besoin
-   * (lien pour choisir son mot de passe), puis affecté à l'événement. Une
-   * adresse de compte acheteur/organisateur est refusée par auth-service.
-   */
+  /** CDC §6.2 : seul l'organisateur de l'événement gère ses agents. */
+  /** Invite un agent par email (compte créé au besoin) et l'affecte à l'événement. */
   @Post("event/:eventId/agents")
   @Roles("ORGANIZER")
   @EventOwner({ param: "eventId" })
@@ -1135,10 +1039,7 @@ export class TicketController {
     return this.inviteOneAgent(user.sub, eventId, dto, context);
   }
 
-  /**
-   * Invitation groupée : chaque agent est traité indépendamment — une
-   * adresse refusée n'empêche pas les autres. Résultat ligne par ligne.
-   */
+  /** Invitation groupée : chaque agent est traité indépendamment, résultat ligne par ligne. */
   @Post("event/:eventId/agents/bulk")
   @Roles("ORGANIZER")
   @EventOwner({ param: "eventId" })
@@ -1290,10 +1191,7 @@ export class TicketController {
     });
   }
 
-  /**
-   * Nouveau lien d'activation pour un agent qui n'a pas encore choisi son
-   * mot de passe (invitation expirée ou égarée).
-   */
+  /** Nouveau lien d'activation pour un agent qui n'a pas encore choisi son mot de passe. */
   @Post("event/:eventId/agents/:userId/resend-invitation")
   @HttpCode(HttpStatus.OK)
   @Roles("ORGANIZER")

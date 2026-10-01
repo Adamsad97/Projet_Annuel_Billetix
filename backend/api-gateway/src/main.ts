@@ -8,11 +8,7 @@ import { RpcExceptionFilter } from "./common/filters/rpc-exception.filter";
 import { frenchValidationException } from "./common/validation/french-validation";
 
 async function bootstrap() {
-  // rawBody: true — nécessaire pour vérifier les signatures des webhooks
-  // Stripe, qui doivent être calculées sur le corps brut de
-  // la requête, avant tout parsing JSON. Sans cette option, `req.rawBody`
-  // est toujours `undefined` et la vérification de signature échoue
-  // silencieusement (bug préexistant corrigé ici).
+  // rawBody: true : la signature des webhooks Stripe se vérifie sur le corps brut de la requête.
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.enableShutdownHooks();

@@ -29,11 +29,7 @@ interface IssuedCreditNote {
   };
 }
 
-/**
- * Avoir d'un remboursement : enregistré par order-service (numéro continu,
- * montants au prorata de la facture), puis mis en PDF par pdf-service. Appelé
- * après chaque remboursement réussi (annulation, report, admin, revente).
- */
+/** Avoir d'un remboursement : enregistré par order-service puis mis en PDF, après chaque remboursement. */
 @Injectable()
 export class CreditNoteIssuer {
   private readonly logger = new Logger(CreditNoteIssuer.name);

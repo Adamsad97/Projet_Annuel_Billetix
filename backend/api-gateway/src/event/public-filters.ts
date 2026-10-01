@@ -1,8 +1,4 @@
-/**
- * Filtres publics des événements lus dans l'adresse (?q=…&city=…), partagés
- * par la liste et par les nombres des filtres : les trois routes comprennent
- * toujours exactement les mêmes filtres. Validation fine par l'event-service.
- */
+/** Filtres publics lus dans l'adresse, identiques pour la liste et les nombres des filtres. */
 export type PublicFilterQuery = Record<string, string | undefined>;
 
 const optionalNumber = (value: string | undefined) => (value === undefined || value === "" ? undefined : Number(value));

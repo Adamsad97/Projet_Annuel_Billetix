@@ -1,7 +1,4 @@
-// Bug corrigé : les dates des emails étaient formatées sans fuseau, donc
-// dans celui du serveur (UTC en conteneur) — un billet scanné à 07:05 à
-// Paris affichait « 05:05 », et une date proche de minuit pouvait changer
-// de jour. Toujours formater dans le fuseau de l'événement.
+// Dates des emails formatées dans le fuseau de l'événement.
 
 /** Fuseau par défaut d'un événement (même valeur que la colonne events.timezone). */
 export const DEFAULT_EVENT_TIMEZONE = "Europe/Paris";
