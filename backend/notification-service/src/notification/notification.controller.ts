@@ -414,7 +414,7 @@ export class NotificationController {
       template: 'event-canceled',
       context: {
         ...data,
-        eventsUrl: `${this.appUrl}/catalogue`,
+        eventsUrl: `${this.appUrl}/evenements`,
       },
     });
     this.ack(rmqContext);

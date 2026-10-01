@@ -77,7 +77,7 @@ export function organizerEventNotice(kind: OrganizerEventNoticeKind, eventName: 
         messageLabel: 'Motif',
         tone: 'warning',
         details:
-          "Il n'apparaît plus dans le catalogue, sa page publique est indisponible et les ventes sont bloquées. Les billets déjà vendus restent valables.",
+          "Il n'apparaît plus dans la liste des événements, sa page publique est indisponible et les ventes sont bloquées. Les billets déjà vendus restent valables.",
         ctaLabel: cta,
       };
     case 'UNHIDDEN':
@@ -87,7 +87,7 @@ export function organizerEventNotice(kind: OrganizerEventNoticeKind, eventName: 
         intro: "L'administration a rendu votre événement de nouveau visible au public :",
         messageLabel: 'Note',
         tone: 'success',
-        details: 'Il réapparaît dans le catalogue et sa page publique est de nouveau accessible.',
+        details: 'Il réapparaît dans la liste des événements et sa page publique est de nouveau accessible.',
         ctaLabel: cta,
       };
     case 'CANCELLED_BY_ADMIN':
