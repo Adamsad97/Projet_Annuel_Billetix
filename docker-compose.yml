@@ -457,7 +457,6 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@order-db:5432/orders
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
-      STOCK_RESERVATION_TTL_SECONDS: ${STOCK_RESERVATION_TTL_SECONDS:-600}
       EVENT_SERVICE_HOST: event-service
       EVENT_SERVICE_PORT: 3003
       TICKET_SERVICE_HOST: ticket-service
@@ -595,7 +594,6 @@ services:
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
-      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@billetix.fr}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-BilleTix}
       # Liens cliqués par l'utilisateur dans ses emails -> le frontend
