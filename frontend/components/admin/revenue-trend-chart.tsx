@@ -29,15 +29,32 @@ export function RevenueTrendChart() {
   const [metric, setMetric] = useState<Metric>("revenue_ttc");
   const [from, setFrom] = useState(toDateInputValue(defaultFrom));
   const [to, setTo] = useState(toDateInputValue(defaultTo));
-  const [trend, setTrend] = useState<ApiSalesTrendPoint[] | undefined>(undefined);
-  const [error, setError] = useState<string | null>(null);
+  // Résultat rattaché à sa période : « en chargement » tant que la période
+  // affichée n'est pas celle demandée, et une réponse arrivée après un
+  // changement de dates est ignorée.
+  const range = `${from}|${to}`;
+  const [result, setResult] = useState<{ range: string; trend?: ApiSalesTrendPoint[]; error?: string } | null>(null);
+  const current = result?.range === range ? result : null;
+  const trend = current?.trend;
+  const error = current?.error ?? null;
 
   useEffect(() => {
-    setTrend(undefined);
-    setError(null);
+    let cancelled = false;
     getSalesTrend(`${from}T00:00:00.000Z`, `${to}T23:59:59.999Z`)
-      .then(setTrend)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger la tendance des ventes."));
+      .then((points) => {
+        if (!cancelled) setResult({ range: `${from}|${to}`, trend: points });
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setResult({
+            range: `${from}|${to}`,
+            error: err instanceof ApiError ? err.message : "Impossible de charger la tendance des ventes.",
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [from, to]);
 
   const activeMetric = METRICS.find((entry) => entry.id === metric)!;

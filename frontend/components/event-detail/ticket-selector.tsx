@@ -102,10 +102,8 @@ export function TicketSelector({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSalesState("not_open");
     } else if (now > new Date(salesEndAt).getTime()) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSalesState("closed");
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSalesState("open");
     }
   }, [salesStartAt, salesEndAt]);

@@ -50,7 +50,6 @@ export function CountdownDigits({
 
     function tick() {
       const diff = target - Date.now();
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRemainingMs(diff);
       if (diff <= 0) onZero();
     }

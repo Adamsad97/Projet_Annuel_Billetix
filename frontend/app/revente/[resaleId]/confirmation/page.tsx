@@ -25,19 +25,16 @@ export default function ResaleConfirmationPage({
   const { resaleId } = use(params);
   const searchParams = useSearchParams();
   const orderId = searchParams.get("order_id");
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
-  const [error, setError] = useState<string | null>(null);
+  const [requestStatus, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const [requestError, setError] = useState<string | null>(null);
   const attempted = useRef(false);
+  // Lien sans commande : erreur lue directement dans l'adresse, sans appel.
+  const status = orderId ? requestStatus : "error";
+  const error = orderId ? requestError : "Commande introuvable.";
 
   useEffect(() => {
-    if (attempted.current) return;
+    if (!orderId || attempted.current) return;
     attempted.current = true;
-
-    if (!orderId) {
-      setStatus("error");
-      setError("Commande introuvable.");
-      return;
-    }
 
     completeResale(resaleId, orderId)
       .then(() => setStatus("success"))
