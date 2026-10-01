@@ -55,10 +55,24 @@ export class CategoryService {
     return this.repo.save(category);
   }
 
+  /**
+   * Un changement de code est recopié sur les événements qui l'utilisent,
+   * dans la même transaction : jamais d'événement rattaché à un code disparu.
+   */
   async update(id: string, dto: UpdateCategoryDto): Promise<Category> {
     const category = await this.getById(id);
+    const previousCode = category.code;
+    const codeChanged = dto.code !== undefined && dto.code !== previousCode;
+    if (codeChanged) {
+      const taken = await this.repo.findOne({ where: { code: dto.code } });
+      if (taken) throw new RpcException({ statusCode: 400, message: `Le code "${dto.code}" existe déjà` });
+    }
     Object.assign(category, dto);
-    return this.repo.save(category);
+    if (!codeChanged) return this.repo.save(category);
+    return this.repo.manager.transaction(async (manager) => {
+      await manager.update(Event, { category: previousCode }, { category: dto.code });
+      return manager.save(category);
+    });
   }
 
   /** Suppression définitive interdite si des événements référencent encore ce

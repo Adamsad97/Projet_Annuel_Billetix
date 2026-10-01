@@ -7,7 +7,8 @@ import { CategoryService } from './category.service';
 
 describe('CategoryService', () => {
   let service: CategoryService;
-  let repo: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock; find: jest.Mock; remove: jest.Mock };
+  let repo: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock; find: jest.Mock; remove: jest.Mock; manager: { transaction: jest.Mock } };
+  let manager: { update: jest.Mock; save: jest.Mock };
   let eventRepo: { count: jest.Mock };
 
   beforeEach(async () => {
@@ -17,7 +18,13 @@ describe('CategoryService', () => {
       findOne: jest.fn(),
       find: jest.fn(),
       remove: jest.fn(),
+      manager: { transaction: jest.fn() },
     };
+    manager = {
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      save: jest.fn().mockImplementation((category) => Promise.resolve(category)),
+    };
+    repo.manager.transaction.mockImplementation((work: (m: typeof manager) => unknown) => work(manager));
     eventRepo = { count: jest.fn().mockResolvedValue(0) };
 
     const module = await Test.createTestingModule({
@@ -79,6 +86,28 @@ describe('CategoryService', () => {
 
       expect(result).toEqual({ success: true });
       expect(repo.remove).toHaveBeenCalledWith(category);
+    });
+  });
+
+  describe('update — changement de code', () => {
+    it('recopie le nouveau code sur les événements, dans une transaction', async () => {
+      repo.findOne.mockResolvedValueOnce({ id: 'c1', code: 'SPECTAVLE', label: 'Spectacle' }).mockResolvedValueOnce(null);
+      const result = await service.update('c1', { code: 'SPECTACLE' });
+      expect(manager.update).toHaveBeenCalledWith(Event, { category: 'SPECTAVLE' }, { category: 'SPECTACLE' });
+      expect(result).toMatchObject({ code: 'SPECTACLE', label: 'Spectacle' });
+    });
+
+    it('refuse un code déjà utilisé par une autre catégorie', async () => {
+      repo.findOne.mockResolvedValueOnce({ id: 'c1', code: 'SPECTAVLE' }).mockResolvedValueOnce({ id: 'c2', code: 'CONCERT' });
+      await expect(service.update('c1', { code: 'CONCERT' })).rejects.toBeInstanceOf(RpcException);
+      expect(manager.update).not.toHaveBeenCalled();
+    });
+
+    it('sans changement de code, aucun événement touché', async () => {
+      repo.findOne.mockResolvedValueOnce({ id: 'c1', code: 'CONCERT', label: 'Concert' });
+      await service.update('c1', { label: 'Concerts' });
+      expect(repo.manager.transaction).not.toHaveBeenCalled();
+      expect(repo.save).toHaveBeenCalledWith(expect.objectContaining({ label: 'Concerts' }));
     });
   });
 });
