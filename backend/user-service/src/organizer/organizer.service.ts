@@ -42,11 +42,7 @@ export class OrganizerService {
     return this.repo.save(profile);
   }
 
-  /**
-   * IBAN de reversement, chiffré (AES-256-GCM). La 2FA reste facultative :
-   * la passerelle exige le mot de passe, prévient l'organisateur par email,
-   * et un IBAN changé suspend les reversements quelque temps (iban_updated_at).
-   */
+  /** IBAN chiffré (AES-256-GCM) ; un changement exige le mot de passe, alerte par email et suspend les reversements. */
   async updateIban(
     userId: string,
     dto: UpdateIbanDto,
@@ -150,26 +146,16 @@ export class OrganizerService {
     return { success: true };
   }
 
-  /**
-   * Bug corrigé (CDC §7) : rien ne renseignait jamais ces deux champs —
-   * appelé par payment-service à la création du compte Stripe Connect
-   * (une seule fois par organisateur, jamais recréé).
-   */
+  /** CDC §7 : enregistre le compte Stripe Connect créé par payment-service (une seule fois par organisateur). */
   async setStripeConnectAccount(userId: string, accountId: string): Promise<OrganizerProfile> {
     const profile = await this.getByUserId(userId);
     profile.stripe_connect_account_id = accountId;
-    // Nouvelle liaison : l'onboarding Stripe n'est pas encore confirmé, même
-    // si un compte existait déjà avant (ne devrait pas arriver en pratique
-    // puisque payment-service ne recrée jamais un compte existant).
+    // Nouvelle liaison : onboarding Stripe pas encore confirmé.
     profile.stripe_connect_onboarded = false;
     return this.repo.save(profile);
   }
 
-  /**
-   * Appelé depuis le webhook Stripe `account.updated` — l'identifiant
-   * disponible est celui du compte Connect, pas notre user_id interne.
-   * Silencieux si le compte est inconnu (jamais nos organisateurs).
-   */
+  /** Appelé par le webhook Stripe account.updated, via l'identifiant du compte Connect ; silencieux si inconnu. */
   async setStripeConnectOnboarded(accountId: string, onboarded: boolean): Promise<void> {
     const profile = await this.repo.findOne({ where: { stripe_connect_account_id: accountId } });
     if (!profile) return;
@@ -184,14 +170,7 @@ export class OrganizerService {
     });
   }
 
-  /**
-   * Bug corrigé (même famille que la faille commission "non lucratif") :
-   * l'admin pouvait approuver le KYC d'un organisateur (VERIFIED) sans
-   * qu'aucun justificatif n'ait jamais été soumis (kyc_document_url vide),
-   * et même transitionner VERIFIED/REJECTED depuis n'importe quel statut
-   * (y compris PENDING, jamais soumis) — le workflow "soumission → examen"
-   * n'était en réalité jamais imposé.
-   */
+  /** Workflow KYC imposé : examen seulement après soumission, VERIFIED seulement avec justificatif. */
   async updateKyc(userId: string, dto: UpdateKycDto): Promise<OrganizerProfile> {
     const profile = await this.getByUserId(userId);
 
@@ -220,9 +199,7 @@ export class OrganizerService {
         });
       }
       profile.kyc_submitted_at = new Date();
-      // Bug corrigé : en cas de nouvelle soumission après un rejet, l'ancien
-      // motif de rejet restait affiché alors qu'un nouveau justificatif est
-      // en attente d'examen — laissait croire que le KYC était encore rejeté.
+      // Nouvelle soumission : l'ancien motif de rejet est effacé.
       profile.kyc_rejected_reason = null;
     }
     if (dto.kyc_status === KycStatus.VERIFIED) {

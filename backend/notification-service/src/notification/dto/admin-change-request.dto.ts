@@ -1,9 +1,6 @@
 import { IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
 
-/**
- * Admin prévenu d'une demande d'annulation ou de report d'un organisateur :
- * nouvelle demande (NEW) ou réponse de l'organisateur dans l'échange (MESSAGE).
- */
+/** Admin prévenu d'une demande d'annulation ou de report : nouvelle demande (NEW) ou réponse de l'organisateur (MESSAGE). */
 export class AdminChangeRequestDto {
   @IsEmail()
   email: string;

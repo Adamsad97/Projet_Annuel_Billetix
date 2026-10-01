@@ -11,10 +11,7 @@ export interface OrganizerEventNoticeContent {
   ctaLabel: string;
 }
 
-/**
- * Contenu de l'email envoyé à l'organisateur pour chaque action de
- * l'administration sur son événement.
- */
+/** Contenu de l'email envoyé à l'organisateur pour chaque action de l'administration sur son événement. */
 export function organizerEventNotice(kind: OrganizerEventNoticeKind, eventName: string): OrganizerEventNoticeContent {
   const cta = 'Voir mon événement';
   switch (kind) {

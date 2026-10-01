@@ -1,10 +1,7 @@
 import { plainToInstance, Type } from 'class-transformer';
 import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Max, Min, validateSync } from 'class-validator';
 
-/**
- * Configuration requise par user-service, vérifiée au démarrage : une
- * variable manquante ou mal formée arrête le service avec un message clair.
- */
+/** Configuration requise par user-service, vérifiée au démarrage (variable manquante ou mal formée = arrêt). */
 class UserServiceEnvironment {
   @IsString() @IsNotEmpty() DATABASE_URL: string;
 

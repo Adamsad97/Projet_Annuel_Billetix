@@ -1,10 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * CDC §10.3 : "audit trail complet de toutes les actions sensibles" — jusqu'ici
- * seules les actions déclenchées par un admin étaient tracées. Ajoute 3 actions
- * que l'utilisateur déclenche lui-même sur son propre compte.
- */
+/** CDC §10.3 : trace aussi les actions sensibles que l'utilisateur fait sur son propre compte. */
 export class AddUserSelfActionAuditActions1788700500000 implements MigrationInterface {
   name = 'AddUserSelfActionAuditActions1788700500000';
 

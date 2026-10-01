@@ -12,9 +12,7 @@ export enum UserRole {
   ORGANIZER = "ORGANIZER",
   AGENT = "AGENT",
   ADMIN = "ADMIN",
-  // Seul rôle habilité à agir sur un compte ADMIN ou SUPER_ADMIN (changer
-  // son rôle, le suspendre/réactiver) — un ADMIN normal ne peut gérer que
-  // BUYER/ORGANIZER/AGENT (cf. AuthService.assertCanManageTarget()).
+  // Seul rôle habilité à agir sur un compte ADMIN ou SUPER_ADMIN.
   SUPER_ADMIN = "SUPER_ADMIN",
 }
 
@@ -79,9 +77,7 @@ export class User {
   @Column({ nullable: true, select: false })
   two_factor_secret: string | null;
 
-  // Verrouillage anti-bruteforce (CDC §10.3 : rate limiting par compte, pas
-  // seulement par IP) — incrémenté à chaque échec de connexion (mot de passe
-  // ou code 2FA), remis à zéro dès qu'une connexion réussit.
+  // Compteur anti-bruteforce par compte (CDC §10.3), remis à zéro à la connexion réussie.
   @Column({ default: 0 })
   failed_login_attempts: number;
 

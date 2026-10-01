@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Adresse lisible des pages publiques (/evenements/afro-vibes-festival-2026).
-// Les événements existants la reçoivent au démarrage du service
-// (EventService.onApplicationBootstrap), avec la même règle d'unicité.
+// Adresse lisible des pages publiques, attribuée aux événements existants au démarrage du service.
 export class AddEventSlug1795900000000 implements MigrationInterface {
   name = 'AddEventSlug1795900000000';
 

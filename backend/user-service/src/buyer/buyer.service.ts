@@ -56,8 +56,7 @@ export class BuyerService {
     return profile.notification_preferences;
   }
 
-  /** Liste des acheteurs ayant explicitement activé la newsletter (opt-in —
-   * absence de clé = non abonné, cf. defaultEnabled: false côté frontend). */
+  /** Acheteurs ayant explicitement activé la newsletter (opt-in). */
   async listNewsletterSubscribers(): Promise<string[]> {
     const rows = await this.repo
       .createQueryBuilder('p')

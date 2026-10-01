@@ -1,10 +1,7 @@
 import { plainToInstance, Type } from 'class-transformer';
 import { IsEmail, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, validateSync } from 'class-validator';
 
-/**
- * Configuration requise par notification-service, vérifiée au démarrage :
- * sans serveur SMTP ou adresse d'expédition valide, aucun email ne partirait.
- */
+/** Configuration requise par notification-service, vérifiée au démarrage (sans SMTP valide, aucun email ne part). */
 class NotificationServiceEnvironment {
   @IsString() @IsNotEmpty() RABBITMQ_URL: string;
   @IsString() @IsNotEmpty() FRONTEND_URL: string;

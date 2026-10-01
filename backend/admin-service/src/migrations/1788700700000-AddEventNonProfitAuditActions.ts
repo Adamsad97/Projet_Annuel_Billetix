@@ -1,12 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * CDC §3.2 : commission 0% « sur présentation d'un justificatif » pour les
- * événements à but non lucratif — jusqu'ici accordée automatiquement dès
- * que l'organisateur cochait is_non_profit, sans qu'aucun admin ne vérifie
- * le justificatif. Ajoute les actions d'audit de la nouvelle étape de
- * vérification explicite (EventService.verifyNonProfit).
- */
+/** CDC §3.2 : actions d'audit de la vérification admin du justificatif « but non lucratif ». */
 export class AddEventNonProfitAuditActions1788700700000 implements MigrationInterface {
   name = 'AddEventNonProfitAuditActions1788700700000';
 

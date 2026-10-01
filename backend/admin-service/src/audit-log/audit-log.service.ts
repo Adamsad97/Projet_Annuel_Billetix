@@ -5,11 +5,7 @@ import { IsBoolean, IsDateString, IsEmail, IsEnum, IsInt, IsObject, IsOptional, 
 import { Repository } from 'typeorm';
 import { AuditAction, AuditEntityType, AuditLog } from './audit-log.entity';
 
-/**
- * Action à journaliser (message interne admin.log_action). performed_by est
- * l'identifiant du compte, ou « system » pour une tâche automatique
- * (planificateur, envoi d'email, génération de PDF).
- */
+/** Action à journaliser ; performed_by vaut l'identifiant du compte, ou « system » pour une tâche automatique. */
 export class LogActionDto {
   @IsEnum(AuditAction) action: AuditAction;
   @IsEnum(AuditEntityType) entity_type: AuditEntityType;

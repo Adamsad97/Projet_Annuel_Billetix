@@ -1,10 +1,7 @@
 import { plainToInstance, Type } from 'class-transformer';
 import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, validateSync } from 'class-validator';
 
-/**
- * Configuration requise par event-service, vérifiée au démarrage : une
- * variable manquante arrête le service avec un message clair.
- */
+/** Configuration requise par event-service, vérifiée au démarrage (variable manquante = arrêt avec message clair). */
 class EventServiceEnvironment {
   @IsString() @IsNotEmpty() DATABASE_URL: string;
   @IsString() @IsNotEmpty() RABBITMQ_URL: string;

@@ -55,21 +55,11 @@ export class NotificationController {
     private readonly mail: MailService,
     private readonly config: ConfigService,
   ) {
-    // FRONTEND_URL (pas APP_URL, qui vaut http://localhost:4000 côté
-    // api-gateway pour les callbacks OAuth) — ces liens sont cliqués par
-    // l'utilisateur dans son navigateur et doivent pointer vers le
-    // frontend, jamais vers l'API. Bug corrigé : les emails (vérification,
-    // reset mot de passe, etc.) pointaient vers le gateway et renvoyaient
-    // un 404 une fois cliqués.
+    // Liens d'email vers FRONTEND_URL (pas APP_URL, qui pointe vers l'API).
     this.appUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
   }
 
-  /**
-   * Lien d'email vers une page sensible : passe par la connexion avec
-   * reauth=1 — toute session déjà ouverte dans le navigateur est fermée et
-   * l'utilisateur doit s'authentifier à chaque clic (demande produit, cf.
-   * app/connexion), puis il est renvoyé vers `path`.
-   */
+  /** Lien vers une page sensible : passe par la connexion avec reauth=1, puis renvoie vers path. */
   private reauthUrl(path: string): string {
     return `${this.appUrl}/connexion?reauth=1&next=${encodeURIComponent(path)}`;
   }
@@ -179,13 +169,7 @@ export class NotificationController {
     this.ack(rmqContext);
   }
 
-  /**
-   * Bug corrigé (sécurité, demande produit) : l'email joignait les billets
-   * en PDF et affichait leurs QR codes — un email transféré, un compte
-   * email compromis ou un appareil partagé suffisait à entrer à la place du
-   * titulaire. Désormais : aucun billet ni QR code dans l'email, seulement
-   * un bouton vers l'application, qui exige une connexion à chaque clic.
-   */
+  /** Sécurité : aucun billet ni QR code dans l'email, seulement un bouton vers l'application (connexion exigée). */
   @EventPattern('notification.ticket_ready')
   async onTicketReady(@Payload() data: TicketReadyDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
@@ -205,11 +189,7 @@ export class NotificationController {
     this.ack(rmqContext);
   }
 
-  /**
-   * Billet offert (transfert immédiat) : le bénéficiaire est prévenu, et
-   * l'expéditeur reçoit une confirmation — qui sert aussi d'alerte si le
-   * transfert n'est pas de son fait (compte compromis).
-   */
+  /** Billet offert : le bénéficiaire est prévenu, l'expéditeur reçoit une confirmation qui sert aussi d'alerte. */
   @EventPattern('notification.ticket_transferred')
   async onTicketTransferred(@Payload() data: TicketTransferredDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({

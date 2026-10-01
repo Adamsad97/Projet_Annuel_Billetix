@@ -2,11 +2,7 @@ import { Type } from 'class-transformer';
 import { IsArray, IsInt, IsString, IsUUID, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { AdminActionDto } from '../event/dto/admin-action.dto';
 
-/**
- * Messages internes récurrents (TCP entre services). Chaque identifiant est
- * vérifié ici, une fois pour toutes, au lieu d'un isUUID recopié dans les
- * services.
- */
+/** Messages internes récurrents, chaque identifiant vérifié ici une fois pour toutes. */
 export class IdPayload {
   @IsUUID() id: string;
 }
@@ -40,10 +36,7 @@ export class QuantityPayload extends IdPayload {
   @Type(() => Number) @IsInt() @Min(1) @Max(1000) quantity: number;
 }
 
-/**
- * Résolution par lot : les identifiants mal formés sont tolérés puis ignorés
- * par le service (un seul ne doit pas faire échouer tout le lot).
- */
+/** Résolution par lot : un identifiant mal formé est ignoré sans faire échouer le lot. */
 export class IdsPayload {
   @IsArray() @IsString({ each: true }) @MaxLength(100, { each: true }) ids: string[];
 }

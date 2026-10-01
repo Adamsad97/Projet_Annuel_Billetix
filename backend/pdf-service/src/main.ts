@@ -7,9 +7,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableShutdownHooks();
-  // Filet de sécurité : une erreur qui échapperait au traitement d'un message
-  // (hors validation et nouvelles tentatives gérées dans le contrôleur) ne doit
-  // jamais laisser le message non acquitté et bloquer la file.
+  // Filet de sécurité : une erreur imprévue ne doit jamais laisser un message non acquitté et bloquer la file.
   app.useGlobalFilters(new RmqPoisonMessageFilter());
 
   const healthPort = parseInt(process.env.HEALTH_PORT ?? `${parseInt(process.env.PORT ?? '3008') + 6000}`);

@@ -1,10 +1,7 @@
 import { plainToInstance, Type } from "class-transformer";
 import { IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, MinLength, validateSync } from "class-validator";
 
-/**
- * Configuration requise par auth-service, vérifiée au démarrage : une
- * variable manquante ou trop faible arrête le service avec un message clair.
- */
+/** Configuration requise par auth-service, vérifiée au démarrage (variable manquante ou faible = arrêt). */
 class AuthServiceEnvironment {
   @IsString() @IsNotEmpty() DATABASE_URL: string;
   @IsString() @IsNotEmpty() REDIS_URL: string;

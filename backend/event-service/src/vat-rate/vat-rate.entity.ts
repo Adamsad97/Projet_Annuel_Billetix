@@ -1,10 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
-/**
- * Taux de TVA proposés à l'organisateur (liste gérée par l'admin). Le taux
- * choisi est recopié sur l'événement : modifier ou supprimer une ligne de la
- * liste ne change jamais le prix d'un événement existant.
- */
+/** Taux de TVA proposés à l'organisateur ; le taux choisi est recopié sur l'événement. */
 @Entity({ name: 'vat_rates', schema: 'events' })
 export class VatRate {
   @PrimaryGeneratedColumn('uuid')

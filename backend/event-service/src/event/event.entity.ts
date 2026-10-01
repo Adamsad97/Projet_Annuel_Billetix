@@ -29,10 +29,7 @@ export class Event {
   @Column({ length: 120 })
   title: string;
 
-  // Adresse lisible de la page publique (/evenements/afro-vibes-festival-2026),
-  // tirée du titre. Suit le titre tant que l'événement est un brouillon, puis
-  // reste figée (le titre est verrouillé dès la soumission) : un lien partagé
-  // ne casse jamais. Nullable le temps du remplissage des lignes existantes.
+  // Adresse lisible tirée du titre, figée dès la soumission pour qu'un lien partagé ne casse jamais.
   @Index('UQ_events_slug', { unique: true })
   @Column({ type: 'varchar', length: 100, nullable: true })
   slug: string | null;
@@ -40,9 +37,7 @@ export class Event {
   @Column({ type: 'text' })
   description: string;
 
-  // Code d'une catégorie gérée depuis l'espace Admin (cf. category/category.entity.ts,
-  // colonne events.categories.code) — n'est plus un enum Postgres figé pour
-  // permettre à l'admin d'ajouter/retirer des catégories sans déploiement.
+  // Code d'une catégorie gérée par l'admin (table events.categories).
   @Column({ type: 'varchar', length: 30 })
   category: string;
 
@@ -55,11 +50,7 @@ export class Event {
   @Column({ nullable: true })
   non_profit_document_url: string | null;
 
-  // Bug corrigé : la commission 0% était accordée automatiquement dès que
-  // is_non_profit=true (auto-déclaré par l'organisateur, jamais vérifié) —
-  // désormais un admin doit explicitement valider le justificatif via
-  // event.verify_non_profit avant que l'exonération ne s'applique à la
-  // validation de l'événement (cf. EventService.computeCommissionRate).
+  // L'exonération « but non lucratif » n'est appliquée qu'après validation du justificatif par un admin.
   @Column({ default: false })
   non_profit_verified: boolean;
 
@@ -69,11 +60,7 @@ export class Event {
   @Column({ nullable: true })
   non_profit_verified_by: string | null;
 
-  // Bug corrigé : un refus remettait seulement non_profit_verified à false
-  // — l'état « en attente » — sans rien enregistrer : l'admin revoyait le
-  // justificatif à examiner, pouvait le refuser en boucle (un email à
-  // chaque fois) et l'organisateur ne savait pas pourquoi. Refus daté et
-  // motivé ; effacé quand l'organisateur envoie un nouveau justificatif.
+  // Refus du justificatif daté et motivé, effacé quand l'organisateur en envoie un nouveau.
   @Column({ type: 'timestamptz', nullable: true })
   non_profit_rejected_at: Date | null;
 
@@ -207,9 +194,7 @@ export class Event {
   @Column({ type: 'text', nullable: true })
   cancellation_reason: string | null;
 
-  // Report accepté par un admin. original_* : dates annoncées à l'achat ;
-  // rescheduled_at : annonce de la nouvelle date, point de départ du délai
-  // pendant lequel un acheteur peut demander le remboursement.
+  // Report accepté : original_* garde les dates d'achat, rescheduled_at ouvre le délai de remboursement.
   @Column({ type: 'timestamptz', nullable: true })
   postponed_at: Date | null;
 
@@ -231,9 +216,7 @@ export class Event {
   @Column({ nullable: true })
   archived_at: Date | null;
 
-  // Évite de renvoyer plusieurs fois l'alerte admin "délai de validation
-  // dépassé" pour le même événement — remis à false à chaque nouvelle
-  // soumission ou réponse à une demande de complément d'info.
+  // Évite de renvoyer l'alerte « délai de validation dépassé » ; remis à false à chaque nouvelle soumission ou réponse.
   @Column({ default: false })
   deadline_alert_sent: boolean;
 
@@ -241,10 +224,7 @@ export class Event {
   @Column({ type: 'simple-json', default: '[]' })
   fill_thresholds_notified: number[];
 
-  // Bug corrigé (CDC §9) : notification "première vente" à l'organisateur
-  // jamais envoyée — flag posé atomiquement dès la première commande
-  // effectivement payée (pas la première réservation, qui peut expirer sans
-  // achat réel), cf. EventService.markFirstSale.
+  // CDC §9 : posé atomiquement à la première commande payée pour notifier une seule fois la première vente.
   @Column({ default: false })
   first_sale_notified: boolean;
 

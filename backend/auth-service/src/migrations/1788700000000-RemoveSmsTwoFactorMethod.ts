@@ -1,15 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-/**
- * Retire 'SMS' de l'enum two_factor_method — jamais implémenté côté code
- * (seul TOTP existe dans TwoFactorService), présent uniquement dans le type
- * Postgres depuis la migration initiale. Décision produit : pas de 2FA SMS
- * (coût d'un prestataire SMS payant non retenu pour ce projet).
- *
- * Postgres ne permet pas de retirer une valeur d'un type ENUM directement
- * (pas de `DROP VALUE`) : on recrée le type sans 'SMS' et on bascule la
- * colonne dessus.
- */
+/** Retire SMS de two_factor_method (jamais implémenté) en recréant le type, Postgres ne sachant pas retirer une valeur. */
 export class RemoveSmsTwoFactorMethod1788700000000 implements MigrationInterface {
     name = 'RemoveSmsTwoFactorMethod1788700000000'
 

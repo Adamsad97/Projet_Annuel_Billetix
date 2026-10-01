@@ -1,16 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-/**
- * Ajoute SUPER_ADMIN à l'enum users_role_enum — seul rôle habilité à
- * agir sur un compte ADMIN/SUPER_ADMIN (révoquer, suspendre, réactiver).
- * Jusqu'ici n'importe quel ADMIN pouvait modifier le rôle ou suspendre
- * n'importe quel autre ADMIN sans aucun contrôle (AuthService.changeRole/
- * suspendUser ignoraient totalement l'identité de l'appelant).
- *
- * Postgres autorise ADD VALUE directement (contrairement à la suppression
- * d'une valeur, cf. RemoveSmsTwoFactorMethod) — pas besoin de recréer le
- * type pour le sens up().
- */
+/** Ajoute SUPER_ADMIN, seul rôle habilité à agir sur un compte admin. */
 export class AddSuperAdminRole1788700200000 implements MigrationInterface {
     name = 'AddSuperAdminRole1788700200000'
 

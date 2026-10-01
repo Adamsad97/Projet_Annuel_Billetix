@@ -68,10 +68,7 @@ export class VatRateService implements OnModuleInit {
     return dto.is_default ? this.makeDefault(saved) : saved;
   }
 
-  /**
-   * Suppression possible même si des événements l'ont utilisé : ils gardent
-   * leur propre copie du taux. Le taux par défaut reste indispensable.
-   */
+  /** Suppression possible même si utilisé : les événements gardent leur copie ; le taux par défaut reste obligatoire. */
   async remove(id: string): Promise<{ success: true }> {
     const vatRate = await this.getById(id);
     if (vatRate.is_default) {
@@ -81,10 +78,7 @@ export class VatRateService implements OnModuleInit {
     return { success: true };
   }
 
-  /**
-   * Taux à recopier sur un événement : celui choisi (actif obligatoirement),
-   * sinon le taux par défaut.
-   */
+  /** Taux à recopier sur un événement : celui choisi (actif), sinon le taux par défaut. */
   async resolve(id?: string | null): Promise<ResolvedVatRate> {
     const vatRate = id
       ? await this.repo.findOne({ where: { id } })

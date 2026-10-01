@@ -1,7 +1,4 @@
-/**
- * Longueur exacte de l'IBAN par pays (registre IBAN SWIFT, plus les pays
- * d'Afrique de l'Ouest et centrale qui l'utilisent hors registre).
- */
+/** Longueur exacte de l'IBAN par pays (registre SWIFT et pays d'Afrique qui l'utilisent hors registre). */
 export const IBAN_LENGTHS: Record<string, number> = {
   AD: 24, AE: 23, AL: 28, AT: 20, AZ: 28, BA: 20, BE: 16, BG: 22, BH: 22, BI: 27, BR: 29, BY: 28,
   CH: 21, CR: 22, CY: 28, CZ: 24, DE: 22, DJ: 27, DK: 18, DO: 28, EE: 20, EG: 29, ES: 24, FI: 18,
@@ -21,11 +18,7 @@ export function normalizeIban(value: string): string {
   return value.replace(/\s+/g, '').toUpperCase();
 }
 
-/**
- * Motif du refus d'un IBAN, ou null s'il est valide : format, longueur
- * propre au pays, puis clé « modulo 97 » (ISO 13616 : les 4 premiers
- * caractères déplacés à la fin, lettres converties en nombres, reste = 1).
- */
+/** Motif de refus d'un IBAN, ou null : format, longueur du pays, puis clé modulo 97 (ISO 13616). */
 export function ibanError(iban: string): string | null {
   if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/.test(iban)) {
     return 'IBAN invalide : il commence par 2 lettres (le pays) puis 2 chiffres.';

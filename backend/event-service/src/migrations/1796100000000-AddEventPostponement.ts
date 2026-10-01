@@ -1,10 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * Report d'un événement : statut POSTPONED (date à venir), dates d'origine,
- * motif, annonce de la nouvelle date ; la demande de l'organisateur devient
- * une demande d'annulation ou de report (avec nouvelle date facultative).
- */
+/** Report d'un événement : statut POSTPONED, dates d'origine, motif et annonce de la nouvelle date. */
 export class AddEventPostponement1796100000000 implements MigrationInterface {
   name = 'AddEventPostponement1796100000000';
 

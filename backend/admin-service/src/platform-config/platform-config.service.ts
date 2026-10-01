@@ -55,12 +55,7 @@ export interface PlatformConfig {
   scan_closes_after_minutes: number;
 }
 
-// Réglages retirés du produit : supprimés au démarrage pour ne plus
-// apparaître dans l'administration.
-//  - ticket_qr_rotation_enabled : le QR est toujours éphémère (BTX2), il
-//    n'existe plus de QR fixe à autoriser.
-// agent_session_hours : la « session » d'agent n'a jamais servi à l'écran de scan.
-// tva_rate : remplacé par la liste des taux de TVA (event-service), un taux par événement.
+// Réglages retirés du produit, supprimés au démarrage (QR fixe, session d'agent, taux de TVA unique).
 const OBSOLETE_KEYS = [
   'ticket_qr_rotation_enabled',
   'agent_session_hours',
@@ -196,17 +191,8 @@ export class PlatformConfigService implements OnModuleInit {
     };
   }
 
-  /**
-   * Bug corrigé : aucune validation n'était faite sur la nouvelle valeur —
-   * un admin pouvait écrire n'importe quelle chaîne sur un paramètre
-   * "number" (ex: "abc" sur un taux), silencieusement transformée en NaN
-   * par tous les parseFloat/parseInt des services consommateurs, corrompant
-   * un calcul plateforme entier sans aucune erreur visible sur le coup.
-   */
-  /**
-   * @param actorRole rôle de l'admin qui modifie : les sections sensibles
-   *   sont réservées au super admin (cf. setting-catalog.ts).
-   */
+  /** Valide la valeur selon son type : une chaîne sur un paramètre « number » donnerait NaN partout. */
+  /** @param actorRole rôle de l'admin : les sections sensibles sont réservées au super admin. */
   async update(
     key: string,
     value: string,
@@ -261,10 +247,7 @@ export class PlatformConfigService implements OnModuleInit {
     return { ...saved, previous_value: previousValue };
   }
 
-  /**
-   * Réglages avec leur section ; ceux des sections sensibles ne sont
-   * renvoyés qu'au super admin.
-   */
+  /** Réglages avec leur section ; les sections sensibles ne sont renvoyées qu'au super admin. */
   async list(actorRole?: string): Promise<Array<PlatformSetting & { section: string; super_admin_only: boolean }>> {
     const settings = await this.repo.find({ order: { key: 'ASC' } });
     return settings

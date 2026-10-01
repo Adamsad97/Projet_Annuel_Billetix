@@ -61,9 +61,7 @@ export class MailService {
       `Email [${mailOptions.template}] à ${mailOptions.to} définitivement échoué après ${maxAttempts} tentatives`,
     );
 
-    // Alerte admin réelle (journal d'audit consultable via GET /admin/audit-logs),
-    // pas seulement une ligne de log qui disparaît dans les conteneurs — fire-and-forget,
-    // ne doit jamais faire planter le flux appelant si admin-service est indisponible.
+    // Alerte admin dans le journal d'audit, sans attente : ne fait jamais échouer le flux appelant.
     this.adminClient
       .send('admin.log_action', {
         action: 'CUSTOM',

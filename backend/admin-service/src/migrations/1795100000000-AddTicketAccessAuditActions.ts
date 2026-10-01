@@ -1,10 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * Traçabilité des accès aux billets (sécurité) : chaque affichage du QR
- * code, téléchargement du PDF d'un billet ou de la facture est consigné
- * (qui, quand, IP, appareil) pour pouvoir traiter une contestation.
- */
+/** Traçabilité des accès aux billets (QR, PDF, facture : qui, quand, IP, appareil) en cas de contestation. */
 export class AddTicketAccessAuditActions1795100000000 implements MigrationInterface {
   name = 'AddTicketAccessAuditActions1795100000000';
 

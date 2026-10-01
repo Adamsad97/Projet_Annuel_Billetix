@@ -1,15 +1,7 @@
 import { ArgumentsHost, BadRequestException, Catch, ExceptionFilter, HttpException, Logger } from '@nestjs/common';
 import { RmqContext } from '@nestjs/microservices';
 
-/**
- * Un message RMQ dont le traitement échoue (payload invalide rejeté par le
- * ValidationPipe, ou toute autre exception non attrapée) ne réussira jamais
- * en le retentant à l'identique. Sans ce filtre, l'exception empêcherait
- * l'appel à ack() en fin de handler : le message resterait non acquitté
- * (préfetch bloqué, puis requeue en boucle infinie au redémarrage du
- * service). On l'acquitte donc explicitement ici pour l'écarter proprement,
- * en journalisant le motif précis (champs invalides) et le message concerné.
- */
+/** Acquitte un message RMQ en échec (il échouerait à l'identique) pour ne pas bloquer la file, en journalisant le motif. */
 @Catch()
 export class RmqPoisonMessageFilter implements ExceptionFilter {
   private readonly logger = new Logger(RmqPoisonMessageFilter.name);

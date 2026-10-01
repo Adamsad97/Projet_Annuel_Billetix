@@ -8,10 +8,7 @@ import { UpdateIbanDto } from '../organizer/dto/update-iban.dto';
 import { UpdateKycDto } from '../organizer/dto/update-kyc.dto';
 import { UpdateOrganizerProfileDto } from '../organizer/dto/update-organizer-profile.dto';
 
-/**
- * Messages internes de user-service (TCP entre services) : le compte visé
- * est vérifié ici, et chaque formulaire (dto) est validé en profondeur.
- */
+/** Messages internes de user-service : compte visé vérifié et formulaires validés en profondeur. */
 export class UserIdPayload {
   @IsUUID() user_id: string;
 }

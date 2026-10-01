@@ -1,11 +1,7 @@
 import { ValidationError, ValidationPipe } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 
-/**
- * Validation des messages reçus des autres services. Une donnée invalide
- * renvoie une erreur 400 lisible (en français) à l'appelant, au lieu d'une
- * erreur HTTP que le transport TCP transformerait en « Internal server error ».
- */
+/** Validation des messages internes : erreur 400 lisible en français plutôt qu'« Internal server error ». */
 const TRANSLATIONS: Record<string, (field: string) => string> = {
   isDefined: (field) => `Le champ « ${field} » est obligatoire.`,
   isNotEmpty: (field) => `Le champ « ${field} » est obligatoire.`,

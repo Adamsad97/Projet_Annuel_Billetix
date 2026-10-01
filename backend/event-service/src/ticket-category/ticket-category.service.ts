@@ -28,12 +28,7 @@ export class TicketCategoryService {
     private readonly ticketTierTypeService: TicketTierTypeService,
   ) {}
 
-  /**
-   * Préférences niveau 2 (CDC — désactivation réelle des envois) : un échec
-   * de lecture des préférences ne doit jamais bloquer l'alerte — on envoie
-   * par défaut (fail-open), comme le ferait l'absence de préférence
-   * enregistrée (voir user-service BuyerService.getNotificationPrefs).
-   */
+  /** Échec de lecture des préférences : on envoie quand même l'alerte (fail-open). */
   private async wantsFillThresholdAlert(organizerId: string): Promise<boolean> {
     try {
       const prefs = await firstValueFrom(
@@ -56,13 +51,7 @@ export class TicketCategoryService {
     return event;
   }
 
-  /**
-   * Bug corrigé : rien n'empêchait la somme des quotas des catégories de
-   * billets de dépasser la capacité totale de l'événement (ex: 500 places
-   * mais 500 + 40 places réparties en catégories) — repéré par un
-   * organisateur sur le formulaire de création. `excludeId` permet à
-   * update() de s'auto-exclure du total déjà comptabilisé.
-   */
+  /** La somme des quotas ne doit pas dépasser la capacité ; excludeId exclut la catégorie modifiée. */
   private async assertQuotaWithinCapacity(
     eventId: string,
     totalCapacity: number,
@@ -82,13 +71,7 @@ export class TicketCategoryService {
     }
   }
 
-  /**
-   * Bug corrigé : rien n'empêchait d'ajouter deux fois la même catégorie de
-   * billet (ex: "Standard" en double avec des prix/quotas différents) sur un
-   * même événement — repéré par un organisateur sur le formulaire de
-   * création. Un même nom ne peut désormais être actif qu'une seule fois par
-   * événement (`excludeId` permet à update() de s'auto-exclure).
-   */
+  /** Un même nom de billet n'est actif qu'une fois par événement ; excludeId exclut la catégorie modifiée. */
   private async assertNameNotUsed(eventId: string, name: string, excludeId?: string): Promise<void> {
     const existing = await this.repo.findOne({ where: { event_id: eventId, name, is_active: true } });
     if (existing && existing.id !== excludeId) {
@@ -111,12 +94,7 @@ export class TicketCategoryService {
     return this.repo.save(category);
   }
 
-  /**
-   * Ajoute le prix TTC (celui affiché aux clients et payé), calculé ici avec
-   * le taux de TVA de l'événement et le même arrondi qu'à la commande
-   * (order-service) : le site n'a jamais à le recalculer, aucun écart
-   * possible entre prix affiché et prix payé.
-   */
+  /** Ajoute le prix TTC avec la TVA de l'événement et le même arrondi qu'à la commande. */
   async withPriceTtc<T extends TicketCategory>(categories: T[]): Promise<Array<T & { price_ttc: number }>> {
     const eventIds = [...new Set(categories.map((category) => category.event_id))];
     const events = eventIds.length ? await this.eventRepo.find({ where: { id: In(eventIds) }, select: ['id', 'vat_rate'] }) : [];
@@ -128,9 +106,7 @@ export class TicketCategoryService {
   }
 
   async getByEvent(eventId: string): Promise<TicketCategory[]> {
-    // Bug corrigé (même cause que EventService.getById) : un event_id mal
-    // formé faisait planter Postgres ("invalid input syntax for type
-    // uuid") en 500 brut au lieu de simplement ne trouver aucune catégorie.
+    // Un event_id mal formé renvoie une liste vide au lieu d'une erreur Postgres en 500.
     if (!isUUID(eventId)) return [];
     return this.repo.find({ where: { event_id: eventId, is_active: true } });
   }
@@ -144,11 +120,7 @@ export class TicketCategoryService {
     return category;
   }
 
-  /**
-   * Billets modifiables tant que l'événement est un brouillon (jamais soumis,
-   * ou rejeté par un admin) : aucun billet n'a encore été vendu. Ensuite, ce
-   * que les acheteurs ont payé ne change plus.
-   */
+  /** Billets modifiables tant que l'événement est un brouillon ; ensuite, plus rien ne change pour les acheteurs. */
   private assertDraft(event: Event): void {
     if (event.status !== EventStatus.DRAFT) {
       throw new RpcException({
@@ -186,9 +158,7 @@ export class TicketCategoryService {
 
   // Décrémentation atomique — protège contre les surréservations
   async decrementQuota(id: string, quantity: number): Promise<{ success: boolean }> {
-    // CDC §3.2 : "Limite par commande" (mesure anti-scalping) — le champ
-    // max_per_order existait déjà sur la catégorie mais n'était vérifié
-    // nulle part dans le backend, ni ici ni côté order-service. Bug corrigé.
+    // CDC §3.2 : limite de billets par commande (anti-scalping).
     const category = await this.repo.findOne({ where: { id } });
     if (!category) {
       throw new RpcException({ statusCode: 404, message: 'Catégorie de billet introuvable' });
@@ -200,14 +170,7 @@ export class TicketCategoryService {
       });
     }
 
-    // Bug corrigé (règle produit jamais appliquée) : sales_start_date/
-    // sales_end_date (événement + override optionnel par catégorie,
-    // ticket-category.entity.ts) étaient stockées mais jamais vérifiées à
-    // l'achat — un événement validé par un admin restait achetable à
-    // n'importe quel moment, même avant l'ouverture des ventes choisie par
-    // l'organisateur ou après leur fermeture. Un override par catégorie
-    // (s'il est défini) prime sur la fenêtre globale de l'événement — sinon
-    // on hérite de celle de l'événement.
+    // Fenêtre de vente vérifiée à l'achat ; celle de la catégorie, si définie, prime sur celle de l'événement.
     const event = await this.eventRepo.findOne({ where: { id: category.event_id } });
     if (!event) {
       throw new RpcException({ statusCode: 404, message: 'Événement introuvable' });

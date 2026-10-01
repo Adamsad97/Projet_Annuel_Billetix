@@ -259,10 +259,7 @@ describe('TicketCategoryService', () => {
     });
   });
 
-  // Bug corrigé : sales_start_date/sales_end_date (événement + override
-  // optionnel par catégorie) étaient stockées mais jamais vérifiées à
-  // l'achat — un événement validé restait achetable à n'importe quel
-  // moment.
+  // Les dates d'ouverture et de fermeture des ventes sont vérifiées à l'achat.
   describe('decrementQuota — fenêtre de vente', () => {
     const HOUR = 60 * 60 * 1000;
     const baseCategory = {

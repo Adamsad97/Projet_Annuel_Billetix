@@ -22,11 +22,7 @@ export enum CancellationRequestStatus {
   WITHDRAWN = 'WITHDRAWN',
 }
 
-/**
- * Demande d'annulation ou de report d'un événement par son organisateur :
- * rien ne change pour les acheteurs avant l'accord d'un admin. Tant qu'elle
- * est en attente, les deux parties échangent des messages.
- */
+/** Demande d'annulation ou de report par l'organisateur, appliquée seulement après accord d'un admin. */
 @Entity({ name: 'event_cancellation_requests', schema: 'events' })
 @Index(['event_id', 'status'])
 export class CancellationRequest {

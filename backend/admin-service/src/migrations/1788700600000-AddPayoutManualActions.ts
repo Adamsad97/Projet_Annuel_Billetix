@@ -1,14 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * CDC §7.2 : un admin doit pouvoir débloquer manuellement un reversement
- * bloqué (litige résolu plus tôt que le délai max de 30 jours, ou blocage
- * manuel devenu injustifié) et déclencher manuellement le versement d'un
- * reversement en attente, sans attendre le prochain cycle automatique
- * (10h00 chaque jour). Les handlers service existaient déjà
- * (PayoutService.unblock/process) mais n'étaient jamais exposés via l'API
- * admin — ajout des actions d'audit correspondantes.
- */
+/** CDC §7.2 : actions d'audit du déblocage et du versement manuels d'un reversement par un admin. */
 export class AddPayoutManualActions1788700600000 implements MigrationInterface {
   name = 'AddPayoutManualActions1788700600000';
 

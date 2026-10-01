@@ -43,11 +43,7 @@ export interface InvoicePdfData {
 /** Couleur de marque (corail), identique au site (--color-brand). */
 const BRAND = '#e8532b';
 
-/**
- * Logo BilleTix en HTML + SVG autonome (aucune ressource externe à charger
- * par Chromium) : mot-symbole, accroche et icône des deux billets, repris
- * de components/layout/logo.tsx côté frontend.
- */
+/** Logo BilleTix en HTML et SVG autonome (aucune ressource externe), repris de components/layout/logo.tsx. */
 const LOGO_HTML = `<div class="logo" aria-label="BilleTix">
         <div class="logo-text">
           <div class="logo-word">Bille<span>Tix</span></div>

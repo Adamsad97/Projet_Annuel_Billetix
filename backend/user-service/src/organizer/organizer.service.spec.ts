@@ -79,14 +79,7 @@ describe('OrganizerService', () => {
     });
 
     it('efface le motif de rejet précédent quand le KYC est validé', async () => {
-      // Bug corrigé (test obsolète) : VERIFIED/REJECTED n'est désormais
-      // accepté que depuis SUBMITTED (workflow soumission→examen imposé),
-      // et VERIFIED exige un justificatif déjà présent sur le profil —
-      // REJECTED seul (sans nouvelle soumission) est justement rejeté par
-      // le code depuis ce correctif. kyc_rejected_reason simule ici un
-      // reliquat d'un rejet précédent sur un profil qui vient d'être
-      // resoumis (la resoumission elle-même l'efface déjà, mais VERIFIED
-      // doit rester défensif quel que soit l'état de ce champ).
+      // VERIFIED seulement depuis SUBMITTED avec justificatif ; kyc_rejected_reason simule un reliquat de rejet.
       repo.findOne.mockResolvedValue({
         user_id: 'user-1',
         kyc_status: KycStatus.SUBMITTED,

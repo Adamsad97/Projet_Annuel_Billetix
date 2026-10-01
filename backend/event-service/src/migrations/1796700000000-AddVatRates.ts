@@ -1,9 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * Taux de TVA choisis par événement dans une liste gérée par l'admin. Les
- * événements existants gardent le taux unique appliqué jusqu'ici (20 %).
- */
+/** Taux de TVA par événement, choisis dans une liste admin ; les événements existants gardent 20 %. */
 export class AddVatRates1796700000000 implements MigrationInterface {
   name = 'AddVatRates1796700000000';
 

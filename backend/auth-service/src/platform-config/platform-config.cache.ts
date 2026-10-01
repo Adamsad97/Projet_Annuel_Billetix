@@ -2,13 +2,7 @@ import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 
-/**
- * Sous-ensemble de la config plateforme réellement utilisé par auth-service
- * (contrairement aux autres services, on ne recopie pas l'interface complète
- * — les taux de commission, délais de reversement, etc. n'ont pas leur place
- * ici). Mêmes principes que partout ailleurs : jamais de valeur en dur,
- * paramétrable par l'admin via platform_settings, cache 5 min avec fallback.
- */
+/** Sous-ensemble de la config plateforme utile à auth-service, réglable par l'admin, cache 5 min avec repli. */
 export interface AuthPlatformConfig {
   account_lockout_threshold: number;
   account_lockout_duration_minutes: number;

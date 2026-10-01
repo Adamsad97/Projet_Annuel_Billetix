@@ -1,7 +1,4 @@
-/**
- * Coller ce fichier dans src/platform-config/platform-config.cache.ts de chaque service.
- * Nécessite ADMIN_SERVICE TCP client enregistré dans le module parent.
- */
+/** Cache de la configuration plateforme ; nécessite le client TCP ADMIN_SERVICE dans le module parent. */
 import { Inject, Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';

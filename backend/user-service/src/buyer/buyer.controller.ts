@@ -7,10 +7,7 @@ import { UpdateBuyerProfilePayload, UpdateNotificationPrefsPayload, UserIdPayloa
 export class BuyerController {
   constructor(private readonly buyerService: BuyerService) {}
 
-  // Bug corrigé : ce handler ne sert qu'à l'auto-consultation (toujours
-  // appelé avec user.sub) — un tout nouvel acheteur n'ayant jamais modifié
-  // son profil (aucune ligne buyer_profiles créée pour lui) recevait une
-  // 404 sur la toute première consultation de son propre profil.
+  // Auto-consultation : profil créé à la volée pour un nouvel acheteur au lieu d'une 404.
   @MessagePattern('user.get_buyer_profile')
   getProfile(@Payload() data: UserIdPayload) {
     return this.buyerService.getOrCreate(data.user_id);

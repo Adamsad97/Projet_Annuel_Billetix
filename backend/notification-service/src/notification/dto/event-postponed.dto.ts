@@ -1,9 +1,6 @@
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
 
-/**
- * Acheteur prévenu d'un report : POSTPONED à l'acceptation du report (avec
- * ou sans nouvelle date), RESCHEDULED quand la nouvelle date est fixée.
- */
+/** Acheteur prévenu d'un report : POSTPONED à l'acceptation, RESCHEDULED quand la nouvelle date est fixée. */
 export class EventPostponedDto {
   @IsEmail()
   email: string;

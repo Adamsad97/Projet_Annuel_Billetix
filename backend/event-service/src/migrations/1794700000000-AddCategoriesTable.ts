@@ -1,9 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Remplace l'enum Postgres figé events.events_category_enum par une vraie
-// table gérable depuis l'espace Admin (cf. category/category.entity.ts) —
-// les 7 catégories existantes sont reprises telles quelles pour ne casser
-// aucun événement déjà créé.
+// Remplace l'enum figé des catégories par une table gérée par l'admin, en reprenant les 7 existantes.
 export class AddCategoriesTable1794700000000 implements MigrationInterface {
   name = 'AddCategoriesTable1794700000000';
 

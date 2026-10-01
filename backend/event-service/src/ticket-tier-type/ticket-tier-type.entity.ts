@@ -6,13 +6,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-// Liste des noms de catégorie de billet ("Standard", "VIP"...) gérée depuis
-// l'espace Admin — évite les doublons/variantes libres saisies par les
-// organisateurs (ex: "Std", "VIP2" trouvés en base avant ce correctif).
-// `label` est la valeur stable stockée directement sur
-// ticket_categories.name (pas de code séparé : contrairement aux catégories
-// d'événement, rien d'autre ne référence ce nom une fois la catégorie de
-// billet créée — renommer ici n'affecte que les futures sélections).
+// Noms de catégories de billet gérés par l'admin ; label est recopié tel quel sur ticket_categories.name.
 @Entity({ name: 'ticket_tier_types', schema: 'events' })
 export class TicketTierType {
   @PrimaryGeneratedColumn('uuid')

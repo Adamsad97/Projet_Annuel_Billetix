@@ -130,11 +130,7 @@ describe("AuthService", () => {
     service = module.get(AuthService);
   });
 
-  // Bug corrigé : register() renvoyait des tokens et connectait aussitôt,
-  // en contradiction directe avec login() qui rejette tout compte non
-  // vérifié (CDC §2.2, cf. describe("login") ci-dessous) — un utilisateur
-  // avait donc accès juste après inscription, puis se retrouvait bloqué
-  // dès la connexion suivante pour ce même compte jamais vérifié entretemps.
+  // register() ne connecte plus : un compte non vérifié doit d'abord valider son email (CDC §2.2).
   describe("register", () => {
     it("ne renvoie aucun token — le compte doit être vérifié avant tout accès", async () => {
       repo.findOne.mockResolvedValue(null); // email disponible
@@ -301,9 +297,7 @@ describe("AuthService", () => {
       ).rejects.toThrow(RpcException);
     });
 
-    // Bug corrigé (faille de sécurité) : la 2FA n'était jamais demandée lors
-    // d'une connexion OAuth, contrairement au login email/mot de passe —
-    // délivrait les tokens directement même sur un compte protégé.
+    // La 2FA est aussi exigée lors d'une connexion OAuth.
     it("ne délivre pas de tokens si la 2FA est activée, renvoie un pending_token à la place", async () => {
       repo.findOne.mockResolvedValue({
         ...baseUser,

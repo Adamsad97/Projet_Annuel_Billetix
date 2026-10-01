@@ -35,10 +35,7 @@ export class MinioService implements OnModuleInit {
       forcePathStyle: true,
     });
 
-    // Rend le bucket des factures privé dès le démarrage, y compris s'il a
-    // été créé public avant le correctif — sans attendre la prochaine
-    // facture. Échec non bloquant (MinIO pas encore prêt) : retenté au
-    // premier upload.
+    // Rend le bucket des factures privé dès le démarrage ; en cas d'échec, retenté au premier upload.
     this.ensureBucket(this.bucket).catch((error) =>
       this.logger.warn(`Bucket ${this.bucket} non vérifié au démarrage : ${error?.message}`),
     );
@@ -48,15 +45,7 @@ export class MinioService implements OnModuleInit {
   // chaque PDF généré).
   private readonly privateBuckets = new Set<string>();
 
-  /**
-   * Bug corrigé (faille de sécurité) : billets et factures étaient en
-   * lecture publique, à une adresse prévisible (ticket-TKT-2026-XXXXXX.pdf,
-   * ~16 millions de combinaisons) — un script pouvait télécharger des
-   * billets et des factures (données
-   * personnelles) sans aucune connexion. Buckets désormais privés : le PDF
-   * n'est servi que par l'api-gateway, au titulaire authentifié. La
-   * politique publique des buckets créés avant ce correctif est retirée.
-   */
+  /** Sécurité : billets et factures dans des buckets privés, servis uniquement par la gateway au titulaire authentifié. */
   async ensureBucket(bucket: string = this.bucket): Promise<void> {
     if (this.privateBuckets.has(bucket)) return;
     try {
@@ -88,9 +77,7 @@ export class MinioService implements OnModuleInit {
       }),
     );
 
-    // Adresse stockée en base comme simple localisateur (bucket + clé) :
-    // le bucket étant privé, elle n'est plus lisible directement — l'api-
-    // gateway la résout pour servir le fichier au titulaire authentifié.
+    // Adresse stockée comme simple localisateur (bucket + clé), résolue par la gateway.
     const publicEndpoint = this.config.get<string>('MINIO_PUBLIC_ENDPOINT', 'localhost');
     const port = this.config.get<string>('MINIO_PORT', '9000');
     const useSSL = this.config.get<string>('MINIO_USE_SSL', 'false') === 'true';

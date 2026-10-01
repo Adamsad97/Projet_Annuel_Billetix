@@ -73,10 +73,7 @@ export class PurchaseInvoiceDto {
   @IsString()
   orderId: string;
 
-  /**
-   * Facture PDF encodée en base64, lue par l'api-gateway (bucket privé) —
-   * absente si elle n'a pas pu être générée à temps.
-   */
+  /** Facture PDF en base64, absente si elle n'a pas pu être générée à temps. */
   @IsString()
   @IsOptional()
   invoicePdfBase64?: string;

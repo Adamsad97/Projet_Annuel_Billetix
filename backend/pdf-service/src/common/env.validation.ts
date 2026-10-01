@@ -1,10 +1,7 @@
 import { plainToInstance, Type } from 'class-transformer';
 import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, validateSync } from 'class-validator';
 
-/**
- * Configuration requise par pdf-service, vérifiée au démarrage : sans
- * stockage MinIO ni file RabbitMQ, aucune facture ne serait produite.
- */
+/** Configuration requise par pdf-service, vérifiée au démarrage (sans MinIO ni RabbitMQ, aucune facture). */
 class PdfServiceEnvironment {
   @IsString() @IsNotEmpty() RABBITMQ_URL: string;
 

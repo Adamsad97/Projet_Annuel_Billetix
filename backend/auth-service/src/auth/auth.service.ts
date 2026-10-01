@@ -28,9 +28,7 @@ const EMAIL_VERIFY_TTL = 24 * 60 * 60; // 24 heures
 // Court délai avant expiration du code d'échange OAuth — le temps d'une
 // redirection navigateur, pas plus (usage unique de toute façon).
 const OAUTH_EXCHANGE_TTL = 60;
-// Plus long que OAUTH_EXCHANGE_TTL : laisse le temps de saisir un code TOTP
-// (contrairement à l'échange de tokens, immédiat côté serveur après la
-// redirection).
+// Plus long que OAUTH_EXCHANGE_TTL : laisse le temps de saisir un code TOTP.
 const OAUTH_2FA_PENDING_TTL = 300;
 // Le temps de saisir sa date de naissance à la première connexion
 // Google/Facebook — au-delà, il suffit de relancer la connexion.
@@ -51,9 +49,7 @@ type OAuthProfile = {
   last_name: string;
 };
 
-// Contenu d'un pending_token "date de naissance" : soit un compte existant
-// à compléter (créé avant la règle d'âge), soit un profil Google/Facebook
-// dont le compte n'est PAS encore créé.
+// pending_token « date de naissance » : compte existant à compléter, ou profil Google/Facebook pas encore créé.
 type OAuthBirthDatePending = { user_id: string } | { profile: OAuthProfile };
 
 /** Filtres de la liste admin des comptes. */
@@ -73,19 +69,13 @@ export class AuthService {
     private readonly platformConfig: PlatformConfigCache,
   ) {}
 
-  /**
-   * Règles d'inscription exposées au frontend (affichage en temps réel) —
-   * toutes deux réglables par l'admin via platform_settings.
-   */
+  /** Règles d'inscription affichées en temps réel par le frontend, réglables par l'admin. */
   async getRegistrationPolicy(): Promise<{ password_min_length: number; minimum_age: number }> {
     const { password_min_length, minimum_signup_age } = await this.platformConfig.get();
     return { password_min_length, minimum_age: minimum_signup_age };
   }
 
-  /**
-   * Âge minimum (platform_settings) — inscription email/mot de passe comme
-   * première connexion Google/Facebook.
-   */
+  /** Âge minimum (platform_settings), pour l'inscription comme pour la première connexion Google/Facebook. */
   private async assertAllowedBirthDate(birthDate: string): Promise<void> {
     const age = ageInYears(birthDate);
     if (Number.isNaN(age) || age < 0) {
@@ -103,11 +93,7 @@ export class AuthService {
     }
   }
 
-  /**
-   * Seule source de vérité de la politique de mot de passe — les DTO ne
-   * vérifient que le type, la longueur minimale étant paramétrable
-   * (platform_settings) et donc inconnue au moment de la validation.
-   */
+  /** Seule source de vérité de la politique de mot de passe (longueur minimale réglable par l'admin). */
   private async assertPasswordPolicy(
     password: string,
     personalInfo: PasswordPersonalInfo,
@@ -169,28 +155,14 @@ export class AuthService {
       token: verifyToken,
     });
 
-    // Bug corrigé (contradiction directe avec une règle déjà appliquée
-    // ailleurs) : register() renvoyait des tokens et connectait aussitôt,
-    // alors que login() rejette explicitement tout compte non vérifié
-    // (CDC §2.2, voir commentaire plus haut) — un utilisateur avait donc un
-    // accès complet juste après inscription, puis se retrouvait bloqué dès
-    // sa prochaine connexion (après déconnexion) pour ce même compte
-    // jamais vérifié entre-temps. Aucun token ici : l'inscription crée le
-    // compte et envoie l'email, l'accès réel passe par login() une fois
-    // vérifié (ou par resendVerificationEmail() si le lien a expiré).
+    // L'inscription crée le compte et envoie l'email, sans jeton : l'accès passe par login() une fois l'email vérifié.
     return {
       email_verification_required: true,
       user: this.sanitize(user),
     };
   }
 
-  /**
-   * Confirmation d'une action sensible (ex. changement d'IBAN) par le mot de
-   * passe du compte. Mêmes protections qu'à la connexion : un compte
-   * verrouillé reste bloqué, chaque échec compte dans le verrouillage.
-   * Compte sans mot de passe (connexion Google/Facebook) : { has_password:
-   * false }, l'appelant exige alors une connexion récente.
-   */
+  /** Confirme une action sensible par le mot de passe (mêmes protections qu'à la connexion) ; compte OAuth : has_password false. */
   /** Le compte a-t-il un mot de passe (sinon connexion Google/Facebook uniquement) ? */
   async hasPassword(userId: string): Promise<{ has_password: boolean }> {
     const user = await this.userRepo
@@ -246,10 +218,7 @@ export class AuthService {
       throw new RpcException({ statusCode: 403, message: "Compte suspendu" });
     }
 
-    // CDC §10.3 : rate limiting par IP (throttler global côté gateway) ET par
-    // compte — ce second volet manquait entièrement. Vérifié avant le mot de
-    // passe : un compte verrouillé reste bloqué même avec les bons
-    // identifiants, tant que le verrou n'a pas expiré.
+    // CDC §10.3 : verrouillage par compte, vérifié avant le mot de passe tant que le verrou n'a pas expiré.
     if (user.locked_until && user.locked_until > new Date()) {
       const remainingMinutes = Math.ceil(
         (user.locked_until.getTime() - Date.now()) / 60000,
@@ -276,11 +245,7 @@ export class AuthService {
       });
     }
 
-    // CDC §2.2 : le compte doit être activé via le lien envoyé par email
-    // avant tout accès. Vérifié seulement après le mot de passe (pas avant)
-    // pour ne pas révéler le statut de vérification à qui ne connaît pas
-    // déjà le mot de passe. Les comptes OAuth ont is_email_verified=true
-    // dès la création (email déjà vérifié par Google/Facebook).
+    // CDC §2.2 : email vérifié obligatoire, contrôlé après le mot de passe pour ne rien révéler.
     if (!user.is_email_verified) {
       throw new RpcException({
         statusCode: 403,
@@ -310,9 +275,7 @@ export class AuthService {
         failed_login_attempts: 0,
         locked_until: null,
       });
-      // Reflète immédiatement le reset dans la réponse — sans ça, l'objet
-      // `user` en mémoire (chargé avant l'update ci-dessus) renvoyait encore
-      // l'ancien compteur au client malgré une base déjà correcte.
+      // Reflète le reset dans la réponse : l'objet user en mémoire a été chargé avant la mise à jour.
       user.failed_login_attempts = 0;
       user.locked_until = null;
     }
@@ -320,11 +283,7 @@ export class AuthService {
     return { ...this.generateTokens(user), user: this.sanitize(user) };
   }
 
-  /**
-   * Incrémente le compteur d'échecs (mot de passe ou code 2FA invalide) et
-   * verrouille temporairement le compte au-delà du seuil configurable
-   * (platform_settings, jamais de valeur en dur).
-   */
+  /** Compte les échecs (mot de passe ou 2FA) et verrouille le compte au-delà du seuil réglable. */
   private async registerFailedLoginAttempt(user: User): Promise<void> {
     const config = await this.platformConfig.get();
     const attempts = user.failed_login_attempts + 1;
@@ -362,11 +321,7 @@ export class AuthService {
       });
     }
 
-    // Plusieurs onglets ouverts renouvellent parfois la session au même
-    // moment avec le même jeton : le premier le fait tourner, le second le
-    // présentait déjà révoqué et toute la session était fermée. Pendant un
-    // court délai (réglage admin), le même jeton renvoie la même nouvelle
-    // paire au lieu d'être refusé.
+    // Deux onglets qui renouvellent avec le même jeton reçoivent la même nouvelle paire pendant un court délai.
     const rotated = await this.redis.get(`rotated:${payload.jti}`);
     if (rotated) {
       return JSON.parse(rotated) as ReturnType<AuthService["generateTokens"]>;
@@ -381,11 +336,7 @@ export class AuthService {
       });
     }
 
-    // Expiration pour inactivité, vérifiée côté serveur (pas seulement par
-    // le minuteur du frontend, contournable). Le refresh token est renouvelé
-    // à chaque rafraîchissement (rotation) : son âge = temps écoulé depuis
-    // la dernière activité authentifiée. Le frontend rafraîchit de lui-même
-    // tant que l'utilisateur est actif (au plus tard à mi-délai).
+    // Expiration pour inactivité vérifiée côté serveur : l'âge du refresh token mesure le temps depuis la dernière activité.
     const { session_idle_timeout_minutes, session_max_duration_hours, session_refresh_grace_seconds } =
       await this.platformConfig.get();
     const now = Math.floor(Date.now() / 1000);
@@ -393,9 +344,7 @@ export class AuthService {
     // émis avant ce champ : repli sur leur propre date d'émission).
     const authTime = payload.auth_time ?? payload.iat;
 
-    // Durée maximale absolue : sans elle, une session utilisée en continu
-    // (ordinateur prêté ou laissé ouvert) ne s'arrêtait jamais, chaque
-    // rotation redonnant un refresh token neuf.
+    // Durée maximale absolue de session, même en usage continu.
     if (now - authTime > session_max_duration_hours * 3600) {
       await this.revokeRefreshJti(payload.jti, payload.exp);
       throw new RpcException({
@@ -423,10 +372,7 @@ export class AuthService {
       });
     }
 
-    // Rotation : l'ancien refresh token est immédiatement blacklisté — un
-    // jeton volé ne peut donc servir qu'une seule fois avant que le
-    // titulaire légitime (qui continue son usage normal) ne le révoque de
-    // fait à son prochain refresh.
+    // Rotation : l'ancien refresh token est blacklisté, un jeton volé ne sert qu'une fois.
     const ttl = payload.exp - Math.floor(Date.now() / 1000);
     if (ttl > 0) {
       await this.redis.set(`blacklist:${payload.jti}`, "1", "EX", ttl);
@@ -453,9 +399,7 @@ export class AuthService {
         secret: this.config.get<string>("JWT_REFRESH_SECRET"),
       });
     } catch {
-      // Token invalide, forgé ou déjà expiré — rien à révoquer, la
-      // déconnexion côté client suffit ; on ne fait jamais confiance à un
-      // payload non vérifié pour décider quoi blacklister.
+      // Jeton invalide ou expiré : rien à révoquer, on ne se fie jamais à un payload non vérifié.
       return { success: true };
     }
 
@@ -470,11 +414,7 @@ export class AuthService {
 
   async oauthLogin(data: OAuthProfile) {
     if (!data.email) {
-      // Sans email, la recherche par email ci-dessous ferait correspondre
-      // n'importe quel autre compte sans email (collision sur chaîne vide),
-      // et la contrainte UNIQUE sur `email` casserait toute création
-      // suivante. La billetterie dépend entièrement de l'email (envoi des
-      // billets) : un compte sans email n'est de toute façon pas exploitable.
+      // Email obligatoire : sans lui, collision sur chaîne vide et billets impossibles à envoyer.
       throw new RpcException({
         statusCode: 400,
         message:
@@ -496,10 +436,7 @@ export class AuthService {
         user.oauth_id = data.oauth_id;
         await this.userRepo.save(user);
       } else {
-        // Inscription réservée aux personnes ayant l'âge minimum : Google et
-        // Facebook ne fournissent pas la date de naissance, le compte n'est
-        // donc créé qu'une fois celle-ci saisie et vérifiée
-        // (completeOAuthBirthDate) — un mineur n'obtient jamais de compte.
+        // Google et Facebook ne donnent pas la date de naissance : le compte n'est créé qu'après sa saisie et vérification.
         return this.requireOAuthBirthDate({ profile: data }, data.first_name);
       }
     }
@@ -534,11 +471,7 @@ export class AuthService {
     };
   }
 
-  /**
-   * Second temps d'une connexion Google/Facebook sans date de naissance
-   * connue : contrôle d'âge, puis création (ou complétion) du compte et
-   * suite normale de la connexion (2FA comprise).
-   */
+  /** Suite d'une connexion Google/Facebook sans date de naissance : contrôle d'âge, création du compte, puis connexion normale. */
   async completeOAuthBirthDate(pendingToken: string, birthDate: string) {
     const key = `oauth_birth_date_pending:${pendingToken}`;
     const raw = await this.redis.get(key);
@@ -599,18 +532,7 @@ export class AuthService {
 
   private async finishOAuthLogin(user: User) {
 
-    // Bug corrigé (faille de sécurité) : login() (email/mot de passe) exige
-    // le code 2FA avant de délivrer les tokens — oauthLogin() les délivrait
-    // directement, sans jamais la demander. Un compte protégé par la 2FA
-    // (obligatoire dès qu'un IBAN organisateur est enregistré, CDC §2.3)
-    // restait entièrement ouvert via Google/Facebook, y compris pour un
-    // attaquant qui n'aurait compromis que le compte Google/Facebook de la
-    // victime, jamais son mot de passe ni sa 2FA BilleTix.
-    //
-    // Flux par redirection (pas de formulaire synchrone comme login()) :
-    // pas de tokens ici, juste une référence opaque à usage unique vers ce
-    // compte, que le frontend renverra avec le code une fois saisi
-    // (verifyOauth2fa ci-dessous).
+    // 2FA exigée aussi en OAuth : renvoie une référence opaque à usage unique, échangée avec le code (verifyOauth2fa).
     if (user.two_factor_enabled) {
       const pendingToken = randomBytes(32).toString("hex");
       await this.redis.set(
@@ -645,9 +567,7 @@ export class AuthService {
     if (!user) {
       throw new RpcException({ statusCode: 404, message: "Utilisateur introuvable" });
     }
-    // Re-vérifié : la fenêtre entre oauthLogin() et cet appel (jusqu'à
-    // OAUTH_2FA_PENDING_TTL) laisse le temps à un admin de suspendre le
-    // compte entre-temps.
+    // Revérifié : le compte a pu être suspendu depuis oauthLogin().
     if (!user.is_active || user.is_suspended) {
       throw new RpcException({
         statusCode: 403,
@@ -664,14 +584,7 @@ export class AuthService {
     return { ...this.generateTokens(user), user: this.sanitize(user) };
   }
 
-  /**
-   * Après un callback OAuth réussi, on ne redirige jamais avec les tokens en
-   * clair dans l'URL (historique navigateur, logs proxy, header Referer) —
-   * on stocke les tokens sous un code opaque à usage unique et courte durée
-   * de vie, échangé ensuite côté serveur via exchangeOAuthCode(). Sert aussi
-   * à transporter le pending_token quand la 2FA est requise (même besoin :
-   * rien en clair dans l'URL de redirection).
-   */
+  /** Jamais de jetons en clair dans l'URL de redirection OAuth : code opaque à usage unique, échangé côté serveur. */
   async createOAuthExchangeCode(payload: OAuthExchangePayload): Promise<string> {
     const code = randomBytes(32).toString("hex");
     await this.redis.set(
@@ -712,11 +625,7 @@ export class AuthService {
     }
   }
 
-  /**
-   * Renvoi du lien de vérification d'email — nécessaire depuis que login()
-   * bloque les comptes non vérifiés (CDC §2.2) : sans cette route, un lien
-   * expiré (TTL 24h) ou jamais reçu laissait le compte bloqué sans recours.
-   */
+  /** Renvoi du lien de vérification d'email (lien expiré ou jamais reçu). */
   async resendVerificationEmail(dto: { email: string }) {
     const user = await this.userRepo.findOne({ where: { email: dto.email } });
     // Ne pas révéler si l'email existe ou non (même pattern que forgotPassword)
@@ -739,15 +648,7 @@ export class AuthService {
     return { success: true };
   }
 
-  /**
-   * Agent de contrôle invité par un organisateur, par son adresse email.
-   * Compte agent actif : simplement prévenu de sa nouvelle affectation.
-   * Adresse inconnue, ou compte dont le mot de passe n'a jamais été choisi
-   * (lien précédent expiré) : lien pour le choisir (le suivre prouve aussi
-   * la maîtrise de l'adresse). Adresse d'un
-   * compte d'un autre rôle : refusée — un agent a un compte dédié, pour ne
-   * jamais mêler droits de contrôle et compte acheteur/organisateur.
-   */
+  /** Invitation d'un agent par email : compte actif prévenu, sinon lien pour choisir son mot de passe ; autre rôle refusé. */
   async inviteAgent(data: {
     email: string;
     first_name: string;
@@ -790,10 +691,7 @@ export class AuthService {
     return { user_id: user.id, created };
   }
 
-  /**
-   * Nouveau lien pour un agent qui n'a pas encore choisi son mot de passe
-   * (invitation expirée ou égarée). Refusé si le compte est déjà activé.
-   */
+  /** Nouveau lien pour un agent qui n'a pas encore choisi son mot de passe ; refusé si le compte est déjà activé. */
   async resendAgentInvitation(data: {
     user_id: string;
     event_name: string;
@@ -814,10 +712,7 @@ export class AuthService {
     return { success: true };
   }
 
-  /**
-   * Compte avec son mot de passe haché : exclu des lectures par défaut
-   * (select: false), il dit ici si l'agent a déjà activé son compte.
-   */
+  /** Compte avec son mot de passe haché (exclu par défaut) : indique si l'agent a activé son compte. */
   private findWithPasswordState(where: string, params: Record<string, string>): Promise<User | null> {
     return this.userRepo.createQueryBuilder("u").addSelect("u.password_hash").where(where, params).getOne();
   }
@@ -896,9 +791,7 @@ export class AuthService {
     await this.userRepo.save(user);
     await this.redis.del(`reset_password:${dto.token}`);
 
-    // CDC §10.3 : audit trail de toutes les actions sensibles, pas seulement
-    // celles de l'admin. Fire-and-forget — un échec de journalisation ne
-    // doit jamais faire échouer le reset lui-même.
+    // CDC §10.3 : journalisation sans attente, un échec ne fait jamais échouer la réinitialisation.
     this.adminClient
       .send("admin.log_action", {
         action: "USER_PASSWORD_RESET",
@@ -912,11 +805,7 @@ export class AuthService {
     return { success: true };
   }
 
-  /**
-   * Modification du mot de passe depuis le profil, par le titulaire du
-   * compte déjà connecté — distinct de resetPassword() (lien email, compte
-   * non accessible). L'ancien mot de passe est requis pour confirmer.
-   */
+  /** Changement du mot de passe depuis le profil, l'ancien mot de passe étant requis. */
   async changePassword(userId: string, dto: ChangePasswordDto) {
     const user = await this.userRepo
       .createQueryBuilder("u")
@@ -944,9 +833,7 @@ export class AuthService {
     user.password_hash = await bcrypt.hash(dto.new_password, BCRYPT_ROUNDS);
     await this.userRepo.save(user);
 
-    // CDC §10.3 : audit trail de toutes les actions sensibles, pas seulement
-    // celles de l'admin. Fire-and-forget — un échec de journalisation ne
-    // doit jamais faire échouer le changement lui-même.
+    // CDC §10.3 : journalisation sans attente, un échec ne fait jamais échouer le changement.
     this.adminClient
       .send("admin.log_action", {
         action: "USER_PASSWORD_RESET",
@@ -971,11 +858,7 @@ export class AuthService {
     return this.sanitize(user);
   }
 
-  /**
-   * Compte associé à un email (casse ignorée), ou null — ex. bénéficiaire
-   * d'un billet offert. Réservé aux appels internes : l'api-gateway ne
-   * renvoie jamais ce résultat tel quel (pas d'énumération des comptes).
-   */
+  /** Compte associé à un email (casse ignorée), ou null ; réservé aux appels internes. */
   async findByEmail(email: string) {
     const user = await this.userRepo
       .createQueryBuilder("u")
@@ -1077,12 +960,7 @@ export class AuthService {
     return this.sanitize(user);
   }
 
-  /**
-   * Bug corrigé : POST /admin/users/:id/unlock appelait déjà auth.unlock_account
-   * côté gateway (avec son propre audit trail USER_ACCOUNT_UNLOCKED déjà en
-   * place), mais aucun handler ne répondait à ce pattern ici — timeout RPC
-   * garanti, la route était en réalité entièrement cassée.
-   */
+  /** Handler de auth.unlock_account, appelé par POST /admin/users/:id/unlock. */
   async unlockAccount(id: string, actorId: string, actorRole: UserRole) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user)
@@ -1099,11 +977,7 @@ export class AuthService {
     return this.sanitize(user);
   }
 
-  /**
-   * Bug corrigé : même problème que unlockAccount() — POST
-   * /admin/users/:id/activate appelait auth.activate_account, jamais géré
-   * côté auth-service.
-   */
+  /** Handler de auth.activate_account, appelé par POST /admin/users/:id/activate. */
   async activateAccount(id: string, actorId: string, actorRole: UserRole) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user)
@@ -1159,16 +1033,7 @@ export class AuthService {
     return this.sanitize(user);
   }
 
-  /**
-   * Bascule self-service BUYER→ORGANIZER, déclenchée par la gateway juste
-   * après la création du profil organisateur (bug corrigé : jusqu'ici,
-   * seul un admin pouvait faire cette bascule via changeRole() — aucune
-   * route self-service n'existait). Distincte de changeRole() à dessein :
-   * changeRole() sert aussi l'admin pour modifier le rôle d'un AUTRE
-   * utilisateur, et ne doit jamais renvoyer les tokens de la cible à
-   * l'appelant (fuite de session) — ici l'utilisateur agit sur lui-même,
-   * de nouveaux tokens (rôle à jour) sont donc légitimes et nécessaires.
-   */
+  /** Bascule self-service BUYER → ORGANIZER, avec de nouveaux jetons (contrairement à changeRole() par un admin). */
   async selfUpgradeToOrganizer(userId: string) {
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
@@ -1202,9 +1067,7 @@ export class AuthService {
 
     const qb = this.userRepo
       .createQueryBuilder("u")
-      // createQueryBuilder ne filtre pas automatiquement deleted_at
-      // (contrairement à find()/findOne()) — exclusion explicite des
-      // comptes supprimés (RGPD) des résultats de recherche admin.
+      // createQueryBuilder ne filtre pas deleted_at : exclusion explicite des comptes supprimés (RGPD).
       .where("u.deleted_at IS NULL")
       .skip(offset)
       .take(limit);
@@ -1242,15 +1105,7 @@ export class AuthService {
     return { data: data.map((user) => this.sanitize(user)), total };
   }
 
-  /**
-   * Droit à l'effacement RGPD — anonymise les données personnelles (email,
-   * nom, téléphone, 2FA, OAuth) et pose un soft-delete. Les commandes/billets
-   * référençant cet ID sont conservés ailleurs (comptabilité, preuve d'accès
-   * événement) mais anonymisés séparément par user-service ; cette méthode
-   * ne gère que le compte lui-même. La vérification des obligations en cours
-   * (événements à venir, reversements en attente) est faite par l'appelant
-   * (api-gateway), qui seul a la vue sur les autres microservices.
-   */
+  /** Effacement RGPD : anonymise le compte et pose un soft-delete ; les obligations en cours sont vérifiées par la gateway. */
   async deleteAccount(
     id: string,
     password?: string,
@@ -1304,11 +1159,7 @@ export class AuthService {
 
   // --- Helpers ---
 
-  /**
-   * @param authTime heure (secondes epoch) de la connexion d'origine —
-   *   « maintenant » pour une nouvelle connexion, recopiée telle quelle lors
-   *   d'un refresh (durée maximale de session, cf. refresh()).
-   */
+  /** @param authTime heure de la connexion d'origine, conservée lors d'un refresh (durée maximale de session). */
   private generateTokens(
     user: User,
     authTime: number = Math.floor(Date.now() / 1000),
@@ -1331,11 +1182,7 @@ export class AuthService {
     return { access_token, refresh_token };
   }
 
-  /**
-   * auth_time (heure de la connexion d'origine) figure aussi dans le jeton
-   * d'accès : l'api-gateway exige une connexion récente pour les actions
-   * sensibles et irréversibles (ex. offrir un billet).
-   */
+  /** auth_time dans le jeton d'accès : la gateway exige une connexion récente pour les actions sensibles. */
   private signAccess(user: User, authTime: number): string {
     return this.jwtService.sign(
       { sub: user.id, email: user.email, role: user.role, auth_time: authTime },

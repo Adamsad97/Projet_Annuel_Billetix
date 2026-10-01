@@ -19,10 +19,7 @@ import {
 import { ChangePasswordDto } from "../auth/dto/change-password.dto";
 import { OAuthProvider, UserRole } from "../user/user.entity";
 
-/**
- * Messages internes d'auth-service (TCP entre services). Chaque identifiant
- * est vérifié ici une fois pour toutes.
- */
+/** Messages internes d'auth-service, chaque identifiant vérifié ici. */
 const NAME_MAX = 100;
 const TOKEN_MAX = 2048;
 
@@ -84,12 +81,7 @@ export class OAuthLoginPayload {
   @IsString() @MaxLength(NAME_MAX) last_name: string;
 }
 
-/**
- * Résultat d'une connexion Google/Facebook, conservé le temps de l'échange :
- * session complète (jetons + utilisateur), 2FA à saisir, ou date de naissance
- * à compléter. Les trois formes sont déclarées au complet — sinon la
- * validation retirerait des champs et casserait la connexion.
- */
+/** Résultat d'une connexion Google/Facebook : session, 2FA à saisir ou date de naissance à compléter. */
 export class OAuthExchangePayload {
   @IsOptional() @IsString() @MaxLength(TOKEN_MAX) access_token?: string;
   @IsOptional() @IsString() @MaxLength(TOKEN_MAX) refresh_token?: string;

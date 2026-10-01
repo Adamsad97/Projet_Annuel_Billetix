@@ -1,10 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Le nom d'une catégorie de billet ("Standard", "VIP"...) était saisi
-// librement par l'organisateur — des variantes ("Std", "VIP2") s'étaient déjà
-// glissées en base. Cette table le rend gérable depuis l'espace Admin, comme
-// les catégories d'événement (cf. AddCategoriesTable) ; les variantes
-// existantes sont normalisées avant d'imposer l'intégrité référentielle.
+// Noms de catégories de billet gérés par l'admin, après normalisation des variantes existantes.
 export class AddTicketTierTypes1794800000000 implements MigrationInterface {
   name = 'AddTicketTierTypes1794800000000';
 

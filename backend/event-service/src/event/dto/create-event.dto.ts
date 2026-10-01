@@ -22,18 +22,14 @@ export class CreateEventDto {
   @IsString() @MinLength(10)
   description: string;
 
-  // Le format est vérifié ici, l'existence/l'activation réelle du code est
-  // vérifiée dans EventService.create/update via CategoryService.assertActive
-  // (liste gérée depuis l'espace Admin, pas un enum figé).
+  // Format vérifié ici ; existence et activation du code vérifiées par CategoryService.assertActive.
   @IsString() @IsNotEmpty()
   category: string;
 
   @IsBoolean() @IsOptional()
   is_non_profit?: boolean;
 
-  // Bug corrigé : justificatif optionnel même en cas de déclaration "à but
-  // non lucratif" — sans lui, l'admin n'a rien à vérifier avant d'accorder
-  // l'exonération de commission (cf. EventService.computeCommissionRate).
+  // Justificatif obligatoire en cas de déclaration « à but non lucratif ».
   @ValidateIf((dto: CreateEventDto) => dto.is_non_profit === true)
   @IsUrl({ require_tld: false }, { message: 'Un justificatif est requis pour une déclaration à but non lucratif' })
   non_profit_document_url?: string;

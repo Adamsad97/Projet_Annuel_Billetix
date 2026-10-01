@@ -22,10 +22,7 @@ const AdminServiceClient = ClientsModule.registerAsync([
 @Module({
   imports: [AdminServiceClient],
   providers: [PlatformConfigCache],
-  // Bug corrigé : ClientsModule doit être ré-exporté explicitement pour que
-  // le token ADMIN_SERVICE soit injectable ailleurs (AuthService,
-  // TwoFactorService) — @Global() ne rend global que les providers listés
-  // dans exports, pas les modules importés en interne.
+  // ClientsModule ré-exporté pour rendre ADMIN_SERVICE injectable ailleurs (@Global ne suffit pas).
   exports: [PlatformConfigCache, AdminServiceClient],
 })
 export class PlatformConfigModule {}

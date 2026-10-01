@@ -1,9 +1,4 @@
-/**
- * Rangement des réglages par section, et droits d'accès. Les sections
- * sensibles (argent, sécurité, mentions légales) sont réservées au super
- * admin : le serveur ne les envoie pas à un admin et refuse ses
- * modifications. Un réglage absent d'ici tombe dans « Autres » (admin).
- */
+/** Réglages rangés par section ; les sections sensibles (argent, sécurité, légal) sont réservées au super admin. */
 export interface SettingSection {
   id: string;
   super_admin_only: boolean;

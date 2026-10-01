@@ -1,14 +1,7 @@
 import { ClassConstructor, plainToInstance } from 'class-transformer';
 import { validate, ValidationError } from 'class-validator';
 
-/**
- * Validation manuelle (pas de ValidationPipe ici) : un payload PDF invalide
- * ne doit jamais être requeue (channel.nack(msg, false, true)) comme une
- * erreur transitoire (ex: Puppeteer indisponible) — il échouerait à
- * l'identique indéfiniment. L'appelant doit donc pouvoir distinguer
- * "payload structurellement invalide" (à écarter) de "erreur technique"
- * (à retenter), d'où cette validation explicite avant le bloc try/catch.
- */
+/** Validation manuelle avant le try/catch : un payload invalide est écarté, jamais retenté comme une erreur technique. */
 export async function validatePayload<T extends object>(
   cls: ClassConstructor<T>,
   raw: unknown,

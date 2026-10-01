@@ -27,11 +27,7 @@ export class TwoFactorService {
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
   ) {}
 
-  /**
-   * CDC §10.3 : audit trail de toutes les actions sensibles, pas seulement
-   * celles de l'admin. Fire-and-forget — un échec de journalisation ne doit
-   * jamais faire échouer l'action elle-même.
-   */
+  /** CDC §10.3 : journalisation sans attente, un échec ne fait jamais échouer l'action. */
   private logSelfAction(action: string, userId: string): void {
     this.adminClient
       .send("admin.log_action", {
@@ -122,9 +118,7 @@ export class TwoFactorService {
     });
     if (!valid) return false;
 
-    // Anti-rejeu : un code TOTP intercepté (shoulder-surfing, capture
-    // réseau) ne doit être utilisable qu'une seule fois pendant sa fenêtre
-    // de validité, même s'il reste mathématiquement correct pendant ~90s.
+    // Anti-rejeu : un code TOTP n'est utilisable qu'une fois pendant sa fenêtre de validité.
     const replayKey = `2fa_totp_used:${userId}:${code}`;
     const alreadyUsed = await this.redis.get(replayKey);
     if (alreadyUsed) return false;
@@ -133,10 +127,7 @@ export class TwoFactorService {
     return true;
   }
 
-  /**
-   * Vérifie un code 2FA TOTP, avec repli sur un code de secours si le code
-   * principal ne correspond pas (perte de l'appareil authenticator).
-   */
+  /** Vérifie un code TOTP, avec repli sur un code de secours. */
   async verify(userId: string, code: string): Promise<boolean> {
     const primaryValid = await this.verifyTotp(userId, code);
     if (primaryValid) return true;
@@ -183,9 +174,7 @@ export class TwoFactorService {
       });
     }
 
-    // La 2FA reste un choix personnel, y compris pour un organisateur payé par
-    // virement : son IBAN est protégé par le mot de passe, un email d'alerte
-    // et la suspension des reversements après un changement (user-service).
+    // La 2FA reste un choix personnel, y compris pour un organisateur payé par virement.
     await this.userRepo
       .createQueryBuilder()
       .update(User)
@@ -204,19 +193,7 @@ export class TwoFactorService {
     return { success: true };
   }
 
-  /**
-   * Bug corrigé : POST /admin/users/:id/reset-2fa appelait déjà
-   * auth.2fa.reset_by_admin côté gateway, mais aucun handler ne répondait à
-   * ce pattern côté auth-service — la route était en réalité entièrement
-   * cassée (timeout RPC) malgré son audit trail déjà en place (USER_2FA_RESET).
-   *
-   * Contrairement à disable() : pas de code à vérifier (c'est précisément
-   * le scénario "appareil ET codes de secours perdus" que cette route
-   * couvre) et pas de blocage IBAN — c'est le seul chemin de sortie pour un
-   * organisateur avec IBAN autrement définitivement bloqué hors de son
-   * compte. La 2FA repasse à false : l'utilisateur peut se reconnecter et
-   * devra la reconfigurer lui-même s'il le souhaite (setupTotp()).
-   */
+  /** Réinitialisation de la 2FA par un admin (appareil et codes de secours perdus), sans code à vérifier. */
   async resetByAdmin(
     userId: string,
     actorId: string,
@@ -229,9 +206,7 @@ export class TwoFactorService {
         message: "La 2FA n'est pas activée sur ce compte",
       });
     }
-    // Même règle que suspend/unlock/activate/change-role (cf.
-    // assertCanManageTarget) : un ADMIN normal ne réinitialise pas la 2FA
-    // d'un autre admin.
+    // Même règle que les autres actions admin (assertCanManageTarget).
     assertCanManageTarget(user, actorId, actorRole);
 
     await this.userRepo

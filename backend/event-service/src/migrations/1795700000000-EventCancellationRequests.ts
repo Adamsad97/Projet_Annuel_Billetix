@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// L'organisateur ne peut plus annuler seul : il demande l'annulation, un
-// admin accepte ou refuse après échange de messages. L'admin peut aussi
-// masquer un événement (hors catalogue, page publique indisponible).
+// Annulation sur demande de l'organisateur, acceptée ou refusée par un admin ; l'admin peut aussi masquer un événement.
 export class EventCancellationRequests1795700000000 implements MigrationInterface {
   name = 'EventCancellationRequests1795700000000';
 

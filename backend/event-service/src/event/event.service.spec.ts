@@ -30,9 +30,7 @@ describe('EventService', () => {
     select: jest.Mock;
     getRawMany: jest.Mock;
   };
-  // Injecté dans EventService (@InjectRepository(TicketCategory)) mais non
-  // encore exploité dans les méthodes actuelles — mock minimal seulement
-  // pour que l'injection de dépendances se résolve.
+  // Mock minimal pour résoudre l'injection de @InjectRepository(TicketCategory).
   let ticketCategoryRepo: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock; find: jest.Mock };
   let platformConfig: { get: jest.Mock };
   let notifClient: { emit: jest.Mock };
@@ -91,9 +89,7 @@ describe('EventService', () => {
     ticketCategoryService = {
       getByEvent: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
-      // Épuisé par défaut — la plupart des tests duplicate() veulent passer
-      // ce garde-fou sans s'en préoccuper ; le test dédié au refus le
-      // surcharge explicitement avec du stock restant.
+      // Épuisé par défaut pour passer le garde-fou de duplicate() ; le test du refus le surcharge.
       getFillStats: jest.fn().mockResolvedValue({ total_quota: 500, remaining: 0, sold: 500, fill_rate: 100, categories: [] }),
     };
     categoryService = { assertActive: jest.fn().mockResolvedValue(undefined) };
@@ -287,9 +283,7 @@ describe('EventService', () => {
 
       expect(event.commission_rate).toBe(0);
       expect(event.status).toBe(EventStatus.PUBLISHED);
-      // Bug corrigé : event_id absent du payload — le bouton "Voir mon
-      // événement" de l'email de publication pointait vers la page d'accueil
-      // au lieu de l'événement concerné.
+      // event_id dans le payload : le bouton de l'email de publication mène à l'événement.
       expect(notifClient.emit).toHaveBeenCalledWith(
         'notification.event_published',
         expect.objectContaining({ event_id: '11111111-1111-4111-8111-111111111111' }),
@@ -383,9 +377,7 @@ describe('EventService', () => {
       await service.requestInfo('11111111-1111-4111-8111-111111111111', 'admin-1', 'Précisez le lieu');
 
       expect(validationRequestService.create).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111', 'admin-1', 'Précisez le lieu');
-      // Bug corrigé : event_id absent du payload — le lien "Répondre à la
-      // demande" de l'email pointait vers une page inexistante
-      // ({{appUrl}}/organizer/events) faute de savoir quel événement lier.
+      // event_id dans le payload : le lien « Répondre à la demande » de l'email mène au bon événement.
       expect(notifClient.emit).toHaveBeenCalledWith(
         'notification.event_info_requested',
         expect.objectContaining({

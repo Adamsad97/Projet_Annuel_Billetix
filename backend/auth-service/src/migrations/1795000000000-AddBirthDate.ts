@@ -1,10 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-/**
- * Date de naissance, demandée à l'inscription — le mot de passe ne doit pas
- * la contenir (voir password-policy.ts). Nullable : comptes existants et
- * comptes Google/Facebook n'en ont pas.
- */
+/** Date de naissance (le mot de passe ne doit pas la contenir) ; nullable pour les comptes existants et OAuth. */
 export class AddBirthDate1795000000000 implements MigrationInterface {
     name = 'AddBirthDate1795000000000'
 

@@ -56,12 +56,7 @@ export class EventLifecycleService {
     }
   }
 
-  /**
-   * Alerte admin réelle (journal d'audit) quand le délai de traitement d'un
-   * événement en attente de validation est dépassé — une seule fois par
-   * événement (deadline_alert_sent), remis à zéro à chaque nouvelle
-   * soumission ou réponse à une demande de complément d'info.
-   */
+  /** Alerte admin unique quand le délai de traitement d'un événement en attente est dépassé. */
   private async alertOverdueValidations(): Promise<void> {
     const pending = await this.eventService.listPending();
     const overdue = pending.filter((event) => event.is_overdue && !event.deadline_alert_sent);

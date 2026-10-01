@@ -17,9 +17,7 @@ import { EventService } from './event.service';
 
 @Module({
   imports: [
-    // TicketCategory enregistré ici aussi (en plus de TicketCategoryModule) :
-    // le filtre prix du catalogue public (listPublished) a besoin d'un accès
-    // direct au repository pour une sous-requête, pas seulement du service.
+    // TicketCategory aussi enregistré ici : le filtre prix du catalogue en a besoin dans une sous-requête.
     TypeOrmModule.forFeature([Event, TicketCategory, CancellationRequest, CancellationMessage]),
     ValidationRequestModule,
     TicketCategoryModule,

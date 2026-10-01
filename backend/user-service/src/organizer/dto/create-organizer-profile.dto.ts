@@ -1,8 +1,6 @@
 import { IsOptional, IsString, IsUrl, MinLength } from 'class-validator';
 
-// Bug corrigé : seul display_name était déclaré — la validation (whitelist)
-// retirait donc en silence la présentation, le logo et le site web envoyés
-// à la création du profil.
+// Déclare tous les champs du profil, sinon la validation (whitelist) les retirerait.
 export class CreateOrganizerProfileDto {
   @IsString()
   @MinLength(2)

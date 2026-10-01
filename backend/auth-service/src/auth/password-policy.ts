@@ -1,12 +1,4 @@
-/**
- * Politique de mot de passe appliquée à l'inscription, à la réinitialisation
- * et au changement depuis le profil. La longueur minimale vient de
- * platform_settings (password_min_length) — jamais figée ici.
- *
- * Miroir exact de frontend/lib/auth/password-policy.ts (affichage en temps
- * réel) : toute règle ajoutée ici doit l'être aussi là-bas. Le frontend
- * n'est qu'un confort d'affichage, ce contrôle-ci fait foi.
- */
+/** Politique de mot de passe (longueur réglable), miroir de frontend/lib/auth/password-policy.ts ; ce contrôle fait foi. */
 
 export interface PasswordPersonalInfo {
   first_name?: string | null;
@@ -44,12 +36,7 @@ function personalFragments(info: PasswordPersonalInfo): string[] {
   return [...fragments];
 }
 
-/**
- * Formes usuelles d'une date de naissance, sans séparateurs : année seule,
- * jour+mois (anniversaire) et dates complètes (FR, ISO, US, année courte).
- * Comparées aux seuls chiffres du mot de passe, pour attraper aussi
- * "12/05/1998", "12-05-98" ou "1998.05.12".
- */
+/** Formes usuelles d'une date de naissance sans séparateurs, comparées aux chiffres du mot de passe. */
 function birthDateFragments(birthDate?: string | null): string[] {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(birthDate ?? "");
   if (!match) return [];

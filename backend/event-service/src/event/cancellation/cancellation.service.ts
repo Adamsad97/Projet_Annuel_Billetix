@@ -19,14 +19,7 @@ const CANCELLABLE: EventStatus[] = [
 
 const MESSAGE_MAX_LENGTH = 2000;
 
-/**
- * Demandes d'annulation ou de report : l'organisateur demande, l'admin
- * accepte ou refuse. Annulation acceptée : événement annulé, la passerelle
- * rembourse les acheteurs. Report accepté : nouvelle date (ou « date à
- * venir »), les acheteurs sont prévenus et peuvent demander le
- * remboursement. Tant que la demande est en attente, les deux parties
- * échangent des messages pour trouver un accord.
- */
+/** Demandes d'annulation ou de report : l'organisateur demande, l'admin accepte ou refuse après échange de messages. */
 @Injectable()
 export class CancellationService {
   constructor(
@@ -216,12 +209,7 @@ export class CancellationService {
     return this.load(request.id);
   }
 
-  /**
-   * L'admin accepte. Annulation : l'événement est annulé avec le motif de la
-   * demande, la passerelle rembourse les acheteurs. Report : nouvelle date
-   * appliquée (ou « date à venir »), la passerelle prévient les acheteurs.
-   * previous_start_date : date annoncée juste avant le report.
-   */
+  /** Acceptation par l'admin : annulation avec remboursements, ou report avec nouvelle date et acheteurs prévenus. */
   async approve(
     requestId: string,
     adminId: string,

@@ -29,8 +29,7 @@ export class CategoryService {
     return this.repo.find({ order: { display_order: 'ASC', label: 'ASC' } });
   }
 
-  /** Utilisé par EventService à la création/modification d'un événement — rejette
-   * tout code inconnu ou désactivé plutôt que de laisser un `category` orphelin. */
+  /** Rejette un code de catégorie inconnu ou désactivé à la création ou modification d'un événement. */
   async assertActive(code: string): Promise<void> {
     const category = await this.repo.findOne({ where: { code } });
     if (!category || !category.is_active) {
@@ -55,10 +54,7 @@ export class CategoryService {
     return this.repo.save(category);
   }
 
-  /**
-   * Un changement de code est recopié sur les événements qui l'utilisent,
-   * dans la même transaction : jamais d'événement rattaché à un code disparu.
-   */
+  /** Un changement de code est recopié sur les événements concernés, dans la même transaction. */
   async update(id: string, dto: UpdateCategoryDto): Promise<Category> {
     const category = await this.getById(id);
     const previousCode = category.code;
@@ -75,9 +71,7 @@ export class CategoryService {
     });
   }
 
-  /** Suppression définitive interdite si des événements référencent encore ce
-   * code — désactiver (is_active=false) reste la voie normale pour "retirer"
-   * une catégorie du dropdown sans casser l'historique. */
+  /** Suppression interdite si des événements utilisent ce code : le désactiver le retire de la liste. */
   async remove(id: string): Promise<{ success: true }> {
     const category = await this.getById(id);
     const usageCount = await this.eventRepo.count({ where: { category: category.code } });

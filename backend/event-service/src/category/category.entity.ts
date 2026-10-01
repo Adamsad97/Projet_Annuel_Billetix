@@ -6,11 +6,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-// Remplace l'ancien enum Postgres figé `events_category_enum` : la liste des
-// catégories doit être gérable depuis l'espace Admin sans nouveau déploiement
-// (cf. règle projet "pas de valeurs en dur"). `code` est la valeur stable
-// stockée sur events.category — immuable une fois créée, contrairement à
-// `label`/`emoji` qui restent modifiables à tout moment.
+// Catégorie gérée par l'admin ; code est la valeur stable stockée sur events.category, label et emoji restent modifiables.
 @Entity({ name: 'categories', schema: 'events' })
 export class Category {
   @PrimaryGeneratedColumn('uuid')

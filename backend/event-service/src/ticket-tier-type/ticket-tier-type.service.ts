@@ -29,8 +29,7 @@ export class TicketTierTypeService {
     return this.repo.find({ order: { display_order: 'ASC', label: 'ASC' } });
   }
 
-  /** Utilisé par TicketCategoryService.create — rejette tout nom qui n'est
-   * pas dans la liste gérée par l'admin, ou désactivé. */
+  /** Rejette un nom de billet absent de la liste admin ou désactivé. */
   async assertActive(label: string): Promise<void> {
     const type = await this.repo.findOne({ where: { label } });
     if (!type || !type.is_active) {
@@ -68,9 +67,7 @@ export class TicketTierTypeService {
     return this.repo.save(type);
   }
 
-  /** Suppression définitive interdite si des catégories de billets existantes
-   * utilisent encore ce nom — désactiver reste la voie normale pour le
-   * retirer du dropdown sans casser l'historique. */
+  /** Suppression interdite si des billets utilisent ce nom : le désactiver le retire de la liste. */
   async remove(id: string): Promise<{ success: true }> {
     const type = await this.getById(id);
     const usageCount = await this.ticketCategoryRepo.count({ where: { name: type.label } });

@@ -15,10 +15,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { Event, EventStatus } from './event.entity';
 import { firstFreeSlug, slugify } from './slug';
 
-// Une fois soumis (hors DRAFT), seuls ces champs restent modifiables — les
-// autres (date, lieu, capacité...) sont dupliqués dans Order/Ticket au
-// moment de l'achat et jamais resynchronisés ; les rouvrir romprait la
-// cohérence des billets/commandes déjà émis.
+// Seuls champs modifiables après soumission : les autres sont recopiés dans les commandes et billets.
 const COSMETIC_FIELDS: Array<keyof CreateEventDto> = [
   'description',
   'poster_url',
@@ -28,10 +25,7 @@ const COSMETIC_FIELDS: Array<keyof CreateEventDto> = [
   'non_profit_document_url',
 ];
 
-// Défense en profondeur : même si le gateway type déjà son DTO, ce handler
-// TCP reste atteignable directement — seuls ces champs de CreateEventDto
-// sont recopiables sur l'entité, jamais status/commission_rate/validated_by
-// ou autre colonne interne au workflow de modération.
+// Défense en profondeur : seuls ces champs du DTO sont recopiés, jamais les colonnes internes de modération.
 const UPDATABLE_FIELDS: Array<keyof CreateEventDto> = [
   'title',
   'description',
@@ -117,14 +111,7 @@ export class EventService implements OnApplicationBootstrap {
     private readonly vatRateService: VatRateService,
   ) {}
 
-  /**
-   * Bug corrigé (règle produit jamais appliquée) : @IsDateString() sur le
-   * DTO ne vérifie qu'un format de date valide, jamais la cohérence
-   * métier — rien n'empêchait de créer un événement dans le passé, ni une
-   * fin antérieure au début. `existing` sert sur update() : si seul
-   * end_date change (start_date absent du dto), la comparaison se fait
-   * quand même contre le start_date déjà en base.
-   */
+  /** Refuse une date passée ou une fin avant le début ; existing compare au start_date en base lors d'un update(). */
   private assertValidDates(dto: { start_date?: string; end_date?: string }, existing?: Event): void {
     const startDate = dto.start_date
       ? new Date(dto.start_date)
@@ -181,10 +168,7 @@ export class EventService implements OnApplicationBootstrap {
     return this.saveWithSlug(event);
   }
 
-  /**
-   * Remplit l'adresse lisible des événements qui n'en ont pas encore
-   * (créés avant son introduction). Idempotent, exécuté à chaque démarrage.
-   */
+  /** Attribue au démarrage une adresse lisible aux événements qui n'en ont pas (idempotent). */
   async onApplicationBootstrap(): Promise<void> {
     try {
       const missing = await this.repo.find({ where: { slug: IsNull() }, order: { created_at: 'ASC' } });
@@ -207,10 +191,7 @@ export class EventService implements OnApplicationBootstrap {
     return firstFreeSlug(base, rows.map((r) => r.slug));
   }
 
-  /**
-   * Enregistre en attribuant l'adresse lisible. L'index unique tranche si
-   * deux créations simultanées visent la même adresse : on recalcule.
-   */
+  /** Enregistre avec l'adresse lisible ; en cas de collision sur l'index unique, on recalcule. */
   private async saveWithSlug(event: Event): Promise<Event> {
     for (let attempt = 0; ; attempt++) {
       event.slug = await this.freeSlug(event.title, event.id);
@@ -223,11 +204,7 @@ export class EventService implements OnApplicationBootstrap {
     }
   }
 
-  /**
-   * Taux standard/dégressif selon la jauge (config plateforme). L'exonération
-   * "à but non lucratif" du CDC ne s'applique qu'une fois le justificatif
-   * validé par l'admin (cf. validate()), pas dès la création du brouillon.
-   */
+  /** Taux standard ou dégressif selon la jauge ; l'exonération ne s'applique qu'une fois le justificatif validé. */
   private async computeCommissionRate(totalCapacity: number, isNonProfitValidated: boolean): Promise<number> {
     if (isNonProfitValidated) return 0;
     const config = await this.platformConfig.get();
@@ -236,16 +213,7 @@ export class EventService implements OnApplicationBootstrap {
       : config.commission_standard_percent;
   }
 
-  /**
-   * Bug corrigé : la commission 0% était accordée automatiquement dès que
-   * is_non_profit=true, sans qu'aucun admin n'ait jamais vérifié le
-   * justificatif — un organisateur pouvait s'auto-déclarer "à but non
-   * lucratif" et obtenir l'exonération sans contrôle. Étape dédiée,
-   * distincte de la validation de l'événement : l'admin examine
-   * `non_profit_document_url` puis approuve ou rejette explicitement.
-   * `validate()` ne consulte ensuite que `non_profit_verified` (jamais
-   * `is_non_profit` directement) pour calculer la commission finale.
-   */
+  /** Vérification du justificatif « but non lucratif » par l'admin, distincte de la validation de l'événement. */
   async verifyNonProfit(id: string, adminId: string, approved: boolean, reason?: string): Promise<Event> {
     const event = await this.getById(id);
     if (!event.is_non_profit) {
@@ -293,13 +261,7 @@ export class EventService implements OnApplicationBootstrap {
     event.non_profit_rejection_reason = null;
   }
 
-  /**
-   * Bug corrigé (CDC §9) : notification "première vente" jamais envoyée à
-   * l'organisateur. Bascule atomique (WHERE first_sale_notified = false)
-   * pour ne jamais notifier deux fois même en cas d'appels concurrents —
-   * appelé depuis le gateway uniquement après confirmation réelle du
-   * paiement (pas à la réservation, qui peut expirer sans achat).
-   */
+  /** CDC §9 : bascule atomique de first_sale_notified, appelée après confirmation réelle du paiement. */
   async markFirstSale(id: string): Promise<{ is_first_sale: boolean }> {
     const result = await this.repo
       .createQueryBuilder()
@@ -312,10 +274,7 @@ export class EventService implements OnApplicationBootstrap {
   }
 
   async getById(id: string): Promise<Event> {
-    // Bug corrigé : un id mal formé (pas un UUID — lien cassé, faute de
-    // frappe dans l'URL) faisait planter la requête Postgres avec
-    // "invalid input syntax for type uuid", remonté comme un 500 brut au
-    // lieu du 404 propre attendu par le frontend.
+    // Un id qui n'est pas un UUID renvoie 404 au lieu d'une erreur Postgres en 500.
     if (!isUUID(id)) {
       throw new RpcException({ statusCode: 404, message: 'Événement introuvable' });
     }
@@ -324,8 +283,7 @@ export class EventService implements OnApplicationBootstrap {
     return event;
   }
 
-  /** Résolution par lot (ex. liste admin des reversements, un événement par
-   * payout) — évite un aller-retour par événement. */
+  /** Résolution par lot pour éviter un aller-retour par événement. */
   async getByIds(ids: string[]): Promise<Event[]> {
     // Identifiants mal formés ignorés : un seul faisait échouer toute la
     // requête (erreur SQL « invalid input syntax for type uuid »).
@@ -334,13 +292,7 @@ export class EventService implements OnApplicationBootstrap {
     return this.repo.findBy({ id: In(validIds) });
   }
 
-  /**
-   * Événements visibles du public avec les filtres du site (recherche, ville,
-   * catégorie, prix, distance, période, « À la une »). Partagé par la liste
-   * et par les nombres des filtres : un nombre correspond toujours à la liste.
-   * Un événement désactivé par un admin reste affiché (avec son message,
-   * ventes bloquées) ; seul le masquage le retire.
-   */
+  /** Événements publics selon les filtres du site, partagé par la liste et les nombres des filtres. */
   private async publicEventsQuery(filters: PublicEventFilters) {
     const queryBuilder = this.repo.createQueryBuilder('e')
       .where('e.status IN (:...statuses)', { statuses: [EventStatus.PUBLISHED, EventStatus.SUSPENDED] })
@@ -359,18 +311,14 @@ export class EventService implements OnApplicationBootstrap {
       );
     }
 
-    // Filtre prix : au moins une catégorie de billet publique et active dont
-    // le prix TTC (TVA plateforme appliquée, comme affiché à l'achat) entre
-    // dans la fourchette demandée.
+    // Filtre prix : au moins un billet public et actif dont le prix TTC (TVA de l'événement) est dans la fourchette.
     if (filters.min_price !== undefined || filters.max_price !== undefined) {
       queryBuilder.andWhere((qb) => {
         const sub = qb
           .subQuery()
           .select('1')
           .from(TicketCategory, 'tc')
-          // event_id est varchar côté TicketCategory (jamais typé uuid), e.id
-          // est un uuid natif — comparaison directe rejetée par Postgres
-          // ("operator does not exist: character varying = uuid") sans cast.
+          // Cast nécessaire : event_id est varchar côté TicketCategory, e.id est un uuid.
           .where('tc.event_id = CAST(e.id AS text)')
           .andWhere('tc.visibility = :visibility')
           .andWhere('tc.is_active = true');
@@ -390,10 +338,7 @@ export class EventService implements OnApplicationBootstrap {
       });
     }
 
-    // Filtre distance : formule de Haversine directement en SQL (évite de
-    // charger tous les événements en mémoire pour les filtrer côté Node).
-    // Rayon terrestre moyen 6371 km.
-    // « À moins de X km » (radius_km) ou « Plus de X km » (min_distance_km).
+    // Filtre distance en SQL (formule de Haversine, rayon 6371 km) : à moins de radius_km ou à plus de min_distance_km.
     const distanceKm = `(6371 * acos(
             LEAST(1, GREATEST(-1,
               cos(radians(:lat)) * cos(radians(e.venue_latitude)) *
@@ -432,12 +377,7 @@ export class EventService implements OnApplicationBootstrap {
     return queryBuilder;
   }
 
-  /**
-   * Bug corrigé (CDC §3.4 : "recherche par mots-clés, filtre prix, filtre
-   * distance") : le catalogue public ne proposait que catégorie/ville — pas
-   * de recherche texte, pas de filtre prix, et les coordonnées GPS
-   * (venue_latitude/longitude) étaient stockées mais jamais exploitées.
-   */
+  /** CDC §3.4 : recherche par mots-clés, filtre prix et filtre distance. */
   async listPublished(
     filters: PublicEventFilters & { page?: number; sort?: 'date' | 'recent' | 'price_asc' | 'price_desc' },
   ): Promise<{ data: Event[]; total: number }> {
@@ -446,9 +386,7 @@ export class EventService implements OnApplicationBootstrap {
     const queryBuilder = await this.publicEventsQuery(filters);
 
     if (filters.sort === 'price_asc' || filters.sort === 'price_desc') {
-      // Prix « à partir de » : billet public et actif le moins cher, TTC avec
-      // le taux de TVA de chaque événement. Un événement sans billet en vente
-      // passe en dernier ; à prix égal, le plus proche.
+      // Prix « à partir de » TTC selon la TVA de chaque événement ; sans billet en vente en dernier, puis le plus proche.
       queryBuilder
         .addSelect(
           (sub) =>
@@ -472,11 +410,7 @@ export class EventService implements OnApplicationBootstrap {
     return { data, total };
   }
 
-  /**
-   * Nombre d'événements par catégorie (filtre Catégorie du site), avec les
-   * autres filtres choisis : seul le filtre Catégorie lui-même est ignoré.
-   * Sans période choisie, les événements pas encore terminés.
-   */
+  /** Nombre d'événements par catégorie, avec les autres filtres choisis (hors filtre Catégorie). */
   async countUpcomingByCategory(filters: PublicEventFilters = {}): Promise<Record<string, number>> {
     const queryBuilder = await this.publicEventsQuery({
       ...filters,
@@ -491,12 +425,7 @@ export class EventService implements OnApplicationBootstrap {
     return Object.fromEntries(rows.map((row) => [row.category, Number(row.count)]));
   }
 
-  /**
-   * Nombre d'événements par période (filtre Date du site), en une requête :
-   * même règle que la liste publique — un événement compte s'il se déroule
-   * au moins en partie dans la période (fin après le début de la période,
-   * début avant sa fin).
-   */
+  /** Nombre d'événements par période en une requête : compte s'il se déroule au moins en partie dans la période. */
   async countInPeriods(
     periods: Array<{ key: string; from: string; to?: string }>,
     filters: PublicEventFilters = {},
@@ -517,9 +446,7 @@ export class EventService implements OnApplicationBootstrap {
     return Object.fromEntries(periods.map((period, index) => [period.key, Number(row?.[`p${index}`] ?? 0)]));
   }
 
-  /** Événements candidats pour la recommandation par email (CDC — suggestions
-   * basées sur les achats précédents) : publiés, à venir, d'une catégorie
-   * donnée, en excluant ceux déjà achetés par ce destinataire. */
+  /** Candidats aux recommandations par email : publiés, à venir, de la catégorie, pas déjà achetés. */
   async listForRecommendation(
     category: string,
     excludeEventIds: string[],
@@ -556,12 +483,7 @@ export class EventService implements OnApplicationBootstrap {
     );
   }
 
-  /**
-   * Délai de traitement (48h ouvrées par défaut, configurable admin) écoulé
-   * depuis la soumission, en ajoutant le temps passé en attente d'une réponse
-   * de l'organisateur à chaque demande de complément d'info (délai suspendu
-   * pendant ce temps, cf. CDC section 3.3).
-   */
+  /** Délai de traitement écoulé depuis la soumission, suspendu pendant les demandes de complément (CDC §3.3). */
   private async computeValidationDeadline(event: Event): Promise<Date> {
     const config = await this.platformConfig.get();
     const requests = await this.validationRequestService.getByEvent(event.id);
@@ -619,18 +541,8 @@ export class EventService implements OnApplicationBootstrap {
     return this.repo.find({ where: { organizer_id: organizerId }, order: { created_at: 'DESC' } });
   }
 
-  /**
-   * Bug corrigé : la page admin "Événements" (gestion globale, tous statuts)
-   * n'a jamais été reliée au backend — elle affichait des données 100%
-   * fictives (lib/mock/admin-events.ts côté frontend), aucun événement
-   * réel n'y apparaissait jamais. `status` filtré en SQL (léger, peu de
-   * lignes) ; la recherche texte (titre/organisateur) reste côté gateway
-   * après enrichissement, l'organisateur n'existant pas dans cette base.
-   */
-  /**
-   * Liste admin de tous les événements : filtres (statut, catégorie, période,
-   * texte ou organisateurs correspondants), tri et pagination côté base.
-   */
+  /** Liste admin des événements : statut filtré en SQL, recherche texte faite par la gateway après enrichissement. */
+  /** Liste admin de tous les événements : filtres, tri et pagination côté base. */
   async listAll(filters: AdminEventListFilters = {}): Promise<{ data: Event[]; total: number }> {
     const limit = Math.min(filters.limit ?? 50, 100);
     const qb = this.repo.createQueryBuilder('e').skip(filters.offset ?? 0).take(limit);
@@ -722,18 +634,7 @@ export class EventService implements OnApplicationBootstrap {
     return this.repo.save(event);
   }
 
-  /**
-   * Bug corrigé (règle produit) : la duplication était possible à tout
-   * moment, y compris sur un événement dont il restait encore des billets
-   * à vendre — créant deux événements en concurrence directe sur le même
-   * stock. Réservée désormais aux événements totalement épuisés (cas
-   * d'usage réel : un artiste qui rejoue le même jour, au même endroit,
-   * une fois complet — pas un simple outil de clonage générique). Le
-   * clone reprend les dates de l'original tel quel (à ajuster ensuite via
-   * /evenements/:id/modifier, redirigé automatiquement côté frontend) et
-   * n'est plus suffixé "(copie)" : il doit se présenter comme un second
-   * événement à part entière, pas comme un doublon de l'original.
-   */
+  /** Duplication réservée aux événements épuisés ; le clone garde les dates de l'original, sans suffixe « (copie) ». */
   async duplicate(id: string, organizerId: string): Promise<Event> {
     const original = await this.getById(id);
     if (original.organizer_id !== organizerId) {
@@ -809,10 +710,7 @@ export class EventService implements OnApplicationBootstrap {
       throw new RpcException({ statusCode: 400, message: 'Seul un brouillon peut être soumis' });
     }
 
-    // Bug corrigé : rien n'empêchait de soumettre (puis faire valider) un
-    // événement sans aucune catégorie de billet — une fois publié, il
-    // apparaissait dans le catalogue public sans qu'aucun achat ne soit
-    // jamais possible (aucune catégorie à réserver).
+    // Soumission refusée sans au moins une catégorie de billet active.
     const categories = await this.ticketCategoryService.getByEvent(id);
     if (categories.length === 0) {
       throw new RpcException({
@@ -832,12 +730,7 @@ export class EventService implements OnApplicationBootstrap {
     if (event.status !== EventStatus.PENDING_VALIDATION) {
       throw new RpcException({ statusCode: 400, message: 'L\'événement n\'est pas en attente de validation' });
     }
-    // Bug corrigé : create()/update() rejettent désormais une date passée,
-    // mais un événement resté en attente de validation assez longtemps
-    // (délai de traitement, demande de complément d'info...) peut voir sa
-    // date de début franchir "maintenant" avant qu'un admin ne le traite —
-    // publier un événement déjà passé n'a pas de sens, mieux vaut le
-    // rejeter explicitement (motif clair pour l'organisateur).
+    // Refuse la validation d'un événement dont la date de début est déjà passée.
     if (new Date(event.start_date).getTime() < Date.now()) {
       throw new RpcException({
         statusCode: 400,
@@ -902,10 +795,7 @@ export class EventService implements OnApplicationBootstrap {
     return event;
   }
 
-  /**
-   * Désactivation par un admin en cas de problème : ventes bloquées, la page
-   * publique reste visible avec le message de l'admin. Réversible (unsuspend).
-   */
+  /** Désactivation par un admin : ventes bloquées, page publique visible avec son message ; réversible. */
   async suspend(id: string, adminId: string, dto: AdminActionDto): Promise<Event> {
     const event = await this.getById(id);
     if (event.status !== EventStatus.PUBLISHED) {
@@ -960,10 +850,7 @@ export class EventService implements OnApplicationBootstrap {
     return this.repo.save(event);
   }
 
-  /**
-   * « À la une » de l'accueil : seulement un événement visible du public
-   * (publié ou ventes suspendues, non masqué) et pas encore terminé.
-   */
+  /** « À la une » : seulement un événement visible du public et pas encore terminé. */
   /** Taux de la liste recopié sur l'événement (valeur et libellé). */
   private async applyVatRate(event: Event, vatRateId: string): Promise<void> {
     const vat = await this.vatRateService.resolve(vatRateId);
@@ -971,10 +858,7 @@ export class EventService implements OnApplicationBootstrap {
     event.vat_rate_label = vat.label;
   }
 
-  /**
-   * Correction du taux de TVA par l'admin, à la validation : seulement avant
-   * la publication (aucun billet vendu à l'ancien prix).
-   */
+  /** Correction du taux de TVA par l'admin, seulement avant publication. */
   async setVatRate(id: string, vatRateId: string): Promise<Event> {
     const event = await this.getById(id);
     if (![EventStatus.DRAFT, EventStatus.PENDING_VALIDATION].includes(event.status)) {
@@ -1023,10 +907,7 @@ export class EventService implements OnApplicationBootstrap {
     }
   }
 
-  /**
-   * Nouvelle date d'un report : les deux bornes ou aucune (« date à venir »),
-   * dans le futur, après la date actuelle de l'événement.
-   */
+  /** Nouvelle date d'un report : les deux bornes ou aucune, dans le futur, après la date actuelle. */
   parseNewDates(event: Event, start?: string, end?: string): { start: Date; end: Date } | null {
     if (!start && !end) return null;
     if (!start || !end) {
@@ -1040,10 +921,7 @@ export class EventService implements OnApplicationBootstrap {
     return { start: newStart, end: new Date(end) };
   }
 
-  /**
-   * Nouvelles dates appliquées : la date d'origine est conservée (celle de
-   * l'achat), la fin des ventes est décalée d'autant.
-   */
+  /** Applique les nouvelles dates en gardant celle d'origine et en décalant d'autant la fin des ventes. */
   private async moveDates(event: Event, start: Date, end: Date): Promise<void> {
     const delta = start.getTime() - new Date(event.start_date).getTime();
     if (!event.original_start_date) {
@@ -1064,11 +942,7 @@ export class EventService implements OnApplicationBootstrap {
     event.rescheduled_at = new Date();
   }
 
-  /**
-   * Report accepté par un admin. Avec une nouvelle date : l'événement reste
-   * publié, à la nouvelle date. Sans : il passe « Reporté », ventes et
-   * contrôle suspendus jusqu'à ce que l'organisateur fixe la date.
-   */
+  /** Report accepté : reste publié à la nouvelle date, sinon « Reporté » avec ventes et contrôle suspendus. */
   async postpone(id: string, reason: string, newDates: { start: Date; end: Date } | null): Promise<Event> {
     const event = await this.getById(id);
     this.assertPostponable(event);
@@ -1105,11 +979,7 @@ export class EventService implements OnApplicationBootstrap {
     return this.repo.save(event);
   }
 
-  /**
-   * Annulation définitive (remboursements déclenchés par la passerelle).
-   * Réservée aux admins : un organisateur passe par une demande d'annulation
-   * (CancellationService), acceptée ou refusée par un admin.
-   */
+  /** Annulation définitive réservée aux admins (remboursements déclenchés par la passerelle). */
   async cancel(id: string, actorId: string, dto: AdminActionDto, isAdmin: boolean): Promise<Event> {
     const event = await this.getById(id);
     if (!isAdmin) {

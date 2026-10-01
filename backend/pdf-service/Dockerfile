@@ -2,9 +2,7 @@
 # il embarque LLVM/Mesa)
 FROM node:22-slim AS base
 WORKDIR /app
-# Chromium système utilisé à la place du Chrome embarqué par Puppeteer.
-# PUPPETEER_SKIP_CHROMIUM_DOWNLOAD n'est plus lu depuis Puppeteer 22 :
-# sans PUPPETEER_SKIP_DOWNLOAD, chaque npm ci téléchargeait ~300 Mo de Chrome.
+# Chromium système plutôt que le Chrome de Puppeteer (PUPPETEER_SKIP_DOWNLOAD évite ~300 Mo par npm ci).
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 COPY package*.json ./
 # npm ci : installe exactement le lockfile, plus rapide que npm install.
@@ -17,9 +15,7 @@ COPY . .
 # complète dans l'étape production.
 RUN npm run build && npm prune --omit=dev --legacy-peer-deps
 
-# chromium-headless-shell : Chromium sans interface graphique, suffisant
-# pour page.pdf() et ~170 Mo plus léger que le paquet chromium complet.
-# fonts-liberation : équivalent métrique d'Arial (gabarits billet/facture).
+# chromium-headless-shell suffit pour page.pdf() ; fonts-liberation remplace Arial dans les gabarits.
 FROM node:22-slim AS runtime-base
 RUN apt-get update && apt-get install -y --no-install-recommends \
   chromium-headless-shell \

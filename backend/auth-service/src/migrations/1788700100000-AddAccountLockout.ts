@@ -1,10 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-/**
- * Verrouillage temporaire de compte après trop d'échecs de connexion
- * consécutifs (CDC §10.3 : rate limiting par IP ET par compte — seul le
- * volet IP existait jusqu'ici, voir AuthService.login()).
- */
+/** Verrouillage temporaire du compte après trop d'échecs de connexion (CDC §10.3). */
 export class AddAccountLockout1788700100000 implements MigrationInterface {
     name = 'AddAccountLockout1788700100000'
 
