@@ -1,6 +1,4 @@
-# Surcharges pour le développement local
-# Chargé par défaut via COMPOSE_FILE (.env). Ports des bases exposés sur
-# l'hôte. Hot reload des services : voir docker-compose.hotreload.yml.
+# Surcharges de développement local, chargées via COMPOSE_FILE : ports des bases exposés (hot reload : docker-compose.hotreload.yml).
 
 services:
 

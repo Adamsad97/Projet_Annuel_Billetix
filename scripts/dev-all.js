@@ -1,12 +1,5 @@
 #!/usr/bin/env node
-/**
- * Lance les 10 microservices backend en local (npm run start:dev), hors
- * Docker, en une seule commande. Chaque ligne de log est préfixée par le nom
- * du service. Ctrl+C arrête tous les processus enfants.
- *
- * Prérequis par service (cf. README B.2/B.3) : .env local configuré et
- * dépendances installées (`npm install --legacy-peer-deps`).
- */
+/** Lance les 10 microservices en local hors Docker (logs préfixés, Ctrl+C arrête tout ; voir README B.2/B.3). */
 const { spawn } = require('child_process');
 const path = require('path');
 

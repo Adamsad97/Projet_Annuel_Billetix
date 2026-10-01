@@ -1,10 +1,5 @@
 #!/usr/bin/env node
-/**
- * Lance `npm test` dans chaque microservice backend, côté hôte (hors
- * conteneur), dans l'ordre, et rapporte en fin d'exécution la liste des
- * services en échec. Nécessite un `npm install --legacy-peer-deps` déjà fait
- * dans chaque service (cf. README B.3).
- */
+/** Lance npm test dans chaque microservice sur l'hôte et liste les services en échec (voir README B.3). */
 const { spawnSync } = require('child_process');
 const path = require('path');
 

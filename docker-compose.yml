@@ -16,9 +16,7 @@ volumes:
 
 services:
 
-  # ──────────────────────────────────────────────────────────────────
-  # INFRASTRUCTURE — une base PostgreSQL dédiée par service
-  # ──────────────────────────────────────────────────────────────────
+  # ── INFRASTRUCTURE : une base PostgreSQL dédiée par service ──
 
   auth-db:
     image: postgres:16-alpine
@@ -186,9 +184,7 @@ services:
       start_interval: 2s
 
   minio:
-    # minio/minio n'est plus publié sur Docker Hub/Quay : build Chainguard
-    # (même binaire). Tourne en uid 65532 par défaut, qui ne peut pas écrire
-    # dans un volume neuf (créé root) → forcé en root.
+    # Build Chainguard de MinIO (même binaire), lancé en root pour écrire dans un volume neuf.
     image: cgr.dev/chainguard/minio:latest
     user: "0:0"
     restart: unless-stopped
@@ -230,17 +226,9 @@ services:
       start_period: 10s
       start_interval: 2s
 
-  # ──────────────────────────────────────────────────────────────────
-  # SERVICES MÉTIER
-  # ──────────────────────────────────────────────────────────────────
+  # ── SERVICES MÉTIER ──
 
-  # NODE_ENV des microservices : "development" par défaut, car en
-  # "production" TypeORM passe de synchronize à migrationsRun, et les
-  # migrations sont en retard sur les entités (ex. non_profit_verified,
-  # first_sale_notified absents) → schéma incomplet. Le code tourne quand
-  # même compilé (target production, node dist/main), sans watch ni bind
-  # mount. Passer BACKEND_NODE_ENV=production seulement une fois les
-  # migrations rattrapées.
+  # NODE_ENV « development » par défaut (synchronize) ; passer BACKEND_NODE_ENV=production une fois les migrations à jour.
   api-gateway:
     build:
       context: ./backend/api-gateway
@@ -267,9 +255,7 @@ services:
       ADMIN_SERVICE_PORT: 3009
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       MINIO_ENDPOINT: minio
-      # Hôte réellement joignable depuis le navigateur pour les URLs de
-      # fichiers renvoyées au client (posters/avatars/documents/billets PDF)
-      # — distinct de MINIO_ENDPOINT, interne au réseau Docker.
+      # Hôte MinIO joignable depuis le navigateur, distinct de MINIO_ENDPOINT (réseau Docker).
       MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost}
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
@@ -336,9 +322,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       APP_URL: ${APP_URL:-http://localhost:4000}
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
-      # Config plateforme (seuil/durée de verrouillage de compte) — voir
-      # PlatformConfigCache. Pas de cycle : admin-service ne dépend de rien
-      # côté auth.
+      # Config plateforme (verrouillage de compte) lue chez admin-service, sans dépendance circulaire.
       ADMIN_SERVICE_HOST: admin-service
       ADMIN_SERVICE_PORT: 3009
     depends_on:
@@ -371,9 +355,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@user-db:5432/users
       IBAN_ENCRYPTION_KEY: ${IBAN_ENCRYPTION_KEY}
       MINIO_ENDPOINT: minio
-      # Hôte réellement joignable depuis le navigateur pour les URLs de
-      # fichiers renvoyées au client (posters/avatars/documents/billets PDF)
-      # — distinct de MINIO_ENDPOINT, interne au réseau Docker.
+      # Hôte MinIO joignable depuis le navigateur, distinct de MINIO_ENDPOINT (réseau Docker).
       MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost}
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
@@ -410,9 +392,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@event-db:5432/events
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       MINIO_ENDPOINT: minio
-      # Hôte réellement joignable depuis le navigateur pour les URLs de
-      # fichiers renvoyées au client (posters/avatars/documents/billets PDF)
-      # — distinct de MINIO_ENDPOINT, interne au réseau Docker.
+      # Hôte MinIO joignable depuis le navigateur, distinct de MINIO_ENDPOINT (réseau Docker).
       MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost}
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
@@ -467,9 +447,7 @@ services:
       # d'envoyer le rappel J-1 (ReminderService).
       USER_SERVICE_HOST: user-service
       USER_SERVICE_PORT: 3002
-      # Pour résoudre l'email réel du compte avant d'envoyer les
-      # recommandations hebdomadaires (RecommendationService) — jamais celui,
-      # potentiellement fautif ou périmé, saisi sur une ancienne commande.
+      # Email réel du compte pour les recommandations hebdomadaires.
       AUTH_SERVICE_HOST: auth-service
       AUTH_SERVICE_PORT: 3001
     depends_on:
@@ -596,10 +574,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@billetix.fr}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-BilleTix}
-      # Liens cliqués par l'utilisateur dans ses emails -> le frontend
-      # (3000), jamais l'api-gateway (4000, réservé aux callbacks OAuth
-      # d'auth-service). Bug corrigé : APP_URL pointait vers le gateway,
-      # tous les liens (vérification email, reset mdp...) renvoyaient 404.
+      # Liens des emails vers le frontend (3000), jamais vers la gateway.
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       # Plus d'accès MinIO ici : la facture jointe est lue par l'api-gateway
       # (buckets billets/factures privés) et transmise dans le message.
@@ -626,9 +601,7 @@ services:
       PORT: 3008
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       MINIO_ENDPOINT: minio
-      # Hôte réellement joignable depuis le navigateur pour les URLs de
-      # fichiers renvoyées au client (posters/avatars/documents/billets PDF)
-      # — distinct de MINIO_ENDPOINT, interne au réseau Docker.
+      # Hôte MinIO joignable depuis le navigateur, distinct de MINIO_ENDPOINT (réseau Docker).
       MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost}
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
@@ -637,9 +610,7 @@ services:
       MINIO_BUCKET_INVOICES: ${MINIO_BUCKET_INVOICES:-invoices}
       ORDER_SERVICE_HOST: order-service
       ORDER_SERVICE_PORT: 3004
-      # Plafond de tentatives de génération PDF avant abandon + alerte admin
-      # (platform_settings, cf. PlatformConfigCache) — admin-service ne
-      # dépend de rien ici, aucun cycle.
+      # Plafond de tentatives de génération PDF lu chez admin-service, sans dépendance circulaire.
       ADMIN_SERVICE_HOST: admin-service
       ADMIN_SERVICE_PORT: 3009
     depends_on:
@@ -698,17 +669,7 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
-      # Bug corrigé : les Server Components (accueil, catalogue, détail
-      # événement, revente, création d'événement...) tournent dans le
-      # conteneur frontend et appelaient NEXT_PUBLIC_API_URL
-      # (localhost:4000) — injoignable depuis l'intérieur du conteneur,
-      # "localhost" y désignant le conteneur frontend lui-même. Toutes ces
-      # pages rendaient des listes vides sans erreur visible (fetch avalé
-      # par un .catch(() => [])). API_INTERNAL_URL cible l'api-gateway par
-      # son nom de service Docker, résolu par le DNS interne du réseau
-      # billetix-net — jamais exposé au bundle navigateur (pas de préfixe
-      # NEXT_PUBLIC_, donc invisible côté client, où il n'aurait de toute
-      # façon aucun sens).
+      # Server Components : API_INTERNAL_URL cible la gateway par son nom de service Docker (localhost désignerait le conteneur).
       API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api-gateway:4000/api/v1}
       # Adresse publique du site (aperçus de partage, adresses canoniques) :
       # la même que celle des liens d'emails.

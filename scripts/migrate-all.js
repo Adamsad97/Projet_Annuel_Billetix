@@ -1,10 +1,5 @@
 #!/usr/bin/env node
-/**
- * Exécute `npm run migration:run` dans chaque service possédant sa propre
- * base de données. Nécessite que les 7 bases (auth-db, user-db, event-db,
- * order-db, ticket-db, payment-db, admin-db) soient démarrées et
- * accessibles (`npm run infra` ou `npm start`).
- */
+/** Exécute migration:run dans chaque service qui a sa base (les 7 bases doivent tourner). */
 const { spawnSync } = require('child_process');
 const path = require('path');
 

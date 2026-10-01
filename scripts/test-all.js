@@ -1,9 +1,5 @@
 #!/usr/bin/env node
-/**
- * Lance `npm test` dans chaque microservice via `docker compose exec`, dans
- * l'ordre, et rapporte en fin d'exécution la liste des services en échec.
- * Nécessite que les conteneurs soient déjà démarrés (npm start / npm run dev).
- */
+/** Lance npm test dans chaque microservice via docker compose exec et liste les services en échec. */
 const { spawnSync } = require('child_process');
 
 const services = [
