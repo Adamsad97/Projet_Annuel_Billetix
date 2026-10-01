@@ -5,7 +5,7 @@
 // serveur (GET /events) et reflétés dans l'URL, donc partageables.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { EventCard } from "@/components/home/event-card";
+import { FeaturedEventCard } from "@/components/home/featured-event-card";
 import { FilterMenu, FilterOption } from "@/components/ui/filter-menu";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import { listCategories, type ApiCategory } from "@/lib/api/categories";
@@ -24,8 +24,7 @@ import {
   whenLabel,
   type CatalogueFilters,
 } from "@/lib/catalogue/filters";
-import type { MockEvent } from "@/lib/constants/events";
-import { apiEventToCard } from "@/lib/mappers/event-mappers";
+import { apiEventToFeatured, type FeaturedEvent } from "@/lib/mappers/event-mappers";
 import { cardClass } from "@/components/ui/card";
 import { filterSelectClass } from "@/components/ui/field";
 import { LoadMoreButton } from "@/components/ui/load-more-button";
@@ -51,7 +50,7 @@ export function CatalogueExplorer() {
   const [ready, setReady] = useState(false);
   const [categories, setCategories] = useState<ApiCategory[]>([]);
 
-  const [events, setEvents] = useState<MockEvent[]>([]);
+  const [events, setEvents] = useState<FeaturedEvent[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -95,10 +94,7 @@ export function CatalogueExplorer() {
   async function fetchPage(pageNumber: number) {
     const { data, total: count } = await listPublishedEvents({ ...apiParams, page: pageNumber });
     const cards = await Promise.all(
-      data.map(async (event) => ({
-        ...apiEventToCard(event, await getEventCategories(event.id).catch(() => [])),
-        categoryCode: event.category,
-      })),
+      data.map(async (event) => apiEventToFeatured(event, await getEventCategories(event.id).catch(() => []))),
     );
     return { cards, count };
   }
@@ -404,9 +400,9 @@ export function CatalogueExplorer() {
 
       {/* Résultats */}
       {loading ? (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy="true">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className={cardClass("h-72 animate-pulse")} />
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className={cardClass("h-96 animate-pulse")} />
           ))}
         </div>
       ) : (
@@ -416,14 +412,14 @@ export function CatalogueExplorer() {
           </p>
 
           {events.length > 0 ? (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {events.map((event) => (
-                <EventCard
+                <FeaturedEventCard
                   key={event.id}
                   event={{
                     ...event,
                     // Libellé du référentiel admin (chargé en parallèle des événements).
-                    categoryLabel: categories.find((c) => c.code === event.categoryCode)?.label,
+                    categoryLabel: categories.find((c) => c.code === event.categoryCode)?.label ?? event.categoryLabel,
                   }}
                 />
               ))}

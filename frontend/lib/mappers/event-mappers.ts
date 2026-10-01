@@ -1,11 +1,9 @@
 import type { ApiEvent, ApiTicketCategory } from "@/lib/api/events";
-import { apiCategoryMeta, type MockEvent } from "@/lib/constants/events";
+import { apiCategoryMeta } from "@/lib/constants/events";
 import type { EventDetail, TicketOption } from "@/lib/constants/event-details";
 import { euros as currency } from "@/lib/format/money";
 import { time as timeFormatter } from "@/lib/format/dates";
 
-const dayFormatter = new Intl.DateTimeFormat("fr-FR", { day: "2-digit" });
-const monthFormatter = new Intl.DateTimeFormat("fr-FR", { month: "short" });
 const fullDateFormatter = new Intl.DateTimeFormat("fr-FR", {
   weekday: "long",
   day: "numeric",
@@ -21,50 +19,14 @@ function lowestPrice(categories: ApiTicketCategory[]): number | null {
   return Math.min(...activePrices);
 }
 
-/**
- * Convertit un événement réel + ses catégories de billets (déjà chargées,
- * cf. N+1 assumé côté catalogue pour un affichage honnête du prix) en
- * carte affichable par <EventCard>.
- */
-export function apiEventToCard(event: ApiEvent, categories: ApiTicketCategory[]): MockEvent {
-  const meta = apiCategoryMeta[event.category] ?? apiCategoryMeta.AUTRE;
-  const start = new Date(event.start_date);
-  const min = lowestPrice(categories);
-  const isFree = min !== null && min === 0;
-
+/** Mention sur le visuel : ventes suspendues, complet ou dernières places. */
+function availabilityBadge(event: ApiEvent, categories: ApiTicketCategory[]): string | null {
+  if (event.status === "SUSPENDED") return "Ventes suspendues";
   const totalRemaining = categories.reduce((sum, c) => sum + c.remaining_quota, 0);
   const totalQuota = categories.reduce((sum, c) => sum + c.quota, 0);
-  const suspended = event.status === "SUSPENDED";
-  let badge: string | undefined;
-  if (suspended) {
-    badge = "Ventes suspendues";
-  } else if (totalQuota > 0 && totalRemaining === 0) {
-    badge = "Complet";
-  } else if (totalQuota > 0 && totalRemaining / totalQuota < 0.1) {
-    badge = `${totalRemaining} places restantes`;
-  }
-
-  return {
-    id: event.id,
-    slug: event.slug,
-    day: dayFormatter.format(start),
-    month: monthFormatter.format(start).replace(".", "."),
-    title: event.title,
-    subtitle: event.venue_name,
-    city: event.venue_city,
-    emoji: meta.emoji,
-    band: meta.band,
-    badge,
-    category: meta.label,
-    priceLabel: isFree
-      ? "Gratuit"
-      : min !== null
-        ? `À partir de ${currency.format(min)}`
-        : "Tarifs à venir",
-    free: isFree,
-    suspendedNotice: suspended ? event.suspension_reason ?? "" : null,
-    posterUrl: event.poster_url,
-  };
+  if (totalQuota > 0 && totalRemaining === 0) return "Complet";
+  if (totalQuota > 0 && totalRemaining / totalQuota < 0.1) return `${totalRemaining} places restantes`;
+  return null;
 }
 
 // Heure du lieu de l'événement (event.timezone), pas celle du serveur qui
@@ -81,7 +43,33 @@ function formatInZone(isoDate: string, timeZone: string, options: Intl.DateTimeF
 const SHORT_DATE: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
 const TIME: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
 
-function formatFeaturedDate(isoDate: string, timeZone: string): string {
+/** Jour calendaire (« 2026-10-01 ») dans le fuseau de l'événement. */
+function dayKey(date: Date, timeZone: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone }).format(date);
+  } catch {
+    return new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+  }
+}
+
+/**
+ * « Aujourd'hui · 18:00 », « Demain · 18:00 », « Ce week-end · sam. 18:00 »
+ * (samedi ou dimanche de la semaine en cours), sinon « 21 nov. 2026, 18:00 ».
+ * Jours comptés dans le fuseau de l'événement.
+ */
+function formatFeaturedDate(isoDate: string, timeZone: string, now = new Date()): string {
+  const start = new Date(isoDate);
+  const hour = formatInZone(isoDate, timeZone, TIME);
+  const toUtcDay = (key: string) => Date.parse(`${key}T00:00:00Z`) / 86_400_000;
+  const days = toUtcDay(dayKey(start, timeZone)) - toUtcDay(dayKey(now, timeZone));
+  if (days === 0) return `Aujourd'hui · ${hour}`;
+  if (days === 1) return `Demain · ${hour}`;
+  const weekday = new Date(`${dayKey(start, timeZone)}T00:00:00Z`).getUTCDay();
+  const todayWeekday = new Date(`${dayKey(now, timeZone)}T00:00:00Z`).getUTCDay();
+  const daysToSunday = (7 - todayWeekday) % 7;
+  if (days > 1 && days <= daysToSunday && (weekday === 6 || weekday === 0)) {
+    return `Ce week-end · ${formatInZone(isoDate, timeZone, { weekday: "short" })} ${hour}`;
+  }
   return formatInZone(isoDate, timeZone, { ...SHORT_DATE, ...TIME });
 }
 
@@ -98,6 +86,12 @@ export interface FeaturedEvent {
   dateLabel: string;
   /** null tant qu'aucune catégorie de billet active n'existe. */
   isFree: boolean | null;
+  /** « Gratuit », « Dès 42,00 € » ; null sans billet en vente. */
+  priceLabel: string | null;
+  /** « Complet », « 5 places restantes », « Ventes suspendues ». */
+  badge: string | null;
+  /** Code de catégorie (libellé du référentiel admin, côté catalogue). */
+  categoryCode: string;
   categoryLabel: string;
   categoryEmoji: string;
   band: string;
@@ -118,6 +112,9 @@ export function apiEventToFeatured(event: ApiEvent, categories: ApiTicketCategor
     posterUrl: event.poster_url,
     dateLabel: formatFeaturedDate(event.start_date, event.timezone),
     isFree: min === null ? null : min === 0,
+    priceLabel: min === null ? null : min === 0 ? "Gratuit" : `Dès ${currency.format(min)}`,
+    badge: availabilityBadge(event, categories),
+    categoryCode: event.category,
     categoryLabel: meta.label,
     categoryEmoji: meta.emoji,
     band: meta.band,

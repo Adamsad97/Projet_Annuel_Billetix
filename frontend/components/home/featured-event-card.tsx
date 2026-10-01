@@ -52,6 +52,12 @@ export function FeaturedEventCard({ event }: { event: FeaturedEvent }) {
           </svg>
           <span className="sr-only">Événement vérifié</span>
         </span>
+
+        {event.badge ? (
+          <span className="absolute right-4 top-4 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
+            {event.badge}
+          </span>
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-5">
@@ -74,9 +80,7 @@ export function FeaturedEventCard({ event }: { event: FeaturedEvent }) {
         <ul className="mt-1 flex flex-wrap gap-2">
           <Chip icon={<CalendarIcon />}>{event.dateLabel}</Chip>
           <Chip icon={<CountryFlag country={event.country} />}>{event.country}</Chip>
-          {event.isFree !== null ? (
-            <Chip icon={<TicketIcon />}>{event.isFree ? "Gratuit" : "Payant"}</Chip>
-          ) : null}
+          {event.priceLabel ? <Chip icon={<TicketIcon />}>{event.priceLabel}</Chip> : null}
           <Chip icon={<FolderIcon />}>{event.categoryLabel}</Chip>
         </ul>
       </div>

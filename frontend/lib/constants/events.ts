@@ -9,45 +9,6 @@ export type EventCategory =
   | "Danse"
   | "Autre";
 
-export interface MockEvent {
-  id: string;
-  /** Adresse lisible de la page publique. */
-  slug?: string | null;
-  day: string;
-  month: string;
-  title: string;
-  subtitle?: string;
-  city: string;
-  emoji: string;
-  band: string; // classes Tailwind du bandeau (dégradé)
-  badge?: string;
-  category: EventCategory;
-  priceLabel: string;
-  free?: boolean;
-  /** Ventes suspendues par l'administration : message affiché sur la carte. */
-  suspendedNotice?: string | null;
-  /** Affiche de l'événement ; à défaut, bandeau de couleur et emoji. */
-  posterUrl?: string | null;
-  /** Code de la catégorie (référentiel admin). */
-  categoryCode?: string;
-  /** Libellé défini dans le référentiel admin (prioritaire sur `category`). */
-  categoryLabel?: string;
-}
-
-// Bug corrigé (demande produit) : "Concert" et "Danse" utilisaient du
-// violet/fuchsia — retiré de toute la palette (texte, boutons, bandeaux).
-// Recoloré en bleu (cohérent avec la nouvelle couleur de marque) et cyan
-// pour rester distincts l'un de l'autre.
-export const categoryPillStyles: Record<EventCategory, string> = {
-  Concert: "bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30",
-  Théâtre: "bg-orange-500/15 text-orange-300 ring-1 ring-inset ring-orange-500/30",
-  Festival: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30",
-  Sport: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
-  Conférence: "bg-sky-500/15 text-sky-300 ring-1 ring-inset ring-sky-500/30",
-  Danse: "bg-cyan-500/15 text-cyan-300 ring-1 ring-inset ring-cyan-500/30",
-  Autre: "bg-gray-500/15 text-ink-3 ring-1 ring-inset ring-gray-500/30",
-};
-
 // Bug corrigé (demande produit, 2 passes) : bandeau événement décliné en 7
 // couleurs vives distinctes par catégorie, d'abord uniformisé en un
 // dégradé gris ardoise, puis passé en teinte unie (plus de dégradé du
