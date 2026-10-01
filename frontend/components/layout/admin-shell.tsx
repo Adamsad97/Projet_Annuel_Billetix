@@ -12,9 +12,11 @@ export function AdminShell({
   return (
     <div className="flex flex-1 flex-col bg-page">
       <AuthHeader />
-      <div className="flex flex-1">
+      {/* Colonne sur grand écran, menu dépliable au-dessus du contenu sinon.
+          min-w-0 : un tableau large défile dans son cadre au lieu d'élargir la page. */}
+      <div className="flex flex-1 flex-col lg:flex-row">
         <AdminSidebar active={active} />
-        <main className="flex-1 px-8 py-8">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">{children}</main>
       </div>
     </div>
   );

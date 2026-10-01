@@ -11,9 +11,10 @@ import { AdminShell } from "@/components/layout/admin-shell";
 import { DocumentGrid, type SubmittedDocument } from "@/components/admin/document-viewer";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import { listCategories, type ApiCategory } from "@/lib/api/categories";
-import { getEvent, getEventCategories, ticketVisibilityLabels, type ApiEvent, type ApiTicketCategory } from "@/lib/api/events";
+import { getEventCategories, ticketVisibilityLabels, type ApiEvent, type ApiTicketCategory } from "@/lib/api/events";
 import {
   approveEvent,
+  getAdminEvent,
   getPendingEvents,
   rejectEvent,
   requestEventInfo,
@@ -70,9 +71,9 @@ export default function AdminValidationDetailPage({
           setEvent(match);
           return;
         }
-        // Plus dans la file (déjà traité, ou lien obsolète) — au moins
-        // afficher les infos de base plutôt qu'une page cassée.
-        return getEvent(id).then(setEvent);
+        // Plus dans la file (déjà traité, ou lien obsolète) : fiche admin de
+        // l'événement, qui porte aussi le nom de l'organisateur.
+        return getAdminEvent(id).then(setEvent);
       })
       .catch((err) => {
         if (err instanceof ApiError && err.status === 404) {
