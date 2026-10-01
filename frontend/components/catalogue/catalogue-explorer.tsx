@@ -24,7 +24,7 @@ export function CatalogueExplorer() {
 
       {/* Résultats */}
       {loading ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3" aria-busy="true">
           {[0, 1, 2].map((i) => (
             <div key={i} className={cardClass("h-96 animate-pulse")} />
           ))}
@@ -36,7 +36,7 @@ export function CatalogueExplorer() {
           </p>
 
           {events.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
               {events.map((event) => (
                 <FeaturedEventCard key={event.id} event={event} />
               ))}
