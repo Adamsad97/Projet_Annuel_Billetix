@@ -52,6 +52,7 @@ import { findScheduleConflict, type ScheduledEvent } from "../ticket/agent-sched
 import { formatEventDate, formatEventSchedule } from "../common/event-date";
 import { AdminRecipients } from "../admin-alerts/admin-recipients.service";
 import { PeriodCountsDto } from "./dto/period-counts.dto";
+import { toPublicFilters, type PublicFilterQuery } from "./public-filters";
 
 /** Demande d'annulation ou de report telle que renvoyée par event-service. */
 interface ChangeRequestSnapshot {
@@ -108,38 +109,12 @@ export class EventController {
   @ApiQuery({ name: "date_from", required: false, description: "Début de période (ISO 8601)" })
   @ApiQuery({ name: "date_to", required: false, description: "Fin de période (ISO 8601)" })
   @ApiQuery({ name: "sort", required: false, enum: ["date", "recent", "price_asc", "price_desc"], description: "Tri : date de l'événement, nouveautés ou prix" })
-  listPublished(
-    @Query("category") category?: string,
-    @Query("city") city?: string,
-    @Query("page") page?: number,
-    @Query("q") q?: string,
-    @Query("min_price") min_price?: number,
-    @Query("max_price") max_price?: number,
-    @Query("lat") lat?: number,
-    @Query("lng") lng?: number,
-    @Query("radius_km") radius_km?: number,
-    @Query("min_distance_km") min_distance_km?: number,
-    @Query("featured") featured?: string,
-    @Query("date_from") date_from?: string,
-    @Query("date_to") date_to?: string,
-    @Query("sort") sort?: string,
-  ) {
+  listPublished(@Query() query: PublicFilterQuery) {
     return firstValueFrom(
       this.eventClient.send("event.list_published", {
-        category,
-        city,
-        page,
-        q,
-        min_price: min_price !== undefined ? Number(min_price) : undefined,
-        max_price: max_price !== undefined ? Number(max_price) : undefined,
-        lat: lat !== undefined ? Number(lat) : undefined,
-        lng: lng !== undefined ? Number(lng) : undefined,
-        radius_km: radius_km !== undefined ? Number(radius_km) : undefined,
-        min_distance_km: min_distance_km !== undefined ? Number(min_distance_km) : undefined,
-        featured: featured === "true" ? true : undefined,
-        date_from,
-        date_to,
-        sort: (["recent", "price_asc", "price_desc"] as const).find((value) => value === sort) ?? "date",
+        ...toPublicFilters(query),
+        page: query.page !== undefined ? Number(query.page) : undefined,
+        sort: (["recent", "price_asc", "price_desc"] as const).find((value) => value === query.sort) ?? "date",
       }),
     );
   }
@@ -158,16 +133,19 @@ export class EventController {
   @Public()
   @Get("categories/counts")
   @ApiOperation({ summary: "Nombre d'événements à venir par catégorie (code → nombre)" })
-  countEventsByCategory() {
-    return firstValueFrom(this.eventClient.send("event.count_by_category", {}));
+  countEventsByCategory(@Query() query: PublicFilterQuery) {
+    // Mêmes filtres que la liste : chaque nombre correspond à ce qu'elle affiche.
+    return firstValueFrom(this.eventClient.send("event.count_by_category", toPublicFilters(query)));
   }
 
   @Public()
   @Post("counts/by-period")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Nombre d'événements par période (filtre Date : aujourd'hui, ce week-end…)" })
-  countEventsByPeriod(@Body() dto: PeriodCountsDto) {
-    return firstValueFrom(this.eventClient.send("event.count_in_periods", { periods: dto.periods }));
+  countEventsByPeriod(@Body() dto: PeriodCountsDto, @Query() query: PublicFilterQuery) {
+    return firstValueFrom(
+      this.eventClient.send("event.count_in_periods", { periods: dto.periods, filters: toPublicFilters(query) }),
+    );
   }
 
   @Get("categories/all")
