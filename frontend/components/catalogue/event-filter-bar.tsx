@@ -108,6 +108,7 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
                     <FilterOption
                       key={option.id}
                       selected={search.filters.when === option.id}
+                      count={search.periodCounts?.[option.id]}
                       onSelect={() => { search.update({ when: option.id, from: "", to: "" }); close(); }}
                     >
                       {option.label}

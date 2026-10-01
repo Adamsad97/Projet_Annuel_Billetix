@@ -6,13 +6,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCategoryCounts, listCategories, type ApiCategory } from "@/lib/api/categories";
-import { getEventCategories, listPublishedEvents } from "@/lib/api/events";
+import { countEventsByPeriod, getEventCategories, listPublishedEvents } from "@/lib/api/events";
 import { ApiError } from "@/lib/api/http-error";
 import {
   DEFAULT_FILTERS,
   DEFAULT_RADIUS_KM,
   filtersFromUrl,
   filtersToUrl,
+  presetPeriods,
   toApiParams,
   type CatalogueFilters,
 } from "@/lib/catalogue/filters";
@@ -31,6 +32,8 @@ export function useEventSearch({ syncUrl = false, initialEvents }: EventSearchOp
   const [categories, setCategories] = useState<ApiCategory[]>([]);
   // Événements à venir par catégorie ; null tant que non chargé (pas de badge).
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number> | null>(null);
+  // Événements par période du filtre Date (« today », « weekend »…).
+  const [periodCounts, setPeriodCounts] = useState<Record<string, number> | null>(null);
 
   const [events, setEvents] = useState<FeaturedEvent[]>(initialEvents ?? []);
   const [total, setTotal] = useState(initialEvents?.length ?? 0);
@@ -59,6 +62,9 @@ export function useEventSearch({ syncUrl = false, initialEvents }: EventSearchOp
       .catch(() => undefined);
     getCategoryCounts()
       .then(setCategoryCounts)
+      .catch(() => undefined);
+    countEventsByPeriod(presetPeriods())
+      .then(setPeriodCounts)
       .catch(() => undefined);
   }, [syncUrl]);
 
@@ -176,6 +182,7 @@ export function useEventSearch({ syncUrl = false, initialEvents }: EventSearchOp
     update,
     categories,
     categoryCounts,
+    periodCounts,
     events,
     total,
     loading,

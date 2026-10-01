@@ -153,6 +153,13 @@ async function getJson<T>(path: string): Promise<T> {
   return data as T;
 }
 
+/** Nombre d'événements par période nommée (filtre Date), en une requête. */
+export function countEventsByPeriod(
+  periods: Array<{ key: string; from: string; to?: string }>,
+): Promise<Record<string, number>> {
+  return apiPost<Record<string, number>>("/events/counts/by-period", { periods });
+}
+
 export function listPublishedEvents(
   params: ListEventsParams = {},
 ): Promise<ListEventsResult> {
