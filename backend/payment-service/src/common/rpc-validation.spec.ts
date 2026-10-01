@@ -1,5 +1,5 @@
 import { RpcException } from '@nestjs/microservices';
-import { BlockPayoutPayload, PaypalWebhookPayload, RefundPayload } from './payloads';
+import { BlockPayoutPayload, RefundPayload, StripeWebhookPayload } from './payloads';
 import { rpcValidationPipe } from './rpc-validation';
 
 const pipe = rpcValidationPipe();
@@ -23,8 +23,8 @@ describe('Validation des messages internes (payment-service)', () => {
   });
 
   it('transmet le corps brut d\'un webhook sans le modifier (signature intacte)', async () => {
-    const raw = '{"event_type":"PAYMENT.CAPTURE.COMPLETED", "resource": {"id":"X"} }';
-    const headers = { 'paypal-transmission-id': 'abc', 'PAYPAL-AUTH-ALGO': 'SHA256withRSA' };
-    await expect(run(PaypalWebhookPayload, { payload: raw, headers })).resolves.toEqual({ payload: raw, headers });
+    const raw = '{"type":"payment_intent.succeeded", "data": {"object":{"id":"pi_X"}} }';
+    const signature = 't=1,v1=abc';
+    await expect(run(StripeWebhookPayload, { payload: raw, signature })).resolves.toEqual({ payload: raw, signature });
   });
 });

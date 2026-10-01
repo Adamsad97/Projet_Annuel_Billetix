@@ -1,11 +1,7 @@
 import { plainToInstance, Type } from 'class-transformer';
 import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Max, Min, validateSync } from 'class-validator';
 
-/**
- * Configuration requise par payment-service, vérifiée au démarrage. Les
- * moyens de paiement facultatifs (PayPal, Orange Money, Wave) ne sont exigés
- * que s'ils sont utilisés : leurs clés restent optionnelles ici.
- */
+/** Configuration requise par payment-service, vérifiée au démarrage. */
 class PaymentServiceEnvironment {
   @IsString() @IsNotEmpty() DATABASE_URL: string;
   @IsString() @IsNotEmpty() RABBITMQ_URL: string;

@@ -9,7 +9,6 @@ import {
   Matches,
   IsInt,
   IsNumber,
-  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -70,22 +69,6 @@ export class ConnectAccountPayload {
 export class StripeWebhookPayload {
   @IsString() @MaxLength(WEBHOOK_MAX) payload: string;
   @IsString() @MaxLength(1000) signature: string;
-}
-
-export class PaypalWebhookPayload {
-  @IsString() @MaxLength(WEBHOOK_MAX) payload: string;
-  @IsObject() headers: Record<string, string>;
-}
-
-export class OrangeMoneyCallbackPayload {
-  @IsString() @MaxLength(512) pay_token: string;
-  @IsString() @MaxLength(100) order_id: string;
-  @IsString() @MaxLength(512) notif_token: string;
-}
-
-export class WaveWebhookPayload {
-  @IsString() @MaxLength(WEBHOOK_MAX) payload: string;
-  @IsString() @MaxLength(1000) signatureHeader: string;
 }
 
 // ─── Reversements ───────────────────────────────────────────────────────────

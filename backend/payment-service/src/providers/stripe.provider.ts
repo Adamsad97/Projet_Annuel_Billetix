@@ -9,8 +9,7 @@ import {
 
 /**
  * Adaptateur fin autour de StripeService (qui gère aussi les virements aux
- * organisateurs, hors périmètre de ce contrat commun) pour le rendre
- * interchangeable avec les autres prestataires de paiement acheteur.
+ * organisateurs, hors périmètre de ce contrat) pour le paiement acheteur.
  */
 @Injectable()
 export class StripePaymentProvider implements PaymentProviderPort {

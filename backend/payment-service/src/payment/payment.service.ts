@@ -4,19 +4,9 @@ import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { DataSource, Repository } from 'typeorm';
-import { OrangeMoneyProvider } from '../providers/orange-money.provider';
-import { PaymentProviderPort } from '../providers/payment-provider.interface';
-import { PaypalProvider } from '../providers/paypal.provider';
 import { StripePaymentProvider } from '../providers/stripe.provider';
-import { WaveProvider } from '../providers/wave.provider';
 import { PayoutService } from '../payout/payout.service';
 import { Payment, PaymentProvider, PaymentStatus } from './payment.entity';
-
-interface ResolvedProvider {
-  provider: PaymentProvider;
-  implementation: PaymentProviderPort;
-  currency: string;
-}
 
 @Injectable()
 export class PaymentService {
@@ -25,56 +15,9 @@ export class PaymentService {
     private readonly dataSource: DataSource,
     private readonly config: ConfigService,
     private readonly stripeProvider: StripePaymentProvider,
-    private readonly paypalProvider: PaypalProvider,
-    private readonly orangeMoneyProvider: OrangeMoneyProvider,
-    private readonly waveProvider: WaveProvider,
     private readonly payoutService: PayoutService,
     @Inject('ORDER_SERVICE') private readonly orderClient: ClientProxy,
   ) {}
-
-  /**
-   * Résout le prestataire réel à partir de la méthode de paiement choisie
-   * par l'acheteur (order.payment_method). Apple Pay/Google Pay ne sont pas
-   * des prestataires à part — ce sont des méthodes de paiement au sein du
-   * même PaymentIntent Stripe (choisies par le navigateur/l'appareil).
-   */
-  private resolveProvider(paymentMethod: string): ResolvedProvider {
-    switch (paymentMethod) {
-      case 'STRIPE':
-      case 'APPLE_PAY':
-      case 'GOOGLE_PAY':
-        return { provider: PaymentProvider.STRIPE, implementation: this.stripeProvider, currency: 'eur' };
-      case 'PAYPAL':
-        return { provider: PaymentProvider.PAYPAL, implementation: this.paypalProvider, currency: 'eur' };
-      case 'ORANGE_MONEY':
-        return {
-          provider: PaymentProvider.ORANGE_MONEY,
-          implementation: this.orangeMoneyProvider,
-          currency: this.config.get<string>('ORANGE_MONEY_CURRENCY', 'OUV'),
-        };
-      case 'WAVE':
-        return {
-          provider: PaymentProvider.WAVE,
-          implementation: this.waveProvider,
-          currency: this.config.get<string>('WAVE_CURRENCY', 'XOF'),
-        };
-      default:
-        throw new RpcException({ statusCode: 400, message: `Moyen de paiement non supporté : ${paymentMethod}` });
-    }
-  }
-
-  private providerImplementationFor(provider: PaymentProvider): PaymentProviderPort {
-    switch (provider) {
-      case PaymentProvider.STRIPE:
-        return this.stripeProvider;
-      case PaymentProvider.PAYPAL:
-        return this.paypalProvider;
-      case PaymentProvider.ORANGE_MONEY:
-        return this.orangeMoneyProvider;
-      case PaymentProvider.WAVE:
-        return this.waveProvider;
-    }
-  }
 
   async createIntent(data: {
     order_id: string;
@@ -84,7 +27,6 @@ export class PaymentService {
     payment_id: string;
     provider: PaymentProvider;
     client_secret?: string;
-    redirect_url?: string;
   }> {
     const existing = await this.repo.findOne({ where: { order_id: data.order_id } });
     if (existing && existing.status === PaymentStatus.PAID) {
@@ -93,10 +35,7 @@ export class PaymentService {
 
     // Le montant à payer n'est jamais fourni par le client — toujours relu
     // depuis order-service (source de vérité) pour empêcher un acheteur de
-    // payer le montant de son choix pour n'importe quelle commande. Le
-    // moyen de paiement, lui, vient bien du choix de l'acheteur au moment
-    // de la commande (order.payment_method) — ce n'est pas une donnée
-    // sensible, juste une préférence de canal de paiement.
+    // payer le montant de son choix pour n'importe quelle commande.
     const { order } = await firstValueFrom(
       this.orderClient.send('order.get', { id: data.order_id }),
     ) as { order: { buyer_id: string; total_amount_ttc: number; payment_method: string } };
@@ -119,10 +58,13 @@ export class PaymentService {
 
     const amount_ttc = Number(order.total_amount_ttc);
     const amount_cents = Math.round(amount_ttc * 100);
-    const { provider, implementation, currency } = this.resolveProvider(order.payment_method);
+    if (order.payment_method !== 'STRIPE') {
+      throw new RpcException({ statusCode: 400, message: `Moyen de paiement non supporté : ${order.payment_method}` });
+    }
+    const currency = 'eur';
 
     const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
-    const result = await implementation.createPayment({
+    const result = await this.stripeProvider.createPayment({
       amountCents: amount_cents,
       currency,
       orderId: data.order_id,
@@ -134,18 +76,15 @@ export class PaymentService {
     const payment = existing ?? this.repo.create({ order_id: data.order_id, amount: amount_ttc });
     payment.amount = amount_ttc;
     payment.currency = currency;
-    payment.provider = provider;
+    payment.provider = PaymentProvider.STRIPE;
     payment.provider_payment_id = result.providerPaymentId;
     payment.provider_client_secret = result.clientSecret ?? null;
-    payment.provider_redirect_url = result.redirectUrl ?? null;
-    payment.provider_notif_token = result.notifToken ?? null;
     await this.repo.save(payment);
 
     return {
       payment_id: payment.id,
-      provider,
+      provider: PaymentProvider.STRIPE,
       client_secret: result.clientSecret,
-      redirect_url: result.redirectUrl,
     };
   }
 
@@ -154,8 +93,7 @@ export class PaymentService {
    * Les webhooks sont parfois redélivrés (timeout, retry) — sans cette
    * garde au niveau SQL, deux appels quasi simultanés liraient tous deux
    * `status != PAID` avant que l'un des deux ne sauvegarde, provoquant une
-   * double génération de billets et un double reversement. Commun à tous
-   * les prestataires.
+   * double génération de billets et un double reversement.
    */
   private async markPaidIdempotent(payment: Payment): Promise<boolean> {
     const result = await this.repo
@@ -178,83 +116,6 @@ export class PaymentService {
     if (!payment) {
       throw new RpcException({ statusCode: 404, message: 'Paiement introuvable' });
     }
-
-    const wasAlreadyPaid = await this.markPaidIdempotent(payment);
-    return Object.assign(payment, { _wasAlreadyPaid: wasAlreadyPaid });
-  }
-
-  /**
-   * PayPal : le webhook `CHECKOUT.ORDER.APPROVED` déclenche la capture
-   * effective des fonds côté serveur (jamais côté client) — l'ID de
-   * commande PayPal est remplacé par l'ID de capture réel, seul utilisable
-   * ensuite pour un remboursement.
-   */
-  async confirmPaypalOrderApproved(
-    paypalOrderId: string,
-  ): Promise<(Payment & { _wasAlreadyPaid: boolean }) | null> {
-    const payment = await this.repo.findOne({
-      where: { provider_payment_id: paypalOrderId, provider: PaymentProvider.PAYPAL },
-    });
-    if (!payment) return null;
-    if (payment.status === PaymentStatus.PAID) {
-      return Object.assign(payment, { _wasAlreadyPaid: true });
-    }
-
-    const { captureId, status } = await this.paypalProvider.captureOrder(paypalOrderId);
-    if (status !== 'COMPLETED') {
-      payment.status = PaymentStatus.FAILED;
-      payment.failure_reason = `Capture PayPal : ${status}`;
-      await this.repo.save(payment);
-      return Object.assign(payment, { _wasAlreadyPaid: false });
-    }
-
-    payment.provider_payment_id = captureId;
-    await this.repo.save(payment);
-
-    const wasAlreadyPaid = await this.markPaidIdempotent(payment);
-    return Object.assign(payment, { _wasAlreadyPaid: wasAlreadyPaid });
-  }
-
-  /**
-   * Orange Money : le callback de notification n'est jamais fait confiance
-   * seul — le jeton `notif_token` est revérifié, puis le statut réel de la
-   * transaction est requêté auprès d'Orange Money avant de valider.
-   */
-  async confirmOrangeMoneyCallback(
-    payToken: string,
-    orderId: string,
-    notifToken: string,
-  ): Promise<(Payment & { _wasAlreadyPaid: boolean }) | null> {
-    const payment = await this.repo.findOne({
-      where: { provider_payment_id: payToken, provider: PaymentProvider.ORANGE_MONEY },
-    });
-    if (!payment) return null;
-    if (payment.status === PaymentStatus.PAID) {
-      return Object.assign(payment, { _wasAlreadyPaid: true });
-    }
-    if (payment.provider_notif_token !== notifToken) {
-      throw new RpcException({ statusCode: 403, message: 'Jeton de notification Orange Money invalide' });
-    }
-
-    const status = await this.orangeMoneyProvider.getTransactionStatus(payToken, orderId);
-    if (status !== 'SUCCESS') {
-      payment.status = PaymentStatus.FAILED;
-      payment.failure_reason = `Statut Orange Money : ${status}`;
-      await this.repo.save(payment);
-      return Object.assign(payment, { _wasAlreadyPaid: false });
-    }
-
-    const wasAlreadyPaid = await this.markPaidIdempotent(payment);
-    return Object.assign(payment, { _wasAlreadyPaid: wasAlreadyPaid });
-  }
-
-  async confirmWaveCheckoutCompleted(
-    sessionId: string,
-  ): Promise<(Payment & { _wasAlreadyPaid: boolean }) | null> {
-    const payment = await this.repo.findOne({
-      where: { provider_payment_id: sessionId, provider: PaymentProvider.WAVE },
-    });
-    if (!payment) return null;
 
     const wasAlreadyPaid = await this.markPaidIdempotent(payment);
     return Object.assign(payment, { _wasAlreadyPaid: wasAlreadyPaid });
@@ -356,8 +217,7 @@ export class PaymentService {
         });
       }
 
-      const providerImplementation = this.providerImplementationFor(payment.provider);
-      await providerImplementation.refund(payment.provider_payment_id, amount_cents);
+      await this.stripeProvider.refund(payment.provider_payment_id, amount_cents);
 
       payment.refunded_amount = parseFloat((alreadyRefunded + requestedAmount).toFixed(2));
       payment.refunded_at = new Date();
