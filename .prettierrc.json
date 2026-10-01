@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/prettierrc",
+  "printWidth": 120,
+  "trailingComma": "all",
+  "semi": true,
+  "singleQuote": false,
+  "endOfLine": "lf",
+  "overrides": [
+    {
+      "files": [
+        "backend/admin-service/**",
+        "backend/event-service/**",
+        "backend/notification-service/**",
+        "backend/order-service/**",
+        "backend/payment-service/**",
+        "backend/pdf-service/**",
+        "backend/ticket-service/**",
+        "backend/user-service/**"
+      ],
+      "options": { "singleQuote": true }
+    }
+  ]
+}

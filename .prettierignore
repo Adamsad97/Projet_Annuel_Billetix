@@ -1,0 +1,8 @@
+# Fichiers générés, dépendances et données : jamais reformatés.
+**/node_modules/
+**/dist/
+**/.next/
+**/coverage/
+**/package-lock.json
+**/*.hbs
+backend/infra/
