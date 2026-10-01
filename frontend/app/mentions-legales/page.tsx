@@ -5,14 +5,14 @@ export default function MentionsLegalesPage() {
     <LegalPage title="Mentions légales" updatedLabel="1 juillet 2026">
       <LegalSection title="Éditeur du site">
         <p>
-          BilletiX SAS, immatriculée sous le numéro SIRET 123 456 789 00012,
+          BilleTix SAS, immatriculée sous le numéro SIRET 123 456 789 00012,
           dont le siège social est situé au 1 rue de la Billetterie, 75001
           Paris. Numéro de TVA intracommunautaire : FR12345678900.
         </p>
       </LegalSection>
 
       <LegalSection title="Directeur de la publication">
-        <p>Le représentant légal de BilletiX SAS.</p>
+        <p>Le représentant légal de BilleTix SAS.</p>
       </LegalSection>
 
       <LegalSection title="Hébergement">
@@ -24,7 +24,7 @@ export default function MentionsLegalesPage() {
 
       <LegalSection title="Propriété intellectuelle">
         <p>
-          L&apos;ensemble des contenus présents sur BilletiX (textes, logos,
+          L&apos;ensemble des contenus présents sur BilleTix (textes, logos,
           visuels, structure) est protégé par le droit d&apos;auteur. Toute
           reproduction sans autorisation est interdite.
         </p>

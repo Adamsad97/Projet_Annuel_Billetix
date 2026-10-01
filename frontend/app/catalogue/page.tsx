@@ -13,7 +13,7 @@ export default function CataloguePage() {
           <div className="mb-8">
             <h1 className="text-2xl font-bold text-ink-1">Catalogue</h1>
             <p className="mt-1 text-sm text-ink-5">
-              Tous les événements disponibles sur BilletiX.
+              Tous les événements disponibles sur BilleTix.
             </p>
           </div>
 

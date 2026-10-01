@@ -123,7 +123,7 @@ export function NewsletterComposer() {
             required
             value={subject}
             onChange={(event) => setSubject(event.target.value)}
-            placeholder="Les nouveautés BilletiX du mois"
+            placeholder="Les nouveautés BilleTix du mois"
             className={fieldClass("px-4 py-3")}
           />
         </label>

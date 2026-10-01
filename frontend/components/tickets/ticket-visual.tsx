@@ -8,7 +8,7 @@ export function TicketVisual({ ticket }: { ticket: TicketDetail }) {
       {/* Bug corrigé : bandeau à couleur de marque fixe (ticket.band),
           jamais liée au thème — texte épinglé en blanc. */}
       <div className={`flex items-center justify-between ${ticket.band} px-6 py-4`}>
-        <span className="text-lg font-extrabold tracking-tight text-white">BilletiX</span>
+        <span className="text-lg font-extrabold tracking-tight text-white">BilleTix</span>
         <span className="text-xs text-white/80">#{ticket.reference}</span>
       </div>
 

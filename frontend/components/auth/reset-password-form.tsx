@@ -82,7 +82,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
           Nouveau mot de passe <span>🔑</span>
         </h1>
         <p className="mt-1 text-sm text-accent/70">
-          Choisissez un nouveau mot de passe pour votre compte BilletiX.
+          Choisissez un nouveau mot de passe pour votre compte BilleTix.
         </p>
       </div>
 

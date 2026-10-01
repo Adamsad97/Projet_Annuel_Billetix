@@ -13,7 +13,7 @@ export default function AidePage() {
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-ink-1">Centre d&apos;aide</h1>
           <p className="mt-1 text-sm text-ink-5">
-            Les réponses aux questions les plus fréquentes sur BilletiX.
+            Les réponses aux questions les plus fréquentes sur BilleTix.
           </p>
         </div>
 

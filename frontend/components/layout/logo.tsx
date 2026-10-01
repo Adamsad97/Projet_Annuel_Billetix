@@ -3,7 +3,7 @@
 // Logo — mot-symbole "BilleTix" en capitales B/T, très gras ("Bille" ink
 // adaptatif, "Tix" en corail de marque), accroche corail alignée à droite dessous, et
 // icône de deux billets superposés qui chevauche la fin du mot (demande
-// produit, style de la référence fournie — dessin propre à BilletiX).
+// produit, style de la référence fournie — dessin propre à BilleTix).
 // Bug corrigé : la première icône (étiquettes verticales à pointe) ne se
 // lisait pas comme un billet — reprise en billets horizontaux à encoches
 // latérales en demi-cercle + perforation du talon + étoile, codes visuels

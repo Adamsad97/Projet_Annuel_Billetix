@@ -85,7 +85,7 @@ export function ResellForm({ ticket }: { ticket: TicketDetail }) {
       </label>
       <p className="mt-2 text-xs text-ink-5">
         🛡️ Prix plafonné à la valeur faciale ({ticket.unitPriceTtc.toFixed(2)} €) — la
-        revente à profit n&apos;est pas autorisée sur BilletiX.
+        revente à profit n&apos;est pas autorisée sur BilleTix.
       </p>
 
       {error ? (

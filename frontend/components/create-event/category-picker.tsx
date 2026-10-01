@@ -17,7 +17,7 @@ export function CategoryPicker({
   if (categories.length === 0) {
     return (
       <p className="text-sm text-ink-5">
-        Aucune catégorie disponible pour le moment — contactez l&apos;équipe BilletiX.
+        Aucune catégorie disponible pour le moment — contactez l&apos;équipe BilleTix.
       </p>
     );
   }

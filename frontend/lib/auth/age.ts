@@ -20,5 +20,5 @@ export function underageMessage(minimumAge: number): string {
   // L'âge minimum est réglable par l'admin : « majeures » seulement s'il
   // correspond bien à la majorité (ou plus).
   const audience = minimumAge >= 18 ? "aux personnes majeures" : `aux personnes d'au moins ${minimumAge} ans`;
-  return `Vous devez avoir au moins ${minimumAge} ans pour utiliser BilletiX. L'inscription est réservée ${audience}.`;
+  return `Vous devez avoir au moins ${minimumAge} ans pour utiliser BilleTix. L'inscription est réservée ${audience}.`;
 }

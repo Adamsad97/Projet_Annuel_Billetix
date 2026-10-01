@@ -181,7 +181,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
           Bienvenue <span>👋</span>
         </h1>
         <p className="mt-1 text-sm text-accent/70">
-          Connectez-vous à votre compte BilleTiX
+          Connectez-vous à votre compte BilleTix
         </p>
       </div>
 

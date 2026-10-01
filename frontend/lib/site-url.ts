@@ -19,4 +19,4 @@ export const SITE_URL = parseSiteUrl(process.env.SITE_URL);
  * propre openGraph remplace entièrement celui du layout : elle doit les
  * reprendre.
  */
-export const SHARED_OPEN_GRAPH = { siteName: "BilletiX", locale: "fr_FR", type: "website" } as const;
+export const SHARED_OPEN_GRAPH = { siteName: "BilleTix", locale: "fr_FR", type: "website" } as const;

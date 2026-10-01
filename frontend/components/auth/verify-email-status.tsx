@@ -72,7 +72,7 @@ export function VerifyEmailStatus({ token }: { token: string | null }) {
       </div>
       <h1 className="text-2xl font-bold text-ink-1">Adresse email vérifiée</h1>
       <p className="mt-2 text-sm text-accent/70">
-        Votre compte BilletiX est maintenant actif. Vous pouvez vous connecter et
+        Votre compte BilleTix est maintenant actif. Vous pouvez vous connecter et
         profiter de tous les événements.
       </p>
 

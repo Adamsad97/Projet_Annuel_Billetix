@@ -27,7 +27,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   // Base des URL absolues (aperçus de partage, adresses canoniques).
   metadataBase: SITE_URL,
-  title: "BilletiX — Votre prochain événement commence ici",
+  title: "BilleTix — Votre prochain événement commence ici",
   description:
     "Des milliers d'événements. Billets QR code à usage unique envoyés en 5 minutes.",
   openGraph: { ...SHARED_OPEN_GRAPH, url: "/" },

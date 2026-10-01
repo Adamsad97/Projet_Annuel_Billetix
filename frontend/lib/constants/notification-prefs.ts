@@ -70,7 +70,7 @@ export const notificationPrefGroups: { title: string; prefs: NotificationPref[] 
       },
       {
         id: "newsletter",
-        label: "Newsletter BilletiX",
+        label: "Newsletter BilleTix",
         description: "Actualités et nouveautés de la plateforme",
         defaultEnabled: false,
       },

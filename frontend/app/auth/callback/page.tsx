@@ -165,7 +165,7 @@ function OAuthCallbackContent() {
                 {firstName ? `Bienvenue ${firstName} !` : "Bienvenue !"}
               </h1>
               <p className="mt-1 text-sm text-accent/70">
-                Une dernière étape : indiquez votre date de naissance. BilletiX est
+                Une dernière étape : indiquez votre date de naissance. BilleTix est
                 réservé aux personnes d&apos;au moins {minimumAge} ans.
               </p>
             </div>

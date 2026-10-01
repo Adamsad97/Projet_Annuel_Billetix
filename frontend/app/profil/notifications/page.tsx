@@ -10,7 +10,7 @@ export default function NotificationPrefsPage() {
       <div className="mb-6">
         <h1 className="text-xl font-bold text-ink-1">Notifications</h1>
         <p className="mt-1 text-sm text-ink-5">
-          Choisissez les emails que vous souhaitez recevoir de BilletiX.
+          Choisissez les emails que vous souhaitez recevoir de BilleTix.
         </p>
       </div>
 

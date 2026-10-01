@@ -69,7 +69,7 @@ export const faqCategories: FaqCategory[] = [
           "Les reversements sont possibles au plus tôt 2 jours ouvrés (J+2) après la fin de votre événement, une fois votre vérification d'identité (KYC) complétée dans Paiements.",
       },
       {
-        question: "Quelle commission BilletiX prélève-t-elle ?",
+        question: "Quelle commission BilleTix prélève-t-elle ?",
         answer:
           "5,5 % + 0,30 € par transaction en carte bancaire ou PayPal. Les événements associatifs à but non lucratif peuvent être exonérés sur justificatif.",
       },

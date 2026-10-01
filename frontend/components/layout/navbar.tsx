@@ -103,7 +103,7 @@ export function Navbar({ active = "/catalogue" }: { active?: string }) {
             <>
               {/* Masqué pour ADMIN/SUPER_ADMIN : le lien "Back-office" du
                   menu suffit déjà, et le prénom du compte de bootstrap
-                  ("Admin BilletiX") créait un doublon visuel confus. */}
+                  ("Admin BilleTix") créait un doublon visuel confus. */}
               {user.role !== "ADMIN" && user.role !== "SUPER_ADMIN" ? (
                 <Link
                   href="/profil"

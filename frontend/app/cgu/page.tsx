@@ -6,7 +6,7 @@ export default function CguPage() {
       <LegalSection title="1. Objet">
         <p>
           Les présentes conditions régissent l&apos;utilisation de la
-          plateforme BilletiX, qui met en relation des organisateurs
+          plateforme BilleTix, qui met en relation des organisateurs
           d&apos;événements et des acheteurs de billets.
         </p>
       </LegalSection>
@@ -16,7 +16,7 @@ export default function CguPage() {
           Deux profils sont disponibles : acheteur et organisateur. Un même
           compte peut cumuler les deux rôles. Toute création d&apos;événement
           par un organisateur est soumise à validation par l&apos;équipe
-          BilletiX sous 48h ouvrées.
+          BilleTix sous 48h ouvrées.
         </p>
       </LegalSection>
 
@@ -41,7 +41,7 @@ export default function CguPage() {
       <LegalSection title="5. Revente">
         <p>
           La revente de billets entre utilisateurs est autorisée
-          exclusivement via la marketplace BilletiX, au prix facial
+          exclusivement via la marketplace BilleTix, au prix facial
           d&apos;origine. Toute revente à profit est interdite.
         </p>
       </LegalSection>
