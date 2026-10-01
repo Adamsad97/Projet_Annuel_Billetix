@@ -1,0 +1,16 @@
+# Fins de ligne : LF partout, dans le dépôt comme dans la copie de travail,
+# quel que soit le système (évite les mélanges LF/CRLF sous Windows et les
+# avertissements « LF will be replaced by CRLF »).
+* text=auto eol=lf
+
+# Fichiers binaires : jamais convertis.
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
