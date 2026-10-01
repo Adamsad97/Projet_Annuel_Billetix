@@ -5,7 +5,7 @@
 // événement validé restait achetable à n'importe quel moment (corrigé côté
 // backend, ticket-category.service.ts decrementQuota()). Ce composant
 // couvre le pendant frontend : tant que les ventes ne sont pas ouvertes, un
-// compte à rebours (tableau d'affichage façon panneau de gare) remplace le
+// compte à rebours compact remplace le
 // formulaire d'achat, et bascule automatiquement dessus à zéro — sans
 // recharger la page.
 
@@ -25,21 +25,38 @@ function splitRemaining(ms: number) {
   };
 }
 
+const VARIANTS = {
+  // Carte « Choisir mes billets » : couleurs du thème (clair ou sombre).
+  card: {
+    box: "bg-hairline-1 ring-hairline-2",
+    digit: "text-ink-1",
+    label: "text-ink-5",
+    separator: "text-ink-6",
+  },
+  // En-tête sur l'image de l'événement : verre dépoli, texte blanc.
+  hero: {
+    box: "bg-white/10 ring-white/20 backdrop-blur-md",
+    digit: "text-white",
+    label: "text-white/60",
+    separator: "text-white/30",
+  },
+} as const;
+
 /**
- * Le tableau d'affichage seul (jours/heures/min/sec), sans la carte qui
- * l'entoure — réutilisé par TicketSelector, côté acheteur (remplace le
- * formulaire d'achat jusqu'à l'ouverture) comme pour l'organisateur/un
- * admin consultant sa propre fiche : ceux-ci voient déjà un message de
- * blocage dans leur propre carte, doubler la carte "Choisir mes billets"
- * par-dessus serait redondant — seul le compte à rebours en lui-même
- * s'insère chez eux, en lecture seule (`onZero` peut être un no-op).
+ * Compte à rebours compact (jours, heures, minutes, secondes), réutilisé par
+ * TicketSelector — ouverture des ventes, côté acheteur comme pour
+ * l'organisateur ou un admin en lecture seule (`onZero` peut être un no-op)
+ * — et par l'en-tête (début de l'événement). Les jours disparaissent quand il
+ * n'en reste plus ; la place des chiffres est réservée dès le chargement.
  */
 export function CountdownDigits({
   targetIso,
   onZero,
+  variant = "card",
 }: {
   targetIso: string;
   onZero: () => void;
+  variant?: keyof typeof VARIANTS;
 }) {
   // null tant que non monté côté client — évite de calculer "maintenant"
   // pendant le rendu (hydratation), comme partout ailleurs dans l'app.
@@ -60,33 +77,48 @@ export function CountdownDigits({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetIso]);
 
-  if (remainingMs === null || remainingMs <= 0) {
-    return <p className="text-sm text-ink-5">Chargement…</p>;
-  }
-
-  const { days, hours, minutes, seconds } = splitRemaining(remainingMs);
+  const style = VARIANTS[variant];
+  const ready = remainingMs !== null && remainingMs > 0;
+  const { days, hours, minutes, seconds } = splitRemaining(ready ? remainingMs : 0);
   const units = [
-    { label: "Jours", value: days },
-    { label: "Heures", value: hours },
-    { label: "Min", value: minutes },
-    { label: "Sec", value: seconds },
+    ...(days > 0 || !ready ? [{ label: days > 1 ? "jours" : "jour", value: days }] : []),
+    { label: "heures", value: hours },
+    { label: "min", value: minutes },
+    { label: "s", value: seconds },
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-2">
-      {units.map((unit) => (
-        <div
-          key={unit.label}
-          className="flex flex-col items-center rounded-xl border border-emerald-500/20 bg-black/40 py-3"
-        >
-          <span className="font-mono text-2xl font-bold tabular-nums text-[#34d399] [text-shadow:0_0_8px_rgba(16,185,129,0.6)]">
-            {pad(unit.value)}
-          </span>
-          <span className="mt-1 text-[10px] uppercase tracking-wider text-ink-5">
-            {unit.label}
-          </span>
+    <div
+      role="timer"
+      aria-live="off"
+      aria-label={ready ? `${days} jours ${hours} heures ${minutes} minutes ${seconds} secondes` : "Chargement du compte à rebours"}
+      className={`inline-flex items-start rounded-2xl px-4 py-2.5 ring-1 ring-inset ${style.box}`}
+    >
+      {units.map((unit, index) => (
+        <div key={unit.label} className="flex items-start">
+          {index > 0 ? (
+            <span aria-hidden="true" className={`px-1.5 text-xl font-light leading-8 ${style.separator}`}>
+              :
+            </span>
+          ) : null}
+          <div className="flex min-w-[2.6rem] flex-col items-center">
+            <span className={`text-2xl font-semibold leading-8 tabular-nums tracking-tight ${style.digit}`}>
+              {ready ? pad(unit.value) : "--"}
+            </span>
+            <span className={`text-[10px] font-medium uppercase tracking-wider ${style.label}`}>{unit.label}</span>
+          </div>
         </div>
       ))}
     </div>
+  );
+}
+
+/** Point qui pulse : information en direct (compte à rebours en cours). */
+export function LiveDot({ className = "" }: { className?: string }) {
+  return (
+    <span aria-hidden="true" className={`relative flex h-2 w-2 ${className}`}>
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-60" />
+      <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
+    </span>
   );
 }

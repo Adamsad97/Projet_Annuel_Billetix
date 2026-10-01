@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CountdownDigits } from "@/components/event-detail/sales-countdown";
+import { CountdownDigits, LiveDot } from "@/components/event-detail/sales-countdown";
 
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
@@ -34,9 +34,11 @@ export function EventStartCountdown({ salesStartIso, startIso }: { salesStartIso
   if (!visible) return null;
 
   return (
-    <div className="mt-8 max-w-sm">
-      <p className="mb-3 text-xs font-medium uppercase tracking-wider text-white/60">L&apos;événement commence dans</p>
-      <CountdownDigits targetIso={startIso} onZero={() => setVisible(false)} />
+    <div className="mt-8">
+      <p className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/70">
+        <LiveDot /> L&apos;événement commence dans
+      </p>
+      <CountdownDigits targetIso={startIso} onZero={() => setVisible(false)} variant="hero" />
     </div>
   );
 }

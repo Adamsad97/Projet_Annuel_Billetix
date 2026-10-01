@@ -9,7 +9,7 @@ import { ApiError } from "@/lib/api/http-error";
 import { saveCart } from "@/lib/checkout/cart";
 import { isPreviewActive, PREVIEW_READ_ONLY_MESSAGE } from "@/lib/auth/preview";
 import { getAccessToken, getStoredUser } from "@/lib/auth/session";
-import { CountdownDigits } from "@/components/event-detail/sales-countdown";
+import { CountdownDigits, LiveDot } from "@/components/event-detail/sales-countdown";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import { euros as currency } from "@/lib/format/money";
 import { longDateTime as saleDateFormatter } from "@/lib/format/dates";
@@ -204,7 +204,9 @@ export function TicketSelector({
             aucun formulaire d'achat à révéler pour ces rôles). */}
         {salesState === "not_open" ? (
           <div className="mt-4 border-t border-hairline-2 pt-4">
-            <p className="mb-3 text-xs text-ink-5">Ouverture des ventes dans :</p>
+            <p className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-ink-5">
+              <LiveDot /> Ouverture des ventes dans
+            </p>
             <CountdownDigits targetIso={salesStartAt} onZero={() => {}} />
           </div>
         ) : null}
@@ -227,7 +229,9 @@ export function TicketSelector({
         </p>
         {salesState === "not_open" ? (
           <div className="mt-4 border-t border-hairline-2 pt-4">
-            <p className="mb-3 text-xs text-ink-5">Ouverture des ventes dans :</p>
+            <p className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-ink-5">
+              <LiveDot /> Ouverture des ventes dans
+            </p>
             <CountdownDigits targetIso={salesStartAt} onZero={() => {}} />
           </div>
         ) : null}
@@ -249,15 +253,16 @@ export function TicketSelector({
   if (salesState === "not_open") {
     return shell(
       <>
-        <p className="text-sm text-ink-4">
-          Les ventes ouvrent le {saleDateFormatter.format(new Date(salesStartAt))}
-        </p>
-        <div className="mt-4">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-4">
+            <LiveDot /> Ouverture des ventes dans
+          </p>
           <CountdownDigits targetIso={salesStartAt} onZero={() => setSalesState("open")} />
+          <p className="text-sm text-ink-4">
+            Le {saleDateFormatter.format(new Date(salesStartAt))}
+          </p>
+          <p className="text-xs text-ink-5">La billetterie s&apos;ouvre automatiquement, sans recharger la page.</p>
         </div>
-        <p className="mt-3 text-center text-xs text-ink-5">
-          La billetterie s&apos;ouvre automatiquement, pas besoin de recharger la page
-        </p>
       </>,
     );
   }
