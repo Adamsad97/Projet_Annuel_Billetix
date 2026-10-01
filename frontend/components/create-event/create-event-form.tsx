@@ -52,11 +52,7 @@ function toIsoOrNull(datetimeLocal: string): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-// Bug corrigé (règle produit non appliquée) : rien n'empêchait de créer un
-// événement à une date déjà passée — ni côté navigateur (aucun `min` sur
-// les <input type="datetime-local">), ni à la soumission. Format attendu
-// par l'attribut `min` d'un datetime-local : "AAAA-MM-JJThh:mm", local
-// (pas UTC) — cf. toDatetimeLocal() dans edit-event-form.tsx, même logique.
+// Pas de date passée : min au format datetime-local (« AAAA-MM-JJThh:mm », heure locale).
 function nowAsDatetimeLocal(): string {
   const date = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -74,9 +70,7 @@ export function CreateEventForm({
   tierTypes: ApiTicketTierType[];
   initial?: CreateEventFormInitial;
   mode?: "create" | "edit";
-  // CDC — accueil physique : un admin remplit ce même formulaire au nom
-  // d'un organisateur venu au bureau. L'événement est créé sous le compte
-  // de cet organisateur, pas celui de l'admin (cf. POST /admin/events).
+  // Accueil physique : un admin crée l'événement au nom d'un organisateur venu au bureau.
   adminOrganizerId?: string;
 }) {
   const router = useRouter();
@@ -140,9 +134,7 @@ export function CreateEventForm({
     event.preventDefault();
     setError(null);
 
-    // La page de modification (mode="edit") reste basée sur des données de
-    // démonstration pour l'instant — câblage prévu avec le reste du flux
-    // "gestion d'un événement" côté organisateur (pas encore attaqué).
+    // Mode « edit » non géré ici : la modification passe par EditEventForm.
     if (mode === "edit") {
       setError("La modification d'un événement existant n'est pas encore reliée au serveur.");
       return;
@@ -414,8 +406,7 @@ export function CreateEventForm({
         <CoverDropzone onFileSelected={setCoverFile} onRemove={() => setCoverFile(null)} />
       </InfoCard>
 
-      {/* Dépôt de justificatif réservé à l'organisateur lui-même (pièce privée,
-          rangée à son nom) — absent quand un admin crée pour son compte. */}
+      {/* Dépôt du justificatif réservé à l'organisateur lui-même, absent quand un admin crée pour lui. */}
       {!adminOrganizerId ? (
         <InfoCard icon="🤝" title="Événement à but non lucratif">
           <div className="flex flex-col gap-4">

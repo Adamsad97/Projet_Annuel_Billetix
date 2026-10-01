@@ -1,19 +1,6 @@
 "use client";
 
-// Gestion de la session côté navigateur (monté une fois, layout racine).
-// Bugs corrigés : une session ne s'arrêtait jamais d'elle-même (refresh
-// token de 30 jours renouvelé en silence, quelle que soit l'inactivité), et
-// quand elle expirait malgré tout, l'interface continuait d'afficher un
-// compte connecté — sans redirection, juste des erreurs au clic suivant.
-//
-// - Inactivité : au-delà de session_idle_timeout_minutes (platform_settings,
-//   aussi vérifié par auth-service au refresh), déconnexion automatique.
-//   Avertissement une minute avant, avec « Rester connecté ».
-// - Activité : partagée entre onglets (localStorage) ; tant qu'elle dure, la
-//   session est rafraîchie au plus tard à mi-délai, pour que le serveur la
-//   considère active.
-// - Fin de session (inactivité, refresh refusé, déconnexion dans un autre
-//   onglet) : redirection vers /connexion avec le motif.
+// Session navigateur : déconnexion après inactivité (avertie une minute avant), activité partagée entre onglets, redirection à la fin de session.
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";

@@ -1,9 +1,6 @@
 "use client";
 
-// Bug corrigé : page 100% maquette (entrées factices) — les vraies actions
-// (billets offerts, accès aux billets, décisions admin…) étaient bien
-// journalisées par l'admin-service mais jamais affichées. Câblée sur
-// GET /admin/audit-logs (filtres et recherche côté serveur).
+// Journal d'audit réel (GET /admin/audit-logs), filtres et recherche côté serveur.
 
 import { useEffect, useState } from "react";
 import { FilterPills } from "@/components/admin/filter-pills";

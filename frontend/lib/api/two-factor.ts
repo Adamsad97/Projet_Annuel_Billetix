@@ -1,6 +1,4 @@
-// Client pour les endpoints /auth/2fa de l'api-gateway (backend/api-gateway/src/auth).
-// Câblage réel — via lib/api/client (authentifié), contrairement à
-// lib/api/auth.ts qui couvre les flux pré-connexion (login/register).
+// Client des endpoints /auth/2fa, authentifié via lib/api/client.
 
 import { apiDelete, apiGet, apiPost } from "./client";
 

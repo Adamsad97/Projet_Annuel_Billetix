@@ -27,12 +27,7 @@ function percentToRate(value: string): number | null {
 const smallButton =
   "rounded-lg border border-hairline-2 px-2.5 py-1 text-xs font-medium text-ink-3 transition-colors hover:border-hairline-4 disabled:opacity-50";
 
-/**
- * Taux de TVA proposés à l'organisateur dans une liste déroulante quand il
- * crée un événement. Chaque événement garde sa copie du taux choisi :
- * modifier ou supprimer un taux ne change jamais le prix d'un événement
- * existant.
- */
+/** Taux de TVA proposés à l'organisateur ; chaque événement garde sa copie du taux choisi. */
 export function VatRatesSection() {
   const [vatRates, setVatRates] = useState<ApiVatRate[] | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);

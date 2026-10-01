@@ -1,6 +1,4 @@
-// Explication d'une ligne de reversement liée à la compensation : montant dû
-// (frais des billets gratuits, remboursement après un versement), montant dû
-// soldé, ou montants dus déduits d'un virement. Partagé organisateur / admin.
+// Explication d'une ligne de reversement liée à la compensation, partagée organisateur et admin.
 
 import { euros } from "@/lib/format/money";
 

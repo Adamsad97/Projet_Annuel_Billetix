@@ -1,7 +1,4 @@
-// État du panier en cours entre la page événement (réservation du stock) et
-// le tunnel de commande — sessionStorage plutôt qu'un store global : léger,
-// effacé si l'onglet se ferme (cohérent avec le TTL de réservation côté
-// serveur, quelques minutes).
+// Panier en sessionStorage entre la réservation et le tunnel de commande.
 
 const CART_KEY = "billetix_cart";
 

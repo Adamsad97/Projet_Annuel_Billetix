@@ -1,6 +1,4 @@
-// Convertit les données réelles (order-service/ticket-service) vers les
-// formes attendues par les composants profil existants (Panel/TicketRow/
-// OrderRow), construits à l'origine pour les données de démonstration.
+// Convertit les données réelles (commandes, billets) pour les composants du profil.
 
 import type { ApiOrder, ApiOrderItem, ApiPaymentMethod } from "@/lib/api/orders";
 import type { ApiTicket, ApiTicketStatus } from "@/lib/api/tickets";
@@ -73,9 +71,7 @@ export function apiTicketToDetail(ticket: ApiTicket): TicketDetail {
     buyerEmail: ticket.buyer_email,
     categoryName: ticket.ticket_category_name,
     priceLabel: Number(ticket.unit_price_ttc) === 0 ? "Gratuit" : currency.format(Number(ticket.unit_price_ttc)),
-    // Bug corrigé : ne distinguait que "used"/"valid" — un billet en revente
-    // (FOR_RESALE) ou annulé/remboursé s'affichait comme parfaitement valide,
-    // y compris le bouton "Revendre ce billet" sur un billet déjà en vente.
+    // Statut d'affichage complet : en revente, annulé ou remboursé, pas seulement utilisé ou valide.
     status: ticketStatusFor(ticket.status),
     emoji: "🎫",
     band: "bg-slate-800",

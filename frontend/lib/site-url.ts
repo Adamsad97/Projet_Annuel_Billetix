@@ -1,6 +1,4 @@
-// Adresse publique du site (FRONTEND_URL du déploiement, la même que celle
-// des liens d'emails). Sert de base aux URL absolues des aperçus de partage
-// (Open Graph) et des adresses canoniques. Lue côté serveur uniquement.
+// Adresse publique du site (FRONTEND_URL), base des URL absolues de partage et canoniques ; côté serveur uniquement.
 
 const FALLBACK_SITE_URL = "http://localhost:3000";
 
@@ -14,9 +12,5 @@ function parseSiteUrl(value: string | undefined): URL {
 
 export const SITE_URL = parseSiteUrl(process.env.SITE_URL);
 
-/**
- * Champs de partage communs à toutes les pages. Une page qui définit son
- * propre openGraph remplace entièrement celui du layout : elle doit les
- * reprendre.
- */
+/** Champs de partage communs : une page qui définit son openGraph doit les reprendre. */
 export const SHARED_OPEN_GRAPH = { siteName: "BilleTix", locale: "fr_FR", type: "website" } as const;

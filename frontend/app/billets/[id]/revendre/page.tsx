@@ -1,8 +1,6 @@
 "use client";
 
-// Bug corrigé : page 100% maquette — cherchait l'ID dans un objet de 5
-// billets factices, donc "Page introuvable" systématique pour tout vrai
-// billet. Câblée sur ticket-service, comme /billets/[id].
+// Mise en revente câblée sur ticket-service.
 
 import { use, useEffect, useState } from "react";
 import { PageShell } from "@/components/layout/page-shell";

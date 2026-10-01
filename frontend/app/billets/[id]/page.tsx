@@ -1,8 +1,6 @@
 "use client";
 
-// Bug corrigé : page 100% maquette — ne reconnaissait que 5 identifiants
-// factices ("nuit-electronique-standard", etc.), donc "Page introuvable"
-// systématique pour tout vrai billet. Câblée sur ticket-service.
+// Détail d'un billet câblé sur ticket-service.
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
@@ -99,10 +97,7 @@ export default function TicketDetailPage({
           <TicketVisual ticket={ticket} />
 
           <div className="mt-6 flex flex-col gap-3">
-            {/* Plus de billet PDF (le billet n'existe que dans l'application,
-                QR éphémère) : la facture de la commande sert de preuve
-                d'achat. Billet reçu en cadeau : la facture appartient à
-                l'acheteur d'origine (ses coordonnées de facturation). */}
+            {/* Pas de billet PDF : la facture sert de preuve d'achat ; pour un billet offert, elle appartient à l'acheteur d'origine. */}
             {ticket.unitPriceTtc === 0 ? null : ticket.receivedFrom ? (
               <p className="rounded-xl bg-hairline-1 px-4 py-3 text-center text-sm text-ink-4">
                 Billet reçu en cadeau : la facture reste celle de la personne qui l&apos;a acheté.

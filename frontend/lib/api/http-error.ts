@@ -1,8 +1,4 @@
-// Erreur HTTP typée pour les appels à l'api-gateway. Le format des erreurs
-// varie selon leur origine :
-// - RpcException (métier, ex: "Email déjà utilisé") -> { statusCode, message: string }
-// - ValidationPipe (DTO invalide) -> { statusCode, message: string[], error }
-// extractErrorMessage gère les deux formes.
+// Erreur HTTP typée ; extractErrorMessage gère message texte (métier) ou tableau (validation).
 
 export class ApiError extends Error {
   status: number;

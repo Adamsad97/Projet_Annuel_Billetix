@@ -11,9 +11,7 @@ EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
 FROM base AS builder
-# Les NEXT_PUBLIC_* sont figées dans le bundle navigateur au moment du
-# build : sans ces ARG, clé Stripe et URL d'API seraient undefined côté
-# client (les passer seulement au runtime, via environment:, ne suffit pas).
+# Les NEXT_PUBLIC_* sont figées au build : ces ARG sont nécessaires côté navigateur.
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 # Adresse publique du site : base des aperçus de partage des pages

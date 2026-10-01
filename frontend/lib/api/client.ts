@@ -9,16 +9,7 @@ import { refreshTokens } from "./auth";
 
 const API_URL = getApiBaseUrl();
 
-// Bug corrigé : un access token expiré (courte durée de vie) faisait
-// échouer la requête avec le message brut du guard JWT ("Token invalide ou
-// expiré"), affiché tel quel à l'utilisateur en pleine navigation — ni
-// professionnel, ni compréhensible. On tente maintenant un rafraîchissement
-// silencieux via le refresh token (longue durée) avant d'abandonner.
-//
-// Une seule tentative de refresh à la fois : les requêtes concurrentes qui
-// essuient un 401 pendant qu'un refresh est déjà en cours attendent son
-// résultat plutôt que d'en déclencher un chacune (le refresh token tourne à
-// usage unique côté serveur — un deuxième appel simultané l'invaliderait).
+// Jeton expiré : un seul rafraîchissement silencieux à la fois, les requêtes concurrentes attendent son résultat.
 let refreshInFlight: Promise<string | null> | null = null;
 
 export async function refreshAccessToken(): Promise<string | null> {
@@ -31,9 +22,7 @@ export async function refreshAccessToken(): Promise<string | null> {
         updateTokens(result.access_token, result.refresh_token);
         return result.access_token;
       } catch (err) {
-        // Serveur injoignable ou en erreur (redémarrage, réseau) : la
-        // session n'est pas en cause — on la garde, seule la requête échoue.
-        // Bug corrigé : toute panne déconnectait avec « session expirée ».
+        // Serveur injoignable : la session est gardée, seule la requête échoue.
         if (!(err instanceof ApiError) || err.status === 0 || err.status >= 500) {
           return null;
         }
@@ -122,11 +111,7 @@ export const apiDelete = <T>(path: string, body?: unknown) =>
 export const apiPatch = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: "PATCH", body });
 
-/**
- * Lit un fichier privé (billet, facture, pièce justificative) : requête
- * authentifiée (Bearer, rafraîchissement de session compris). Les fichiers
- * privés ne sont plus accessibles par un lien direct (buckets privés).
- */
+/** Lit un fichier privé (billet, facture, justificatif) par une requête authentifiée. */
 export async function apiFetchBlob(path: string, isRetry = false): Promise<Blob> {
   const token = getAccessToken();
   let response: Response;

@@ -1,8 +1,6 @@
 "use client";
 
-// Bug corrigé : ce composant ne faisait que basculer entre 3 écrans
-// factices en mémoire, sans jamais appeler le backend — la 2FA affichée
-// "Activée" n'avait aucun rapport avec l'état réel du compte.
+// Gestion réelle de la 2FA via le backend.
 
 import { useEffect, useState, type FormEvent } from "react";
 import {

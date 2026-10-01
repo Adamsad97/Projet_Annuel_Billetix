@@ -1,8 +1,6 @@
 "use client";
 
-// Pouvoirs de l'admin sur un événement : désactiver (message affiché au
-// public, ventes bloquées), masquer au public, annuler (remboursements), et
-// traiter les demandes d'annulation de l'organisateur.
+// Pouvoirs de l'admin sur un événement : désactiver, masquer, annuler, traiter les demandes d'annulation.
 
 import { useEffect, useState } from "react";
 import { CancellationThread } from "@/components/events/cancellation-thread";

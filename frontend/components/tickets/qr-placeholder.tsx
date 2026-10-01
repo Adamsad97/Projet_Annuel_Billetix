@@ -1,7 +1,4 @@
-// Motif pseudo-QR déterministe (seedé par l'id du billet) — purement
-// visuel pour la maquette. Le vrai QR (qrcode.toDataURL, HMAC-SHA256) est
-// généré côté ticket-service, cf. la démo réelle faite plus tôt dans le
-// projet.
+// Motif pseudo-QR déterministe, purement décoratif.
 function seededGrid(seed: string, size: number): boolean[] {
   let h = 0;
   for (let i = 0; i < seed.length; i++) {

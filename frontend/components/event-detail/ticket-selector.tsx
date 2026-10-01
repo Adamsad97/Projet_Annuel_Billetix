@@ -53,18 +53,7 @@ export function TicketSelector({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Bug corrigé : le backend refuse déjà qu'un organisateur achète un
-  // billet pour son propre événement (order.service.ts create()), mais la
-  // page publique proposait quand même le formulaire d'achat — l'erreur
-  // n'arrivait qu'après réservation + saisie de facturation, beaucoup
-  // trop tard. Lu en useEffect (comme partout ailleurs dans l'app) : le
-  // compte connecté vit dans le localStorage, absent côté serveur.
-  //
-  // Bug corrigé (règle produit incomplète) : un compte ADMIN/SUPER_ADMIN
-  // reste purement administratif, jamais acheteur (cf. commit 220f98e) —
-  // ce gate ne couvrait que l'organisateur de CET événement, pas un admin
-  // achetant sur l'événement de quelqu'un d'autre (bloqué côté backend
-  // depuis order.controller.ts, mais l'erreur arrivait tout aussi tard).
+  // Pas de formulaire d'achat pour l'organisateur de l'événement ni pour un admin ; lu en useEffect (localStorage).
   const [blockReason, setBlockReason] = useState<"own_event" | "admin" | null>(
     null,
   );
@@ -86,12 +75,7 @@ export function TicketSelector({
     }
   }, [organizerId]);
 
-  // Bug corrigé : sales_start_date/sales_end_date étaient stockées mais
-  // jamais vérifiées à l'achat, même une fois l'événement validé par un
-  // admin — le backend refuse maintenant la réservation hors fenêtre
-  // (ticket-category.service.ts decrementQuota()), mais l'erreur n'arrivait
-  // qu'après avoir rempli le formulaire. "loading" le temps du useEffect,
-  // pour éviter tout calcul de "maintenant" pendant le rendu serveur.
+  // Fenêtre de vente vérifiée à l'affichage ; « loading » pendant le useEffect pour éviter tout calcul serveur.
   const [salesState, setSalesState] = useState<"loading" | "not_open" | "open" | "closed">(
     "loading",
   );
@@ -117,10 +101,7 @@ export function TicketSelector({
     [tickets, quantities],
   );
 
-  // Distinct de `total` : un événement gratuit a toujours total === 0 même
-  // avec des billets sélectionnés — utiliser `total === 0` pour désactiver
-  // le bouton (bug corrigé) rendait la réservation impossible pour tout
-  // événement gratuit, quelle que soit la quantité choisie.
+  // Nombre de billets choisis, distinct de total (toujours 0 pour un événement gratuit).
   const selectedCount = useMemo(
     () => Object.values(quantities).reduce((sum, qty) => sum + qty, 0),
     [quantities],
@@ -182,9 +163,7 @@ export function TicketSelector({
     }
   }
 
-  // Même cadre pour tous les états (achat, ventes pas encore ouvertes,
-  // closes, compte admin/organisateur) : date, lieu, puis le contenu propre
-  // à l'état, et le bouton « Partager » dessous.
+  // Même cadre pour tous les états : date, lieu, contenu propre à l'état, puis « Partager ».
   const shell = (content: ReactNode) => (
     <BookingShell dateRangeLabel={dateRangeLabel} timeRangeLabel={timeRangeLabel} venueName={venueName}>
       {content}
@@ -197,11 +176,7 @@ export function TicketSelector({
         <p className="text-sm text-ink-4">
           Un compte administrateur ne peut pas acheter de billets.
         </p>
-        {/* Bug corrigé : l'organisateur/admin voyait uniquement le message
-            de blocage, aucune info sur l'état des ventes de l'événement
-            qu'il consulte — le tableau de compte à rebours n'apparaissait
-            que côté acheteur. Repris ici en lecture seule (onZero: no-op,
-            aucun formulaire d'achat à révéler pour ces rôles). */}
+        {/* État des ventes affiché aussi à l'organisateur et à l'admin, en lecture seule. */}
         {salesState === "not_open" ? (
           <div className="mt-4 border-t border-hairline-2 pt-4">
             <p className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-ink-5">

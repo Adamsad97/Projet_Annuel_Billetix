@@ -1,7 +1,4 @@
-// Graphique de tendance des ventes, autonome : gère lui-même la plage de
-// dates et la métrique affichée (ventes totales / total billets / chiffre
-// d'affaires), et va chercher les données sur GET /admin/sales-trend à
-// chaque changement.
+// Graphique de tendance des ventes autonome : plage et métrique propres, données de GET /admin/sales-trend.
 
 import { useEffect, useState } from "react";
 import { getSalesTrend, type ApiSalesTrendPoint } from "@/lib/api/admin";
@@ -29,9 +26,7 @@ export function RevenueTrendChart() {
   const [metric, setMetric] = useState<Metric>("revenue_ttc");
   const [from, setFrom] = useState(toDateInputValue(defaultFrom));
   const [to, setTo] = useState(toDateInputValue(defaultTo));
-  // Résultat rattaché à sa période : « en chargement » tant que la période
-  // affichée n'est pas celle demandée, et une réponse arrivée après un
-  // changement de dates est ignorée.
+  // Résultat rattaché à sa période ; une réponse périmée est ignorée.
   const range = `${from}|${to}`;
   const [result, setResult] = useState<{ range: string; trend?: ApiSalesTrendPoint[]; error?: string } | null>(null);
   const current = result?.range === range ? result : null;

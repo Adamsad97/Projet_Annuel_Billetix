@@ -14,11 +14,7 @@ function cameraErrorMessage(err: unknown): string {
   return "Impossible d'ouvrir la caméra.";
 }
 
-/**
- * Caméra arrière de l'appareil et décodage des QR codes image par image.
- * `onCode` reçoit le texte de chaque QR lu ; `paused` suspend le décodage
- * (affichage d'un résultat) sans couper la caméra.
- */
+/** Caméra arrière et décodage des QR ; paused suspend le décodage sans couper la caméra. */
 export function CameraScanner({ onCode, paused }: { onCode: (text: string) => void; paused: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const onCodeRef = useRef(onCode);

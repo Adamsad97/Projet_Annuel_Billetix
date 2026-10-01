@@ -1,8 +1,6 @@
 "use client";
 
-// Bug corrigé : page 100% maquette (adminPayouts factices, IBAN affiché en
-// clair alors que le backend le chiffre et ne le sélectionne jamais par
-// défaut — select: false) — câblée sur GET /admin/payouts/:id.
+// Détail d'un reversement câblé sur GET /admin/payouts/:id.
 
 import { use, useEffect, useState } from "react";
 import { AdminShell } from "@/components/layout/admin-shell";

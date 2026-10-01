@@ -105,10 +105,7 @@ export function requestTransferRevert(transferId: string, reason: string): Promi
   return apiPost(`/tickets/transfers/${transferId}/revert-request`, { reason });
 }
 
-/**
- * Offre le billet à un autre compte BilleTix : transfert immédiat et
- * définitif. Erreur `REAUTH_REQUIRED` si la connexion n'est pas récente.
- */
+/** Offre le billet à un autre compte : transfert immédiat et définitif ; REAUTH_REQUIRED si la connexion n'est pas récente. */
 export function giftTicket(
   ticketId: string,
   data: { recipient_email: string; holder_first_name: string; holder_last_name: string },
@@ -137,12 +134,7 @@ export function requestResale(
   });
 }
 
-/**
- * QR code d'un billet valide, à la demande du titulaire : image d'un code
- * éphémère (aucune donnée du billet). `refresh_in_seconds` : délai avant le
- * code suivant ; `refresh` : renouvellement pendant un même affichage (non
- * journalisé comme un nouvel accès).
- */
+/** QR éphémère d'un billet valide ; refresh_in_seconds avant le code suivant, refresh non journalisé. */
 export function getTicketQr(
   ticketId: string,
   refresh = false,

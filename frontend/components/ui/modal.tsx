@@ -1,9 +1,6 @@
 "use client";
 
-// Socle commun des fenêtres modales : voile, Échap et clic à l'extérieur pour
-// fermer, défilement de la page bloqué. Rendue dans <body> : l'en-tête crée son
-// propre contexte d'empilement, qui laisserait sinon la navigation passer
-// au-dessus de la fenêtre.
+// Socle des fenêtres modales, rendu dans body pour passer au-dessus de la navigation.
 
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";

@@ -1,9 +1,6 @@
 "use client";
 
-// Échange sur une demande d'annulation ou de report : motif (et nouvelle date
-// proposée) de l'organisateur, messages des deux parties et zone de réponse
-// tant que la demande est en attente.
-// Les actions (accepter, refuser, retirer) sont fournies par la page.
+// Échange sur une demande d'annulation ou de report ; les actions sont fournies par la page.
 
 import { useState, type ReactNode } from "react";
 import { cancellationStatusLabels, changeRequestKindLabels, type ApiCancellationRequest } from "@/lib/api/cancellation";

@@ -1,7 +1,4 @@
-// Stockage de session côté client (localStorage) — le backend renvoie les
-// tokens dans le corps de la réponse JSON (pas de cookie httpOnly posé par
-// l'api-gateway), donc c'est au frontend de les conserver pour les requêtes
-// authentifiées ultérieures.
+// Session côté client : les jetons arrivent dans le corps JSON, le frontend les conserve.
 
 import type { AuthSession, AuthUser } from "@/lib/api/auth";
 
@@ -19,9 +16,7 @@ export const PREVIEW_ROLE_KEY = "billetix_preview_role";
 export type SessionEndReason = "manuelle" | "inactivite" | "duree_max" | "expiree";
 export const SESSION_ENDED_EVENT = "billetix:session-ended";
 
-// persist=true (« Se souvenir de moi ») -> localStorage, survit à la
-// fermeture du navigateur. persist=false -> sessionStorage, effacé à la
-// fermeture de l'onglet.
+// persist=true : localStorage (survit à la fermeture) ; false : sessionStorage.
 export function saveSession(session: AuthSession, persist = true): void {
   if (typeof window === "undefined") return;
   const store = persist ? window.localStorage : window.sessionStorage;
@@ -42,11 +37,7 @@ export function isPersistentSession(): boolean {
   return window.localStorage.getItem(ACCESS_TOKEN_KEY) !== null;
 }
 
-/**
- * Termine la session côté navigateur et prévient l'application : cet
- * onglet via un événement, les autres via l'événement `storage` (clé
- * END_REASON_KEY). La révocation serveur, elle, est faite par logout().
- */
+/** Ferme la session côté navigateur et prévient cet onglet et les autres (storage) ; logout() révoque côté serveur. */
 export function endSession(reason: SessionEndReason): void {
   if (typeof window === "undefined") return;
   const hadSession = getAccessToken() !== null;
@@ -89,12 +80,7 @@ export function getSessionStartedAt(): number | null {
   return typeof seconds === "number" ? seconds * 1000 : null;
 }
 
-/**
- * Date d'émission (ms) du refresh token courant — renouvelé à chaque
- * rafraîchissement, donc « dernier rafraîchissement ». Lecture du payload
- * JWT sans vérification de signature : sert uniquement à décider quand
- * rafraîchir, le serveur reste seul juge de la validité.
- */
+/** Date d'émission du refresh token, lue sans vérifier la signature, pour décider quand rafraîchir. */
 export function getRefreshTokenIssuedAt(): number | null {
   const iat = refreshTokenPayload()?.iat;
   return typeof iat === "number" ? iat * 1000 : null;
@@ -126,9 +112,7 @@ export function getRefreshToken(): string | null {
   );
 }
 
-// Remplace uniquement les tokens (rotation après un refresh) — préserve
-// l'utilisateur déjà stocké et le choix localStorage/sessionStorage fait à
-// la connexion (persist). Ne fait rien si aucune session n'existe déjà.
+// Remplace seulement les jetons après un refresh, en gardant l'utilisateur et le stockage choisi.
 export function updateTokens(accessToken: string, refreshToken: string): void {
   if (typeof window === "undefined") return;
   const inLocal = window.localStorage.getItem(ACCESS_TOKEN_KEY) !== null;

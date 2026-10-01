@@ -1,12 +1,6 @@
 "use client";
 
-// Bug corrigé : /evenements/:id/modifier était 100% maquette et le
-// formulaire de création bloquait explicitement le mode édition
-// ("pas encore reliée au serveur"). Formulaire dédié plutôt que de
-// surcharger CreateEventForm : les champs réellement modifiables changent
-// selon le statut (cf. lib/api/events.ts EVENT_COSMETIC_FIELDS), une
-// logique assez différente de la création pour justifier un composant à
-// part plutôt que d'entremêler les deux flux.
+// Formulaire de modification dédié : les champs modifiables dépendent du statut.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -88,9 +82,7 @@ export function EditEventForm({
   const isDraft = event.status === "DRAFT";
   const isFullyLocked = event.status in LOCKED_STATUS_MESSAGE;
   const minDatetimeLocal = toDatetimeLocal(new Date().toISOString());
-  // PENDING_VALIDATION/PUBLISHED : seuls les champs "cosmétiques" restent
-  // ouverts (cf. commentaire lib/api/events.ts) — DRAFT autorise tout sauf
-  // les catégories de billets, jamais modifiables une fois créées.
+  // Soumis ou publié : seuls les champs cosmétiques restent ouverts ; brouillon : tout.
 
   const [title, setTitle] = useState(event.title);
   const [description, setDescription] = useState(event.description);
@@ -184,18 +176,12 @@ export function EditEventForm({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  // Déclenché directement par le clic du bouton plutôt que par la
-  // soumission native du <form> — un select/textarea imbriqué peut bloquer
-  // silencieusement submit() dans certains navigateurs sans qu'aucune
-  // erreur ne remonte nulle part (observé : clic sans le moindre effet,
-  // aucune requête réseau émise).
+  // Déclenché au clic plutôt qu'à la soumission native du form, parfois bloquée sans erreur.
   async function handleSubmit() {
     setError(null);
     setSaved(false);
 
-    // Bug corrigé (règle produit non appliquée) : rien n'empêchait de
-    // repousser un événement DRAFT à une date déjà passée, ni une fin
-    // antérieure au début — même règle qu'à la création (create-event-form.tsx).
+    // Pas de date passée ni de fin avant le début, comme à la création.
     if (isDraft) {
       const nextStart = toIsoOrNull(startAt) ?? event.start_date;
       const nextEnd = toIsoOrNull(endAt) ?? event.end_date;
@@ -293,10 +279,7 @@ export function EditEventForm({
     }
   }
 
-  /**
-   * Billets d'un brouillon alignés sur le formulaire : catégories retirées
-   * supprimées d'abord (libère noms et quotas), puis modifiées, puis créées.
-   */
+  /** Billets d'un brouillon alignés sur le formulaire : suppressions, puis modifications, puis créations. */
   async function syncTicketCategories() {
     const existing = new Map((ticketCategories ?? []).map((category) => [category.id, category]));
     const rows = tierRows.filter(isCompleteRow);

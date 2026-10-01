@@ -1,10 +1,6 @@
 "use client";
 
-// Bug corrigé : page 100% maquette (eventDetails/attendeesByEvent factices)
-// — câblée sur GET /events/:id/dashboard et GET /events/:id/attendees
-// (api-gateway), plus les actions réelles (soumettre/annuler/dupliquer/
-// répondre à une demande de complément) déjà construites côté backend mais
-// jamais appelées par le frontend jusqu'ici.
+// Gestion d'un événement câblée sur son dashboard, ses participants et les actions organisateur.
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -197,9 +193,7 @@ export default function DashboardEventDetailPage({
     setError(null);
     try {
       const clone = await duplicateEvent(id);
-      // Redirige directement vers la modification (pas la fiche) : le clone
-      // reprend les dates de l'original telles quelles, la première chose à
-      // faire est justement de les changer (ex : même artiste, autre date).
+      // Duplication : redirige vers la modification pour changer d'abord les dates.
       router.push(`/evenements/${clone.id}/modifier`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Impossible de dupliquer l'événement.");
@@ -370,11 +364,7 @@ export default function DashboardEventDetailPage({
                           ✎ Modifier
                         </Link>
                       ) : null}
-                      {/* Bug corrigé (règle produit) : dupliquer n'a de sens
-                          qu'une fois complet — sinon deux événements se
-                          disputent le même stock. Cas réel : un artiste qui
-                          rejoue le même jour, au même endroit, une fois les
-                          places épuisées. */}
+                      {/* Duplication proposée seulement une fois l'événement complet. */}
                       {fill_stats.total_quota > 0 && fill_stats.remaining === 0 ? (
                         <button
                           type="button"

@@ -1,8 +1,6 @@
 "use client";
 
-// Barre de recherche et de filtres des événements (recherche, ville,
-// catégorie, date, prix, distance, tri), partagée par le catalogue et
-// « À la une ». L'état vit dans useEventSearch.
+// Barre de recherche et de filtres partagée par le catalogue et « À la une » ; l'état vit dans useEventSearch.
 
 import { useState } from "react";
 import { FilterMenu, FilterOption } from "@/components/ui/filter-menu";

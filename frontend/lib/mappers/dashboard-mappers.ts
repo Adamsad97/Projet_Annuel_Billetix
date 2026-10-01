@@ -1,7 +1,4 @@
-// Convertit les données réelles (api-gateway /events/me/dashboard,
-// /payments/payouts/me) vers les formes attendues par les composants du
-// tableau de bord organisateur (StatCard/OrganizerEventRow), construits à
-// l'origine pour des données de démonstration.
+// Convertit les données réelles du tableau de bord organisateur pour ses composants.
 
 import type { ApiCategory } from "@/lib/api/categories";
 import type { ApiOrganizerDashboard, ApiOrganizerEventSummary, ApiEventStatus } from "@/lib/api/organizer";
@@ -9,15 +6,7 @@ import type { DashboardStat, OrganizerEvent } from "@/lib/constants/dashboard";
 import { euros as currency } from "@/lib/format/money";
 import { longDate as dateFormatter } from "@/lib/format/dates";
 
-// Bug corrigé (valeur en dur) : une liste de 7 catégories figée ici décidait
-// de l'emoji/couleur affichés, sans rapport avec les vraies catégories
-// gérables depuis l'espace Admin (lib/api/categories.ts) — toute catégorie
-// créée par un admin en dehors de cette liste retombait sur l'icône
-// générique, même si un emoji réel était configuré pour elle. La couleur
-// (déco absente du modèle Category, qui n'a que code/label/emoji) reste
-// dérivée localement, par un hash stable du code plutôt qu'une table figée
-// par nom de catégorie — n'importe quelle catégorie, même future, obtient
-// une couleur cohérente sans modification de ce fichier.
+// Emoji de la catégorie depuis le référentiel admin ; couleur dérivée d'un hash stable du code.
 const COLOR_PALETTE: Array<{ iconBg: string; progressColor: string }> = [
   { iconBg: "bg-blue-500/15", progressColor: "bg-blue-500" },
   { iconBg: "bg-amber-500/15", progressColor: "bg-amber-500" },

@@ -31,9 +31,7 @@ export function AuthHeader() {
     router.push("/");
   }
 
-  // Le logo mène à l'accueil (le back-office reste accessible par le lien
-  // « Back-office » de la barre de navigation) — sauf pour un agent de
-  // contrôle, dont l'espace se limite au contrôle et à son compte.
+  // Le logo mène à l'accueil, sauf pour un agent.
   const isAgent = user?.role === "AGENT";
   const homeHref = isAgent ? "/scan" : "/";
 

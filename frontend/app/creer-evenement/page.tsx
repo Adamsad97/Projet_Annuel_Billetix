@@ -4,9 +4,7 @@ import { listCategories } from "@/lib/api/categories";
 import { listTicketTierTypes } from "@/lib/api/ticket-tier-types";
 import { BackLink } from "@/components/ui/back-link";
 
-// Bug corrigé : sans ça, `next build` fige cette page au moment du build,
-// API injoignable → liste vide servie à tout le monde, indéfiniment.
-// Invisible en `next dev`, qui rend chaque requête.
+// Rendu à chaque requête, sinon next build figerait une liste vide.
 export const dynamic = "force-dynamic";
 
 export default async function CreerEvenementPage() {

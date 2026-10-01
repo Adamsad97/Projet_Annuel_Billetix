@@ -9,13 +9,7 @@ function remainingSeconds(expiresAt: string): number {
   return Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000));
 }
 
-/**
- * Bug corrigé : la réservation des places (TTL côté order-service,
- * stock_reservation_ttl_seconds) expirait sans que la page ne le montre
- * jamais — l'acheteur remplissait tout le formulaire pour tomber sur
- * « Réservation expirée ou invalide ». Décompte visible + bascule
- * automatique à zéro (onExpire).
- */
+/** Décompte visible de la réservation, bascule automatique à zéro (onExpire). */
 export function ReservationTimer({ expiresAt, onExpire }: { expiresAt: string; onExpire: () => void }) {
   const [seconds, setSeconds] = useState<number | null>(null);
 

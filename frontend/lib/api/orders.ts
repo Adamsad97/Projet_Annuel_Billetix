@@ -114,11 +114,7 @@ export function getMyOrders(): Promise<ApiOrder[]> {
 // recharger la liste — réglage d'affichage.
 const FULFILLMENT_SETTLE_MS = 1500;
 
-/**
- * Commandes de l'acheteur, après vérification auprès de Stripe de celles
- * encore « en attente de paiement » (bug corrigé : si le webhook Stripe
- * n'arrivait jamais, une commande payée restait bloquée, sans billets).
- */
+/** Commandes de l'acheteur, après vérification auprès de Stripe de celles encore en attente de paiement. */
 export async function getMyOrdersSynced(): Promise<ApiOrder[]> {
   const orders = await getMyOrders();
   const pending = orders.filter((o) => o.status === "PENDING_PAYMENT" && o.payment_method === "STRIPE");

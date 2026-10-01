@@ -1,11 +1,6 @@
 "use client";
 
-// CDC — accueil physique : un organisateur venu directement au bureau peut
-// demander à un admin de créer son événement pour lui plutôt que de passer
-// par le formulaire en ligne (backend/api-gateway/src/admin/admin.controller.ts,
-// POST /admin/events). Gère aussi les deux cas où l'organisateur n'est pas
-// trouvable par email : compte existant mais jamais organisateur (upgrade
-// de rôle), et aucun compte du tout (création à la volée).
+// Accueil physique : l'admin crée l'événement d'un organisateur, en créant ou promouvant son compte au besoin.
 
 import { useEffect, useState, type FormEvent } from "react";
 import { AdminShell } from "@/components/layout/admin-shell";
@@ -40,9 +35,7 @@ function isValidEmail(value: string): boolean {
 function randomPassword(): string {
   const bytes = new Uint8Array(24);
   crypto.getRandomValues(bytes);
-  // Suffixe fixe : garantit majuscule/minuscule/chiffre/caractère spécial,
-  // que le base64 seul ne fournit pas toujours (politique de mot de passe
-  // d'auth-service) — l'aléa reste dans les 32 premiers caractères.
+  // Suffixe fixe pour satisfaire la politique de mot de passe ; l'aléa reste dans les 32 premiers caractères.
   return `${btoa(String.fromCharCode(...bytes))}Aa1!`;
 }
 
@@ -80,9 +73,7 @@ export default function AdminCreateEventForOrganizerPage() {
     let cancelled = false;
     setSearching(true);
     const timeout = setTimeout(() => {
-      // Pas de filtre par rôle : un compte "Acheteur" jamais encore
-      // organisateur doit aussi remonter, pour pouvoir le faire passer
-      // organisateur ci-dessous plutôt que de croire qu'il n'existe pas.
+      // Pas de filtre par rôle : un acheteur doit aussi remonter pour pouvoir être promu organisateur.
       searchUsers({ q: query.trim(), limit: 10 })
         .then((result) => {
           if (!cancelled) setResults(result.data);
@@ -126,10 +117,7 @@ export default function AdminCreateEventForOrganizerPage() {
         birth_date: newBirthDate,
         role: "ORGANIZER",
       });
-      // Le mot de passe généré n'est connu de personne — l'organisateur
-      // reçoit tout de suite un lien pour définir le sien (même email que
-      // "mot de passe oublié"), en plus de l'email de bienvenue déjà envoyé
-      // par l'inscription.
+      // Mot de passe généré inconnu de tous : l'organisateur reçoit un lien pour définir le sien.
       await requestPasswordReset(session.user.email).catch(() => undefined);
       setSelected({
         id: session.user.id,
@@ -140,9 +128,7 @@ export default function AdminCreateEventForOrganizerPage() {
         role: "ORGANIZER",
         is_email_verified: session.user.is_email_verified,
         two_factor_enabled: session.user.two_factor_enabled,
-        // Compte tout juste créé : valeurs neutres pour les champs que
-        // AuthUser ne type pas (existent côté API mais inutiles au flux
-        // d'inscription pré-connexion).
+        // Compte tout juste créé : valeurs neutres pour les champs non typés par AuthUser.
         failed_login_attempts: 0,
         locked_until: null,
         is_active: true,

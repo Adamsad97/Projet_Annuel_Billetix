@@ -30,10 +30,7 @@ export interface OrganizerProfileInput {
   social_youtube?: string;
 }
 
-/**
- * Réponse de création : un acheteur devient organisateur, la passerelle
- * renvoie alors de nouveaux jetons portant le rôle ORGANIZER.
- */
+/** Un acheteur devient organisateur : la passerelle renvoie des jetons avec le rôle ORGANIZER. */
 export interface CreateOrganizerProfileResult {
   profile: ApiOrganizerProfile;
   access_token?: string;

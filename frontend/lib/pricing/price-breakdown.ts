@@ -1,7 +1,4 @@
-// Détail d'un prix de billet pour l'organisateur : ce que paie le client et
-// ce qu'il percevra. Mêmes formules et mêmes arrondis que le serveur
-// (order-service pour TVA et commission, api-gateway pour les frais de
-// paiement) ; tous les taux viennent des réglages admin (PricingPolicy).
+// Détail du prix pour l'organisateur, avec les mêmes formules et arrondis que le serveur.
 
 import type { PricingPolicy } from "@/lib/api/events";
 

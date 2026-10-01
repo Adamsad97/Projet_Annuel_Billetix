@@ -1,9 +1,6 @@
 "use client";
 
-// Offrir un billet à un autre compte BilleTix : transfert immédiat et
-// définitif (pas d'acceptation du bénéficiaire). Deux étapes : saisie, puis
-// récapitulatif à confirmer. L'API exige une connexion récente : sinon,
-// brouillon mis de côté le temps de se reconnecter, puis restauré.
+// Offrir un billet : transfert immédiat en deux étapes ; brouillon restauré après reconnexion si nécessaire.
 
 import Link from "next/link";
 import { useEffect, useState } from "react";

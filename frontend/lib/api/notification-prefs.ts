@@ -1,7 +1,4 @@
-// Client pour /users/buyer/notification-prefs (api-gateway). Câblage réel —
-// niveau 1 seulement (stockage/lecture) : les préférences persistent, mais
-// ne bloquent pas encore l'envoi des notifications correspondantes côté
-// backend (voir lib/constants/notification-prefs.ts pour le détail des ids).
+// Client des préférences de notification de l'acheteur (/users/buyer/notification-prefs).
 
 import { apiGet, apiPatch } from "./client";
 

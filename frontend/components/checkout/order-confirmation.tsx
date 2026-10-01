@@ -1,10 +1,6 @@
 "use client";
 
-// Rendu côté client : la page de confirmation doit appeler GET /orders/:id,
-// une route protégée par JWT — le token vit dans le localStorage/sessionStorage
-// du navigateur, donc cet appel ne peut pas se faire depuis un composant
-// serveur (qui n'a pas accès à ce stockage et se verrait toujours répondre
-// "Token manquant").
+// Rendu côté client : GET /orders/:id exige le jeton stocké dans le navigateur.
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -27,11 +23,7 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
   useEffect(() => {
     let cancelled = false;
 
-    // Bug corrigé : cette page pouvait s'afficher une fraction de seconde
-    // avant que le webhook Stripe ait fini de confirmer le paiement côté
-    // serveur (course), figeant "Commande créée" indéfiniment même une fois
-    // le paiement réellement confirmé quelques secondes plus tard. On
-    // réinterroge quelques fois tant que la commande reste PENDING_PAYMENT.
+    // On réinterroge tant que la commande reste PENDING_PAYMENT (le webhook peut arriver après).
     const MAX_ATTEMPTS = 6;
     const POLL_DELAY_MS = 2000;
 
@@ -44,10 +36,7 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
         setLoading(false);
 
         if (result.order.status === "PENDING_PAYMENT" && attempt < MAX_ATTEMPTS) {
-          // Bug corrigé : on attendait uniquement le webhook Stripe — s'il
-          // n'arrive jamais (serveur injoignable par Stripe…), la commande
-          // restait en attente malgré un paiement encaissé. On demande au
-          // serveur de vérifier lui-même auprès de Stripe (idempotent).
+          // Sans webhook, le serveur vérifie lui-même auprès de Stripe (idempotent).
           await syncOrderPayment(orderId).catch(() => undefined);
           setTimeout(() => {
             if (!cancelled) load(attempt + 1);

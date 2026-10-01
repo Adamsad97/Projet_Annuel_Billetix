@@ -8,9 +8,7 @@ import type { ApiTicket } from "./tickets";
 
 const API_URL = getApiBaseUrl();
 
-// Correspond exactement à l'enum EventStatus du backend (event.entity.ts) —
-// un rejet ne crée pas de statut "REJECTED" séparé : l'événement repasse en
-// DRAFT avec rejection_reason renseigné (cf. EventService.reject).
+// Statuts du backend ; un rejet repasse en DRAFT avec rejection_reason.
 export type ApiEventStatus =
   | "DRAFT"
   | "PENDING_VALIDATION"
@@ -46,9 +44,7 @@ export interface ApiEvent {
   venue_city: string;
   venue_postal_code: string;
   venue_country: string;
-  // String, pas number : colonne DECIMAL TypeORM (même convention que
-  // commission_rate/price_ht ci-dessous) — convertir avec Number() au point
-  // d'usage, jamais assigner directement à un state numérique.
+  // Colonne DECIMAL renvoyée en texte : convertir avec Number() à l'usage.
   venue_latitude: string | null;
   venue_longitude: string | null;
   poster_url: string | null;
@@ -166,10 +162,7 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 /** Nombre d'événements par période nommée (filtre Date), en une requête. */
-/**
- * Nombre d'événements par période nommée (filtre Date), en une requête, avec
- * les autres filtres choisis (la période vient de chaque ligne du menu).
- */
+/** Nombre d'événements par période du filtre Date, en une requête. */
 export function countEventsByPeriod(
   periods: Array<{ key: string; from: string; to?: string }>,
   filters: ListEventsParams = {},
@@ -250,21 +243,10 @@ export function createEvent(dto: CreateEventDto): Promise<ApiEvent> {
   return apiPost<ApiEvent>("/events", dto);
 }
 
-// Bug corrigé : /evenements/:id/modifier n'a jamais été relié au serveur
-// (page 100% maquette) et le formulaire bloquait explicitement le mode
-// édition. Champs réellement modifiables selon le statut, imposé côté
-// serveur (event-service EventService.update) :
-// - DRAFT : tous les champs ci-dessous (sauf les catégories de billets,
-//   qui n'ont pas d'API de modification/suppression, seulement création).
-// - PENDING_VALIDATION / PUBLISHED : uniquement les 3 champs "cosmétiques"
-//   (description, affiche, conditions d'accès) — les acheteurs déjà
-//   inscrits ne doivent pas voir prix/dates/lieu changer sous eux.
-// - Statut suspendu/annulé/terminé/archivé : non modifiable du tout.
+// Champs modifiables selon le statut : tout en brouillon, seulement description, affiche et accès une fois soumis.
 export const EVENT_COSMETIC_FIELDS = ["description", "poster_url", "cover_url", "access_conditions"] as const;
 
-// Distinct de CreateEventDto (frontend) : le formulaire de création ne
-// collecte pas access_conditions, alors que c'est justement l'un des 3
-// champs "cosmétiques" modifiables une fois l'événement soumis/publié.
+// Distinct de CreateEventDto : access_conditions n'est modifiable qu'en édition.
 export interface UpdateEventDto {
   /** Brouillon : déclaration « à but non lucratif ». */
   is_non_profit?: boolean;

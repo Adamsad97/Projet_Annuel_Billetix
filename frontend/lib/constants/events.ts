@@ -9,11 +9,7 @@ export type EventCategory =
   | "Danse"
   | "Autre";
 
-// Bug corrigé (demande produit, 2 passes) : bandeau événement décliné en 7
-// couleurs vives distinctes par catégorie, d'abord uniformisé en un
-// dégradé gris ardoise, puis passé en teinte unie (plus de dégradé du
-// tout — cf. les consommateurs de `band`, qui n'ajoutent plus
-// bg-gradient-to-br devant cette classe).
+// Bandeau d'événement en teinte unie par catégorie.
 export const apiCategoryMeta: Record<
   string,
   { label: EventCategory; emoji: string; band: string }

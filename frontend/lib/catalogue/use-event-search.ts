@@ -1,8 +1,6 @@
 "use client";
 
-// Recherche d'événements partagée par le catalogue et « À la une » :
-// filtres (recherche, ville, catégorie, date, prix, distance, tri),
-// interrogation du serveur (GET /events) et pagination « Afficher plus ».
+// Recherche d'événements partagée par le catalogue et « À la une » : filtres, requête GET /events, « Afficher plus ».
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCategoryCounts, listCategories, type ApiCategory } from "@/lib/api/categories";
@@ -138,9 +136,7 @@ export function useEventSearch({ syncUrl = false, initialEvents, unfilteredParam
     return () => clearTimeout(timeout);
   }, [fetchPage, ready]);
 
-  // Nombres des filtres Catégorie et Date, selon les autres filtres choisis :
-  // recalculés après une pause de frappe, comme la liste. Une réponse arrivée
-  // après un nouveau changement de filtre est ignorée.
+  // Nombres des filtres recalculés après une pause de frappe ; une réponse périmée est ignorée.
   useEffect(() => {
     if (!ready) return;
     let cancelled = false;

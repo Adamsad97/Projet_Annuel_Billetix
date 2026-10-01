@@ -5,8 +5,7 @@ import type { TicketDetail } from "@/lib/constants/ticket-detail";
 export function TicketVisual({ ticket }: { ticket: TicketDetail }) {
   return (
     <div className="overflow-hidden rounded-2xl border-2 border-blue-500/40 bg-card">
-      {/* Bug corrigé : bandeau à couleur de marque fixe (ticket.band),
-          jamais liée au thème — texte épinglé en blanc. */}
+      {/* Texte blanc fixe sur le bandeau de couleur de marque. */}
       <div className={`flex items-center justify-between ${ticket.band} px-6 py-4`}>
         <span className="text-lg font-extrabold tracking-tight text-white">BilleTix</span>
         <span className="text-xs text-white/80">#{ticket.reference}</span>

@@ -1,9 +1,6 @@
 "use client";
 
-// Espace agent de contrôle : un compte agent ne sert qu'au contrôle des
-// entrées. Toute page d'achat (accueil, catalogue, événements, revente,
-// commande, billets…) le renvoie vers la page de scan. Le serveur refuse de
-// toute façon tout achat à un agent (cf. api-gateway common/purchase-roles.ts).
+// Un agent ne sert qu'au contrôle : toute page d'achat le renvoie vers le scan.
 
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";

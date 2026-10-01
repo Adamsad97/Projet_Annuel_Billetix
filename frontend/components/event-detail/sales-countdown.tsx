@@ -1,13 +1,6 @@
 "use client";
 
-// Bug corrigé (règle produit jamais appliquée) : sales_start_date/
-// sales_end_date étaient stockées mais jamais vérifiées à l'achat — un
-// événement validé restait achetable à n'importe quel moment (corrigé côté
-// backend, ticket-category.service.ts decrementQuota()). Ce composant
-// couvre le pendant frontend : tant que les ventes ne sont pas ouvertes, un
-// compte à rebours compact remplace le
-// formulaire d'achat, et bascule automatiquement dessus à zéro — sans
-// recharger la page.
+// Avant l'ouverture des ventes, un compte à rebours remplace le formulaire d'achat et bascule à zéro.
 
 import { useEffect, useState } from "react";
 
@@ -42,13 +35,7 @@ const VARIANTS = {
   },
 } as const;
 
-/**
- * Compte à rebours compact (jours, heures, minutes, secondes), réutilisé par
- * TicketSelector — ouverture des ventes, côté acheteur comme pour
- * l'organisateur ou un admin en lecture seule (`onZero` peut être un no-op)
- * — et par l'en-tête (début de l'événement). Les jours disparaissent quand il
- * n'en reste plus ; la place des chiffres est réservée dès le chargement.
- */
+/** Compte à rebours compact (jours masqués à zéro, place des chiffres réservée), réutilisé par la billetterie et l'en-tête. */
 export function CountdownDigits({
   targetIso,
   onZero,

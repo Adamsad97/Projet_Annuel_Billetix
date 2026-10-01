@@ -1,9 +1,6 @@
 "use client";
 
-// Console de contrôle d'accès : choix de l'événement, paquet hors ligne,
-// caméra, verdict en grand. En ligne, le serveur juge chaque scan ; sans
-// réseau, l'appareil vérifie lui-même la signature du QR avec le paquet
-// hors ligne, puis synchronise dès le retour du réseau (le serveur revérifie).
+// Console de contrôle : en ligne le serveur juge, hors ligne l'appareil vérifie la signature puis synchronise.
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -44,9 +41,7 @@ const NOT_EXPECTED = new Set(["CANCELLED", "REFUNDED"]);
 
 type Tone = "success" | "warning" | "danger";
 
-// Refusé (rouge) : ce QR ne fera jamais entrer cette personne.
-// À vérifier (orange) : la personne est peut-être dans son droit, une action
-// immédiate règle le problème (billet affiché en direct, revenir à l'ouverture).
+// Refusé (rouge) : n'entrera jamais ; à vérifier (orange) : une action immédiate peut régler le problème.
 const VERDICTS: Record<ScanResultCode, { label: string; hint: string; tone: Tone }> = {
   SUCCESS: { label: "Entrée validée", hint: "Le billet est valide.", tone: "success" },
   ALREADY_USED: { label: "Billet déjà utilisé", hint: "Ce billet a déjà servi à entrer.", tone: "danger" },
@@ -106,11 +101,7 @@ interface ScanEvent {
 
 const HOUR = 3600_000;
 
-/**
- * Événement présenté d'office à un agent : celui en cours, sinon le prochain,
- * sinon le plus récent. L'agent ne choisit pas : il contrôle l'événement
- * auquel il est affecté.
- */
+/** Événement présenté d'office à l'agent : en cours, sinon le prochain, sinon le plus récent. */
 function currentEvent(all: ScanEvent[], now = Date.now()): ScanEvent | undefined {
   // Un événement ouvert au contrôle passe avant un événement annulé ou fermé.
   const open = all.filter((e) => !scanEventStatus(e, now).closed);
@@ -123,10 +114,7 @@ function currentEvent(all: ScanEvent[], now = Date.now()): ScanEvent | undefined
   return list[list.length - 1];
 }
 
-/**
- * Affectations de l'agent, du plus proche au plus lointain : en cours, puis
- * à venir par date croissante ; les événements passés à part.
- */
+/** Affectations de l'agent : en cours, puis à venir, puis passées à part. */
 function agentSchedule(list: ScanEvent[], now = Date.now()): { current: ScanEvent[]; past: ScanEvent[] } {
   const endOf = (e: ScanEvent) => new Date(e.end_date ?? e.start_date).getTime();
   const byStart = (a: ScanEvent, b: ScanEvent) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime();

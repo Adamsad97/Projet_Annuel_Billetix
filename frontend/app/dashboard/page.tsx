@@ -1,8 +1,6 @@
 "use client";
 
-// Bug corrigé : page 100% maquette (stats et événements factices) — câblée
-// sur GET /events/me/dashboard (api-gateway), déjà entièrement construit
-// côté backend mais jamais appelé par le frontend jusqu'ici.
+// Tableau de bord organisateur câblé sur GET /events/me/dashboard.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";

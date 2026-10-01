@@ -20,11 +20,7 @@ function formatDay(value: string | null): string {
   return value ? new Date(value).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "";
 }
 
-/**
- * Vérification d'identité de l'organisateur : dépôt de la pièce (stockée en
- * privé, visible seulement de l'organisateur et des admins), puis examen
- * par un admin.
- */
+/** Vérification d'identité : dépôt de la pièce (privée), puis examen par un admin. */
 export function KycSection() {
   const [kyc, setKyc] = useState<ApiKycStatus | null | undefined>(undefined);
   const [loadError, setLoadError] = useState<string | null>(null);

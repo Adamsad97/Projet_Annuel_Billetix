@@ -62,11 +62,7 @@ interface Row {
   result?: BulkInviteResult;
 }
 
-/**
- * Fenêtre « Assigner des agents » : plusieurs invitations en un envoi.
- * Chaque ligne reçoit son propre résultat ; les lignes réussies disparaissent,
- * celles en erreur restent pour correction.
- */
+/** Invitation groupée : résultat par ligne, les réussies disparaissent, les erreurs restent. */
 function AssignAgentsDialog({
   eventId,
   eventTitle,
@@ -314,12 +310,7 @@ function AssignAgentsDialog({
   );
 }
 
-/**
- * Agents de contrôle de l'événement : liste (état de l'invitation), retrait,
- * et fenêtre « Assigner des agents » (ouverte aussi depuis l'en-tête de la
- * page via `inviteOpen`). Un agent retiré ne peut plus scanner ni télécharger
- * le paquet hors ligne.
- */
+/** Agents de l'événement : liste, retrait et fenêtre d'invitation ; un agent retiré ne scanne plus. */
 export function EventAgents({
   eventId,
   eventTitle,

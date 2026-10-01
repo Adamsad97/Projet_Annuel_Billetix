@@ -1,11 +1,6 @@
 "use client";
 
-// Bloc « adresse de facturation » commun à l'achat et à la revente.
-// Bugs corrigés : le champ Adresse n'avait aucune proposition, la liste des
-// pays se limitait à 5 (FR, BE, CH, SN, CI — la Guinée, entre autres,
-// impossible à choisir) et le code postal était obligatoire alors que de
-// nombreux pays n'en utilisent pas. Les champs gardent leurs attributs
-// `name` : les formulaires parents continuent de lire via FormData.
+// Adresse de facturation commune à l'achat et à la revente : suggestions, tous les pays, code postal facultatif.
 
 import { useState } from "react";
 import { AddressAutocomplete } from "@/components/create-event/address-autocomplete";

@@ -1,9 +1,6 @@
 "use client";
 
-// Bascule clair / sombre. Icônes au trait (même style que les autres
-// pictogrammes du site) plutôt que des emojis, dont le rendu varie selon le
-// système et jure avec l'interface. Les deux icônes sont superposées et
-// permutent avec un léger fondu + rotation.
+// Bascule clair/sombre avec icônes au trait qui permutent en fondu.
 
 import { useTheme } from "@/lib/theme/theme-provider";
 

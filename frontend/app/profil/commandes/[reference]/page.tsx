@@ -1,11 +1,6 @@
 "use client";
 
-// Bug corrigé : page 100% maquette — ne reconnaissait que 2 références
-// factices ("ORD-2026-00847", etc.), donc "Page introuvable" systématique
-// pour toute vraie commande. Câblée sur order-service/ticket-service.
-// Le segment de route s'appelle [reference] mais reçoit en réalité le vrai
-// id (UUID) de la commande — order-service ne sait pas chercher par
-// référence humaine, seulement par id (voir OrderRow: href utilise order.id).
+// Détail d'une commande ; le segment [reference] reçoit en réalité l'id (UUID) de la commande.
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
@@ -48,13 +43,7 @@ export default function OrderDetailPage({
   const [postponementRefunded, setPostponementRefunded] = useState(false);
   const [resendState, setResendState] = useState<"idle" | "loading" | "sent" | "error">("idle");
   const [resendError, setResendError] = useState<string | null>(null);
-  // Bug corrigé (fonctionnalité absente) : une commande abandonnée en cours
-  // de paiement (PENDING_PAYMENT) restait bloquée sans aucun moyen d'y
-  // revenir — le stock est pourtant déjà décompté pour elle (order.create
-  // consomme la réservation), il ne manquait qu'un nouveau PaymentIntent.
-  // POST /payments/intent (déjà utilisé par le tunnel d'achat normal)
-  // revalide tout côté serveur (propriétaire, montant, statut déjà payé) :
-  // aucune confiance accordée au client ici non plus.
+  // Reprise du paiement d'une commande en attente via un nouveau PaymentIntent, revalidé côté serveur.
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
@@ -62,11 +51,7 @@ export default function OrderDetailPage({
   useEffect(() => {
     let cancelled = false;
 
-    // Bug corrigé : juste après paiement, la commande passe CONFIRMED avant
-    // que ticket-service ait fini de générer les billets (quasi simultané
-    // mais pas atomique) — une seule lecture au mauvais moment affichait
-    // "Aucun billet pour cette commande" de façon définitive, sans jamais se
-    // corriger tant que la page n'était pas rechargée manuellement.
+    // Juste après paiement, les billets peuvent arriver un peu après : on relit jusqu'à les obtenir.
     async function loadTickets(status: string) {
       const shouldHaveTickets = status === "CONFIRMED" || status === "TICKETS_SENT";
       const maxAttempts = shouldHaveTickets ? 5 : 1;
@@ -119,9 +104,7 @@ export default function OrderDetailPage({
         setResumeError("Ce moyen de paiement n'est pas encore disponible — seule la carte bancaire est câblée pour l'instant.");
       }
     } catch (err) {
-      // "Commande déjà payée" (409) : un webhook a pu arriver entre-temps
-      // (ex: autre onglet) — on recharge simplement l'état réel plutôt que
-      // d'afficher une erreur trompeuse sur une commande en fait réglée.
+      // 409 « déjà payée » : on recharge l'état réel plutôt qu'afficher une erreur.
       if (err instanceof ApiError && err.status === 409) {
         getOrder(orderId).then((result) => setOrder(result.order));
       } else {

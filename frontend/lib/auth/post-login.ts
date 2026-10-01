@@ -10,10 +10,7 @@ export function postLoginPath(next?: string | null): string {
   return "/";
 }
 
-/**
- * Connexion Google/Facebook : le navigateur quitte le site, ?next= serait
- * perdu. Mémorisé le temps de l'aller-retour (onglet courant seulement).
- */
+/** Connexion Google/Facebook : ?next= mémorisé le temps de l'aller-retour (onglet courant). */
 export function rememberOAuthNext(next?: string | null): void {
   try {
     if (next) window.sessionStorage.setItem(OAUTH_NEXT_KEY, next);

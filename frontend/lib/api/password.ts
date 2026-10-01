@@ -1,7 +1,4 @@
-// Client pour /auth/change-password (api-gateway) — authentifié, via
-// lib/api/client (Bearer + rafraîchissement transparent). Fichier séparé de
-// lib/api/auth.ts (flux pré-connexion) pour éviter un import circulaire :
-// lib/api/client importe déjà lib/api/auth (refreshTokens).
+// Client de /auth/change-password, séparé de lib/api/auth.ts pour éviter un import circulaire.
 
 import { apiPost } from "./client";
 

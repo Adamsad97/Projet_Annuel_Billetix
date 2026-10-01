@@ -1,10 +1,6 @@
 "use client";
 
-// Bug corrigé : ce composant affichait toujours "Connexion"/"S'inscrire",
-// même une fois connecté — il ne lisait jamais la session réelle. La lecture
-// se fait ici en useEffect (après montage) plutôt qu'en initialiseur de
-// useState, pour que le premier rendu client corresponde au HTML serveur
-// (évite un hydration mismatch, même pattern que checkout-flow.tsx).
+// Session lue en useEffect pour que le premier rendu client corresponde au HTML serveur.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -18,12 +14,7 @@ import { PreviewSwitcher } from "@/components/admin/preview-switcher";
 import { effectiveRole, isAdminRole, isPreviewActive, PREVIEW_CHANGED_EVENT } from "@/lib/auth/preview";
 import { buttonClass } from "@/components/ui/button";
 
-// Matrice de rôles de la navbar — un compte n'a qu'un seul rôle à la fois,
-// chaque onglet ne sert donc qu'à celui à qui il est réellement utile
-// (ex: ADMIN n'achète ni ne scanne jamais et n'a pas le catalogue — il peut
-// en revanche prévisualiser chaque rôle, cf. lib/auth/preview.ts —,
-// ORGANIZER ne parcourt pas le catalogue comme un acheteur). `allowGuest` : visible sans être connecté
-// (vitrine publique) ; `roles` s'applique seulement une fois connecté.
+// Onglets par rôle ; allowGuest les montre sans connexion, roles s'applique une fois connecté.
 const navLinks: Array<{ href: string; label: string; allowGuest?: boolean; roles: UserRole[] }> = [
   { href: "/evenements", label: "Événements", allowGuest: true, roles: ["BUYER"] },
   // Revente réservée aux acheteurs connectés : plus visible des visiteurs.
@@ -101,9 +92,7 @@ export function Navbar({ active = "/evenements" }: { active?: string }) {
           ) : null}
           {user === undefined ? null : user ? (
             <>
-              {/* Masqué pour ADMIN/SUPER_ADMIN : le lien "Back-office" du
-                  menu suffit déjà, et le prénom du compte de bootstrap
-                  ("Admin BilleTix") créait un doublon visuel confus. */}
+              {/* Masqué pour un admin : le lien « Back-office » suffit. */}
               {user.role !== "ADMIN" && user.role !== "SUPER_ADMIN" ? (
                 <Link
                   href="/profil"

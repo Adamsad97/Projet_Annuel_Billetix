@@ -8,10 +8,7 @@ export interface RegistrationPolicy {
   minimumAge: number;
 }
 
-// Valeurs de repli uniquement (API injoignable ou chargement en cours) —
-// identiques au FALLBACK d'auth-service. Les vraies valeurs viennent de
-// platform_settings (password_min_length, minimum_signup_age), réglables
-// par l'admin.
+// Valeurs de repli identiques à celles d'auth-service ; les vraies viennent des réglages admin.
 const FALLBACK: RegistrationPolicy = { passwordMinLength: 12, minimumAge: 18 };
 
 // Une seule requête par chargement de page, partagée entre les formulaires.

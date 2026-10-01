@@ -1,23 +1,10 @@
 @import "tailwindcss";
 
-/* Mode clair/sombre — bug corrigé : toute l'appli était codée en dur avec
-   des couleurs fixes (#07060c, #12101c, text-white, text-gray-400…),
-   aucun mode clair n'existait, malgré les variables --background/
-   --foreground par défaut du template Next.js ci-dessous (jamais
-   réellement utilisées par aucune page — body est toujours caché derrière
-   les divs pleine page de chaque composant).
-   Le sombre reste la valeur par défaut de chaque token (aucun changement
-   visuel si le thème ne se charge pas, ex. JS désactivé) — le clair
-   s'active en surchargeant les mêmes variables sous [data-theme="light"].
-   Ces tokens génèrent automatiquement les classes bg-page/text-ink-1/
-   border-hairline-2/etc. via @theme (convention Tailwind v4). */
+/* Mode clair/sombre : tokens sombres par défaut, surchargés sous [data-theme="light"], exposés en classes Tailwind via @theme. */
 @theme {
   --color-page: #07060c;
   --color-card: #12101c;
-  /* Bug corrigé : #0a0812 était quasi identique à --color-page (#07060c,
-     à peine 3 valeurs RGB d'écart) — la navbar n'avait donc visuellement
-     aucun fond à elle, elle se fondait dans la page. Réutilise la couleur
-     des cartes, déjà nettement distincte du fond de page. */
+  /* Fond de la navbar distinct de la page : reprend la couleur des cartes. */
   --color-header: #12101c;
   --color-popover: #181523;
 
@@ -34,23 +21,15 @@
   --color-hairline-4: rgb(255 255 255 / 20%);
   --color-hairline-5: rgb(255 255 255 / 30%);
 
-  /* Bug corrigé (2 passes) : d'abord text-violet-200 illisible en clair
-     (nuance de violet la plus claire de Tailwind), puis demande produit de
-     retirer complètement le violet/fuchsia de toute l'appli — recoloré en
-     bleu "corporate". --color-accent = libellés/sous-titres/onglet actif
-     (ton doux) ; --color-link/--color-link-hover = liens et logo (ton plus
-     affirmé, meilleur contraste en clair). */
+  /* Accent bleu : --color-accent pour libellés et onglet actif, --color-link pour liens et logo. */
   --color-accent: #93c5fd;
   --color-link: #60a5fa;
   --color-link-hover: #93c5fd;
 
-  /* Logo (demande produit, exemple fourni) : icône billet + "TiX" en
-     corail/orange fixe, identique clair/sombre — jamais adaptatif comme le
-     reste de la palette, c'est la couleur de marque. */
+  /* Couleur de marque du logo, identique en clair et en sombre. */
   --color-brand: #e8532b;
 
-  /* États (validation de saisie, indicateurs) — plus foncés en clair pour
-     garder un contraste lisible sur fond blanc. */
+  /* États (saisie, indicateurs), plus foncés en clair pour rester lisibles. */
   --color-success: #34d399;
   --color-warning: #fbbf24;
   --color-danger: #f87171;
@@ -84,11 +63,7 @@
   --color-danger: #b91c1c;
 }
 
-/* Thème clair : les nuances 300/400 (texte des pastilles, statuts, alertes,
-   montants…) sont pensées pour le fond sombre et deviennent illisibles sur
-   fond blanc. Remplacées ici par les nuances 700/600, sans toucher aux
-   composants. Un élément posé sur un fond toujours sombre (ex. en-tête de
-   la console de scan) utilise des couleurs fixes, hors de ces variables. */
+/* Thème clair : nuances 300/400 remplacées par 700/600 pour rester lisibles sur fond blanc. */
 [data-theme="light"] {
   --color-red-300: oklch(50.5% 0.213 27.518);
   --color-red-400: oklch(57.7% 0.245 27.325);
@@ -126,10 +101,7 @@
   --color-rose-400: oklch(58.6% 0.253 17.585);
 }
 
-/* Listes déroulantes, calendriers, barres de défilement natives : dessinés
-   par le navigateur selon color-scheme. Sans lui, la liste ouverte d'un
-   <select> restait blanche en sombre, avec le texte blanc du thème —
-   options illisibles. */
+/* color-scheme : listes, calendriers et barres de défilement natifs suivent le thème. */
 :root {
   color-scheme: dark;
 }
@@ -150,9 +122,7 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Bug corrigé : les <button> n'ont pas de curseur "pointer" par défaut dans
-   la plupart des navigateurs (contrairement aux liens <a>) — repéré comme
-   incohérent au survol des nombreux boutons de l'appli. */
+/* Curseur « pointer » sur tous les boutons. */
 button:not(:disabled),
 [role="button"]:not([aria-disabled="true"]),
 a[href],

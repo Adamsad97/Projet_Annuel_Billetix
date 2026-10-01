@@ -1,7 +1,4 @@
-// Présentation des paramètres de la plateforme : titre des sections et
-// libellé lisible de chaque réglage. Le rangement par section et les droits
-// d'accès (super admin) viennent du serveur (admin-service,
-// setting-catalog.ts) — ici, uniquement l'habillage.
+// Habillage des paramètres (titres et libellés) ; sections et droits viennent du serveur.
 
 export type SettingFormat = "number" | "ratio" | "thresholds" | "text";
 

@@ -32,9 +32,7 @@ export function NewsletterComposer() {
     };
   }, []);
 
-  // Bug corrigé : confirmation via window.confirm() — boîte native
-  // « localhost:3000 indique », impossible à mettre en forme et peu
-  // professionnelle. Fenêtre du site avec un récapitulatif de l'envoi.
+  // Confirmation dans une fenêtre du site avec récapitulatif, plutôt que window.confirm().
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!subject.trim() || !body.trim()) return;

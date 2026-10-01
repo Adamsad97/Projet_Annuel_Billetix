@@ -1,9 +1,6 @@
 "use client";
 
-// Fenêtre de consultation d'une fiche (ex. transfert, revente) : les listes
-// n'affichent qu'un résumé, le détail (comptes, noms, contexte) n'est
-// montré qu'à la demande. Même habillage qu'ActionDialog ; Échap ou un clic
-// à l'extérieur ferme la fenêtre.
+// Fenêtre de consultation d'une fiche ; Échap ou clic à l'extérieur pour fermer.
 
 import { useId, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";

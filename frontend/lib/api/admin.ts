@@ -74,10 +74,7 @@ export function verifyNonProfit(id: string, approved: boolean, reason?: string):
   return apiPost<ApiEvent>(`/admin/events/${id}/verify-non-profit`, approved ? { approved } : { approved, reason });
 }
 
-// ─── Gestion globale des événements (tous statuts) ─────────────────────────
-// Bug corrigé : cette page n'a jamais été reliée au backend, elle affichait
-// des données 100% fictives (lib/constants/admin-events.ts) — aucun événement
-// réel, publié ou non, n'y apparaissait jamais.
+// ─── Gestion globale des événements (tous statuts) ───
 
 export interface ApiAdminEvent extends ApiEvent {
   organizer_name: string;
@@ -176,14 +173,12 @@ export function getUserOrders(id: string): Promise<ApiOrder[]> {
   return apiGet<ApiOrder[]>(`/admin/users/${id}/orders`);
 }
 
-/** Pour un acheteur n'ayant rien reçu — équivalent support de
- * POST /orders/:id/resend-tickets (réservé au titulaire de la commande). */
+/** Renvoi des billets par le support pour un acheteur qui n'a rien reçu. */
 export function resendOrderTicketsAsSupport(orderId: string): Promise<{ success: true }> {
   return apiPost<{ success: true }>(`/admin/orders/${orderId}/resend-tickets`);
 }
 
-/** Compte trouvé mais pas encore organisateur (ex: déjà acheteur) — même
- * mécanisme que la page admin de gestion des comptes. */
+/** Compte trouvé mais pas encore organisateur (ex. déjà acheteur). */
 export function changeUserRole(userId: string, role: ApiUserRole): Promise<ApiAdminUser> {
   return apiPost<ApiAdminUser>(`/admin/users/${userId}/change-role`, { role });
 }

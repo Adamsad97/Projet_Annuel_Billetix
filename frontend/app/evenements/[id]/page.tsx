@@ -16,10 +16,7 @@ import {
 } from "@/lib/mappers/event-mappers";
 import { ApiError } from "@/lib/api/http-error";
 
-/**
- * Événement non achetable : bandeau affiché au public (désactivé par
- * l'administration avec son message, annulé, terminé, pas encore publié).
- */
+/** Bandeau affiché quand l'événement n'est pas achetable (désactivé, annulé, terminé, non publié). */
 function unavailability(
   status: string,
   suspensionReason: string | null,
@@ -51,11 +48,7 @@ function unavailability(
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * Événement désigné par l'adresse : lisible (afro-vibes-festival-2026) ou,
- * pour les liens plus anciens, par identifiant. `cache` : une seule requête
- * pour la page et ses métadonnées. null si introuvable.
- */
+/** Événement par adresse lisible ou identifiant ; cache partagé avec les métadonnées ; null si introuvable. */
 const loadEvent = cache(async (param: string): Promise<ApiEvent | null> => {
   try {
     return UUID.test(param) ? await getEvent(param) : await getEventBySlug(param);
@@ -186,9 +179,7 @@ export default async function EventDetailPage({
           </div>
         ) : null}
 
-        {/* Deux colonnes dès md (768px) : Détails à gauche (2/3), Date et
-            billets à droite (1/3) — même disposition que la maquette. En
-            dessous, une seule colonne dans l'ordre naturel. */}
+        {/* Deux colonnes dès md (détails 2/3, billets 1/3), une seule en dessous. */}
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-6 px-6 py-8 md:grid-cols-3">
           <section className="rounded-2xl border border-hairline-2 bg-card p-6 shadow-sm md:col-span-2 md:p-8">
             <h2 className="flex items-center gap-3 text-xl font-bold text-ink-1">

@@ -5,12 +5,7 @@ import { CountdownDigits, LiveDot } from "@/components/event-detail/sales-countd
 
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
-/**
- * Compte à rebours jusqu'au début de l'événement, dans l'en-tête. Avant
- * l'ouverture des ventes, c'est la carte billets qui affiche le sien
- * (ouverture des ventes) : celui-ci prend le relais dès qu'elles ouvrent,
- * sans recharger la page, et disparaît à l'heure du début.
- */
+/** Compte à rebours jusqu'au début de l'événement, qui prend le relais dès l'ouverture des ventes. */
 export function EventStartCountdown({ salesStartIso, startIso }: { salesStartIso: string; startIso: string }) {
   const [visible, setVisible] = useState(false);
 

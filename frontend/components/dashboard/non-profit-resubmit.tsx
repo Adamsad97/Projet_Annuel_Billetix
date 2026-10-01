@@ -6,11 +6,7 @@ import { updateEvent, type ApiEvent } from "@/lib/api/events";
 import { uploadDocument } from "@/lib/api/upload";
 import { ApiError } from "@/lib/api/http-error";
 
-/**
- * Justificatif « à but non lucratif » refusé par un admin : motif, puis
- * envoi d'un nouveau justificatif (privé, rangé au nom de l'organisateur),
- * qui repasse en examen.
- */
+/** Justificatif refusé : motif, puis nouvel envoi qui repasse en examen. */
 export function NonProfitResubmit({ event, onSubmitted }: { event: ApiEvent; onSubmitted: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);

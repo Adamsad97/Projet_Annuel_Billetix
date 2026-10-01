@@ -1,9 +1,4 @@
-// Autocomplétion d'adresse au fil de la frappe — Photon (service public de
-// Komoot, basé sur les données OpenStreetMap), gratuit et sans clé API.
-// Distinct de Nominatim (lib/geo/nominatim.ts, gardé pour le géocodage
-// ponctuel côté carte) : la politique d'usage de Nominatim déconseille
-// explicitement l'autocomplétion (recherche à chaque frappe) sur son
-// instance publique limitée à 1 req/s — Photon est conçu pour cet usage.
+// Autocomplétion d'adresse au fil de la frappe via Photon (OpenStreetMap), gratuit et sans clé.
 import { ApiError } from "@/lib/api/http-error";
 
 export interface AddressSuggestion {
@@ -44,14 +39,7 @@ function buildLabel(props: PhotonFeature["properties"]): string {
   return [showName ? props.name : null, addressLine, cityPart].filter(Boolean).join(", ");
 }
 
-// Bug corrigé (aucune proposition hors de France) : la recherche passait
-// une bbox à Photon, qui est un FILTRE strict et non un simple biais. Le
-// champ "Pays" valant "France" par défaut (et étant placé après l'adresse
-// dans le formulaire), une adresse à Conakry ne renvoyait rien. Pire, même
-// avec "Guinée" saisi, la résolution du pays via Photon renvoyait la Guinée
-// équatoriale — filtre sur le mauvais pays. Désormais : recherche mondiale,
-// et les résultats du pays saisi (comparé au nom renvoyé par Photon, en
-// français) passent simplement en tête.
+// Recherche mondiale ; les résultats du pays saisi passent en tête (une bbox Photon filtrerait strictement).
 function normalizeCountry(value: string): string {
   return value
     .normalize("NFD")

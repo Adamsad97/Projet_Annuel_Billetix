@@ -1,8 +1,6 @@
 "use client";
 
-// Bug corrigé : le bouton "Acheter" s'affichait même quand l'annonce
-// appartenait à l'utilisateur connecté — rien ne l'empêchait de racheter son
-// propre billet (cf. correctif backend), mais l'afficher restait trompeur.
+// Pas de bouton « Acheter » sur sa propre annonce.
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -22,8 +20,7 @@ export function ResaleCard({ listing }: { listing: ApiResaleListing }) {
   const [isOwnListing, setIsOwnListing] = useState(false);
 
   useEffect(() => {
-    // Lu après montage (localStorage indisponible côté serveur) — évite un
-    // hydration mismatch entre le rendu serveur et le premier rendu client.
+    // localStorage absent côté serveur : lu après montage pour éviter un hydration mismatch.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsOwnListing(getStoredUser()?.id === listing.original_buyer_id);
   }, [listing.original_buyer_id]);

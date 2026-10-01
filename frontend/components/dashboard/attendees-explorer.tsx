@@ -1,9 +1,6 @@
 "use client";
 
-// Participants d'un événement (organisateur) : recherche par nom, email ou
-// référence, filtre par statut d'entrée et type de billet, tri et affichage
-// progressif. La liste complète est chargée une fois (GET /events/:id/attendees),
-// le filtrage est donc instantané, y compris le jour J à l'entrée.
+// Participants : recherche, filtres et tri instantanés sur la liste chargée une fois.
 
 import { useMemo, useState } from "react";
 import { AttendeeRow } from "@/components/dashboard/attendee-row";

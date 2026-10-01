@@ -1,10 +1,6 @@
 "use client";
 
-// Paramètres de la plateforme en accordéon : toutes les sections sont
-// fermées, l'admin n'ouvre que celle dont il a besoin (une à la fois) et la
-// referme quand il veut. Il ne voit que les sections auxquelles il a droit :
-// les sections sensibles ne sont envoyées par le serveur qu'au super admin.
-// Enregistrement réel, uniquement des champs modifiés.
+// Paramètres en accordéon, une section à la fois, sections sensibles réservées au super admin ; seuls les champs modifiés sont enregistrés.
 
 import { useEffect, useMemo, useState } from "react";
 import { listPlatformSettings, updatePlatformSetting, type ApiPlatformSetting } from "@/lib/api/admin";

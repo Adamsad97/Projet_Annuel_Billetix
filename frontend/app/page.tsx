@@ -6,15 +6,10 @@ import { listCategories } from "@/lib/api/categories";
 import { getEventCategories, listPublishedEvents } from "@/lib/api/events";
 import { apiEventToFeatured, type FeaturedEvent } from "@/lib/mappers/event-mappers";
 
-// Bug corrigé : sans ça, `next build` fige cette page au moment du build,
-// API injoignable → liste vide servie à tout le monde, indéfiniment.
-// Invisible en `next dev`, qui rend chaque requête.
+// Rendu à chaque requête, sinon next build figerait une liste vide.
 export const dynamic = "force-dynamic";
 
-// Bug corrigé : "À la une" affichait des événements factices (dont
-// "Roméo et Juliette", id "romeo-et-juliette") — cliquables depuis que
-// EventCard mène à /evenements/[id], ils menaient donc systématiquement à
-// une page 404 puisque cet id n'existe pas côté event-service.
+// « À la une » affiche de vrais événements.
 const FEATURED_LIMIT = 10;
 
 export default async function Home() {

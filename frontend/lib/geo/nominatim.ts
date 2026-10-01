@@ -1,8 +1,4 @@
-// Géocodage adresse → coordonnées via Nominatim (OpenStreetMap) — gratuit,
-// sans clé API. Usage volontairement ponctuel (bouton "Localiser sur la
-// carte", jamais déclenché à chaque frappe) : la politique d'usage de
-// l'instance publique limite à 1 req/s et attend un usage raisonnable,
-// jamais adapté à de l'auto-complétion en direct.
+// Géocodage ponctuel via Nominatim (gratuit, 1 req/s), jamais à chaque frappe.
 import { ApiError } from "@/lib/api/http-error";
 
 export interface GeocodeResult {

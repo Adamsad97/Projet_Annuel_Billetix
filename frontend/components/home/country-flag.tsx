@@ -1,8 +1,4 @@
-// Petit drapeau pour la pastille « pays » des cartes d'événement.
-// Dessiné en SVG plutôt qu'en emoji : Windows n'affiche pas les emojis de
-// drapeaux (juste deux lettres). Le pays étant saisi en texte libre
-// ("France", "Guinée"...), la correspondance se fait sur le nom normalisé ;
-// pays non couvert → icône globe neutre, jamais un drapeau faux.
+// Drapeau en SVG (Windows n'affiche pas les emojis de drapeaux) ; pays inconnu → globe neutre.
 
 type Flag = { stripes: string[]; direction: "vertical" | "horizontal"; star?: string };
 

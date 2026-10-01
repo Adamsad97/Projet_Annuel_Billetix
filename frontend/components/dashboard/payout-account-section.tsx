@@ -34,12 +34,7 @@ const METHODS: Array<{ value: PayoutMethod; label: string; hint: string }> = [
   { value: "STRIPE", label: "Stripe Connect", hint: "Versé automatiquement par Stripe sur le compte configuré chez Stripe." },
 ];
 
-/**
- * Compte de reversement : IBAN de l'organisateur (obligatoire, protégé par
- * le mot de passe du compte) et choix du moyen de reversement. Un
- * changement d'IBAN déclenche un email d'alerte et suspend les reversements
- * pendant le délai fixé par la plateforme.
- */
+/** Compte de reversement : IBAN protégé par mot de passe ; un changement alerte par email et suspend les reversements. */
 export function PayoutAccountSection() {
   const [account, setAccount] = useState<ApiPayoutAccount | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);

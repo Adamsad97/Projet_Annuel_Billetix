@@ -1,11 +1,6 @@
 "use client";
 
-// Bug corrigé : page 100% maquette (adminUsers factices, multi-rôles
-// "Acheteur"/"Organisateur"/"Admin" qui n'existe pas côté backend — un
-// compte a un seul rôle) — câblée sur GET /admin/users/:id (+ profil
-// organisateur/KYC quand applicable) et les actions de modération déjà
-// exposées côté backend (suspend/unsuspend/unlock/reset-2fa/activate/
-// change-role/kyc approve-reject).
+// Fiche compte câblée sur GET /admin/users/:id et les actions de modération.
 
 import { use, useEffect, useState } from "react";
 import { AdminShell } from "@/components/layout/admin-shell";
@@ -80,14 +75,7 @@ const kycStatusBadge: Record<string, { label: string; className: string }> = {
 
 export default function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  // Bug corrigé (faille de contrôle d'accès) : cette page laissait n'importe
-  // quel ADMIN suspendre, révoquer ou changer le rôle d'un autre ADMIN — le
-  // backend refuse désormais ces actions (403) si l'appelant n'est pas
-  // SUPER_ADMIN, mais les boutons restaient affichés et cliquables. On les
-  // masque ici pour ne pas laisser un admin normal se heurter à des erreurs
-  // sur des actions qui ne lui sont plus permises. Lu en useEffect (comme
-  // navbar.tsx) pour éviter un hydration mismatch : getStoredUser() lit le
-  // localStorage, absent côté serveur.
+  // Actions sur un autre admin masquées hors SUPER_ADMIN ; lu en useEffect pour éviter un hydration mismatch.
   const [me, setMe] = useState<AuthUser | null>(null);
   const [transfers, setTransfers] = useState<ApiTicketTransfer[] | null>(null);
   const [resales, setResales] = useState<ApiAdminResale[] | null>(null);
@@ -404,13 +392,9 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                 >
                   <option value="BUYER">Acheteur</option>
                   <option value="ORGANIZER">Organisateur</option>
-                  {/* Bug corrigé : AGENT (agent de contrôle) n'était pas
-                      proposé — seule façon de le devenir jusqu'ici était un
-                      appel API direct, aucun chemin dans l'interface. */}
+                  {/* AGENT proposé parmi les rôles. */}
                   <option value="AGENT">Agent de contrôle</option>
-                  {/* Accorder ADMIN/SUPER_ADMIN est réservé au super-admin —
-                      le backend rejette (403) sinon, cf. AuthService.
-                      changeRole/grantsElevatedRole. */}
+                  {/* Accorder ADMIN ou SUPER_ADMIN est réservé au super admin. */}
                   {canGrantElevatedRole ? (
                     <>
                       <option value="ADMIN">Admin</option>
@@ -420,12 +404,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ id: 
                 </select>
               ) : null}
 
-              {/* Bug corrigé (pas pro) : ce bouton déclenche le flux public
-                  "mot de passe oublié" — le backend ne peut pas le
-                  restreindre (n'importe qui connaissant l'email peut déjà
-                  le déclencher depuis /mot-de-passe-oublie), mais le
-                  proposer comme action admin sur un compte admin/
-                  super-admin était trompeur. Masqué comme le reste. */}
+              {/* Bouton de réinitialisation masqué sur un compte admin. */}
               {canManageTarget ? (
                 <button
                   type="button"

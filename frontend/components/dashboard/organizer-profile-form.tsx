@@ -35,11 +35,7 @@ function normalizeUrl(value: string): string {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
-/**
- * Profil public de l'organisateur. Sans `profile` : création — pour un
- * acheteur, elle le fait passer organisateur (la session est mise à jour
- * avec son nouveau rôle). Avec `profile` : modification.
- */
+/** Profil public : création (un acheteur devient organisateur) ou modification. */
 export function OrganizerProfileForm({
   profile,
   onSaved,

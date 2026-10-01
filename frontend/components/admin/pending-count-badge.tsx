@@ -1,8 +1,6 @@
 "use client";
 
-// Pastille du menu admin : nombre d'éléments en attente d'une décision
-// (demandes d'annulation ou de report, vérifications d'identité, virements
-// à émettre aux organisateurs payés par IBAN).
+// Pastille du menu admin : nombre d'éléments en attente d'une décision.
 
 import { useEffect, useState } from "react";
 import { onAdminCountsChanged } from "@/lib/admin/count-events";

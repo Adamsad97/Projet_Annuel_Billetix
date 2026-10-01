@@ -20,11 +20,7 @@ function badgeFor(status: ApiConnectStatus): Badge {
   return { label: "Non configuré", className: "bg-hairline-2 text-ink-3" };
 }
 
-/**
- * Option Stripe Connect : l'organisateur peut recevoir ses reversements via
- * Stripe (virements automatiques) plutôt que par virement de la plateforme
- * sur son IBAN. Identité et compte bancaire saisis chez Stripe.
- */
+/** Option Stripe Connect pour des reversements automatiques plutôt que par virement sur IBAN. */
 export function StripeConnectSection() {
   const [status, setStatus] = useState<ApiConnectStatus | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);

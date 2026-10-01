@@ -1,6 +1,4 @@
-// Client pour /users/organizer/stripe-connect/* (api-gateway) : compte de
-// reversement de l'organisateur. Ses coordonnées bancaires et son identité
-// sont saisies chez Stripe, jamais sur BilleTix.
+// Client du compte de reversement Stripe Connect ; les coordonnées bancaires sont saisies chez Stripe.
 
 import { apiGet, apiPost } from "./client";
 

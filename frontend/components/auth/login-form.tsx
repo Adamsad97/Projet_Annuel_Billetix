@@ -13,19 +13,10 @@ import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
 
-// Bug corrigé (hydration mismatch) : getApiBaseUrl() choisit une adresse
-// différente selon qu'elle est évaluée côté serveur (interne au réseau
-// Docker, ex: http://api-gateway:4000) ou côté navigateur — correct pour un
-// appel fetch (jamais rendu), mais ici la valeur est écrite dans un `href`
-// affiché : React comparait deux HTML différents entre rendu serveur et
-// navigateur. Un lien cliqué par le navigateur doit toujours pointer vers
-// l'adresse navigateur, jamais l'adresse interne — NEXT_PUBLIC_API_URL est
-// injectée en dur au build, identique des deux côtés.
+// Lien OAuth avec NEXT_PUBLIC_API_URL, identique côté serveur et navigateur (évite un hydration mismatch).
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
-// Après connexion : la page demandée (?next=) ou l'accueil, pour tous les
-// rôles — un admin y retrouve « Profil » et « Back-office » dans la barre
-// de navigation (demande produit). L'achat reste impossible pour lui.
+// Après connexion : la page demandée (?next=) ou l'accueil, pour tous les rôles.
 export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; next?: string } = {}) {
   const router = useRouter();
   // Décoché par défaut : sur un ordinateur partagé ou prêté, la session ne
@@ -33,17 +24,11 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Bug corrigé : /auth/resend-verification-email existait déjà côté
-  // backend (nécessaire depuis que login() rejette les comptes non
-  // vérifiés) mais n'était câblé nulle part côté frontend — un lien de
-  // vérification expiré (24h) ou jamais reçu laissait le compte bloqué
-  // sans recours visible pour l'utilisateur.
+  // Renvoi du lien de vérification d'email (expiré ou jamais reçu).
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent">("idle");
 
-  // Étape 2FA : une fois requires_2fa reçu, on retient email/mot de passe
-  // pour renvoyer le login complet avec le code TOTP sans redemander le
-  // mot de passe à l'utilisateur.
+  // Étape 2FA : email et mot de passe retenus pour renvoyer le login avec le code.
   const [pendingCredentials, setPendingCredentials] = useState<{
     email: string;
     password: string;
@@ -186,9 +171,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
       </div>
 
       <div className="flex flex-col gap-3">
-        {/* Bug corrigé : redirection plein-page (pas un fetch) — Passport
-            doit envoyer le navigateur sur l'écran de consentement Google/
-            Facebook, une requête XHR ne le permettrait pas. */}
+        {/* Redirection pleine page : Passport doit afficher l'écran de consentement Google/Facebook. */}
         <a
           href={`${API_URL}/auth/google`}
           onClick={() => rememberOAuthNext(next)}

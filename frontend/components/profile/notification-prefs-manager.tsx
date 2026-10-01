@@ -1,10 +1,6 @@
 "use client";
 
-// Bug corrigé : les cases à cocher vivaient uniquement en mémoire React —
-// tout rechargement de page perdait les choix (ni lus ni enregistrés nulle
-// part). Câblé sur user-service (persistance réelle) — la désactivation
-// d'une notification n'empêche pas encore son envoi côté backend (chantier
-// séparé, service par service).
+// Préférences de notification persistées dans user-service.
 
 import { useEffect, useState } from "react";
 import { ToggleSwitch } from "@/components/profile/toggle-switch";

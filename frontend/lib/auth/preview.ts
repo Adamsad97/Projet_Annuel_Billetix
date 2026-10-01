@@ -1,10 +1,4 @@
-// Mode aperçu du back-office : un admin « prend » un rôle (acheteur,
-// organisateur, agent) pour voir la plateforme comme lui — navigation,
-// pages, écrans — en lecture seule. Purement côté interface : le compte
-// reste administrateur pour le serveur, qui refuse toujours à un admin
-// d'acheter, de créer un événement ou de scanner. En plus, toute requête
-// de modification est bloquée ici avant de partir (lib/api/client.ts).
-// Propre à l'onglet (sessionStorage) et effacé à la fin de la session.
+// Mode aperçu admin en lecture seule : interface d'un autre rôle, toute modification bloquée avant l'envoi.
 
 import type { AuthUser, UserRole } from "@/lib/api/auth";
 import { getStoredUser, PREVIEW_ROLE_KEY } from "@/lib/auth/session";

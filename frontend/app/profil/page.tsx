@@ -30,10 +30,7 @@ export default function ProfilPage() {
   const [orders, setOrders] = useState<ProfileOrder[] | null>(null);
   const [tickets, setTickets] = useState<ProfileTicket[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Un compte ADMIN ou SUPER_ADMIN reste purement administratif — jamais
-  // acheteur —, donc ni billets ni commandes à afficher ici. Bug corrigé :
-  // seul ADMIN était testé, un super admin voyait les blocs acheteur. En
-  // mode aperçu acheteur, la page s'affiche comme pour un client.
+  // Un compte admin n'a ni billets ni commandes, sauf en mode aperçu acheteur.
   const [isAdmin, setIsAdmin] = useState(false);
   // Acheteur (vrai rôle, hors aperçu admin) : peut devenir organisateur.
   const [isBuyer, setIsBuyer] = useState(false);

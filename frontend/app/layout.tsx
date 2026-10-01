@@ -7,11 +7,7 @@ import { SessionManager } from "@/components/auth/session-manager";
 import { AgentSpaceGuard } from "@/components/auth/agent-space-guard";
 import { PreviewBanner } from "@/components/admin/preview-banner";
 
-// Bug corrigé : sans ce script exécuté avant tout rendu, un visiteur ayant
-// choisi le mode clair verrait un flash sombre (thème par défaut) au
-// chargement de chaque page, le temps que React s'hydrate côté client.
-// Volontairement en JS inline classique (pas de useEffect) : doit tourner
-// de façon synchrone, avant le premier paint.
+// Script synchrone avant le premier rendu pour éviter un flash sombre en mode clair.
 const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem("billetix-theme");if(t==="light"||(!t&&window.matchMedia("(prefers-color-scheme: light)").matches)){document.documentElement.setAttribute("data-theme","light");}}catch(e){}})();`;
 
 const geistSans = Geist({

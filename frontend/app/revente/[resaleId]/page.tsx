@@ -1,8 +1,6 @@
 "use client";
 
-// Achat d'une annonce de revente — réservé aux acheteurs connectés :
-// annonce chargée avec la session, côté client (l'API refuse la lecture
-// anonyme, app/revente/layout.tsx protège la section).
+// Achat d'une annonce de revente, réservé aux acheteurs connectés.
 
 import Link from "next/link";
 import { use, useEffect, useState } from "react";

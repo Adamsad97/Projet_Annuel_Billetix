@@ -1,10 +1,6 @@
 "use client";
 
-// Mode clair/sombre — cf. globals.css pour les tokens de couleur. Le script
-// bloquant dans <head> (app/layout.tsx) pose déjà `data-theme="light"` sur
-// <html> avant l'hydratation si nécessaire (évite le flash sombre→clair au
-// chargement) — ce provider ne fait que synchroniser l'état React dessus et
-// gérer le bouton de bascule.
+// Mode clair/sombre : le script du <head> pose data-theme avant hydratation, ce provider synchronise l'état et le bouton.
 
 import {
   createContext,
@@ -27,9 +23,7 @@ function applyTheme(theme: Theme) {
   if (theme === "light") {
     document.documentElement.setAttribute("data-theme", "light");
   } else {
-    // Pas d'attribut = sombre (valeur par défaut des tokens dans
-    // globals.css) — garantit qu'un échec du script d'initialisation
-    // retombe toujours sur l'apparence actuelle de l'appli, jamais cassée.
+    // Sans attribut, thème sombre par défaut : un échec du script retombe sur l'apparence normale.
     document.documentElement.removeAttribute("data-theme");
   }
 }

@@ -33,10 +33,7 @@ export function BillingForm({
   const [user, setUser] = useState<AuthUser | null | undefined>(undefined);
 
   useEffect(() => {
-    // Pré-remplit avec les coordonnées du compte connecté (reste modifiable
-    // — bug signalé : sans ça, une valeur mémorisée par l'autocomplétion du
-    // navigateur pouvait être envoyée par erreur à la place). Lu en effet
-    // (plutôt qu'en initialiseur) pour rester cohérent avec le HTML serveur.
+    // Pré-remplit avec le compte connecté (modifiable), lu après montage pour rester cohérent avec le HTML serveur.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setUser(getStoredUser());
   }, []);

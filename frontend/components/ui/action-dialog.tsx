@@ -1,9 +1,6 @@
 "use client";
 
-// Remplace window.confirm()/window.prompt() — popup native du navigateur au
-// style incohérent avec le thème sombre de l'appli (repéré par l'utilisateur
-// sur la boîte de rejet d'un événement, mais utilisé aussi pour les
-// confirmations d'approbation/annulation/suppression un peu partout).
+// Remplace window.confirm() et window.prompt() par une fenêtre au style du site.
 
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";

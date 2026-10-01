@@ -9,11 +9,7 @@ interface PasswordRequirementsProps {
   confirmPassword?: string;
 }
 
-/**
- * Barre de progression + pastilles cochées au fil de la frappe. Pastilles
- * courtes plutôt qu'une liste en colonnes : les libellés longs passaient à
- * la ligne et désalignaient les puces.
- */
+/** Barre de progression et pastilles cochées au fil de la frappe. */
 export function PasswordRequirements({ rules, password, confirmPassword }: PasswordRequirementsProps) {
   const done = rules.filter((rule) => rule.ok).length;
   const remaining = rules.length - done;

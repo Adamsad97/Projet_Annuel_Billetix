@@ -1,6 +1,4 @@
-// Client pour les catégories d'événement — GET /events/categories(/all) et
-// CRUD /events/categories (backend/api-gateway/src/event/event.controller.ts,
-// liste gérée depuis l'espace Admin, cf. backend/event-service/src/category).
+// Client des catégories d'événement gérées par l'admin (GET et CRUD /events/categories).
 
 import { getApiBaseUrl } from "./base-url";
 import { eventsQueryString, type ListEventsParams } from "./events";
@@ -44,10 +42,7 @@ export function listCategories(): Promise<ApiCategory[]> {
   return getPublicJson<ApiCategory[]>("/events/categories");
 }
 
-/**
- * Nombre d'événements par code de catégorie (badges du filtre), avec les
- * autres filtres choisis (la catégorie choisie est ignorée par le serveur).
- */
+/** Nombre d'événements par catégorie selon les autres filtres choisis. */
 export function getCategoryCounts(filters: ListEventsParams = {}): Promise<Record<string, number>> {
   return getPublicJson<Record<string, number>>(`/events/categories/counts${eventsQueryString(filters)}`);
 }

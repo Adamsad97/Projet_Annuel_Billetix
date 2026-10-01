@@ -1,9 +1,6 @@
 "use client";
 
-// Vue organisateur d'un événement : état de la billetterie, indicateurs,
-// détail financier et reversement, billets par catégorie et fiche pratique.
-// Uniquement de la présentation : les données viennent de la page
-// (GET /events/:id/dashboard, /events/:id/categories, /payments/payouts/me).
+// Vue organisateur d'un événement, pure présentation des données fournies par la page.
 
 import type { ReactNode } from "react";
 import { StatCard } from "@/components/dashboard/stat-card";

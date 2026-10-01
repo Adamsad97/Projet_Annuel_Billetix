@@ -8,11 +8,7 @@ import { euros } from "@/lib/format/money";
 import { formatVatPercent } from "@/lib/api/vat-rates";
 import { fieldClass } from "@/components/ui/field";
 
-/**
- * Détail d'un prix saisi : ce que le client paiera (affiché sur le site)
- * et ce que l'organisateur percevra — pour qu'il n'y ait aucune surprise,
- * ni pour lui ni pour ses clients.
- */
+/** Détail d'un prix saisi : ce que paie le client et ce que perçoit l'organisateur. */
 function PriceDetail({ price, pricing, commissionPercent }: { price: string; pricing: PricingPolicy; commissionPercent: number }) {
   const value = Number(price);
   if (price.trim() === "" || !Number.isFinite(value) || value < 0) return null;
@@ -78,9 +74,7 @@ export interface TicketTierInitial {
   maxPerOrder: string;
 }
 
-// Contrôlé par le parent (CreateEventForm) — les lignes doivent être lisibles
-// au moment de la soumission pour construire les catégories de billets
-// réelles (POST /events/:id/categories).
+// Contrôlé par le parent, qui construit les catégories de billets à la soumission.
 export function TicketTiersEditor({
   rows,
   onChange,
@@ -95,9 +89,7 @@ export function TicketTiersEditor({
   // Taux des réglages admin : détail du prix sous chaque catégorie (null
   // tant qu'ils ne sont pas chargés — la saisie reste possible).
   pricing?: PricingPolicy | null;
-  // Bug corrigé : rien n'empêchait la somme des quotas de dépasser la
-  // capacité totale de l'événement (ex: 500 places mais 500 + 40 réparties
-  // en catégories) — désormais visible en temps réel et plafonné par ligne.
+  // Somme des quotas plafonnée à la capacité, visible en temps réel.
   totalCapacity: number;
   // Événement gratuit : prix fixé à 0 sur chaque catégorie, non saisissable.
   free?: boolean;
@@ -108,10 +100,7 @@ export function TicketTiersEditor({
   const totalQuota = rows.reduce((sum, row) => sum + (parseInt(row.quota, 10) || 0), 0);
   const overCapacity = totalCapacity > 0 && totalQuota > totalCapacity;
 
-  // Bug corrigé : rien n'empêchait de sélectionner deux fois le même nom
-  // (ex: "Standard" en double) — chaque ligne ne propose désormais que les
-  // noms encore disponibles (plus sa propre valeur actuelle, pour rester
-  // sélectionnée dans son propre menu).
+  // Chaque ligne ne propose que les noms encore disponibles, plus le sien.
   const usedNames = new Set(rows.map((row) => row.name).filter(Boolean));
   const availableForNewRow = tierTypes.filter((type) => !usedNames.has(type.label));
 

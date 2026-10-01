@@ -1,11 +1,6 @@
 "use client";
 
-// Billets offerts entre comptes — données réelles (tickets.ticket_transfers).
-// La liste n'affiche qu'un résumé (date, billet, événement, statut) : le
-// détail (comptes, titulaires, contexte, demande d'annulation) ne s'ouvre
-// qu'à la demande, via « Consulter ». Depuis la fiche, un admin peut annuler
-// le transfert (billet rendu à l'expéditeur) sur appel de l'expéditeur, ou
-// traiter sa demande faite depuis la plateforme (accepter / refuser).
+// Billets offerts réels : résumé en liste, détail à la demande ; l'admin peut annuler un transfert ou traiter la demande.
 
 import { useEffect, useState } from "react";
 import { FilterPills } from "@/components/admin/filter-pills";

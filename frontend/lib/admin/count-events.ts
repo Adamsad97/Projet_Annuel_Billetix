@@ -1,6 +1,4 @@
-// Signal « un compteur du menu admin a changé » (identité vérifiée, demande
-// d'annulation traitée, virement confirmé…) : les pastilles se rechargent
-// sans recharger la page.
+// Signal « un compteur du menu admin a changé » : les pastilles se rechargent sans recharger la page.
 
 const EVENT_NAME = "billetix:admin-counts-changed";
 

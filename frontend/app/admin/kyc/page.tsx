@@ -1,8 +1,6 @@
 "use client";
 
-// File des vérifications d'identité (KYC) : organisateurs dont la pièce
-// attend un examen, du plus ancien au plus récent. L'examen (document,
-// approbation, refus motivé) se fait sur la fiche de l'organisateur.
+// File des vérifications d'identité, du plus ancien au plus récent ; l'examen se fait sur la fiche de l'organisateur.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";

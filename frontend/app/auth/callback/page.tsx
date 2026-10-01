@@ -1,10 +1,6 @@
 "use client";
 
-// Bug corrigé (fonctionnalité cassée de bout en bout) : le callback OAuth
-// backend redirige ici depuis toujours (googleCallback/facebookCallback,
-// api-gateway), mais cette page n'a jamais existé côté frontend — un
-// utilisateur complétant une connexion Google/Facebook tombait sur un 404,
-// le code d'échange (Redis, usage unique, 60s) perdu pour rien.
+// Page de retour du callback OAuth : échange le code reçu de la gateway.
 
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -57,9 +53,7 @@ function OAuthCallbackContent() {
   const [firstName, setFirstName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const { minimumAge } = useRegistrationPolicy();
-  // Affiché dès la saisie : un mineur sait tout de suite pourquoi il ne
-  // pourra pas continuer (le serveur refuse de toute façon, sans créer de
-  // compte).
+  // Âge minimum affiché dès la saisie (le serveur refuse de toute façon).
   const underage = birthDate !== "" && ageInYears(birthDate) < minimumAge;
 
   // Étape suivante selon la réponse du serveur : date de naissance (première

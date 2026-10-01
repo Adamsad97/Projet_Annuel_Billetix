@@ -1,10 +1,6 @@
 "use client";
 
-// Rendu côté client : finalise réellement l'achat (transfert du billet +
-// remboursement du vendeur, cf. POST /tickets/resale/:id/complete) — c'est
-// le seul endroit qui fonctionne à la fois pour un paiement confirmé sans
-// redirection et pour un paiement 3DS qui redirige complètement le
-// navigateur ici après coup.
+// Finalise l'achat en revente (transfert et remboursement du vendeur), avec ou sans redirection 3DS.
 
 import { use, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";

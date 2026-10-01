@@ -28,11 +28,7 @@ function download(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-/**
- * Reversements « À virer » (organisateurs payés par IBAN) : l'admin
- * télécharge le fichier SEPA, l'importe dans la banque de la plateforme,
- * puis marque les virements comme versés avec leur référence.
- */
+/** Reversements « À virer » : fichier SEPA à importer à la banque, puis virements marqués versés avec leur référence. */
 export function BankTransfersPanel({ onChange }: { onChange?: () => void }) {
   const [rows, setRows] = useState<ApiBankTransfer[] | null>(null);
   const [accountReady, setAccountReady] = useState(true);

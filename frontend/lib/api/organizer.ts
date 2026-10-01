@@ -1,6 +1,4 @@
-// Client pour les endpoints organisateur de l'api-gateway
-// (backend/api-gateway/src/event/event.controller.ts,
-// backend/api-gateway/src/payment/payment.controller.ts). Câblage réel.
+// Client des endpoints organisateur de la passerelle (événements et paiements).
 
 import { apiGet, apiPost } from "./client";
 

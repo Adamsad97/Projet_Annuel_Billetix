@@ -1,9 +1,4 @@
-// Bug connu de Leaflet avec les bundlers (webpack/Turbopack) : l'icône par
-// défaut du marqueur référence ses images via des chemins relatifs calculés
-// à l'exécution (`_getIconUrl`), qui ne survivent jamais au bundling — le
-// marqueur s'affiche comme un rectangle cassé sans ce correctif. Pointer
-// directement vers le CDN évite toute dépendance au chargement d'assets
-// statiques du bundler pour un fichier qui vit dans node_modules.
+// Icône du marqueur pointée vers le CDN : les chemins relatifs de Leaflet ne survivent pas au bundling.
 import L from "leaflet";
 
 const LEAFLET_VERSION = "1.9.4";

@@ -16,10 +16,7 @@ export interface ProfileTicket {
   resalePurchaseLabel?: string;
 }
 
-// "pending"/"cancelled"/"refunded" ajoutés pour représenter fidèlement les
-// statuts réels d'order-service (PENDING_PAYMENT/CANCELLED/REFUNDED) sur la
-// page profil câblée — "sent"/"used" restent les seuls statuts utilisés par
-// les données de démonstration ci-dessous.
+// Statuts affichés, alignés sur ceux d'order-service.
 export type OrderStatus = "sent" | "used" | "pending" | "cancelled" | "refunded";
 
 export interface ProfileOrder {

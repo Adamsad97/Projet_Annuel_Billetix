@@ -3,10 +3,7 @@
 import { fieldClass } from "@/components/ui/field";
 import { vatRateOptionLabel, type ApiVatRate } from "@/lib/api/vat-rates";
 
-/**
- * Taux de TVA du prix des billets, choisi dans la liste de l'admin. Un taux
- * déjà enregistré mais retiré de la liste reste affiché (« taux actuel »).
- */
+/** Taux de TVA choisi dans la liste admin ; un taux retiré reste affiché comme « taux actuel ». */
 export function VatRateSelect({
   vatRates,
   value,

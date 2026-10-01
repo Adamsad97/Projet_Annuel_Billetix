@@ -1,8 +1,6 @@
 "use client";
 
-// Reventes de billets — données réelles (tickets.ticket_resales). La liste
-// n'affiche qu'un résumé (date, billet, événement, statut) : le détail
-// (vendeur, acheteur, prix, dates) ne s'ouvre qu'à la demande, via « Consulter ».
+// Reventes réelles : résumé en liste, détail à la demande via « Consulter ».
 
 import { useEffect, useState } from "react";
 import { FilterPills } from "@/components/admin/filter-pills";

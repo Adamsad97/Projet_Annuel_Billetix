@@ -1,11 +1,6 @@
 "use client";
 
-// Bug corrigé : page 100% maquette (eventDetails factice) — câblée sur
-// GET /events/:id/dashboard (déjà vérifié organisateur/propriétaire côté
-// gateway) et PATCH /events/:id, jamais appelés jusqu'ici malgré un
-// backend complet. Composant client (comme les autres pages organisateur/
-// admin) : le token vit dans le navigateur, inaccessible à un Server
-// Component qui tournerait dans le conteneur.
+// Modification câblée sur GET /events/:id/dashboard et PATCH /events/:id ; composant client (jeton du navigateur).
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";

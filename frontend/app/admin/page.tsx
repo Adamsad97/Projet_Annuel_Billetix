@@ -1,10 +1,6 @@
 "use client";
 
-// Bug corrigé : page 100% maquette (adminStats/validationQueue factices) —
-// câblée sur GET /admin/dashboard et GET /admin/events/pending
-// (api-gateway), déjà entièrement construits côté backend (KPIs, alertes
-// seuils litiges/remboursements) mais jamais appelés par le frontend
-// jusqu'ici.
+// Tableau de bord admin câblé sur GET /admin/dashboard et GET /admin/events/pending.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";

@@ -1,6 +1,4 @@
-// Icône « localisation » partagée (lieu, « Près de moi », carte) — remplace
-// l'emoji 📍 de la maquette, rendu différemment selon le système (et en
-// couleur fixe), au profit d'un tracé qui suit la couleur du texte.
+// Icône de localisation qui suit la couleur du texte.
 export function LocationPinIcon({ size = 16, className = "" }: { size?: number; className?: string }) {
   return (
     <svg

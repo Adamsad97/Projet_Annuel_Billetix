@@ -1,6 +1,4 @@
-// Vérification d'un QR signé SANS réseau, avec le seul paquet hors ligne :
-// mêmes règles que le serveur (ticket-service : QrSigner.verify, verifyQr,
-// ScanService.eventGate). Le serveur revérifie tout à la synchronisation.
+// Vérification d'un QR signé sans réseau, mêmes règles que le serveur, qui revérifie à la synchronisation.
 
 import type { OfflinePack, ScanResultCode } from "@/lib/api/scan";
 

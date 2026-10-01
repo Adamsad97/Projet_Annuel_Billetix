@@ -1,6 +1,4 @@
-// Convertit un billet réel (ApiTicket, ticket-service via
-// GET /events/:id/attendees) vers la forme attendue par AttendeeRow,
-// et AttendeesExplorer.
+// Convertit un billet réel (ApiTicket) pour AttendeeRow et AttendeesExplorer.
 
 import type { ApiTicket } from "@/lib/api/tickets";
 import { longDate as dateFormatter } from "@/lib/format/dates";

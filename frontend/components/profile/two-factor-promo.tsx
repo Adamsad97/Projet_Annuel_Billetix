@@ -1,11 +1,6 @@
 "use client";
 
-// Mise en avant de la double authentification (2FA) — message adapté pour
-// un compte administrateur (accès au back-office). Auprès des acheteurs :
-// avec leurs billets, leur compte a désormais de la valeur — un mot de
-// passe volé ne doit pas suffire pour entrer à leur place. Affiché
-// uniquement si la 2FA n'est pas activée ; « Plus tard » masque le bandeau
-// pour la durée de l'onglet.
+// Mise en avant de la 2FA si elle n'est pas activée ; « Plus tard » la masque pour l'onglet.
 
 import Link from "next/link";
 import { useEffect, useState } from "react";

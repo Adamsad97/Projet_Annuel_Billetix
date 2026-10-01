@@ -46,11 +46,7 @@ function AdminNav({ active }: { active: string }) {
   );
 }
 
-/**
- * Menu de l'espace admin : colonne latérale sur grand écran ; sur mobile et
- * tablette, bouton « Menu d'administration » qui déplie les mêmes liens
- * (la colonne fixe laissait moins de 100 px au contenu sur un téléphone).
- */
+/** Menu admin : colonne latérale sur grand écran, bouton dépliant sur mobile et tablette. */
 export function AdminSidebar({ active = "/admin" }: { active?: string }) {
   return (
     <>

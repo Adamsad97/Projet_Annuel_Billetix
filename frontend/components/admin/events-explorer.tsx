@@ -1,8 +1,6 @@
 "use client";
 
-// Tous les événements de la plateforme : recherche (titre, lieu, ville ou
-// organisateur), statut, catégorie, période et tri appliqués par le serveur
-// (GET /admin/events), pagination « Afficher plus ».
+// Tous les événements : recherche, filtres et tri côté serveur (GET /admin/events), « Afficher plus ».
 
 import { useEffect, useState } from "react";
 import { FilterPills } from "@/components/admin/filter-pills";

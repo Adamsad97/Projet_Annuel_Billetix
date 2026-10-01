@@ -1,6 +1,4 @@
-// Rend lisibles les traces techniques enregistrées pour les actions
-// sensibles : « Chrome 153 sur Windows » plutôt que la chaîne brute envoyée
-// par le navigateur, et l'adresse IP sans préfixe IPv6 technique.
+// Traces techniques lisibles : navigateur et système plutôt que la chaîne brute, IP sans préfixe IPv6.
 
 const BROWSERS: Array<{ name: string; pattern: RegExp }> = [
   // Ordre important : Edge et Opera s'annoncent aussi comme Chrome.

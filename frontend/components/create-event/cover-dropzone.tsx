@@ -6,11 +6,7 @@ import { FileDropzone } from "@/components/ui/file-dropzone";
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 5 * 1024 * 1024; // aligné sur la passerelle (POST /upload/poster)
 
-/**
- * Image de couverture horizontale (16:9) des cartes d'événement, facultative :
- * sans elle, les cartes montrent l'affiche sur un fond flou. Une image
- * verticale est acceptée mais signalée (elle serait recadrée sur les cartes).
- */
+/** Couverture 16:9 facultative ; une image verticale est acceptée mais signalée (recadrage). */
 export function CoverDropzone({
   onFileSelected,
   initialPreviewUrl,

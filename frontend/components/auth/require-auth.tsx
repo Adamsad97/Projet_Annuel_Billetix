@@ -1,12 +1,6 @@
 "use client";
 
-// Bug corrigé (faille d'interface) : aucune page réservée n'était protégée
-// côté frontend — le back-office, le tableau de bord organisateur, le
-// profil… s'affichaient à un visiteur non connecté, seuls les appels API
-// échouant (message « Ta session a expiré » alors qu'il n'y avait jamais eu
-// de session). La vraie protection reste l'API (JWT + rôles vérifiés par
-// l'api-gateway) : ce garde évite d'afficher une page inutilisable et
-// renvoie au bon endroit.
+// Pages réservées protégées côté interface ; la vraie protection reste l'API.
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";

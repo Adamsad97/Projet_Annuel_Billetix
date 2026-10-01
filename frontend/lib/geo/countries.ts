@@ -1,8 +1,4 @@
-// Liste des pays pour les formulaires (facturation) : codes ISO 3166-1
-// alpha-2, noms affichés en français via Intl.DisplayNames — pas de liste de
-// noms à maintenir à la main. Bug corrigé : la facturation ne proposait que
-// 5 pays (FR, BE, CH, SN, CI), la Guinée par exemple était impossible à
-// choisir.
+// Pays ISO 3166-1 alpha-2 avec leur nom français via Intl.DisplayNames.
 const ISO_CODES =
   "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ " +
   "CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR " +

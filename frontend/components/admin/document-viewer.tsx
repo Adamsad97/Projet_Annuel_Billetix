@@ -18,11 +18,7 @@ function isPdf(url: string): boolean {
 const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 const PRIVATE_DOCUMENT = new RegExp(`/(${UUID})/(${UUID}\\.(?:pdf|png|jpg|webp))$`, "i");
 
-/**
- * Pièce justificative privée (rangée par propriétaire) : lue via la route
- * authentifiée de la passerelle, jamais par son adresse de stockage, qui
- * n'est plus publique. `null` pour un fichier public (lien direct).
- */
+/** Pièce privée lue via la route authentifiée de la passerelle ; null pour un fichier public (lien direct). */
 function privateDocumentPath(url: string): string | null {
   const match = PRIVATE_DOCUMENT.exec(url.split("?")[0]);
   return match ? `/upload/documents/${match[1]}/${match[2]}` : null;
@@ -76,9 +72,7 @@ function DocumentThumb({ doc, src, large = false }: { doc: SubmittedDocument; sr
           large ? "aspect-[3/4] w-full max-w-sm rounded-2xl" : "h-40 w-full rounded-xl"
         }`}
       >
-        {/* Bug corrigé : fond gris foncé fixe (icône PDF), jamais lié au
-            thème — texte épinglé plutôt que sur un token ink-* (sombre en
-            mode clair, invisible sur ce fond toujours sombre). */}
+        {/* Texte de couleur fixe : le fond de l'icône PDF est toujours sombre. */}
         <span className={large ? "text-6xl opacity-90" : "text-3xl opacity-90"}>📄</span>
         <span className="text-xs text-gray-400">Document PDF</span>
       </div>

@@ -1,9 +1,6 @@
 "use client";
 
-// Bug corrigé : page 100% maquette (validationQueue factice) — câblée sur
-// les vraies actions de modération déjà construites côté backend
-// (valider/rejeter/vérifier le justificatif non lucratif/demander un
-// complément d'info) mais jamais reliées au frontend.
+// Validation câblée sur les vraies actions de modération du backend.
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
@@ -33,10 +30,7 @@ import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
 
-// Bug corrigé : l'en-tête affichait created_at (date de création du
-// brouillon en base) à la place de start_date (date choisie par
-// l'organisateur pour l'événement) — un admin validait donc "à l'aveugle"
-// sur une date qui n'avait aucun rapport avec l'événement réel.
+// L'en-tête affiche la date de l'événement (start_date), pas celle de création.
 const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", {
   day: "numeric",
   month: "long",
@@ -62,9 +56,7 @@ export default function AdminValidationDetailPage({
   const [dialog, setDialog] = useState<ActionDialogState | null>(null);
 
   function load() {
-    // Pas d'endpoint "un seul événement en attente" — la liste complète
-    // (organisateur/délai déjà résolus) reste la source la plus simple pour
-    // une file de taille admin.
+    // Pas d'endpoint pour un seul événement en attente : on reprend la liste complète.
     getPendingEvents()
       .then((pending) => {
         const match = pending.find((item) => item.id === id);
@@ -332,12 +324,7 @@ export default function AdminValidationDetailPage({
             </div>
           ) : null}
 
-          {/* Bug corrigé : page de validation ne montrait que titre, date
-              (fausse, cf. plus haut) et ville — un admin devait approuver ou
-              rejeter un événement public sans voir catégorie, capacité,
-              adresse complète, tarifs, période de vente ni politique de
-              remboursement, alors que toutes ces données étaient déjà
-              chargées (ApiPendingEvent hérite d'ApiEvent en entier). */}
+          {/* Toutes les informations utiles à la validation (catégorie, capacité, adresse, tarifs, ventes, remboursement). */}
           <div className={cardClass("mb-6 p-5")}>
             <h2 className="mb-3 text-sm font-semibold text-ink-2">Informations de l&apos;événement</h2>
             <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">

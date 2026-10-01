@@ -3,9 +3,7 @@ import type { ApiAdminEvent } from "@/lib/api/admin";
 import { shortDate as dateFormatter } from "@/lib/format/dates";
 import { Badge } from "@/components/ui/badge";
 
-// Bug corrigé : reposait sur lib/constants/admin-events.ts (emoji/couleur/libellé
-// de statut figés) — la catégorie et le statut viennent désormais du vrai
-// événement (event-service).
+// Catégorie et statut tirés du vrai événement (event-service).
 const statusBadge: Record<string, { label: string; className: string }> = {
   PUBLISHED: {
     label: "● Publié",

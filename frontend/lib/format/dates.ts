@@ -1,6 +1,4 @@
-// Formats de date communs du site (fuseau du navigateur). Pour une date
-// d'événement affichée côté serveur, préférer le fuseau de l'événement
-// (cf. lib/mappers/event-mappers.ts, formatInZone).
+// Formats de date du site (fuseau du navigateur) ; pour un événement, préférer son fuseau (formatInZone).
 
 /** « 30 septembre 2026 » */
 export const longDate = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });

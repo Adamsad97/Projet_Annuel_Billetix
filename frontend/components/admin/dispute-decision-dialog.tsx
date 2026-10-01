@@ -1,8 +1,6 @@
 "use client";
 
-// Décision sur un litige : réclamation acceptée (avec remboursement total,
-// partiel ou sans remboursement), rejetée, ou close sans suite. La réponse
-// est envoyée à l'acheteur et à l'organisateur.
+// Décision sur un litige (acceptée avec ou sans remboursement, rejetée, close), envoyée à l'acheteur et à l'organisateur.
 
 import { useId, useState, type FormEvent } from "react";
 import { Modal } from "@/components/ui/modal";

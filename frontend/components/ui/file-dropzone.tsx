@@ -1,8 +1,6 @@
 "use client";
 
-// Zone de dépôt d'un fichier : clic ou glisser-déposer, contrôle du format et
-// de la taille avant envoi (revérifiés de toute façon par la passerelle).
-// Le contenu affiché dans la zone est fourni par l'appelant.
+// Zone de dépôt : clic ou glisser-déposer, format et taille contrôlés avant envoi.
 
 import { useRef, useState, type ReactNode } from "react";
 

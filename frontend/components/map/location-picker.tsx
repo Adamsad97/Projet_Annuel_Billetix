@@ -1,18 +1,6 @@
 "use client";
 
-// Bug corrigé : venue_latitude/venue_longitude existaient déjà côté backend
-// (colonnes, DTO, filtre de distance Haversine dans event-service) mais
-// n'étaient alimentées par aucun formulaire — impossible d'afficher le lieu
-// sur une carte ou de filtrer "près de moi" faute de coordonnées en base.
-//
-// Le géocodage se fait maintenant en amont, via AddressAutocomplete
-// (composant dédié, suggestions au fil de la frappe) — ce composant reste
-// volontairement une simple carte de positionnement/ajustement manuel
-// (clic ou glisser le repère), sans bouton de recherche qui ferait doublon.
-//
-// Chargement dynamique sans SSR : react-leaflet/leaflet accèdent à `window`
-// dès l'import, ce qui casse le rendu serveur de la page si ce module est
-// importé directement dans un arbre rendu côté serveur.
+// Carte d'ajustement manuel des coordonnées, chargée sans SSR (Leaflet touche window).
 
 import dynamic from "next/dynamic";
 

@@ -1,7 +1,4 @@
-// Client pour les noms de catégorie de billet ("Standard", "VIP"...) — GET
-// /events/ticket-tier-types(/all) et CRUD /events/ticket-tier-types
-// (backend/api-gateway/src/event/event.controller.ts, liste gérée depuis
-// l'espace Admin, cf. backend/event-service/src/ticket-tier-type).
+// Client des noms de catégorie de billet gérés par l'admin (GET et CRUD /events/ticket-tier-types).
 
 import { getApiBaseUrl } from "./base-url";
 import { apiDelete, apiGet, apiPatch, apiPost } from "./client";

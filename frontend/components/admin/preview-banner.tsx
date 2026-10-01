@@ -1,8 +1,6 @@
 "use client";
 
-// Bandeau du mode aperçu : rappelle en permanence qu'on regarde la
-// plateforme avec un autre rôle, en lecture seule, et permet d'en changer
-// ou d'en sortir.
+// Bandeau du mode aperçu (autre rôle, lecture seule), pour en changer ou en sortir.
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";

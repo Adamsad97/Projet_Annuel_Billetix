@@ -1,9 +1,6 @@
 "use client";
 
-// Composant interne, chargé uniquement côté client (cf. location-picker.tsx)
-// — Leaflet touche `window`/`document` dès l'import du module, ce qui casse
-// le rendu serveur si ce fichier est importé directement depuis un composant
-// rendu en SSR.
+// Chargé côté client uniquement : Leaflet touche window dès l'import.
 
 import { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
@@ -25,9 +22,7 @@ function ClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }
   return null;
 }
 
-// Recentre la carte quand latitude/longitude changent depuis l'extérieur
-// (ex : après un géocodage d'adresse) — MapContainer n'observe pas ses
-// props `center`/`zoom` après le montage initial.
+// Recentre la carte quand les coordonnées changent : MapContainer ne suit pas center après montage.
 function Recenter({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
   const lastKey = useRef<string | null>(null);

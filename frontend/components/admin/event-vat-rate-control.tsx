@@ -7,10 +7,7 @@ import { buttonClass } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/field";
 import { listVatRates, vatRateOptionLabel, type ApiVatRate } from "@/lib/api/vat-rates";
 
-/**
- * Taux de TVA d'un événement à la validation : affiché, et corrigeable par
- * l'admin tant que l'événement n'est pas publié (aucun billet vendu).
- */
+/** Taux de TVA d'un événement à la validation, corrigeable tant qu'il n'est pas publié. */
 export function EventVatRateControl({
   eventId,
   vatRate,

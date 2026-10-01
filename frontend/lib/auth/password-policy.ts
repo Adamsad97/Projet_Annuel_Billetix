@@ -1,6 +1,4 @@
-// Miroir de backend/auth-service/src/auth/password-policy.ts, pour
-// l'affichage en temps réel : toute règle ajoutée là-bas doit l'être ici.
-// Simple confort de saisie — auth-service refait le contrôle et fait foi.
+// Miroir de la politique de mot de passe d'auth-service pour l'affichage en direct ; le serveur fait foi.
 
 export interface PasswordPersonalInfo {
   firstName?: string | null;
@@ -44,11 +42,7 @@ function personalFragments(info: PasswordPersonalInfo): string[] {
   return [...fragments];
 }
 
-/**
- * État de chaque règle affichée en direct pendant la saisie. La règle
- * « prénom / nom » n'en fait volontairement pas partie (demande produit) :
- * elle n'est vérifiée qu'à l'envoi, via containsPersonalInfo().
- */
+/** État des règles affichées en direct ; la règle prénom/nom n'est vérifiée qu'à l'envoi. */
 export function evaluatePassword(password: string, minLength: number): PasswordRuleStatus[] {
   const rules: PasswordRuleStatus[] = [
     { id: "length", label: `${minLength} caractères min.`, ok: password.length >= minLength },
@@ -61,11 +55,7 @@ export function evaluatePassword(password: string, minLength: number): PasswordR
   return rules;
 }
 
-/**
- * Contrôle à l'envoi du formulaire : le mot de passe contient-il le prénom,
- * le nom ou la date de naissance ? Inconnus sur la page de réinitialisation
- * (pas de session) — seul le serveur peut alors le vérifier.
- */
+/** À l'envoi : le mot de passe contient-il prénom, nom ou date de naissance ? (sans session, seul le serveur vérifie) */
 export function containsPersonalInfo(password: string, personalInfo: PasswordPersonalInfo): boolean {
   const normalizedPassword = normalize(password);
   const passwordDigits = password.replace(/\D/g, "");
@@ -75,12 +65,7 @@ export function containsPersonalInfo(password: string, personalInfo: PasswordPer
   );
 }
 
-/**
- * Formes usuelles d'une date de naissance, sans séparateurs : année seule,
- * jour+mois (anniversaire) et dates complètes (FR, ISO, US, année courte).
- * Comparées aux seuls chiffres du mot de passe, pour attraper aussi
- * "12/05/1998", "12-05-98" ou "1998.05.12".
- */
+/** Formes usuelles d'une date de naissance sans séparateurs, comparées aux chiffres du mot de passe. */
 function birthDateFragments(birthDate?: string | null): string[] {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(birthDate ?? "");
   if (!match) return [];

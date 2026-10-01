@@ -1,6 +1,4 @@
-// Stockage local de l'appareil de contrôle (par événement) : paquet hors
-// ligne et scans en attente de synchronisation. Accès protégés : le
-// stockage peut être indisponible (navigation privée, stockage bloqué).
+// Stockage local de l'appareil de contrôle (paquet hors ligne, scans à synchroniser), accès protégés.
 
 import type { OfflinePack, OfflineScanEntry } from "@/lib/api/scan";
 

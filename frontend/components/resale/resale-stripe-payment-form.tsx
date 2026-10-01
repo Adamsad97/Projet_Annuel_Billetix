@@ -28,10 +28,7 @@ export function ResaleStripePaymentForm({
     setLoading(true);
     setError(null);
 
-    // La finalisation réelle (transfert du billet + remboursement du
-    // vendeur) se fait sur la page de confirmation, pas ici — c'est le seul
-    // endroit qui marche à la fois pour un paiement immédiat (if_required)
-    // et pour un paiement nécessitant une redirection complète (3DS).
+    // Finalisation sur la page de confirmation, avec ou sans redirection 3DS.
     const confirmationUrl = `${window.location.origin}/revente/${resaleId}/confirmation?order_id=${orderId}`;
 
     const { error: submitError, paymentIntent } = await stripe.confirmPayment({

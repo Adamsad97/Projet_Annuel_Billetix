@@ -5,11 +5,7 @@ import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import type { FeaturedEvent } from "@/lib/mappers/event-mappers";
 import { eventPath } from "@/lib/format/event-path";
 
-/**
- * Carte du carrousel « À la une » : affiche en grand (fond flouté de la même
- * image pour combler les côtés, quel que soit son format), pastille
- * « validé », titre, lieu et pastilles date / pays / tarif / catégorie.
- */
+/** Carte « À la une » : affiche sur fond flouté, pastilles date, pays, tarif et catégorie. */
 export function FeaturedEventCard({ event }: { event: FeaturedEvent }) {
   return (
     <Link

@@ -18,12 +18,7 @@ import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
 
-// Même mécanisme que login-form.tsx : oauthLogin() (auth-service) crée le
-// compte s'il n'existe pas déjà — inscription et connexion partagent le
-// même point d'entrée, donc le même lien. NEXT_PUBLIC_API_URL (pas
-// getApiBaseUrl(), qui varie entre rendu serveur et navigateur) : un href
-// affiché doit être identique des deux côtés, sinon React refuse
-// l'hydratation (déjà rencontré sur le formulaire de connexion).
+// Même lien OAuth que la connexion (NEXT_PUBLIC_API_URL, identique serveur et navigateur).
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
 const accountTypes = [
@@ -86,12 +81,7 @@ export function SignupForm() {
 
     setLoading(true);
     try {
-      // Bug corrigé : register() connectait aussitôt (session complète
-      // sauvegardée ici), en contradiction avec login() qui rejette tout
-      // compte non vérifié (CDC §2.2) — accès complet à l'inscription, puis
-      // blocage à la prochaine connexion pour ce même compte jamais
-      // vérifié entretemps. Plus de session à sauvegarder : l'accès réel
-      // passe par la page de connexion, une fois le lien reçu par email cliqué.
+      // Pas de session à l'inscription : l'accès passe par la connexion une fois l'email vérifié.
       await registerUser({
         email,
         password,

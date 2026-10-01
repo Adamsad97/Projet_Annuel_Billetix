@@ -1,8 +1,6 @@
 "use client";
 
-// Report d'un événement par son organisateur. « request » : demande de
-// report à l'administration (motif, nouvelle date connue ou à venir).
-// « reschedule » : nouvelle date d'un événement déjà reporté.
+// Report par l'organisateur : « request » demande à l'admin, « reschedule » fixe la nouvelle date.
 
 import { useId, useState, type FormEvent } from "react";
 import { Modal } from "@/components/ui/modal";

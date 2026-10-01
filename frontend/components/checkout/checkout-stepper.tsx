@@ -15,9 +15,7 @@ export function CheckoutStepper({
     <ol className="mx-auto flex max-w-3xl items-center">
       {steps.map((step, index) => {
         const isLast = index === steps.length - 1;
-        // La dernière étape (Confirmation) n'a pas d'étape suivante : y
-        // arriver signifie que tout le parcours est terminé, donc elle
-        // doit s'afficher comme "terminée" (✓ vert), pas "en cours".
+        // La dernière étape s'affiche « terminée » (✓), pas « en cours ».
         const isDone = index < currentIndex || (isLast && index === currentIndex);
         const isCurrent = index === currentIndex && !isDone;
 

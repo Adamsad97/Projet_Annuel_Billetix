@@ -1,6 +1,4 @@
-// Client pour POST /upload/* (backend/api-gateway/src/upload/upload.controller.ts).
-// Multipart — ne peut pas passer par lib/api/client.ts (qui JSON.stringify
-// systématiquement le corps de la requête).
+// Client de POST /upload/* en multipart (hors lib/api/client.ts, qui envoie du JSON).
 
 import { getApiBaseUrl } from "./base-url";
 import { isPreviewActive, PREVIEW_READ_ONLY_MESSAGE } from "@/lib/auth/preview";
@@ -10,12 +8,7 @@ import { refreshAccessToken } from "./client";
 
 const API_URL = getApiBaseUrl();
 
-// Bug corrigé : contrairement à lib/api/client.ts (request()), cet appel
-// n'essayait jamais de rafraîchir un access token expiré avant d'abandonner
-// — un upload (affiche d'événement, document KYC...) tombant pile après
-// l'expiration du token (courte durée, 15 min) affichait le message brut du
-// guard JWT ("Token invalide ou expiré") au lieu de rafraîchir la session en
-// silence comme partout ailleurs dans l'app.
+// Jeton expiré : rafraîchit la session en silence avant d'abandonner l'upload.
 async function uploadFile(path: string, file: File, isRetry = false): Promise<{ url: string }> {
   const token = getAccessToken();
   if (isPreviewActive()) throw new ApiError(403, PREVIEW_READ_ONLY_MESSAGE, "PREVIEW_READ_ONLY");

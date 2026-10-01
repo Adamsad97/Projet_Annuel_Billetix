@@ -57,9 +57,7 @@ export interface ValidationHistoryEntry {
   reason?: string;
 }
 
-/** Construit une ligne d'historique à partir d'une entrée d'audit log
- * (EVENT_APPROVED/EVENT_REJECTED) + l'événement concerné, résolu séparément
- * (pas de dénormalisation du titre dans le journal d'audit lui-même). */
+/** Ligne d'historique à partir d'une entrée d'audit et de l'événement concerné. */
 export function auditLogToValidationHistoryEntry(
   log: ApiAuditLogEntry,
   event: ApiEvent | undefined,

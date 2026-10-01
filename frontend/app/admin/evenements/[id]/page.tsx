@@ -1,10 +1,6 @@
 "use client";
 
-// Fiche complète d'un événement pour l'administration : actions (désactiver,
-// masquer, annuler, demandes d'annulation), organisateur, ventes, finances,
-// reversement, billets, informations, carte, description, documents,
-// participants et historique des actions. Composant client : les routes
-// /admin exigent le jeton de la session (localStorage).
+// Fiche complète d'un événement pour l'administration ; composant client (jeton en localStorage).
 
 import { use, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";

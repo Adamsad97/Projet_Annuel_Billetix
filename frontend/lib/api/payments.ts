@@ -1,6 +1,4 @@
-// Client pour les endpoints /payments de l'api-gateway
-// (backend/api-gateway/src/payment/payment.controller.ts). Câblage réel —
-// seul Stripe est configuré avec de vraies clés de test pour l'instant.
+// Client des endpoints /payments de la passerelle (Stripe).
 
 import { apiGet, apiPost } from "./client";
 
@@ -27,11 +25,7 @@ export function getPaymentByOrder(orderId: string): Promise<ApiPayment> {
   return apiGet<ApiPayment>(`/payments/order/${orderId}`);
 }
 
-/**
- * Vérification de secours : le serveur interroge Stripe sur l'état réel du
- * paiement de la commande et, s'il est encaissé, génère billets et email
- * (même traitement que le webhook, sans double génération).
- */
+/** Vérification de secours : le serveur interroge Stripe et génère billets et email si le paiement est encaissé. */
 export function syncOrderPayment(
   orderId: string,
 ): Promise<{ status: "paid" | "failed" | "pending" | "unknown" }> {

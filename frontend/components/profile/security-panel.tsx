@@ -1,8 +1,6 @@
 "use client";
 
-// Bug corrigé : affichait "Activé" en dur, sans jamais lire l'état réel de
-// la 2FA (ni même la valeur mockée) — le statut ne reflétait donc jamais ce
-// qui se passait sur /profil/securite/2fa.
+// Statut réel de la 2FA du compte.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";

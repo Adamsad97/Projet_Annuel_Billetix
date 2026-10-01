@@ -1,8 +1,6 @@
 "use client";
 
-// Catalogue public : recherche, filtres (catégorie, date, prix, distance),
-// tri et pagination « Afficher plus ». Les filtres sont appliqués par le
-// serveur (GET /events) et reflétés dans l'URL, donc partageables.
+// Catalogue public : recherche, filtres et tri côté serveur, reflétés dans l'URL (partageable).
 
 import { FeaturedEventCard } from "@/components/home/featured-event-card";
 import { EventFilterBar } from "@/components/catalogue/event-filter-bar";

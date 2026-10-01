@@ -1,7 +1,4 @@
-// Demandes d'annulation ou de report d'un événement : l'organisateur demande,
-// un admin accepte ou refuse, après un échange de messages (api-gateway :
-// /events/... et /admin/cancellation-requests). Annulation acceptée : acheteurs
-// remboursés. Report accepté : acheteurs prévenus, remboursement sur demande.
+// Demandes d'annulation ou de report : l'organisateur demande, un admin accepte ou refuse après échange de messages.
 
 import { apiGet, apiPost } from "./client";
 import { withCountsRefresh } from "@/lib/admin/count-events";

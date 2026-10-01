@@ -1,8 +1,6 @@
 "use client";
 
-// Bug corrigé : un billet "en cours de revente" n'affichait strictement
-// aucune action possible (ni revendre, ni retirer) — une vraie impasse pour
-// son propriétaire qui change d'avis.
+// Actions sur un billet en revente : modifier ou retirer l'annonce.
 
 import { useEffect, useState } from "react";
 import { getActiveResaleForTicket, withdrawResale, type ApiResaleListing } from "@/lib/api/resale";
@@ -66,9 +64,7 @@ export function ResaleManagePanel({
   }
 
   if (!listing) {
-    // Rare : le billet est FOR_RESALE côté ticket-service mais l'annonce
-    // LISTED n'a pas été retrouvée (course avec une vente/retrait entre
-    // deux requêtes) — rien à gérer, mieux vaut ne rien afficher que planter.
+    // Annonce introuvable (course avec une vente ou un retrait) : rien à afficher.
     return null;
   }
 

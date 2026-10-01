@@ -1,8 +1,6 @@
 "use client";
 
-// Reversements aux organisateurs : recherche (organisateur ou événement),
-// statut, échéance et tri appliqués par le serveur (GET /admin/payouts),
-// pagination « Afficher plus », actions bloquer / débloquer / anticiper.
+// Reversements : recherche, filtres et tri côté serveur (GET /admin/payouts), actions bloquer, débloquer, anticiper.
 
 import { useEffect, useState } from "react";
 import { FilterPills } from "@/components/admin/filter-pills";

@@ -2,10 +2,7 @@ import { AuthShell } from "@/components/layout/auth-shell";
 import { LoginForm } from "@/components/auth/login-form";
 import { ForceReauth } from "@/components/auth/force-reauth";
 
-// Motif d'une déconnexion automatique (cf. SessionManager), affiché au-dessus
-// du formulaire. Déconnexion pour inactivité ou pour durée maximale de
-// session : volontairement silencieuses (demande produit), simple retour au
-// formulaire de connexion.
+// Motif d'une déconnexion automatique ; inactivité et durée maximale restent silencieuses.
 const SESSION_MESSAGES: Record<string, string> = {
   expiree: "Votre session a expiré. Veuillez vous reconnecter pour continuer.",
 };

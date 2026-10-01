@@ -10,12 +10,7 @@ export function fromPriceLabel(price: number | null | undefined): string | null 
   return price === 0 ? "Entrée gratuite" : priceFormatter.format(price);
 }
 
-/**
- * En-tête immersif de la page événement : l'affiche, floutée, habille tout
- * le fond ; au premier plan l'affiche elle-même (proportions d'origine,
- * agrandissable), le titre, la date, le lieu et l'accès à la billetterie.
- * Toujours sombre, quel que soit le thème, pour mettre l'affiche en valeur.
- */
+/** En-tête immersif toujours sombre : affiche floutée en fond, affiche, titre, date, lieu et billetterie. */
 export function EventHeader({ event, purchasable }: { event: EventDetail; purchasable: boolean }) {
   const price = fromPriceLabel(event.fromPrice);
   const soldOut = purchasable && event.tickets.length > 0 && event.tickets.every((t) => t.remaining === 0);

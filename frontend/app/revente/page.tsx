@@ -1,9 +1,6 @@
 "use client";
 
-// Marketplace de revente (ticket-service, toutes annonces LISTED
-// confondues). Réservée aux acheteurs connectés (demande produit) : annonces
-// chargées avec la session, côté client — l'API refuse la lecture anonyme,
-// et app/revente/layout.tsx protège la section.
+// Revente réservée aux acheteurs connectés : annonces chargées avec la session, côté client.
 
 import { useEffect, useState } from "react";
 import { Navbar } from "@/components/layout/navbar";

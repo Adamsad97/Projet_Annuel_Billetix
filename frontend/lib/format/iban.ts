@@ -1,6 +1,4 @@
-// Saisie d'un IBAN : lettres et chiffres seulement, en majuscules, groupés
-// par 4 (« FR76 3000 6000 0112 3456 7890 189 »), limités à la longueur
-// propre au pays (même table que le user-service, qui fait foi).
+// Saisie d'un IBAN : majuscules, groupes de 4, longueur propre au pays.
 
 export const IBAN_MAX_LENGTH = 34;
 
@@ -56,20 +54,14 @@ export function withCountry(value: string, country: string): string {
   return formatIban(country + rest, country);
 }
 
-/**
- * Groupes de 4, limités à la longueur du pays : celui tapé en tête de l'IBAN
- * s'il est connu, sinon celui choisi dans la liste.
- */
+/** Groupes de 4 limités à la longueur du pays tapé en tête, sinon de celui choisi. */
 export function formatIban(value: string, country?: string): string {
   const max = ibanExpectedLength(value) ?? (country ? IBAN_LENGTHS[country] : undefined) ?? IBAN_MAX_LENGTH;
   const compact = value.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, max);
   return compact.replace(/(.{4})(?=.)/g, "$1 ");
 }
 
-/**
- * Position du curseur après reformatage : juste après le même nombre de
- * lettres et chiffres qu'avant, pour pouvoir corriger au milieu de l'IBAN.
- */
+/** Curseur replacé après le même nombre de caractères utiles, pour corriger au milieu de l'IBAN. */
 export function ibanCaret(raw: string, caret: number, formatted: string): number {
   const typedBefore = raw.slice(0, caret).replace(/[^A-Za-z0-9]/g, "").length;
   let seen = 0;

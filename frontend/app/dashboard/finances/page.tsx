@@ -1,11 +1,6 @@
 "use client";
 
-// Bug corrigé : page 100% maquette (financeStats/financeEntries factices) —
-// câblée sur GET /payments/balance/me, GET /payments/payouts/me et
-// POST /payments/payouts/:id/request-early (api-gateway), déjà entièrement
-// construits côté backend (règle CDC §7.2 : demande anticipée possible à
-// partir de J+2 après la fin de l'événement) mais jamais appelés par le
-// frontend jusqu'ici.
+// Finances câblées sur le solde, les reversements et la demande anticipée (CDC §7.2, dès J+2).
 
 import { useEffect, useState } from "react";
 import Link from "next/link";

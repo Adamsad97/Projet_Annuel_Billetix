@@ -1,14 +1,6 @@
 "use client";
 
-// QR code masqué par défaut (demande produit, sécurité) : il n'est demandé
-// à l'API qu'au clic sur « Afficher mon QR code », s'affiche avec le nom du
-// porteur, puis se masque tout seul après la durée réglée par l'admin
-// (platform_settings.ticket_qr_display_seconds) — ou dès que l'onglet passe
-// en arrière-plan. Limite les captures d'écran et les regards indiscrets.
-// QR éphémère : il ne contient qu'un code aléatoire, renouvelé à chaque
-// période (platform_settings.ticket_qr_rotation_seconds) tant qu'il est
-// visible — une capture d'écran devient inutilisable au contrôle quelques
-// secondes plus tard.
+// QR masqué par défaut, affiché à la demande puis masqué après le délai admin ; code éphémère renouvelé tant qu'il est visible.
 
 import { useEffect, useState } from "react";
 import { getTicketQr } from "@/lib/api/tickets";

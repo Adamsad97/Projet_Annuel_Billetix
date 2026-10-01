@@ -28,9 +28,7 @@ export function CheckoutFlow() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [intentError, setIntentError] = useState<string | null>(null);
   const [intentLoading, setIntentLoading] = useState(false);
-  // Réservation des places expirée (décompte à zéro, ou refus 410 du
-  // serveur) : on remplace le formulaire plutôt que de laisser remplir
-  // une commande vouée à l'échec.
+  // Réservation expirée : le formulaire est remplacé plutôt que de laisser remplir une commande vouée à l'échec.
   const [reservationExpired, setReservationExpired] = useState(false);
 
   function handleReservationExpired() {
@@ -39,9 +37,7 @@ export function CheckoutFlow() {
   }
 
   useEffect(() => {
-    // sessionStorage n'existe pas côté serveur — lu ici (après montage)
-    // plutôt qu'en initialiseur de useState pour que le premier rendu
-    // client corresponde au HTML serveur (évite un hydration mismatch).
+    // sessionStorage absent côté serveur : lu après montage pour éviter un hydration mismatch.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCart(getCart());
   }, []);
@@ -50,13 +46,7 @@ export function CheckoutFlow() {
     setOrderId(newOrderId);
     setIntentError(null);
 
-    // Bug corrigé : un événement gratuit n'a aucun paiement à collecter —
-    // le backend confirme la commande et génère les billets immédiatement à
-    // sa création (voir OrderController.create, total_amount_ttc === 0),
-    // sans jamais passer par Stripe. Tenter quand même de créer un
-    // PaymentIntent pour 0 € échouait, affichant le message trompeur "Ce
-    // moyen de paiement n'est pas encore disponible" — impossible de
-    // récupérer un billet gratuit.
+    // Événement gratuit : commande confirmée à sa création, sans PaymentIntent.
     if (cart && cartTotal(cart) === 0) {
       clearCart();
       router.push(`/commande/confirmation?order_id=${newOrderId}`);

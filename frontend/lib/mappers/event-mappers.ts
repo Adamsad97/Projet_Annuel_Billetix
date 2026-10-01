@@ -20,11 +20,7 @@ function lowestPrice(categories: ApiTicketCategory[]): number | null {
   return Math.min(...activePrices);
 }
 
-/**
- * Libellé et emoji de la catégorie : ceux du référentiel géré par l'admin
- * (ex. « Spectacle »), la table figée du code ne servant qu'en dernier recours
- * (référentiel injoignable).
- */
+/** Libellé et emoji depuis le référentiel admin, la table figée en dernier recours. */
 function categoryDisplay(code: string, referential: ApiCategory[]): { label: string; emoji: string } {
   const meta = apiCategoryMeta[code] ?? apiCategoryMeta.AUTRE;
   const category = referential.find((c) => c.code === code);
@@ -41,9 +37,7 @@ function availabilityBadge(event: ApiEvent, categories: ApiTicketCategory[]): st
   return null;
 }
 
-// Heure du lieu de l'événement (event.timezone), pas celle du serveur qui
-// rend la page (UTC en conteneur) — sinon "14:00" à Conakry s'afficherait
-// selon le fuseau du rendu.
+// Heure dans le fuseau du lieu de l'événement, pas celui du serveur.
 function formatInZone(isoDate: string, timeZone: string, options: Intl.DateTimeFormatOptions): string {
   try {
     return new Intl.DateTimeFormat("fr-FR", { ...options, timeZone }).format(new Date(isoDate));
@@ -64,11 +58,7 @@ function dayKey(date: Date, timeZone: string): string {
   }
 }
 
-/**
- * « Aujourd'hui · 18:00 », « Demain · 18:00 », « Ce week-end · sam. 18:00 »
- * (samedi ou dimanche de la semaine en cours), sinon « 21 nov. 2026, 18:00 ».
- * Jours comptés dans le fuseau de l'événement.
- */
+/** « Aujourd'hui », « Demain », « Ce week-end » ou date complète, dans le fuseau de l'événement. */
 function formatFeaturedDate(isoDate: string, timeZone: string, now = new Date()): string {
   const start = new Date(isoDate);
   const hour = formatInZone(isoDate, timeZone, TIME);
@@ -142,10 +132,7 @@ export function apiEventToFeatured(
   };
 }
 
-/**
- * Convertit un événement réel + ses catégories en détail complet pour la
- * page /evenements/[id].
- */
+/** Événement réel et ses catégories → détail complet pour la page /evenements/[id]. */
 export function apiEventToDetail(
   event: ApiEvent,
   categories: ApiTicketCategory[],

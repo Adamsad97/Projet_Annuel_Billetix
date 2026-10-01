@@ -15,12 +15,7 @@ const CURATED_PARAMS = { featured: true } as const;
 // paramètre métier).
 const AUTOPLAY_DELAY_MS = 5000;
 
-/**
- * Carrousel « À la une » : défile tout seul de la droite vers la gauche,
- * une carte à la fois, et reboucle au début après la dernière. Pause au
- * survol / au focus clavier / onglet masqué, et aucun défilement auto si
- * l'utilisateur a demandé à réduire les animations.
- */
+/** Carrousel auto (pause au survol, au focus, onglet masqué ou animations réduites), qui reboucle. */
 export function FeaturedEvents({
   events: initialEvents,
   curated = false,

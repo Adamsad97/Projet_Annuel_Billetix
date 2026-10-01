@@ -1,8 +1,6 @@
 "use client";
 
-// Événement reporté : l'acheteur garde son billet pour la nouvelle date, ou
-// demande le remboursement de sa commande (tant que la date est à venir, ou
-// pendant le délai fixé par l'administration après son annonce).
+// Événement reporté : garder son billet ou demander le remboursement dans le délai.
 
 import { useEffect, useState } from "react";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";

@@ -1,12 +1,6 @@
 "use client";
 
-// Bug corrigé (attente utilisateur non couverte) : le champ Adresse était un
-// simple <input> — tapé au clavier, sans aucune proposition. Ce que
-// l'utilisateur voyait comme "propositions" en tapant était en réalité
-// l'autocomplétion native du navigateur (autofill), sans rapport avec
-// l'application ni avec les coordonnées GPS nécessaires à la carte.
-// `autoComplete="off"` ci-dessous désactive cette autocomplétion navigateur
-// pour ne laisser que la nôtre.
+// Autocomplétion d'adresse ; autoComplete="off" coupe celle du navigateur.
 
 import { useEffect, useRef, useState } from "react";
 import { searchAddress, type AddressSuggestion } from "@/lib/geo/photon";
@@ -18,9 +12,7 @@ export function AddressAutocomplete({
   value,
   onChangeText,
   onSelect,
-  // Valeur actuelle du champ "Pays" du formulaire — ses adresses passent en
-  // tête des propositions, sans jamais exclure les autres pays (cf.
-  // lib/geo/photon.ts searchAddress).
+  // Pays du formulaire : ses adresses passent en tête sans exclure les autres.
   country,
   disabled = false,
   placeholder,
@@ -80,9 +72,7 @@ export function AddressAutocomplete({
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => {
-          // Laisse le temps au clic sur une suggestion de se déclencher
-          // avant de refermer la liste — sinon onBlur ferme le menu avant
-          // que onMouseDown sur la suggestion n'ait pu s'exécuter.
+          // Délai avant fermeture pour laisser le clic sur une suggestion s'exécuter.
           blurTimeout.current = setTimeout(() => setOpen(false), 150);
         }}
         placeholder={placeholder}

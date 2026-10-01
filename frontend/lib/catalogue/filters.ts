@@ -118,10 +118,7 @@ function toNumber(value: string): number | undefined {
   return Number.isFinite(n) && n >= 0 ? n : undefined;
 }
 
-/**
- * Bornes des périodes prédéfinies du filtre Date (« Choisir des dates »
- * exclu), pour en compter les événements.
- */
+/** Bornes des périodes prédéfinies du filtre Date, pour en compter les événements. */
 export function presetPeriods(now = new Date()): Array<{ key: WhenFilter; from: string; to?: string }> {
   return WHEN_OPTIONS.filter((option) => option.id !== "custom").map((option) => {
     const { from, to } = dateRange({ ...DEFAULT_FILTERS, when: option.id }, now);

@@ -1,9 +1,6 @@
 "use client";
 
-// Bug corrigé : la fiche événement publique affichait un encart "Carte
-// interactive" 100% factice, jamais relié aux coordonnées de l'événement
-// (venue_latitude/venue_longitude, stockées côté backend mais jamais
-// exploitées côté affichage).
+// Carte du lieu à partir des coordonnées de l'événement.
 
 import dynamic from "next/dynamic";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";

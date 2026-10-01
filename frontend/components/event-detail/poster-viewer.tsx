@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { Modal } from "@/components/ui/modal";
 
-/**
- * Affiche de l'événement, présentée comme un tirage (proportions d'origine,
- * jamais recadrée) ; un clic l'ouvre en plein écran.
- */
+/** Affiche présentée sans recadrage ; un clic l'ouvre en plein écran. */
 export function PosterViewer({ src, title }: { src: string; title: string }) {
   const [open, setOpen] = useState(false);
 

@@ -1,6 +1,4 @@
-// Types + styles du tableau de bord organisateur — les données réelles
-// viennent de apiOrganizerDashboardToStats()/apiEventSummaryToOrganizerEvent()
-// (lib/mappers/dashboard-mappers.ts).
+// Types et styles du tableau de bord organisateur (données via lib/mappers/dashboard-mappers.ts).
 
 export interface DashboardStat {
   id: string;

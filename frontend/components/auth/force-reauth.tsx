@@ -1,10 +1,6 @@
 "use client";
 
-// Liens d'email vers une page sensible (billets, commande) : /connexion
-// ?reauth=1 — demande produit : l'authentification est exigée à CHAQUE clic,
-// même si une session est déjà ouverte dans ce navigateur (appareil partagé,
-// email transféré…). On ferme donc la session existante (révoquée côté
-// serveur), puis on recharge la page pour repartir d'un état propre.
+// Lien d'email vers une page sensible : ferme la session existante pour exiger une connexion à chaque clic.
 
 import { useEffect } from "react";
 import { logout } from "@/lib/auth/logout";

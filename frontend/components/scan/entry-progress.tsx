@@ -1,9 +1,7 @@
 import { cardClass } from "@/components/ui/card";
 import { time } from "@/lib/format/dates";
 
-// Entrées de l'événement, tous agents confondus : billets scannés sur billets
-// attendus. En ligne, chiffres du serveur ; sans réseau, ceux de la liste
-// enregistrée sur ce téléphone (entrées validées ici comprises).
+// Entrées de l'événement : chiffres du serveur en ligne, du téléphone hors ligne.
 
 export function EntryProgress({
   admitted,
