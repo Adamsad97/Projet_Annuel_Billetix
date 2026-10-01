@@ -6,7 +6,7 @@ import { dayMonth as shortDate } from "@/lib/format/dates";
 
 export type WhenFilter = "all" | "today" | "tomorrow" | "weekend" | "week" | "month" | "custom";
 export type PriceFilter = "all" | "free" | "custom";
-export type SortOrder = "date" | "recent";
+export type SortOrder = "date" | "recent" | "price_asc" | "price_desc";
 
 export interface CatalogueFilters {
   q: string;
@@ -47,6 +47,8 @@ export const WHEN_OPTIONS: { id: WhenFilter; label: string }[] = [
 export const SORT_OPTIONS: { id: SortOrder; label: string }[] = [
   { id: "date", label: "Date la plus proche" },
   { id: "recent", label: "Nouveautés" },
+  { id: "price_asc", label: "Prix croissant" },
+  { id: "price_desc", label: "Prix décroissant" },
 ];
 
 export const RADIUS_OPTIONS_KM = [5, 10, 25, 50, 100] as const;

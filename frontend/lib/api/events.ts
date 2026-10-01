@@ -117,7 +117,7 @@ export interface ListEventsParams {
   // Période (ISO 8601) : événements qui se déroulent au moins en partie dedans.
   date_from?: string;
   date_to?: string;
-  sort?: "date" | "recent";
+  sort?: "date" | "recent" | "price_asc" | "price_desc";
 }
 
 export interface ListEventsResult {
