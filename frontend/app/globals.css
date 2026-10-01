@@ -36,7 +36,7 @@
 }
 
 [data-theme="light"] {
-  --color-page: #f6f6fa;
+  --color-page: #eef0f3;
   --color-card: #ffffff;
   --color-header: #ffffff;
   --color-popover: #ffffff;
@@ -44,9 +44,9 @@
   --color-ink-1: #12111a;
   --color-ink-2: #27272f;
   --color-ink-3: #3f3f47;
-  --color-ink-4: #55555f;
-  --color-ink-5: #6b6b75;
-  --color-ink-6: #8b8b95;
+  --color-ink-4: #4b4b55;
+  --color-ink-5: #5a5a64;
+  --color-ink-6: #71717a;
 
   --color-hairline-1: rgb(0 0 0 / 5%);
   --color-hairline-2: rgb(0 0 0 / 8%);
