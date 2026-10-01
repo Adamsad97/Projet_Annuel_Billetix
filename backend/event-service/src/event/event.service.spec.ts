@@ -702,4 +702,21 @@ describe('EventService', () => {
       ).rejects.toBeInstanceOf(RpcException);
     });
   });
+
+  describe('countUpcomingByCategory', () => {
+    it("compte les événements à venir, publiés et non masqués, par code de catégorie", async () => {
+      const qb = queryBuilder as unknown as Record<string, jest.Mock>;
+      qb.addSelect = jest.fn().mockReturnThis();
+      qb.groupBy = jest.fn().mockReturnThis();
+      qb.getRawMany.mockResolvedValue([
+        { category: 'CONCERT', count: '2' },
+        { category: 'SPECTAVLE', count: '1' },
+      ]);
+
+      await expect(service.countUpcomingByCategory()).resolves.toEqual({ CONCERT: 2, SPECTAVLE: 1 });
+      expect(qb.andWhere).toHaveBeenCalledWith('e.is_hidden = false');
+      expect(qb.andWhere).toHaveBeenCalledWith('e.end_date >= :now', expect.objectContaining({ now: expect.any(Date) }));
+      expect(qb.groupBy).toHaveBeenCalledWith('e.category');
+    });
+  });
 });

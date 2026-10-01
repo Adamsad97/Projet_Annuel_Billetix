@@ -439,6 +439,24 @@ export class EventService implements OnApplicationBootstrap {
     return { data, total };
   }
 
+  /**
+   * Nombre d'événements à venir par catégorie (filtre Catégorie du site) :
+   * mêmes événements que la liste publique sans autre filtre — publiés ou
+   * ventes suspendues, non masqués, pas encore terminés.
+   */
+  async countUpcomingByCategory(): Promise<Record<string, number>> {
+    const rows = await this.repo
+      .createQueryBuilder('e')
+      .select('e.category', 'category')
+      .addSelect('COUNT(*)', 'count')
+      .where('e.status IN (:...statuses)', { statuses: [EventStatus.PUBLISHED, EventStatus.SUSPENDED] })
+      .andWhere('e.is_hidden = false')
+      .andWhere('e.end_date >= :now', { now: new Date() })
+      .groupBy('e.category')
+      .getRawMany<{ category: string; count: string }>();
+    return Object.fromEntries(rows.map((row) => [row.category, Number(row.count)]));
+  }
+
   /** Événements candidats pour la recommandation par email (CDC — suggestions
    * basées sur les achats précédents) : publiés, à venir, d'une catégorie
    * donnée, en excluant ceux déjà achetés par ce destinataire. */

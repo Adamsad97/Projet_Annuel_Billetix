@@ -39,6 +39,11 @@ export class EventController {
     return this.eventService.listPublished(filters);
   }
 
+  @MessagePattern('event.count_by_category')
+  countByCategory() {
+    return this.eventService.countUpcomingByCategory();
+  }
+
   @MessagePattern('event.list_for_recommendation')
   listForRecommendation(
     @Payload() data: RecommendationPayload,
