@@ -69,6 +69,16 @@ const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 type VisibleEvent = { organizer_id: string; is_hidden?: boolean };
 
+/** Catégorie d'événement ou nom de billet (référentiels de l'admin). */
+interface ReferenceItem {
+  id: string;
+  label: string;
+  code?: string;
+}
+
+/** « Spectacle (SPECTACLE) » pour le journal d'audit. */
+const describe = (item: ReferenceItem) => (item.code ? `${item.label} (${item.code})` : item.label);
+
 @ApiTags("events")
 @ApiBearerAuth()
 @Controller("events")
@@ -158,24 +168,38 @@ export class EventController {
   @Post("categories")
   @Roles("ADMIN")
   @ApiOperation({ summary: "Créer une catégorie d'événement (ADMIN)" })
-  createEventCategory(@Body() dto: CreateCategoryDto) {
-    return firstValueFrom(this.eventClient.send("event.category.create", dto));
+  async createEventCategory(@CurrentUser() user: JwtPayload, @Req() req: Request, @Body() dto: CreateCategoryDto) {
+    const created = await firstValueFrom(this.eventClient.send<ReferenceItem>("event.category.create", dto));
+    this.auditReference(user, req, created.id, `Catégorie d'événement créée : ${describe(created)}`);
+    return created;
   }
 
   @Patch("categories/:categoryId")
   @Roles("ADMIN")
   @ApiOperation({ summary: "Modifier une catégorie d'événement (ADMIN)" })
-  updateEventCategory(@Param("categoryId", UuidPipe) categoryId: string, @Body() dto: UpdateCategoryDto) {
-    return firstValueFrom(
-      this.eventClient.send("event.category.update", { id: categoryId, dto }),
+  async updateEventCategory(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("categoryId", UuidPipe) categoryId: string,
+    @Body() dto: UpdateCategoryDto,
+  ) {
+    const updated = await firstValueFrom(
+      this.eventClient.send<ReferenceItem>("event.category.update", { id: categoryId, dto }),
     );
+    this.auditReference(user, req, categoryId, `Catégorie d'événement modifiée : ${describe(updated)}`);
+    return updated;
   }
 
   @Delete("categories/:categoryId")
   @Roles("ADMIN")
   @ApiOperation({ summary: "Supprimer une catégorie d'événement inutilisée (ADMIN)" })
-  deleteEventCategory(@Param("categoryId", UuidPipe) categoryId: string) {
-    return firstValueFrom(this.eventClient.send("event.category.delete", { id: categoryId }));
+  async deleteEventCategory(@CurrentUser() user: JwtPayload, @Req() req: Request, @Param("categoryId", UuidPipe) categoryId: string) {
+    const existing = await firstValueFrom(this.eventClient.send<ReferenceItem[]>("event.category.list_all", {}))
+      .then((list) => list.find((item) => item.id === categoryId))
+      .catch(() => undefined);
+    const result = await firstValueFrom(this.eventClient.send("event.category.delete", { id: categoryId }));
+    this.auditReference(user, req, categoryId, `Catégorie d'événement supprimée${existing ? ` : ${describe(existing)}` : ""}`);
+    return result;
   }
 
   @Public()
@@ -195,24 +219,54 @@ export class EventController {
   @Post("ticket-tier-types")
   @Roles("ADMIN")
   @ApiOperation({ summary: "Créer un nom de catégorie de billet (ADMIN)" })
-  createTicketTierType(@Body() dto: CreateTicketTierTypeDto) {
-    return firstValueFrom(this.eventClient.send("event.ticket_tier_type.create", dto));
+  async createTicketTierType(@CurrentUser() user: JwtPayload, @Req() req: Request, @Body() dto: CreateTicketTierTypeDto) {
+    const created = await firstValueFrom(this.eventClient.send<ReferenceItem>("event.ticket_tier_type.create", dto));
+    this.auditReference(user, req, created.id, `Nom de billet créé : ${describe(created)}`);
+    return created;
   }
 
   @Patch("ticket-tier-types/:typeId")
   @Roles("ADMIN")
   @ApiOperation({ summary: "Modifier un nom de catégorie de billet (ADMIN)" })
-  updateTicketTierType(@Param("typeId", UuidPipe) typeId: string, @Body() dto: UpdateTicketTierTypeDto) {
-    return firstValueFrom(
-      this.eventClient.send("event.ticket_tier_type.update", { id: typeId, dto }),
+  async updateTicketTierType(
+    @CurrentUser() user: JwtPayload,
+    @Req() req: Request,
+    @Param("typeId", UuidPipe) typeId: string,
+    @Body() dto: UpdateTicketTierTypeDto,
+  ) {
+    const updated = await firstValueFrom(
+      this.eventClient.send<ReferenceItem>("event.ticket_tier_type.update", { id: typeId, dto }),
     );
+    this.auditReference(user, req, typeId, `Nom de billet modifié : ${describe(updated)}`);
+    return updated;
   }
 
   @Delete("ticket-tier-types/:typeId")
   @Roles("ADMIN")
   @ApiOperation({ summary: "Supprimer un nom de catégorie de billet inutilisé (ADMIN)" })
-  deleteTicketTierType(@Param("typeId", UuidPipe) typeId: string) {
-    return firstValueFrom(this.eventClient.send("event.ticket_tier_type.delete", { id: typeId }));
+  async deleteTicketTierType(@CurrentUser() user: JwtPayload, @Req() req: Request, @Param("typeId", UuidPipe) typeId: string) {
+    const existing = await firstValueFrom(this.eventClient.send<ReferenceItem[]>("event.ticket_tier_type.list_all", {}))
+      .then((list) => list.find((item) => item.id === typeId))
+      .catch(() => undefined);
+    const result = await firstValueFrom(this.eventClient.send("event.ticket_tier_type.delete", { id: typeId }));
+    this.auditReference(user, req, typeId, `Nom de billet supprimé${existing ? ` : ${describe(existing)}` : ""}`);
+    return result;
+  }
+
+  /** Journal d'audit des référentiels de l'admin (sans bloquer l'action). */
+  private auditReference(user: JwtPayload, req: Request, entityId: string, reason: string): void {
+    this.adminClient
+      .send("admin.log_action", {
+        action: "CUSTOM",
+        entity_type: "CATEGORY",
+        entity_id: entityId,
+        performed_by: user.sub,
+        performed_by_email: user.email,
+        reason,
+        metadata: null,
+        ip_address: ((req.headers["x-forwarded-for"] as string)?.split(",")[0] ?? req.ip ?? "").trim(),
+      })
+      .subscribe({ error: () => undefined });
   }
 
   /**
