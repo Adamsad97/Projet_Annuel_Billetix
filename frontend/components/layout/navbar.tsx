@@ -13,23 +13,27 @@ import { Logo } from "@/components/layout/logo";
 import { PreviewSwitcher } from "@/components/admin/preview-switcher";
 import { effectiveRole, isAdminRole, isPreviewActive, PREVIEW_CHANGED_EVENT } from "@/lib/auth/preview";
 import { buttonClass } from "@/components/ui/button";
+import { LanguageSelect } from "@/components/layout/language-select";
+import { useT } from "@/lib/i18n/provider";
+import { msg } from "@/lib/i18n/translate";
 
 // Onglets par rôle ; allowGuest les montre sans connexion, roles s'applique une fois connecté.
 const navLinks: Array<{ href: string; label: string; allowGuest?: boolean; roles: UserRole[] }> = [
-  { href: "/evenements", label: "Événements", allowGuest: true, roles: ["BUYER"] },
+  { href: "/evenements", label: msg("Événements"), allowGuest: true, roles: ["BUYER"] },
   // Revente réservée aux acheteurs connectés : plus visible des visiteurs.
-  { href: "/revente", label: "Revente", roles: ["BUYER"] },
-  { href: "/profil/billets", label: "Mes billets", roles: ["BUYER"] },
-  { href: "/dashboard", label: "Dashboard", roles: ["ORGANIZER"] },
+  { href: "/revente", label: msg("Revente"), roles: ["BUYER"] },
+  { href: "/profil/billets", label: msg("Mes billets"), roles: ["BUYER"] },
+  { href: "/dashboard", label: msg("Dashboard"), roles: ["ORGANIZER"] },
   // ORGANIZER scanne ses propres événements (vérifié côté gateway via
   // event.get), AGENT c'est son seul métier sur la plateforme.
-  { href: "/scan", label: "Scan", roles: ["ORGANIZER", "AGENT"] },
-  { href: "/profil", label: "Profil", roles: ["BUYER", "ORGANIZER", "AGENT", "ADMIN", "SUPER_ADMIN"] },
-  { href: "/admin", label: "Back-office", roles: ["ADMIN", "SUPER_ADMIN"] },
+  { href: "/scan", label: msg("Scan"), roles: ["ORGANIZER", "AGENT"] },
+  { href: "/profil", label: msg("Profil"), roles: ["BUYER", "ORGANIZER", "AGENT", "ADMIN", "SUPER_ADMIN"] },
+  { href: "/admin", label: msg("Back-office"), roles: ["ADMIN", "SUPER_ADMIN"] },
 ];
 
 export function Navbar({ active = "/evenements" }: { active?: string }) {
   const router = useRouter();
+  const t = useT();
   const [user, setUser] = useState<AuthUser | null | undefined>(undefined);
 
   // Rendu recalculé quand l'admin entre ou sort du mode aperçu.
@@ -77,13 +81,14 @@ export function Navbar({ active = "/evenements" }: { active?: string }) {
                     : "rounded-full px-4 py-2 text-sm font-medium text-ink-3 transition-colors hover:text-ink-1"
                 }
               >
-                {link.label}
+                {t(link.label)}
               </Link>
             );
           })}
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
+          <LanguageSelect />
           <ThemeToggle />
           {isRealAdmin && !isPreviewActive() ? (
             <span className="hidden lg:inline-flex">
@@ -106,7 +111,7 @@ export function Navbar({ active = "/evenements" }: { active?: string }) {
                 onClick={handleLogout}
                 className={buttonClass("secondary", "whitespace-nowrap rounded-full px-3 py-2 text-sm sm:px-4")}
               >
-                Déconnexion
+                {t("Déconnexion")}
               </button>
             </>
           ) : (
@@ -115,13 +120,13 @@ export function Navbar({ active = "/evenements" }: { active?: string }) {
                 href="/connexion"
                 className={buttonClass("secondary", "whitespace-nowrap rounded-full px-3 py-2 text-sm sm:px-4")}
               >
-                Connexion
+                {t("Connexion")}
               </Link>
               <Link
                 href="/inscription"
-                className={buttonClass("primary", "whitespace-nowrap rounded-full px-3 py-2 text-sm sm:px-4")}
+                className={buttonClass("primary", "whitespace-nowrap rounded-full px-3 py-2 text-sm max-[399px]:hidden sm:px-4")}
               >
-                S&apos;inscrire
+                {t("S'inscrire")}
               </Link>
             </>
           )}

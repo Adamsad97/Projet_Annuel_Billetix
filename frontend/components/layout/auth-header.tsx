@@ -14,9 +14,12 @@ import { Logo } from "@/components/layout/logo";
 import { PreviewSwitcher } from "@/components/admin/preview-switcher";
 import { isAdminRole, isPreviewActive } from "@/lib/auth/preview";
 import { buttonClass } from "@/components/ui/button";
+import { LanguageSelect } from "@/components/layout/language-select";
+import { useT } from "@/lib/i18n/provider";
 
 export function AuthHeader() {
   const router = useRouter();
+  const t = useT();
   const [user, setUser] = useState<AuthUser | null | undefined>(undefined);
 
   useEffect(() => {
@@ -44,21 +47,22 @@ export function AuthHeader() {
 
         <div className="flex items-center gap-3">
           {isAgent ? (
-            <nav aria-label="Espace agent" className="hidden items-center gap-1 sm:flex">
+            <nav aria-label={t("Espace agent")} className="hidden items-center gap-1 sm:flex">
               {[
-                { href: "/scan", label: "Contrôle" },
-                { href: "/profil", label: "Mon compte" },
+                { href: "/scan", label: t("Contrôle") },
+                { href: "/profil", label: t("Mon compte") },
               ].map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   className="rounded-full px-3 py-1.5 text-sm font-medium text-ink-3 transition-colors hover:bg-hairline-1 hover:text-ink-1"
                 >
-                  {link.label}
+                  {t(link.label)}
                 </Link>
               ))}
             </nav>
           ) : null}
+          <LanguageSelect />
           <ThemeToggle />
           {isAdminRole(user?.role) && !isPreviewActive() ? (
             <span className="hidden md:inline-flex">
@@ -75,7 +79,7 @@ export function AuthHeader() {
                 onClick={handleLogout}
                 className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
               >
-                Déconnexion
+                {t("Déconnexion")}
               </button>
             </>
           ) : (
@@ -83,7 +87,7 @@ export function AuthHeader() {
               href="/connexion"
               className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
             >
-              Connexion
+              {t("Connexion")}
             </Link>
           )}
         </div>

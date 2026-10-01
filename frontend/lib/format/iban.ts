@@ -1,3 +1,5 @@
+import { activeLocale } from "@/lib/i18n/translate";
+
 // Saisie d'un IBAN : majuscules, groupes de 4, longueur propre au pays.
 
 export const IBAN_MAX_LENGTH = 34;
@@ -28,17 +30,18 @@ export function ibanLength(value: string): number {
   return value.replace(/[^A-Za-z0-9]/g, "").length;
 }
 
-/** Pays proposés dans la liste, par nom français (« Allemagne », « France »…). */
+/** Pays proposés dans la liste, par nom dans la langue du site (« Allemagne » / « Germany »). */
 export function ibanCountries(): Array<{ code: string; name: string; length: number }> {
-  const names = new Intl.DisplayNames(["fr"], { type: "region" });
+  const locale = activeLocale();
+  const names = new Intl.DisplayNames([locale], { type: "region" });
   return Object.entries(IBAN_LENGTHS)
     .map(([code, length]) => ({ code, name: names.of(code) ?? code, length }))
-    .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+    .sort((a, b) => a.name.localeCompare(b.name, locale));
 }
 
-/** Nom français d'un pays (« France »). */
+/** Nom d'un pays dans la langue du site. */
 export function countryName(code: string): string {
-  return new Intl.DisplayNames(["fr"], { type: "region" }).of(code) ?? code;
+  return new Intl.DisplayNames([activeLocale()], { type: "region" }).of(code) ?? code;
 }
 
 /** Gabarit de saisie montrant la longueur : « FRxx xxxx xxxx xxxx xxxx xxxx xxx ». */
