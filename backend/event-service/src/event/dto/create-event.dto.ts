@@ -5,6 +5,7 @@ import {
   IsInt,
   IsNotEmpty,
   IsOptional,
+  IsUUID,
   IsString,
   IsUrl,
   MaxLength,
@@ -73,6 +74,11 @@ export class CreateEventDto {
   // require_tld: false — même correctif que non_profit_document_url ci-dessus.
   @IsUrl({ require_tld: false })
   poster_url: string;
+
+  /** Taux de TVA choisi dans la liste de l'admin ; absent : taux par défaut. */
+  @IsOptional()
+  @IsUUID()
+  vat_rate_id?: string;
 
   // Couverture horizontale facultative (cartes) — même stockage que l'affiche.
   @IsOptional()

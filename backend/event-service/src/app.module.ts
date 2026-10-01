@@ -5,7 +5,9 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Category } from './category/category.entity';
+import { VatRate } from './vat-rate/vat-rate.entity';
 import { CategoryModule } from './category/category.module';
+import { VatRateModule } from './vat-rate/vat-rate.module';
 import { CancellationMessage } from './event/cancellation/cancellation-message.entity';
 import { CancellationRequest } from './event/cancellation/cancellation-request.entity';
 import { Event } from './event/event.entity';
@@ -34,7 +36,7 @@ import { validateEnvironment } from './common/env.validation';
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
         schema: 'events',
-        entities: [Event, Category, TicketCategory, TicketTierType, PromoCode, ValidationRequest, CancellationRequest, CancellationMessage],
+        entities: [Event, Category, VatRate, TicketCategory, TicketTierType, PromoCode, ValidationRequest, CancellationRequest, CancellationMessage],
         synchronize: config.get('NODE_ENV') !== 'production',
         migrations: [join(__dirname, 'migrations', '*{.ts,.js}')],
         migrationsRun: config.get('NODE_ENV') === 'production',
@@ -72,6 +74,7 @@ import { validateEnvironment } from './common/env.validation';
     PlatformConfigModule,
     EventModule,
     CategoryModule,
+    VatRateModule,
     TicketTierTypeModule,
     TicketCategoryModule,
     PromoCodeModule,

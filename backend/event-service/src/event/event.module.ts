@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CategoryModule } from '../category/category.module';
+import { VatRateModule } from '../vat-rate/vat-rate.module';
 import { TicketCategory } from '../ticket-category/ticket-category.entity';
 import { TicketCategoryModule } from '../ticket-category/ticket-category.module';
 import { ValidationRequestModule } from '../validation-request/validation-request.module';
@@ -22,6 +23,7 @@ import { EventService } from './event.service';
     TypeOrmModule.forFeature([Event, TicketCategory, CancellationRequest, CancellationMessage]),
     ValidationRequestModule,
     TicketCategoryModule,
+    VatRateModule,
     CategoryModule,
     ClientsModule.registerAsync([
       {

@@ -5,6 +5,7 @@ import { isUUID } from 'class-validator';
 import { firstValueFrom } from 'rxjs';
 import { In, IsNull, Repository, Brackets, QueryFailedError } from 'typeorm';
 import { CategoryService } from '../category/category.service';
+import { VatRateService } from '../vat-rate/vat-rate.service';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { CategoryVisibility, TicketCategory } from '../ticket-category/ticket-category.entity';
 import { TicketCategoryService } from '../ticket-category/ticket-category.service';
@@ -113,6 +114,7 @@ export class EventService implements OnApplicationBootstrap {
     private readonly validationRequestService: ValidationRequestService,
     private readonly ticketCategoryService: TicketCategoryService,
     private readonly categoryService: CategoryService,
+    private readonly vatRateService: VatRateService,
   ) {}
 
   /**
@@ -165,11 +167,15 @@ export class EventService implements OnApplicationBootstrap {
     await this.categoryService.assertActive(dto.category);
     this.assertValidDates(dto);
     const commission_rate = await this.computeCommissionRate(dto.total_capacity, false);
+    const { vat_rate_id, ...fields } = dto;
+    const vat = await this.vatRateService.resolve(vat_rate_id);
 
     const event = this.repo.create({
-      ...dto,
+      ...fields,
       organizer_id: organizerId,
       commission_rate,
+      vat_rate: vat.rate.toFixed(4),
+      vat_rate_label: vat.label,
       status: EventStatus.DRAFT,
     });
     return this.saveWithSlug(event);
@@ -357,8 +363,6 @@ export class EventService implements OnApplicationBootstrap {
     // le prix TTC (TVA plateforme appliquée, comme affiché à l'achat) entre
     // dans la fourchette demandée.
     if (filters.min_price !== undefined || filters.max_price !== undefined) {
-      const config = await this.platformConfig.get();
-      const vatMultiplier = 1 + config.tva_rate;
       queryBuilder.andWhere((qb) => {
         const sub = qb
           .subQuery()
@@ -370,17 +374,17 @@ export class EventService implements OnApplicationBootstrap {
           .where('tc.event_id = CAST(e.id AS text)')
           .andWhere('tc.visibility = :visibility')
           .andWhere('tc.is_active = true');
+        // Prix TTC avec le taux de TVA de l'événement lui-même.
         if (filters.min_price !== undefined) {
-          sub.andWhere(`tc.price_ht * :vatMultiplier >= :minPrice`);
+          sub.andWhere(`tc.price_ht * (1 + e.vat_rate) >= :minPrice`);
         }
         if (filters.max_price !== undefined) {
-          sub.andWhere(`tc.price_ht * :vatMultiplier <= :maxPrice`);
+          sub.andWhere(`tc.price_ht * (1 + e.vat_rate) <= :maxPrice`);
         }
         return `EXISTS ${sub.getQuery()}`;
       });
       queryBuilder.setParameters({
         visibility: CategoryVisibility.PUBLIC,
-        vatMultiplier,
         ...(filters.min_price !== undefined ? { minPrice: filters.min_price } : {}),
         ...(filters.max_price !== undefined ? { maxPrice: filters.max_price } : {}),
       });
@@ -442,14 +446,14 @@ export class EventService implements OnApplicationBootstrap {
     const queryBuilder = await this.publicEventsQuery(filters);
 
     if (filters.sort === 'price_asc' || filters.sort === 'price_desc') {
-      // Prix « à partir de » : billet public et actif le moins cher. La TVA
-      // est la même pour tous les événements, l'ordre HT suffit. Un événement
-      // sans billet en vente passe en dernier ; à prix égal, le plus proche.
+      // Prix « à partir de » : billet public et actif le moins cher, TTC avec
+      // le taux de TVA de chaque événement. Un événement sans billet en vente
+      // passe en dernier ; à prix égal, le plus proche.
       queryBuilder
         .addSelect(
           (sub) =>
             sub
-              .select('MIN(tc.price_ht)')
+              .select('MIN(tc.price_ht) * (1 + e.vat_rate)')
               .from(TicketCategory, 'tc')
               .where('tc.event_id = CAST(e.id AS text)')
               .andWhere('tc.visibility = :sortVisibility')
@@ -681,6 +685,7 @@ export class EventService implements OnApplicationBootstrap {
 
     if (event.status === EventStatus.DRAFT) {
       if (dto.category) await this.categoryService.assertActive(dto.category);
+      if (dto.vat_rate_id) await this.applyVatRate(event, dto.vat_rate_id);
       if (dto.start_date !== undefined || dto.end_date !== undefined) {
         this.assertValidDates(dto, event);
       }
@@ -700,8 +705,11 @@ export class EventService implements OnApplicationBootstrap {
     }
 
     const lockedFields = Object.keys(dto).filter(
-      (key) => !COSMETIC_FIELDS.includes(key as keyof CreateEventDto),
+      (key) => key !== 'vat_rate_id' && !COSMETIC_FIELDS.includes(key as keyof CreateEventDto),
     );
+    if (dto.vat_rate_id && Number(event.vat_rate) !== (await this.vatRateService.resolve(dto.vat_rate_id)).rate) {
+      lockedFields.push('vat_rate_id');
+    }
     if (lockedFields.length > 0) {
       throw new RpcException({
         statusCode: 400,
@@ -761,6 +769,8 @@ export class EventService implements OnApplicationBootstrap {
       venue_longitude: original.venue_longitude,
       poster_url: original.poster_url,
       cover_url: original.cover_url,
+      vat_rate: original.vat_rate,
+      vat_rate_label: original.vat_rate_label,
       total_capacity: original.total_capacity,
       sales_start_date: original.sales_start_date,
       sales_end_date: original.sales_end_date,
@@ -954,6 +964,26 @@ export class EventService implements OnApplicationBootstrap {
    * « À la une » de l'accueil : seulement un événement visible du public
    * (publié ou ventes suspendues, non masqué) et pas encore terminé.
    */
+  /** Taux de la liste recopié sur l'événement (valeur et libellé). */
+  private async applyVatRate(event: Event, vatRateId: string): Promise<void> {
+    const vat = await this.vatRateService.resolve(vatRateId);
+    event.vat_rate = vat.rate.toFixed(4);
+    event.vat_rate_label = vat.label;
+  }
+
+  /**
+   * Correction du taux de TVA par l'admin, à la validation : seulement avant
+   * la publication (aucun billet vendu à l'ancien prix).
+   */
+  async setVatRate(id: string, vatRateId: string): Promise<Event> {
+    const event = await this.getById(id);
+    if (![EventStatus.DRAFT, EventStatus.PENDING_VALIDATION].includes(event.status)) {
+      throw new RpcException({ statusCode: 400, message: 'Le taux de TVA ne peut plus être modifié une fois l\'événement publié.' });
+    }
+    await this.applyVatRate(event, vatRateId);
+    return this.repo.save(event);
+  }
+
   async feature(id: string, adminId: string): Promise<Event> {
     const event = await this.getById(id);
     if (![EventStatus.PUBLISHED, EventStatus.SUSPENDED].includes(event.status) || event.is_hidden) {

@@ -141,6 +141,14 @@ export class Event {
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
   commission_rate: number;
 
+  // Taux de TVA des billets (fraction : 0.055 pour 5,5 %), recopié depuis la
+  // liste de l'admin au choix de l'organisateur ; figé après validation.
+  @Column({ type: 'decimal', precision: 6, scale: 4, default: 0.2 })
+  vat_rate: string;
+
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  vat_rate_label: string | null;
+
   // Workflow validation
   @Column({ nullable: true })
   validation_requested_at: Date | null;

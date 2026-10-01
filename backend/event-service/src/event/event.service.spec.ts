@@ -3,6 +3,7 @@ import { RpcException } from '@nestjs/microservices';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { of } from 'rxjs';
 import { CategoryService } from '../category/category.service';
+import { VatRateService } from '../vat-rate/vat-rate.service';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { TicketCategory } from '../ticket-category/ticket-category.entity';
 import { TicketCategoryService } from '../ticket-category/ticket-category.service';
@@ -44,6 +45,7 @@ describe('EventService', () => {
   };
   let ticketCategoryService: { getByEvent: jest.Mock; create: jest.Mock; getFillStats: jest.Mock };
   let categoryService: { assertActive: jest.Mock };
+  let vatRateService: { resolve: jest.Mock };
 
   const config = {
     commission_standard_percent: 10,
@@ -53,6 +55,7 @@ describe('EventService', () => {
   };
 
   beforeEach(async () => {
+    vatRateService = { resolve: jest.fn().mockResolvedValue({ rate: 0.2, label: 'Taux normal' }) };
     queryBuilder = {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
@@ -106,6 +109,7 @@ describe('EventService', () => {
         { provide: ValidationRequestService, useValue: validationRequestService },
         { provide: TicketCategoryService, useValue: ticketCategoryService },
         { provide: CategoryService, useValue: categoryService },
+        { provide: VatRateService, useValue: vatRateService },
       ],
     }).compile();
 
@@ -796,7 +800,7 @@ describe('EventService', () => {
       expect(alias).toBe('from_price');
       const sub = { select: jest.fn().mockReturnThis(), from: jest.fn().mockReturnThis(), where: jest.fn().mockReturnThis(), andWhere: jest.fn().mockReturnThis() };
       subQuery(sub);
-      expect(sub.select).toHaveBeenCalledWith('MIN(tc.price_ht)');
+      expect(sub.select).toHaveBeenCalledWith('MIN(tc.price_ht) * (1 + e.vat_rate)');
       expect(sub.andWhere).toHaveBeenCalledWith('tc.visibility = :sortVisibility');
       expect(sub.andWhere).toHaveBeenCalledWith('tc.is_active = true');
       expect(qb.orderBy).toHaveBeenCalledWith('from_price', 'ASC', 'NULLS LAST');
@@ -861,6 +865,43 @@ describe('EventService', () => {
       });
       expect(qb.andWhere).toHaveBeenCalledWith('e.category = :category', { category: 'CONCERT' });
       expect(qb.andWhere).not.toHaveBeenCalledWith('e.end_date >= :dateFrom', expect.anything());
+    });
+  });
+
+  describe('taux de TVA', () => {
+    const id = '55555555-5555-4555-8555-555555555555';
+
+    it("la création recopie le taux choisi (valeur et libellé)", async () => {
+      vatRateService.resolve.mockResolvedValue({ rate: 0.055, label: 'Spectacles vivants' });
+      repo.findOne.mockResolvedValue(null);
+      (queryBuilder as unknown as Record<string, jest.Mock>).getRawMany = jest.fn().mockResolvedValue([]);
+      platformConfig.get.mockResolvedValue(config);
+      const event = await service.create('organizer-1', {
+        title: 'Concert test', category: 'CONCERT', total_capacity: 100, vat_rate_id: id,
+        start_date: new Date(Date.now() + 864e5).toISOString(), end_date: new Date(Date.now() + 2 * 864e5).toISOString(),
+        sales_start_date: new Date().toISOString(), sales_end_date: new Date(Date.now() + 864e5).toISOString(),
+      } as any);
+      expect(vatRateService.resolve).toHaveBeenCalledWith(id);
+      expect(event).toMatchObject({ vat_rate: '0.0550', vat_rate_label: 'Spectacles vivants' });
+      expect(event).not.toHaveProperty('vat_rate_id');
+    });
+
+    it("l'admin corrige le taux avant la publication", async () => {
+      repo.findOne.mockResolvedValue({ id, status: EventStatus.PENDING_VALIDATION, vat_rate: '0.2000' });
+      vatRateService.resolve.mockResolvedValue({ rate: 0.055, label: 'Spectacles vivants' });
+      const event = await service.setVatRate(id, id);
+      expect(event).toMatchObject({ vat_rate: '0.0550', vat_rate_label: 'Spectacles vivants' });
+    });
+
+    it('taux figé une fois publié : modification refusée', async () => {
+      repo.findOne.mockResolvedValue({ id, status: EventStatus.PUBLISHED, vat_rate: '0.2000' });
+      await expect(service.setVatRate(id, id)).rejects.toBeInstanceOf(RpcException);
+    });
+
+    it("organisateur : autre taux refusé sur un événement publié", async () => {
+      repo.findOne.mockResolvedValue({ id, organizer_id: 'organizer-1', status: EventStatus.PUBLISHED, vat_rate: '0.2000' });
+      vatRateService.resolve.mockResolvedValue({ rate: 0.055, label: 'Spectacles vivants' });
+      await expect(service.update(id, 'organizer-1', { vat_rate_id: id } as any)).rejects.toBeInstanceOf(RpcException);
     });
   });
 });

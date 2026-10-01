@@ -1,5 +1,6 @@
 import { DataSource } from 'typeorm';
 import { Category } from './category/category.entity';
+import { VatRate } from './vat-rate/vat-rate.entity';
 import { Event } from './event/event.entity';
 import { PromoCode } from './promo-code/promo-code.entity';
 import { TicketCategory } from './ticket-category/ticket-category.entity';
@@ -10,6 +11,6 @@ export default new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
   schema: 'events',
-  entities: [Event, Category, TicketCategory, TicketTierType, PromoCode, ValidationRequest],
+  entities: [Event, Category, VatRate, TicketCategory, TicketTierType, PromoCode, ValidationRequest],
   migrations: ['src/migrations/*.ts'],
 });

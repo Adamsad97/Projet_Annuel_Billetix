@@ -3,7 +3,7 @@ import { MessagePattern, Payload } from '@nestjs/microservices';
 import { EventService } from './event.service';
 import { RescheduleEventPayload } from '../common/module-payloads';
 import { AdminActionPayload, AdminIdPayload, IdPayload, IdsPayload, OrganizerPayload, OwnedIdPayload, SlugPayload } from '../common/payloads';
-import { CancelEventPayload, CreateEventPayload, ListAllEventsPayload, ListPublishedPayload, RecommendationPayload, RequestInfoPayload, RespondToInfoPayload, UpdateEventPayload, VerifyNonProfitPayload, CountInPeriodsPayload } from './dto/event-payloads';
+import { CancelEventPayload, CreateEventPayload, ListAllEventsPayload, ListPublishedPayload, RecommendationPayload, RequestInfoPayload, RespondToInfoPayload, UpdateEventPayload, VerifyNonProfitPayload, CountInPeriodsPayload, SetEventVatRatePayload } from './dto/event-payloads';
 
 @Controller()
 export class EventController {
@@ -119,6 +119,11 @@ export class EventController {
   @MessagePattern('event.hide')
   hide(@Payload() data: AdminActionPayload) {
     return this.eventService.hide(data.id, data.admin_id, data.dto);
+  }
+
+  @MessagePattern('event.set_vat_rate')
+  setVatRate(@Payload() data: SetEventVatRatePayload) {
+    return this.eventService.setVatRate(data.id, data.vat_rate_id);
   }
 
   @MessagePattern('event.feature')

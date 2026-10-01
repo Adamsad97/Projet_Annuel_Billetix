@@ -3,7 +3,7 @@ import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { isUUID } from 'class-validator';
 import { firstValueFrom } from 'rxjs';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, In } from 'typeorm';
 import { Event, EventStatus } from '../event/event.entity';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { TicketTierTypeService } from '../ticket-tier-type/ticket-tier-type.service';
@@ -113,15 +113,17 @@ export class TicketCategoryService {
 
   /**
    * Ajoute le prix TTC (celui affiché aux clients et payé), calculé ici avec
-   * le taux de TVA de la plateforme et le même arrondi qu'à la commande
+   * le taux de TVA de l'événement et le même arrondi qu'à la commande
    * (order-service) : le site n'a jamais à le recalculer, aucun écart
    * possible entre prix affiché et prix payé.
    */
   async withPriceTtc<T extends TicketCategory>(categories: T[]): Promise<Array<T & { price_ttc: number }>> {
-    const { tva_rate } = await this.platformConfig.get();
+    const eventIds = [...new Set(categories.map((category) => category.event_id))];
+    const events = eventIds.length ? await this.eventRepo.find({ where: { id: In(eventIds) }, select: ['id', 'vat_rate'] }) : [];
+    const rateByEvent = new Map(events.map((event) => [event.id, Number(event.vat_rate)]));
     return categories.map((category) => ({
       ...category,
-      price_ttc: parseFloat((Number(category.price_ht) * (1 + tva_rate)).toFixed(2)),
+      price_ttc: parseFloat((Number(category.price_ht) * (1 + (rateByEvent.get(category.event_id) ?? 0.2))).toFixed(2)),
     }));
   }
 

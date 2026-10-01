@@ -57,6 +57,13 @@ export class UpdateEventDto {
   @IsOptional() @IsEnum(RefundPolicy) refund_policy?: RefundPolicy;
   @IsOptional() @IsInt() @Min(1) refund_deadline_days?: number;
   @IsOptional() @IsString() @MaxLength(TEXT_MAX) access_conditions?: string;
+  /** Brouillon seulement : taux de TVA choisi dans la liste de l'admin. */
+  @IsOptional() @IsUUID() vat_rate_id?: string;
+}
+
+/** Correction du taux de TVA par l'admin, avant la publication. */
+export class SetEventVatRatePayload extends AdminIdPayload {
+  @IsUUID() vat_rate_id: string;
 }
 
 export class UpdateEventPayload extends OwnedIdPayload {

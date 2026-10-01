@@ -12,7 +12,7 @@ import { TicketCategoryService } from './ticket-category.service';
 describe('TicketCategoryService', () => {
   let service: TicketCategoryService;
   let repo: { find: jest.Mock; findOne: jest.Mock; create: jest.Mock; save: jest.Mock; update: jest.Mock; delete: jest.Mock };
-  let eventRepo: { findOne: jest.Mock; save: jest.Mock };
+  let eventRepo: { findOne: jest.Mock; find: jest.Mock; save: jest.Mock };
   let userClient: { send: jest.Mock };
   let notifClient: { emit: jest.Mock };
   let platformConfig: { get: jest.Mock };
@@ -28,7 +28,7 @@ describe('TicketCategoryService', () => {
       update: jest.fn(),
       delete: jest.fn(),
     };
-    eventRepo = { findOne: jest.fn(), save: jest.fn().mockImplementation((event) => Promise.resolve(event)) };
+    eventRepo = { findOne: jest.fn(), find: jest.fn().mockResolvedValue([]), save: jest.fn().mockImplementation((event) => Promise.resolve(event)) };
     // Par défaut : aucune préférence enregistrée -> alerte envoyée (fail-open).
     userClient = { send: jest.fn().mockReturnValue(of({})) };
     notifClient = { emit: jest.fn() };
@@ -375,22 +375,26 @@ describe('TicketCategoryService', () => {
   });
 
   describe('withPriceTtc — prix affiché aux clients', () => {
-    it('ajoute le prix TTC avec le taux de TVA de la plateforme et le même arrondi qu’à la commande', async () => {
-      platformConfig.get.mockResolvedValue({ tva_rate: 0.2 });
+    it('ajoute le prix TTC avec le taux de TVA de l’événement et le même arrondi qu’à la commande', async () => {
+      eventRepo.find.mockResolvedValue([{ id: 'evt-1', vat_rate: '0.2000' }]);
       const [standard, reduit, gratuit] = await service.withPriceTtc([
-        { id: 'a', price_ht: '25.00' },
-        { id: 'b', price_ht: '12.34' },
-        { id: 'c', price_ht: '0.00' },
+        { id: 'a', event_id: 'evt-1', price_ht: '25.00' },
+        { id: 'b', event_id: 'evt-1', price_ht: '12.34' },
+        { id: 'c', event_id: 'evt-1', price_ht: '0.00' },
       ] as unknown as TicketCategory[]);
       expect(standard.price_ttc).toBe(30);
       expect(reduit.price_ttc).toBe(14.81);
       expect(gratuit.price_ttc).toBe(0);
     });
 
-    it('suit le taux réglé par l’admin (jamais une valeur figée)', async () => {
-      platformConfig.get.mockResolvedValue({ tva_rate: 0.055 });
-      const [category] = await service.withPriceTtc([{ id: 'a', price_ht: '20.00' }] as unknown as TicketCategory[]);
-      expect(category.price_ttc).toBe(21.1);
+    it('chaque événement a son propre taux (5,5 % ici, 20 % là)', async () => {
+      eventRepo.find.mockResolvedValue([{ id: 'evt-1', vat_rate: '0.0550' }, { id: 'evt-2', vat_rate: '0.2000' }]);
+      const [spectacle, salon] = await service.withPriceTtc([
+        { id: 'a', event_id: 'evt-1', price_ht: '20.00' },
+        { id: 'b', event_id: 'evt-2', price_ht: '20.00' },
+      ] as unknown as TicketCategory[]);
+      expect(spectacle.price_ttc).toBe(21.1);
+      expect(salon.price_ttc).toBe(24);
     });
   });
 
