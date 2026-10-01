@@ -72,12 +72,6 @@ export function FeaturedEvents({ events: initialEvents }: { events: FeaturedEven
       <div className="mb-6 flex items-center justify-between gap-4">
         <h2 className="text-2xl font-bold text-ink-1">À la une</h2>
         <div className="flex items-center gap-3">
-          <Link
-            href={`/evenements${filtersToUrl(search.filters)}`}
-            className="mr-1 hidden text-sm font-medium text-link transition-colors hover:text-link-hover sm:inline"
-          >
-            Voir tout →
-          </Link>
           {overflowing ? (
             <>
               <button
@@ -141,6 +135,16 @@ export function FeaturedEvents({ events: initialEvents }: { events: FeaturedEven
           ))}
         </ul>
       )}
+
+      {/* Tous les événements, avec les filtres choisis ci-dessus. */}
+      <div className="mt-8 flex justify-center sm:justify-end">
+        <Link
+          href={`/evenements${filtersToUrl(search.filters)}`}
+          className="rounded-xl bg-brand px-6 py-3 text-base font-semibold text-white shadow-lg shadow-brand/30 transition-opacity hover:opacity-90"
+        >
+          Voir les événements
+        </Link>
+      </div>
     </section>
   );
 }
