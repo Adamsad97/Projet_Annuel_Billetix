@@ -51,6 +51,7 @@ import { EventOwner } from "../common/guards/event-owner.guard";
 import { findScheduleConflict, type ScheduledEvent } from "../ticket/agent-schedule";
 import { formatEventDate, formatEventSchedule } from "../common/event-date";
 import { AdminRecipients } from "../admin-alerts/admin-recipients.service";
+import { PeriodCountsDto } from "./dto/period-counts.dto";
 
 /** Demande d'annulation ou de report telle que renvoyée par event-service. */
 interface ChangeRequestSnapshot {
@@ -153,6 +154,14 @@ export class EventController {
   @ApiOperation({ summary: "Nombre d'événements à venir par catégorie (code → nombre)" })
   countEventsByCategory() {
     return firstValueFrom(this.eventClient.send("event.count_by_category", {}));
+  }
+
+  @Public()
+  @Post("counts/by-period")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Nombre d'événements par période (filtre Date : aujourd'hui, ce week-end…)" })
+  countEventsByPeriod(@Body() dto: PeriodCountsDto) {
+    return firstValueFrom(this.eventClient.send("event.count_in_periods", { periods: dto.periods }));
   }
 
   @Get("categories/all")
