@@ -17,6 +17,7 @@ import {
   toApiParams,
   type CatalogueFilters,
 } from "@/lib/catalogue/filters";
+import { requestUserPosition } from "@/lib/geo/user-position";
 import { apiEventToFeatured, type FeaturedEvent } from "@/lib/mappers/event-mappers";
 
 export interface EventSearchOptions {
@@ -179,24 +180,14 @@ export function useEventSearch({ syncUrl = false, initialEvents, unfilteredParam
     setFilters((current) => ({ ...current, ...patch }));
   }
 
+  // Position partagée avec tout le site : les cartes affichent aussi la distance.
   function locate() {
-    if (!("geolocation" in navigator)) {
-      setLocateError("La géolocalisation n'est pas disponible sur ce navigateur.");
-      return;
-    }
     setLocateError(null);
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setNearMe({ lat: position.coords.latitude, lng: position.coords.longitude });
-        setLocating(false);
-      },
-      () => {
-        setLocateError("Position refusée ou indisponible : autorisez la géolocalisation dans votre navigateur.");
-        setLocating(false);
-      },
-      { enableHighAccuracy: false, timeout: 10_000 },
-    );
+    requestUserPosition()
+      .then(setNearMe)
+      .catch((err: Error) => setLocateError(err.message))
+      .finally(() => setLocating(false));
   }
 
   function resetAll() {

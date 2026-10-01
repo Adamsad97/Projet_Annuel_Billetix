@@ -1,3 +1,4 @@
+import { EventDistanceLine } from "@/components/events/event-distance";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import { PosterViewer } from "@/components/event-detail/poster-viewer";
 import { EventStartCountdown } from "@/components/event-detail/event-start-countdown";
@@ -95,6 +96,7 @@ export function EventHeader({ event, purchasable }: { event: EventDetail; purcha
                 <dt className="sr-only">Lieu</dt>
                 <dd className="text-lg font-semibold">{event.venueName}</dd>
                 <dd className="truncate text-sm text-white/70">{event.address}</dd>
+                <EventDistanceLine latitude={event.latitude} longitude={event.longitude} />
               </div>
             </div>
           </dl>

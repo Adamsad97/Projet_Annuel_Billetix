@@ -101,6 +101,9 @@ export interface FeaturedEvent {
   band: string;
   /** Ventes suspendues par l'administration : message affiché sur la carte. */
   suspendedNotice: string | null;
+  /** Coordonnées du lieu, pour la distance depuis la position du visiteur. */
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export function apiEventToFeatured(
@@ -129,6 +132,8 @@ export function apiEventToFeatured(
     categoryEmoji: display.emoji,
     band: meta.band,
     suspendedNotice: event.status === "SUSPENDED" ? event.suspension_reason ?? "" : null,
+    latitude: event.venue_latitude !== null ? Number(event.venue_latitude) : null,
+    longitude: event.venue_longitude !== null ? Number(event.venue_longitude) : null,
   };
 }
 

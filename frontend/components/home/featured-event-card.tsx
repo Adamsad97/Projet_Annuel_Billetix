@@ -1,11 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { EventDistanceChip } from "@/components/events/event-distance";
 import { CountryFlag } from "@/components/home/country-flag";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import type { FeaturedEvent } from "@/lib/mappers/event-mappers";
 import { eventPath } from "@/lib/format/event-path";
 
-/** Carte « À la une » : affiche sur fond flouté, pastilles date, pays, tarif et catégorie. */
+/** Carte « À la une » : affiche sur fond flouté, pastilles date, pays, distance, tarif et catégorie. */
 export function FeaturedEventCard({ event }: { event: FeaturedEvent }) {
   return (
     <Link
@@ -84,6 +85,7 @@ export function FeaturedEventCard({ event }: { event: FeaturedEvent }) {
         <ul className="mt-1 flex flex-wrap gap-2">
           <Chip icon={<CalendarIcon />}>{event.dateLabel}</Chip>
           <Chip icon={<CountryFlag country={event.country} />}>{event.country}</Chip>
+          <EventDistanceChip latitude={event.latitude} longitude={event.longitude} />
           {event.priceLabel ? <Chip icon={<TicketIcon />}>{event.priceLabel}</Chip> : null}
           <Chip icon={<FolderIcon />}>{event.categoryLabel}</Chip>
         </ul>
