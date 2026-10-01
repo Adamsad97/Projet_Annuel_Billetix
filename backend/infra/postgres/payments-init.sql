@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════
--- BilletiX — Base dédiée payment-service
+-- BilleTix — Base dédiée payment-service
 -- ══════════════════════════════════════════════════════════════════
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

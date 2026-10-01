@@ -617,7 +617,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@billetix.fr}
-      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-BilletiX}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-BilleTix}
       # Liens cliqués par l'utilisateur dans ses emails -> le frontend
       # (3000), jamais l'api-gateway (4000, réservé aux callbacks OAuth
       # d'auth-service). Bug corrigé : APP_URL pointait vers le gateway,

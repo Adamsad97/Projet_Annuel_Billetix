@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════
--- BilletiX — Base dédiée ticket-service
+-- BilleTix — Base dédiée ticket-service
 -- ══════════════════════════════════════════════════════════════════
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

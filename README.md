@@ -1,4 +1,4 @@
-# BilletiX — Plateforme de Billetterie Électronique
+# BilleTix — Plateforme de Billetterie Électronique
 
 Backend en microservices NestJS (10 services + API Gateway), une base PostgreSQL dédiée par service, frontend Next.js.
 
