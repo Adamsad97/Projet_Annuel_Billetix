@@ -122,3 +122,12 @@ describe('InvoicePdfService', () => {
     });
   });
 });
+
+describe('vatPercent — taux affiché sur les factures et avoirs', () => {
+  it('garde la décimale des taux réduits', () => {
+    const { vatPercent } = jest.requireActual('./invoice-pdf.service');
+    expect(vatPercent(0.2)).toBe('20 %');
+    expect(vatPercent(0.055)).toBe('5,5 %');
+    expect(vatPercent(0.021)).toBe('2,1 %');
+  });
+});

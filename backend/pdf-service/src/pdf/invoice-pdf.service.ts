@@ -77,6 +77,11 @@ const LOGO_HTML = `<div class="logo" aria-label="BilleTix">
         </svg>
       </div>`;
 
+/** « 20 % », « 5,5 % », « 2,1 % » : jamais arrondi à l'entier (5,5 % ≠ 6 %). */
+export function vatPercent(rate: number): string {
+  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(Number(rate) * 100)} %`;
+}
+
 @Injectable()
 export class InvoicePdfService {
   private readonly logger = new Logger(InvoicePdfService.name);
@@ -219,7 +224,7 @@ export class InvoicePdfService {
 
   <div class="totals">
     <div class="totals-row"><span>Total HT</span><span>${minus(note.amount_ht)}</span></div>
-    <div class="totals-row"><span>TVA (${(note.tva_rate * 100).toFixed(0)}%)</span><span>${minus(note.tva_amount)}</span></div>
+    <div class="totals-row"><span>TVA (${vatPercent(note.tva_rate)})</span><span>${minus(note.tva_amount)}</span></div>
     <div class="totals-row total"><span>Total TTC</span><span>${minus(note.amount_ttc)}</span></div>
   </div>
 
@@ -333,7 +338,7 @@ export class InvoicePdfService {
   <div class="totals">
     ${invoiceData.discount_amount > 0 ? `<div class="totals-row"><span>Remise</span><span>-${money(invoiceData.discount_amount)}</span></div>` : ''}
     <div class="totals-row"><span>Total HT</span><span>${money(invoiceData.total_amount_ht)}</span></div>
-    <div class="totals-row"><span>TVA (${(invoiceData.tva_rate * 100).toFixed(0)}%)</span><span>${money(tvaAmount)}</span></div>
+    <div class="totals-row"><span>TVA (${vatPercent(invoiceData.tva_rate)})</span><span>${money(tvaAmount)}</span></div>
     <div class="totals-row total"><span>Total TTC</span><span>${money(invoiceData.total_amount_ttc)}</span></div>
   </div>
 
