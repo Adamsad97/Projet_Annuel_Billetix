@@ -116,7 +116,6 @@ export const FIELDS: Record<string, FieldMeta> = {
   stock_reservation_ttl_seconds: { label: "Réservation des places pendant l'achat", unit: "secondes" },
   order_abandon_timeout_minutes: { label: "Abandon automatique d'une commande non payée", unit: "minutes" },
   // Commissions et TVA
-  tva_rate: { label: "Taux de TVA", unit: "%", format: "ratio" },
   commission_standard_percent: { label: "Commission standard", unit: "% du HT" },
   commission_large_event_percent: { label: "Commission grand événement", unit: "% du HT" },
   large_event_threshold: { label: "Seuil « grand événement »", unit: "places" },

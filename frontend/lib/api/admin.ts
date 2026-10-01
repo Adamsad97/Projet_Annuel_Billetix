@@ -698,6 +698,11 @@ export function unhideEvent(id: string): Promise<ApiEvent> {
   return apiPost(`/admin/events/${id}/unhide`, {});
 }
 
+/** Correction du taux de TVA d'un événement avant sa publication. */
+export function setEventVatRate(id: string, vatRateId: string): Promise<ApiEvent> {
+  return apiPost(`/admin/events/${id}/vat-rate`, { vat_rate_id: vatRateId });
+}
+
 /** Mise « À la une » de l'accueil (événement publié et visible). */
 export function featureEvent(id: string): Promise<ApiEvent> {
   return apiPost(`/admin/events/${id}/feature`, {});

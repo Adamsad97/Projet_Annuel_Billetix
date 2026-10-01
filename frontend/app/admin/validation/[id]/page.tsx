@@ -9,6 +9,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { DocumentGrid, type SubmittedDocument } from "@/components/admin/document-viewer";
+import { EventVatRateControl } from "@/components/admin/event-vat-rate-control";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import { listCategories, type ApiCategory } from "@/lib/api/categories";
 import { getEventCategories, ticketVisibilityLabels, type ApiEvent, type ApiTicketCategory } from "@/lib/api/events";
@@ -344,6 +345,16 @@ export default function AdminValidationDetailPage({
                 <dt className="text-ink-5">Catégorie</dt>
                 <dd className="text-ink-2">{categoryByCode.get(event.category)?.label ?? event.category}</dd>
               </div>
+              <EventVatRateControl
+                eventId={event.id}
+                vatRate={event.vat_rate}
+                vatRateLabel={event.vat_rate_label}
+                editable={event.status === "PENDING_VALIDATION" || event.status === "DRAFT"}
+                onChanged={() => {
+                  load();
+                  getEventCategories(id).then(setTicketCategories).catch(() => undefined);
+                }}
+              />
               <div>
                 <dt className="text-ink-5">Capacité totale</dt>
                 <dd className="text-ink-2">{event.total_capacity} places</dd>
@@ -414,7 +425,7 @@ export default function AdminValidationDetailPage({
                       ) : null}
                     </span>
                     <span className="text-ink-4">
-                      {currency.format(Number(tc.price_ht))} HT · {tc.quota} places · max {tc.max_per_order}/commande
+                      {currency.format(Number(tc.price_ht))} HT · {currency.format(Number(tc.price_ttc))} TTC · {tc.quota} places · max {tc.max_per_order}/commande
                     </span>
                   </li>
                 ))}

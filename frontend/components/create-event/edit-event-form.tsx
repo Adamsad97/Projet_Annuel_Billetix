@@ -12,6 +12,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { InfoCard } from "@/components/event-detail/info-card";
 import { CategoryPicker } from "@/components/create-event/category-picker";
+import { VatRateSelect } from "@/components/create-event/vat-rate-select";
+import { listVatRates, type ApiVatRate } from "@/lib/api/vat-rates";
 import { CoverDropzone } from "@/components/create-event/cover-dropzone";
 import { PosterDropzone } from "@/components/create-event/poster-dropzone";
 import { LocationPicker } from "@/components/map/location-picker";
@@ -122,6 +124,11 @@ export function EditEventForm({
   // en lecture seule ensuite.
   const [tierTypes, setTierTypes] = useState<ApiTicketTierType[]>([]);
   const [pricing, setPricing] = useState<PricingPolicy | null>(null);
+  // Taux de TVA : celui de l'événement, retrouvé dans la liste de l'admin ;
+  // « current » s'il n'y figure plus (retiré ou modifié depuis).
+  const [vatRates, setVatRates] = useState<ApiVatRate[]>([]);
+  // null : pas encore changé par l'organisateur (taux de l'événement).
+  const [vatChoice, setVatRateId] = useState<string | null>(null);
   const [ticketCategories, setTicketCategories] = useState<ApiTicketCategory[] | null>(null);
   const [tierRows, setTierRows] = useState<TicketTierRow[]>([]);
   const [isFree, setIsFree] = useState(false);
@@ -148,14 +155,24 @@ export function EditEventForm({
       listTicketTierTypes().catch(() => []),
       getPricingPolicy().catch(() => null),
       getEventCategories(event.id),
+      listVatRates().catch(() => []),
     ])
-      .then(([types, policy, list]) => {
+      .then(([types, policy, list, rates]) => {
         setTierTypes(types);
         setPricing(policy);
         applyCategories(list);
+        setVatRates(rates);
       })
       .catch(() => setTicketCategories([]));
   }, [event.id]);
+
+  const savedVatId =
+    vatRates.find(
+      (rate) => Number(rate.rate) === Number(event.vat_rate ?? 0.2) && rate.label === (event.vat_rate_label ?? rate.label),
+    )?.id ?? "current";
+  const vatRateId = vatChoice ?? savedVatId;
+  const selectedVatRate = vatRates.find((rate) => rate.id === vatRateId)?.rate ?? event.vat_rate ?? "0.2";
+  const pricingForEvent = pricing ? { ...pricing, tva_rate: Number(selectedVatRate) } : null;
 
   /** Bascule payant / gratuit : 0 € partout, ou prix à saisir de nouveau. */
   function applyFree(free: boolean) {
@@ -247,6 +264,7 @@ export function EditEventForm({
               : {}),
             ...(posterUrl ? { poster_url: posterUrl } : {}),
             ...coverChange,
+            ...(vatRateId !== "current" ? { vat_rate_id: vatRateId } : {}),
           }
         : {
             description,
@@ -363,6 +381,13 @@ export function EditEventForm({
               <input value={categories.find((c) => c.code === category)?.label ?? category} disabled className={fieldClassName} />
             )}
           </label>
+          <VatRateSelect
+            vatRates={vatRates}
+            value={vatRateId}
+            onChange={setVatRateId}
+            disabled={!isDraft}
+            current={vatRateId === "current" ? { rate: event.vat_rate ?? "0.2", label: event.vat_rate_label ?? null } : null}
+          />
         </div>
       </InfoCard>
 
@@ -492,7 +517,7 @@ export function EditEventForm({
               onChange={setTierRows}
               tierTypes={tierTypes}
               totalCapacity={Number(totalCapacity) || 0}
-              pricing={pricing}
+              pricing={pricingForEvent}
               free={isFree}
             />
           </div>

@@ -52,6 +52,10 @@ export interface ApiEvent {
   venue_latitude: string | null;
   venue_longitude: string | null;
   poster_url: string | null;
+  /** Taux de TVA du prix des billets (fraction en texte : « 0.0550 »). */
+  vat_rate?: string;
+  /** Libellé du taux choisi (« Spectacles vivants »). */
+  vat_rate_label?: string | null;
   /** Couverture horizontale (16:9) des cartes ; à défaut, l'affiche. */
   cover_url: string | null;
   /** Mis « À la une » de l'accueil par un admin (null : non). */
@@ -201,6 +205,7 @@ export function getEventBySlug(slug: string): Promise<ApiEvent> {
 
 /** Taux appliqués au prix d'un billet (réglages admin), pour l'organisateur. */
 export interface PricingPolicy {
+  /** Taux de TVA de l'événement en cours de saisie (ajouté par le formulaire, pas par l'API). */
   tva_rate: number;
   commission_standard_percent: number;
   commission_large_event_percent: number;
@@ -233,6 +238,8 @@ export interface CreateEventDto {
   venue_longitude?: number;
   poster_url: string;
   cover_url?: string;
+  /** Taux de TVA choisi dans la liste de l'admin. */
+  vat_rate_id?: string;
   total_capacity: number;
   sales_start_date: string;
   sales_end_date: string;
@@ -278,6 +285,8 @@ export interface UpdateEventDto {
   poster_url?: string;
   /** null : couverture retirée. */
   cover_url?: string | null;
+  /** Brouillon seulement : taux de TVA choisi dans la liste de l'admin. */
+  vat_rate_id?: string;
   total_capacity?: number;
   sales_start_date?: string;
   sales_end_date?: string;

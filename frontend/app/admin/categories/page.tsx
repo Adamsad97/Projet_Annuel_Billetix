@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { CategoryRow } from "@/components/admin/category-row";
 import { TicketTierTypeRow } from "@/components/admin/ticket-tier-type-row";
+import { VatRatesSection } from "@/components/admin/vat-rates-section";
 import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dialog";
 import {
   createCategory,
@@ -179,9 +180,10 @@ export default function AdminCategoriesPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-ink-1">Catégories</h1>
         <p className="mt-1 text-sm text-ink-5">
-          Ces deux listes alimentent les dropdowns du formulaire de création
-          d&apos;événement côté organisateur — désactive une entrée plutôt que
-          la supprimer si elle est déjà utilisée.
+          Ces listes alimentent les listes déroulantes du formulaire de
+          création d&apos;événement côté organisateur : catégories, noms de
+          billets et taux de TVA. Désactivez une entrée plutôt que de la
+          supprimer si elle est déjà utilisée.
         </p>
       </div>
 
@@ -338,6 +340,8 @@ export default function AdminCategoriesPage() {
           </div>
         )}
       </section>
+
+      <VatRatesSection />
 
       <ActionDialog state={dialog} onClose={() => setDialog(null)} />
     </AdminShell>

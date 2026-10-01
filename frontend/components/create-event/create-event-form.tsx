@@ -4,6 +4,8 @@ import { useEffect, useId, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { InfoCard } from "@/components/event-detail/info-card";
 import { CategoryPicker } from "@/components/create-event/category-picker";
+import { VatRateSelect } from "@/components/create-event/vat-rate-select";
+import { listVatRates, type ApiVatRate } from "@/lib/api/vat-rates";
 import { TicketingTypeToggle } from "@/components/create-event/ticketing-type-toggle";
 import { CoverDropzone } from "@/components/create-event/cover-dropzone";
 import { PosterDropzone } from "@/components/create-event/poster-dropzone";
@@ -95,11 +97,23 @@ export function CreateEventForm({
   const [totalCapacity, setTotalCapacity] = useState("500");
   // Taux (TVA, commission, frais) pour le détail des prix pendant la saisie.
   const [pricing, setPricing] = useState<PricingPolicy | null>(null);
+  // Taux de TVA proposés par l'admin ; le taux par défaut est présélectionné.
+  const [vatRates, setVatRates] = useState<ApiVatRate[]>([]);
+  const [vatRateId, setVatRateId] = useState("");
   useEffect(() => {
     getPricingPolicy()
       .then(setPricing)
       .catch(() => setPricing(null));
+    listVatRates()
+      .then((list) => {
+        setVatRates(list);
+        setVatRateId((current) => current || (list.find((rate) => rate.is_default) ?? list[0])?.id || "");
+      })
+      .catch(() => setVatRates([]));
   }, []);
+  const selectedVat = vatRates.find((rate) => rate.id === vatRateId);
+  // Aperçu des prix avec le taux choisi.
+  const pricingForEvent = pricing && selectedVat ? { ...pricing, tva_rate: Number(selectedVat.rate) } : null;
   const [salesStartAt, setSalesStartAt] = useState("");
   const [salesEndAt, setSalesEndAt] = useState("");
   const [refundPolicy, setRefundPolicy] = useState<"NON_REFUNDABLE" | "REFUNDABLE">("NON_REFUNDABLE");
@@ -186,6 +200,7 @@ export function CreateEventForm({
         title,
         description,
         category,
+        ...(vatRateId ? { vat_rate_id: vatRateId } : {}),
         start_date: startIso,
         end_date: endIso,
         venue_name: venueName,
@@ -275,6 +290,8 @@ export function CreateEventForm({
             </span>
             <CategoryPicker categories={categories} value={category} onChange={setCategory} />
           </div>
+
+          {vatRates.length > 0 ? <VatRateSelect vatRates={vatRates} value={vatRateId} onChange={setVatRateId} /> : null}
         </div>
       </InfoCard>
 
@@ -502,7 +519,7 @@ export function CreateEventForm({
           onChange={setTierRows}
           tierTypes={tierTypes}
           totalCapacity={Number(totalCapacity) || 0}
-          pricing={pricing}
+          pricing={pricingForEvent}
           free={isFree}
         />
       </InfoCard>

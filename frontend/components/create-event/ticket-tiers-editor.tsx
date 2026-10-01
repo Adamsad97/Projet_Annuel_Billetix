@@ -5,6 +5,7 @@ import type { PricingPolicy } from "@/lib/api/events";
 import type { ApiTicketTierType } from "@/lib/api/ticket-tier-types";
 import { commissionPercentFor, computePriceBreakdown } from "@/lib/pricing/price-breakdown";
 import { euros } from "@/lib/format/money";
+import { formatVatPercent } from "@/lib/api/vat-rates";
 import { fieldClass } from "@/components/ui/field";
 
 /**
@@ -16,7 +17,6 @@ function PriceDetail({ price, pricing, commissionPercent }: { price: string; pri
   const value = Number(price);
   if (price.trim() === "" || !Number.isFinite(value) || value < 0) return null;
   const detail = computePriceBreakdown(value, pricing, commissionPercent);
-  const vatPercent = Math.round(pricing.tva_rate * 1000) / 10;
 
   if (detail.priceHt === 0) {
     return (
@@ -37,7 +37,7 @@ function PriceDetail({ price, pricing, commissionPercent }: { price: string; pri
           <span>{euros.format(detail.priceHt)}</span>
         </p>
         <p className="flex justify-between gap-3">
-          <span>+ TVA {vatPercent} %</span>
+          <span>+ TVA {formatVatPercent(pricing.tva_rate)}</span>
           <span>{euros.format(detail.vat)}</span>
         </p>
         <p className="mt-1 flex justify-between gap-3 border-t border-hairline-2 pt-1 text-sm font-semibold text-ink-1">
