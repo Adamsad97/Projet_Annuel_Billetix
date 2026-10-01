@@ -10,11 +10,13 @@ export function CategoryRow({
   onDelete,
 }: {
   category: ApiCategory;
-  onSave: (id: string, dto: { label: string; emoji: string; display_order: number }) => Promise<void>;
+  /** Rejette en cas d'échec (message affiché par la page) : la ligne reste en édition. */
+  onSave: (id: string, dto: { code: string; label: string; emoji: string; display_order: number }) => Promise<void>;
   onToggleActive: (id: string, isActive: boolean) => Promise<void>;
   onDelete: (id: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [code, setCode] = useState(category.code);
   const [label, setLabel] = useState(category.label);
   const [emoji, setEmoji] = useState(category.emoji ?? "");
   const [displayOrder, setDisplayOrder] = useState(String(category.display_order));
@@ -23,8 +25,10 @@ export function CategoryRow({
   async function handleSave() {
     setBusy(true);
     try {
-      await onSave(category.id, { label, emoji, display_order: Number(displayOrder) || 0 });
+      await onSave(category.id, { code, label, emoji, display_order: Number(displayOrder) || 0 });
       setEditing(false);
+    } catch {
+      // Erreur affichée par la page ; la saisie reste modifiable.
     } finally {
       setBusy(false);
     }
@@ -39,11 +43,22 @@ export function CategoryRow({
           maxLength={8}
           className="rounded-lg border border-hairline-2 bg-hairline-1 px-2 py-1.5 text-center text-sm text-ink-1 focus:border-blue-500 focus:outline-none"
         />
-        <input
-          value={label}
-          onChange={(event) => setLabel(event.target.value)}
-          className="rounded-lg border border-hairline-2 bg-hairline-1 px-3 py-1.5 text-sm text-ink-1 focus:border-blue-500 focus:outline-none"
-        />
+        <div className="flex flex-col gap-1.5">
+          <input
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+            aria-label="Nom"
+            className="rounded-lg border border-hairline-2 bg-hairline-1 px-3 py-1.5 text-sm text-ink-1 focus:border-blue-500 focus:outline-none"
+          />
+          <input
+            value={code}
+            onChange={(event) => setCode(event.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ""))}
+            maxLength={30}
+            aria-label="Code"
+            title="Code (majuscules, chiffres, underscore) — les événements de cette catégorie suivent automatiquement"
+            className="rounded-lg border border-hairline-2 bg-hairline-1 px-3 py-1 font-mono text-xs text-ink-3 focus:border-blue-500 focus:outline-none"
+          />
+        </div>
         <input
           type="number"
           value={displayOrder}

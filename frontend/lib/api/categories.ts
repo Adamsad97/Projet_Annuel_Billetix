@@ -65,6 +65,8 @@ export function createCategory(dto: CreateCategoryDto): Promise<ApiCategory> {
 }
 
 export interface UpdateCategoryDto {
+  /** Changement recopié par le serveur sur les événements de la catégorie. */
+  code?: string;
   label?: string;
   emoji?: string;
   display_order?: number;

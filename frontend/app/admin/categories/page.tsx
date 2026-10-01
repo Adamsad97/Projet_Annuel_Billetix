@@ -72,13 +72,19 @@ export default function AdminCategoriesPage() {
     }
   }
 
-  async function handleSaveCategory(id: string, dto: { label: string; emoji: string; display_order: number }) {
+  async function handleSaveCategory(id: string, dto: { code: string; label: string; emoji: string; display_order: number }) {
     setCategoriesError(null);
     try {
-      const updated = await updateCategory(id, { label: dto.label, emoji: dto.emoji || undefined, display_order: dto.display_order });
+      const updated = await updateCategory(id, {
+        code: dto.code,
+        label: dto.label,
+        emoji: dto.emoji || undefined,
+        display_order: dto.display_order,
+      });
       setCategories((prev) => prev?.map((category) => (category.id === id ? updated : category)));
     } catch (err) {
       setCategoriesError(err instanceof ApiError ? err.message : "Impossible de modifier la catégorie.");
+      throw err;
     }
   }
 
