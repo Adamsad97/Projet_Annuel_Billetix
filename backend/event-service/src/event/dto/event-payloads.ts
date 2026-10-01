@@ -87,6 +87,7 @@ export class ListPublishedPayload {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(20_000) radius_km?: number;
   /** « Plus de X km » : événements situés au-delà de cette distance (avec lat et lng). */
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(20_000) min_distance_km?: number;
+  @IsOptional() @IsBoolean() featured?: boolean;
   @IsOptional() @IsDateString() date_from?: string;
   @IsOptional() @IsDateString() date_to?: string;
   @IsOptional() @IsIn(['date', 'recent', 'price_asc', 'price_desc']) sort?: 'date' | 'recent' | 'price_asc' | 'price_desc';

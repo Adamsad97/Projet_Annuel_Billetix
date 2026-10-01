@@ -750,4 +750,31 @@ describe('EventService', () => {
       expect(qb.andWhere).toHaveBeenCalledWith('e.is_hidden = false');
     });
   });
+
+  describe('« À la une »', () => {
+    const future = new Date(Date.now() + 86_400_000).toISOString();
+    const id = '44444444-4444-4444-8444-444444444444';
+
+    it("met à la une un événement publié, avec la date et l'admin", async () => {
+      repo.findOne.mockResolvedValue({ id, status: EventStatus.PUBLISHED, is_hidden: false, end_date: future });
+      const event = await service.feature(id, 'admin-1');
+      expect(event.featured_by).toBe('admin-1');
+      expect(event.featured_at).toBeInstanceOf(Date);
+    });
+
+    it('refuse un brouillon, un événement masqué ou terminé', async () => {
+      repo.findOne.mockResolvedValueOnce({ id, status: EventStatus.DRAFT, is_hidden: false, end_date: future });
+      await expect(service.feature(id, 'admin-1')).rejects.toBeInstanceOf(RpcException);
+      repo.findOne.mockResolvedValueOnce({ id, status: EventStatus.PUBLISHED, is_hidden: true, end_date: future });
+      await expect(service.feature(id, 'admin-1')).rejects.toBeInstanceOf(RpcException);
+      repo.findOne.mockResolvedValueOnce({ id, status: EventStatus.PUBLISHED, is_hidden: false, end_date: '2020-01-01T00:00:00Z' });
+      await expect(service.feature(id, 'admin-1')).rejects.toBeInstanceOf(RpcException);
+    });
+
+    it('retire de la une', async () => {
+      repo.findOne.mockResolvedValue({ id, featured_at: new Date(), featured_by: 'admin-1' });
+      const event = await service.unfeature(id);
+      expect(event).toMatchObject({ featured_at: null, featured_by: null });
+    });
+  });
 });

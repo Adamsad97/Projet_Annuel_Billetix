@@ -328,6 +328,8 @@ export class EventService implements OnApplicationBootstrap {
     lng?: number;
     radius_km?: number;
     min_distance_km?: number;
+    /** Seulement les événements mis « À la une » par un admin. */
+    featured?: boolean;
     date_from?: string;
     date_to?: string;
     sort?: 'date' | 'recent' | 'price_asc' | 'price_desc';
@@ -340,6 +342,7 @@ export class EventService implements OnApplicationBootstrap {
       .where('e.status IN (:...statuses)', { statuses: [EventStatus.PUBLISHED, EventStatus.SUSPENDED] })
       .andWhere('e.is_hidden = false');
 
+    if (filters.featured) queryBuilder.andWhere('e.featured_at IS NOT NULL');
     if (filters.category) queryBuilder.andWhere('e.category = :category', { category: filters.category });
     if (filters.city) queryBuilder.andWhere('LOWER(e.venue_city) LIKE :city', { city: `%${filters.city.toLowerCase()}%` });
 
@@ -929,6 +932,30 @@ export class EventService implements OnApplicationBootstrap {
     event.hidden_at = new Date();
     event.hidden_by = adminId;
     event.hidden_reason = reason;
+    return this.repo.save(event);
+  }
+
+  /**
+   * « À la une » de l'accueil : seulement un événement visible du public
+   * (publié ou ventes suspendues, non masqué) et pas encore terminé.
+   */
+  async feature(id: string, adminId: string): Promise<Event> {
+    const event = await this.getById(id);
+    if (![EventStatus.PUBLISHED, EventStatus.SUSPENDED].includes(event.status) || event.is_hidden) {
+      throw new RpcException({ statusCode: 400, message: 'Seul un événement publié et visible peut être mis à la une.' });
+    }
+    if (new Date(event.end_date).getTime() < Date.now()) {
+      throw new RpcException({ statusCode: 400, message: 'Cet événement est terminé : il ne peut pas être mis à la une.' });
+    }
+    event.featured_at = new Date();
+    event.featured_by = adminId;
+    return this.repo.save(event);
+  }
+
+  async unfeature(id: string): Promise<Event> {
+    const event = await this.getById(id);
+    event.featured_at = null;
+    event.featured_by = null;
     return this.repo.save(event);
   }
 

@@ -174,6 +174,13 @@ export class Event {
   @Column({ default: false })
   is_hidden: boolean;
 
+  // Mis « À la une » de l'accueil par un admin (null : pas à la une).
+  @Column({ type: 'timestamptz', nullable: true })
+  featured_at: Date | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  featured_by: string | null;
+
   @Column({ nullable: true })
   hidden_at: Date | null;
 

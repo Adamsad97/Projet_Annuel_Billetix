@@ -121,6 +121,16 @@ export class EventController {
     return this.eventService.hide(data.id, data.admin_id, data.dto);
   }
 
+  @MessagePattern('event.feature')
+  feature(@Payload() data: AdminIdPayload) {
+    return this.eventService.feature(data.id, data.admin_id);
+  }
+
+  @MessagePattern('event.unfeature')
+  unfeature(@Payload() data: IdPayload) {
+    return this.eventService.unfeature(data.id);
+  }
+
   @MessagePattern('event.unhide')
   unhide(@Payload() data: IdPayload) {
     return this.eventService.unhide(data.id);
