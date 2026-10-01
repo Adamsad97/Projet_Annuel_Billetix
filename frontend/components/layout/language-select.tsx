@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { LOCALE_COOKIE, LOCALE_NAMES, LOCALES, type Locale } from "@/lib/i18n/config";
 import { useLocale, useT } from "@/lib/i18n/provider";
+import { LocaleFlag } from "@/components/layout/locale-flag";
 
 /** Liste déroulante de la langue du site ; le choix est mémorisé un an (cookie) et la page se met à jour. */
 export function LanguageSelect() {
@@ -46,12 +47,10 @@ export function LanguageSelect() {
         aria-label={t("Langue du site")}
         title={t("Langue du site")}
         onClick={() => setOpen((value) => !value)}
-        className={`flex h-9 items-center gap-1.5 rounded-full border border-hairline-2 px-2 text-sm font-medium sm:px-2.5 text-ink-3 transition-colors hover:border-hairline-4 hover:text-ink-1 ${pending ? "opacity-60" : ""}`}
+        className={`flex h-9 items-center gap-1.5 rounded-full border border-hairline-2 px-2.5 text-sm font-medium text-ink-3 transition-colors hover:border-hairline-4 hover:text-ink-1 ${pending ? "opacity-60" : ""}`}
       >
-        <span className="hidden sm:flex">
-          <GlobeIcon />
-        </span>
-        {LOCALE_NAMES[locale].short}
+        <LocaleFlag locale={locale} />
+        <span className="hidden sm:inline">{LOCALE_NAMES[locale].short}</span>
         <svg className="hidden sm:block" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
           <path d="m6 9 6 6 6-6" />
         </svg>
@@ -69,10 +68,15 @@ export function LanguageSelect() {
                 type="button"
                 lang={option}
                 onClick={() => choose(option)}
-                className={`flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm transition-colors hover:bg-hairline-1 ${option === locale ? "font-semibold text-ink-1" : "text-ink-3"}`}
+                className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors hover:bg-hairline-1 ${option === locale ? "font-semibold text-ink-1" : "text-ink-3"}`}
               >
-                <span>{LOCALE_NAMES[option].name}</span>
-                <span className="text-xs text-ink-5">{LOCALE_NAMES[option].short}</span>
+                <LocaleFlag locale={option} />
+                <span className="flex-1">{LOCALE_NAMES[option].name}</span>
+                {option === locale ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-link" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                ) : null}
               </button>
             </li>
           ))}
@@ -85,13 +89,4 @@ export function LanguageSelect() {
 /** Mémorise la langue choisie un an, lue par le serveur à chaque requête. */
 function saveLocaleChoice(locale: Locale) {
   document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; samesite=lax`;
-}
-
-function GlobeIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
-    </svg>
-  );
 }
