@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { EventFilterBar } from "@/components/catalogue/event-filter-bar";
 import { FeaturedEventCard } from "@/components/home/featured-event-card";
+import { filtersToUrl } from "@/lib/catalogue/filters";
+import { useEventSearch } from "@/lib/catalogue/use-event-search";
 import type { FeaturedEvent } from "@/lib/mappers/event-mappers";
 
 // Délai entre deux défilements automatiques (réglage d'interface, pas un
@@ -15,7 +18,10 @@ const AUTOPLAY_DELAY_MS = 5000;
  * survol / au focus clavier / onglet masqué, et aucun défilement auto si
  * l'utilisateur a demandé à réduire les animations.
  */
-export function FeaturedEvents({ events }: { events: FeaturedEvent[] }) {
+export function FeaturedEvents({ events: initialEvents }: { events: FeaturedEvent[] }) {
+  // Mêmes filtres que le catalogue, appliqués directement au carrousel.
+  const search = useEventSearch({ initialEvents });
+  const { events, loading, hasActiveFilters, resetAll } = search;
   const trackRef = useRef<HTMLUListElement>(null);
   const [paused, setPaused] = useState(false);
   // Carrousel actif seulement si des cartes dépassent de l'écran (plus de 3
@@ -26,11 +32,13 @@ export function FeaturedEvents({ events }: { events: FeaturedEvent[] }) {
     const track = trackRef.current;
     if (!track) return;
     const measure = () => setOverflowing(track.scrollWidth > track.clientWidth + 1);
+    // Nouveaux résultats (filtre changé) : retour à la première carte.
+    track.scrollTo({ left: 0 });
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(track);
     return () => observer.disconnect();
-  }, [events.length]);
+  }, [events]);
 
   const step = useCallback((direction: 1 | -1) => {
     const track = trackRef.current;
@@ -65,7 +73,7 @@ export function FeaturedEvents({ events }: { events: FeaturedEvent[] }) {
         <h2 className="text-2xl font-bold text-ink-1">À la une</h2>
         <div className="flex items-center gap-3">
           <Link
-            href="/catalogue"
+            href={`/catalogue${filtersToUrl(search.filters)}`}
             className="mr-1 hidden text-sm font-medium text-link transition-colors hover:text-link-hover sm:inline"
           >
             Voir tout →
@@ -93,8 +101,25 @@ export function FeaturedEvents({ events }: { events: FeaturedEvent[] }) {
         </div>
       </div>
 
+      <div className="mb-6">
+        <EventFilterBar search={search} />
+      </div>
+
       {events.length === 0 ? (
-        <p className="text-sm text-ink-5">Aucun événement publié pour l&apos;instant.</p>
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <p className="text-sm text-ink-5">
+            {loading
+              ? "Recherche en cours…"
+              : hasActiveFilters
+                ? "Aucun événement ne correspond à vos critères."
+                : "Aucun événement publié pour l'instant."}
+          </p>
+          {!loading && hasActiveFilters ? (
+            <button type="button" onClick={resetAll} className="text-sm font-medium text-link hover:text-link-hover">
+              Effacer les filtres
+            </button>
+          ) : null}
+        </div>
       ) : (
         <ul
           ref={trackRef}
@@ -102,7 +127,8 @@ export function FeaturedEvents({ events }: { events: FeaturedEvent[] }) {
           onMouseLeave={() => setPaused(false)}
           onFocus={() => setPaused(true)}
           onBlur={() => setPaused(false)}
-          className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          aria-busy={loading}
+          className={`flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2 transition-opacity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${loading ? "opacity-50" : ""}`}
         >
           {events.map((event) => (
             <li
