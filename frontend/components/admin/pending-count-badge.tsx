@@ -1,15 +1,17 @@
 "use client";
 
 // Pastille du menu admin : nombre d'éléments en attente d'une décision
-// (demandes d'annulation ou de report, vérifications d'identité).
+// (demandes d'annulation ou de report, vérifications d'identité, virements
+// à émettre aux organisateurs payés par IBAN).
 
 import { useEffect, useState } from "react";
-import { getPendingKycCount } from "@/lib/api/admin";
+import { getPayoutStats, getPendingKycCount } from "@/lib/api/admin";
 import { getPendingCancellationCount } from "@/lib/api/cancellation";
 
 const COUNTERS = {
   cancellations: getPendingCancellationCount,
   kyc: getPendingKycCount,
+  payouts: () => getPayoutStats().then((stats) => ({ count: stats.to_transfer_count })),
 } as const;
 
 export type PendingCounter = keyof typeof COUNTERS;

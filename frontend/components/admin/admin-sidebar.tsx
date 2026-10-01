@@ -30,6 +30,7 @@ export function AdminSidebar({ active = "/admin" }: { active?: string }) {
                     </span>
                     {item.id === "cancellations" ? <PendingCountBadge counter="cancellations" /> : null}
                     {item.id === "kyc" ? <PendingCountBadge counter="kyc" /> : null}
+                    {item.id === "payouts" ? <PendingCountBadge counter="payouts" /> : null}
                     {item.badge ? (
                       <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
                         {item.badge}
