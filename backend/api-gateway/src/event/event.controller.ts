@@ -104,7 +104,7 @@ export class EventController {
   @ApiQuery({ name: "radius_km", required: false, description: "Rayon de recherche en km (avec lat et lng)" })
   @ApiQuery({ name: "date_from", required: false, description: "Début de période (ISO 8601)" })
   @ApiQuery({ name: "date_to", required: false, description: "Fin de période (ISO 8601)" })
-  @ApiQuery({ name: "sort", required: false, enum: ["date", "recent"], description: "Tri : date de l'événement ou nouveautés" })
+  @ApiQuery({ name: "sort", required: false, enum: ["date", "recent", "price_asc", "price_desc"], description: "Tri : date de l'événement, nouveautés ou prix" })
   listPublished(
     @Query("category") category?: string,
     @Query("city") city?: string,
@@ -132,7 +132,7 @@ export class EventController {
         radius_km: radius_km !== undefined ? Number(radius_km) : undefined,
         date_from,
         date_to,
-        sort: sort === "recent" ? "recent" : "date",
+        sort: (["recent", "price_asc", "price_desc"] as const).find((value) => value === sort) ?? "date",
       }),
     );
   }
