@@ -325,6 +325,7 @@ export class EventService implements OnApplicationBootstrap {
     lat?: number;
     lng?: number;
     radius_km?: number;
+    min_distance_km?: number;
     date_from?: string;
     date_to?: string;
     sort?: 'date' | 'recent' | 'price_asc' | 'price_desc';
@@ -385,20 +386,29 @@ export class EventService implements OnApplicationBootstrap {
     // Filtre distance : formule de Haversine directement en SQL (évite de
     // charger tous les événements en mémoire pour les filtrer côté Node).
     // Rayon terrestre moyen 6371 km.
-    if (filters.lat !== undefined && filters.lng !== undefined && filters.radius_km !== undefined) {
-      queryBuilder
-        .andWhere('e.venue_latitude IS NOT NULL')
-        .andWhere('e.venue_longitude IS NOT NULL')
-        .andWhere(
-          `(6371 * acos(
+    // « À moins de X km » (radius_km) ou « Plus de X km » (min_distance_km).
+    const distanceKm = `(6371 * acos(
             LEAST(1, GREATEST(-1,
               cos(radians(:lat)) * cos(radians(e.venue_latitude)) *
               cos(radians(e.venue_longitude) - radians(:lng)) +
               sin(radians(:lat)) * sin(radians(e.venue_latitude))
             ))
-          )) <= :radiusKm`,
-          { lat: filters.lat, lng: filters.lng, radiusKm: filters.radius_km },
-        );
+          ))`;
+    if (
+      filters.lat !== undefined &&
+      filters.lng !== undefined &&
+      (filters.radius_km !== undefined || filters.min_distance_km !== undefined)
+    ) {
+      queryBuilder
+        .andWhere('e.venue_latitude IS NOT NULL')
+        .andWhere('e.venue_longitude IS NOT NULL')
+        .setParameters({ lat: filters.lat, lng: filters.lng });
+      if (filters.radius_km !== undefined) {
+        queryBuilder.andWhere(`${distanceKm} <= :radiusKm`, { radiusKm: filters.radius_km });
+      }
+      if (filters.min_distance_km !== undefined) {
+        queryBuilder.andWhere(`${distanceKm} > :minDistanceKm`, { minDistanceKm: filters.min_distance_km });
+      }
     }
 
     // Période : événements qui se déroulent au moins en partie dans
