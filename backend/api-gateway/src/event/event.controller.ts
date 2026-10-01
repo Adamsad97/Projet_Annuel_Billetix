@@ -103,6 +103,7 @@ export class EventController {
   @ApiQuery({ name: "lat", required: false, description: "Latitude du point de recherche (avec lng et radius_km)" })
   @ApiQuery({ name: "lng", required: false, description: "Longitude du point de recherche (avec lat et radius_km)" })
   @ApiQuery({ name: "radius_km", required: false, description: "Rayon de recherche en km (avec lat et lng)" })
+  @ApiQuery({ name: "min_distance_km", required: false, description: "Événements au-delà de cette distance en km (avec lat et lng)" })
   @ApiQuery({ name: "date_from", required: false, description: "Début de période (ISO 8601)" })
   @ApiQuery({ name: "date_to", required: false, description: "Fin de période (ISO 8601)" })
   @ApiQuery({ name: "sort", required: false, enum: ["date", "recent", "price_asc", "price_desc"], description: "Tri : date de l'événement, nouveautés ou prix" })
@@ -116,6 +117,7 @@ export class EventController {
     @Query("lat") lat?: number,
     @Query("lng") lng?: number,
     @Query("radius_km") radius_km?: number,
+    @Query("min_distance_km") min_distance_km?: number,
     @Query("date_from") date_from?: string,
     @Query("date_to") date_to?: string,
     @Query("sort") sort?: string,
@@ -131,6 +133,7 @@ export class EventController {
         lat: lat !== undefined ? Number(lat) : undefined,
         lng: lng !== undefined ? Number(lng) : undefined,
         radius_km: radius_km !== undefined ? Number(radius_km) : undefined,
+        min_distance_km: min_distance_km !== undefined ? Number(min_distance_km) : undefined,
         date_from,
         date_to,
         sort: (["recent", "price_asc", "price_desc"] as const).find((value) => value === sort) ?? "date",
