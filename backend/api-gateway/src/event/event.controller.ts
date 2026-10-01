@@ -148,6 +148,13 @@ export class EventController {
     return firstValueFrom(this.eventClient.send("event.category.list", {}));
   }
 
+  @Public()
+  @Get("categories/counts")
+  @ApiOperation({ summary: "Nombre d'événements à venir par catégorie (code → nombre)" })
+  countEventsByCategory() {
+    return firstValueFrom(this.eventClient.send("event.count_by_category", {}));
+  }
+
   @Get("categories/all")
   @Roles("ADMIN")
   @ApiOperation({ summary: "Toutes les catégories d'événement, y compris désactivées (ADMIN)" })
