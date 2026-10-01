@@ -327,7 +327,7 @@ export class EventService implements OnApplicationBootstrap {
     radius_km?: number;
     date_from?: string;
     date_to?: string;
-    sort?: 'date' | 'recent';
+    sort?: 'date' | 'recent' | 'price_asc' | 'price_desc';
   }): Promise<{ data: Event[]; total: number }> {
     const page = filters.page ?? 1;
     const limit = 20;
@@ -412,10 +412,28 @@ export class EventService implements OnApplicationBootstrap {
       queryBuilder.andWhere('e.start_date <= :dateTo', { dateTo });
     }
 
-    queryBuilder
-      .orderBy(filters.sort === 'recent' ? 'e.created_at' : 'e.start_date', filters.sort === 'recent' ? 'DESC' : 'ASC')
-      .skip((page - 1) * limit)
-      .take(limit);
+    if (filters.sort === 'price_asc' || filters.sort === 'price_desc') {
+      // Prix « à partir de » : billet public et actif le moins cher. La TVA
+      // est la même pour tous les événements, l'ordre HT suffit. Un événement
+      // sans billet en vente passe en dernier ; à prix égal, le plus proche.
+      queryBuilder
+        .addSelect(
+          (sub) =>
+            sub
+              .select('MIN(tc.price_ht)')
+              .from(TicketCategory, 'tc')
+              .where('tc.event_id = CAST(e.id AS text)')
+              .andWhere('tc.visibility = :sortVisibility')
+              .andWhere('tc.is_active = true'),
+          'from_price',
+        )
+        .setParameter('sortVisibility', CategoryVisibility.PUBLIC)
+        .orderBy('from_price', filters.sort === 'price_asc' ? 'ASC' : 'DESC', 'NULLS LAST')
+        .addOrderBy('e.start_date', 'ASC');
+    } else {
+      queryBuilder.orderBy(filters.sort === 'recent' ? 'e.created_at' : 'e.start_date', filters.sort === 'recent' ? 'DESC' : 'ASC');
+    }
+    queryBuilder.skip((page - 1) * limit).take(limit);
 
     const [data, total] = await queryBuilder.getManyAndCount();
     return { data, total };

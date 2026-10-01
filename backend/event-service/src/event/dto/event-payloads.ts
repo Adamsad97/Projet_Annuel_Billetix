@@ -72,7 +72,7 @@ export class ListPublishedPayload {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(20_000) radius_km?: number;
   @IsOptional() @IsDateString() date_from?: string;
   @IsOptional() @IsDateString() date_to?: string;
-  @IsOptional() @IsIn(['date', 'recent']) sort?: 'date' | 'recent';
+  @IsOptional() @IsIn(['date', 'recent', 'price_asc', 'price_desc']) sort?: 'date' | 'recent' | 'price_asc' | 'price_desc';
 }
 
 /** Liste admin de tous les événements. */
