@@ -69,6 +69,10 @@ export function FeaturedEvents({ events: initialEvents }: { events: FeaturedEven
 
   return (
     <section className="mx-auto max-w-7xl px-6 pb-20" aria-roledescription="carrousel" aria-label="Événements à la une">
+      <div className="mb-8">
+        <EventFilterBar search={search} />
+      </div>
+
       <div className="mb-6 flex items-center justify-between gap-4">
         <h2 className="text-2xl font-bold text-ink-1">À la une</h2>
         <div className="flex items-center gap-3">
@@ -93,10 +97,6 @@ export function FeaturedEvents({ events: initialEvents }: { events: FeaturedEven
             </>
           ) : null}
         </div>
-      </div>
-
-      <div className="mb-6">
-        <EventFilterBar search={search} />
       </div>
 
       {events.length === 0 ? (

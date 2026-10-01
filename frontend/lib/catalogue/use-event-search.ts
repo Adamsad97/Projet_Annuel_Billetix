@@ -5,7 +5,7 @@
 // interrogation du serveur (GET /events) et pagination « Afficher plus ».
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { listCategories, type ApiCategory } from "@/lib/api/categories";
+import { getCategoryCounts, listCategories, type ApiCategory } from "@/lib/api/categories";
 import { getEventCategories, listPublishedEvents } from "@/lib/api/events";
 import { ApiError } from "@/lib/api/http-error";
 import {
@@ -29,6 +29,8 @@ export function useEventSearch({ syncUrl = false, initialEvents }: EventSearchOp
   const [filters, setFilters] = useState<CatalogueFilters>(DEFAULT_FILTERS);
   const [ready, setReady] = useState(!syncUrl);
   const [categories, setCategories] = useState<ApiCategory[]>([]);
+  // Événements à venir par catégorie ; null tant que non chargé (pas de badge).
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number> | null>(null);
 
   const [events, setEvents] = useState<FeaturedEvent[]>(initialEvents ?? []);
   const [total, setTotal] = useState(initialEvents?.length ?? 0);
@@ -54,6 +56,9 @@ export function useEventSearch({ syncUrl = false, initialEvents }: EventSearchOp
     }
     listCategories()
       .then((list) => setCategories([...list].sort((a, b) => a.display_order - b.display_order)))
+      .catch(() => undefined);
+    getCategoryCounts()
+      .then(setCategoryCounts)
       .catch(() => undefined);
   }, [syncUrl]);
 
@@ -170,6 +175,7 @@ export function useEventSearch({ syncUrl = false, initialEvents }: EventSearchOp
     filters,
     update,
     categories,
+    categoryCounts,
     events,
     total,
     loading,

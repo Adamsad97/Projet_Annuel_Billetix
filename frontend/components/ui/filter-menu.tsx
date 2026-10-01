@@ -87,10 +87,13 @@ export function FilterMenu({
 export function FilterOption({
   selected,
   onSelect,
+  count,
   children,
 }: {
   selected: boolean;
   onSelect: () => void;
+  /** Nombre de résultats pour ce choix (badge à droite), si connu. */
+  count?: number;
   children: ReactNode;
 }) {
   return (
@@ -104,11 +107,18 @@ export function FilterOption({
       }`}
     >
       <span>{children}</span>
-      {selected ? (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-blue-500">
-          <path d="M20 6 9 17l-5-5" />
-        </svg>
-      ) : null}
+      <span className="flex shrink-0 items-center gap-2">
+        {count !== undefined ? (
+          <span className="min-w-6 rounded-md bg-ink-1 px-1.5 py-0.5 text-center text-xs font-semibold tabular-nums text-page">
+            {count}
+          </span>
+        ) : null}
+        {selected ? (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-blue-500">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        ) : null}
+      </span>
     </button>
   );
 }

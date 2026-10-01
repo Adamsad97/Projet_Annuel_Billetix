@@ -79,13 +79,18 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
             <FilterMenu label="Catégorie" value={categoryLabel} active={search.filters.category !== ""}>
               {(close) => (
                 <div role="menu">
-                  <FilterOption selected={search.filters.category === ""} onSelect={() => { search.update({ category: "" }); close(); }}>
+                  <FilterOption
+                    selected={search.filters.category === ""}
+                    onSelect={() => { search.update({ category: "" }); close(); }}
+                    count={search.categoryCounts ? Object.values(search.categoryCounts).reduce((sum, n) => sum + n, 0) : undefined}
+                  >
                     Toutes les catégories
                   </FilterOption>
                   {search.categories.map((category) => (
                     <FilterOption
                       key={category.id}
                       selected={search.filters.category === category.code}
+                      count={search.categoryCounts ? (search.categoryCounts[category.code] ?? 0) : undefined}
                       onSelect={() => { search.update({ category: category.code }); close(); }}
                     >
                       {category.emoji ? `${category.emoji} ` : ""}

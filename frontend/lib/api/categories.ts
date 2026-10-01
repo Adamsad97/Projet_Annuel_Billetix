@@ -43,6 +43,11 @@ export function listCategories(): Promise<ApiCategory[]> {
   return getPublicJson<ApiCategory[]>("/events/categories");
 }
 
+/** Nombre d'événements à venir par code de catégorie (badges du filtre). */
+export function getCategoryCounts(): Promise<Record<string, number>> {
+  return getPublicJson<Record<string, number>>("/events/categories/counts");
+}
+
 /** Toutes les catégories, y compris désactivées — réservé à l'espace Admin. */
 export function listAllCategories(): Promise<ApiCategory[]> {
   return apiGet<ApiCategory[]>("/events/categories/all");
