@@ -83,7 +83,7 @@ export class NotificationController {
   async onWelcome(@Payload() data: WelcomeDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: 'Bienvenue sur BilletiX !',
+      subject: 'Bienvenue sur BilleTix !',
       template: 'welcome',
       context: { firstName: data.firstName, appUrl: this.appUrl },
     });
@@ -94,7 +94,7 @@ export class NotificationController {
   async onEmailVerification(@Payload() data: EmailVerificationDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: 'Vérifiez votre adresse email — BilletiX',
+      subject: 'Vérifiez votre adresse email — BilleTix',
       template: 'email-verification',
       context: {
         firstName: data.firstName,
@@ -108,7 +108,7 @@ export class NotificationController {
   async onPasswordReset(@Payload() data: PasswordResetDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: 'Réinitialisation de votre mot de passe — BilletiX',
+      subject: 'Réinitialisation de votre mot de passe — BilleTix',
       template: 'password-reset',
       context: {
         firstName: data.firstName,
@@ -141,7 +141,7 @@ export class NotificationController {
   async onOrderConfirmed(@Payload() data: OrderConfirmedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: `Confirmation de commande ${data.orderReference} — BilletiX`,
+      subject: `Confirmation de commande ${data.orderReference} — BilleTix`,
       template: 'order-confirmed',
       context: {
         ...data,
@@ -190,7 +190,7 @@ export class NotificationController {
   async onTicketReady(@Payload() data: TicketReadyDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: `Vos billets pour ${data.eventName} sont disponibles — BilletiX`,
+      subject: `Vos billets pour ${data.eventName} sont disponibles — BilleTix`,
       template: 'ticket-ready',
       context: {
         firstName: data.firstName,
@@ -214,13 +214,13 @@ export class NotificationController {
   async onTicketTransferred(@Payload() data: TicketTransferredDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.recipientEmail,
-      subject: `${data.senderFirstName} vous a offert un billet pour ${data.eventName} — BilletiX`,
+      subject: `${data.senderFirstName} vous a offert un billet pour ${data.eventName} — BilleTix`,
       template: 'ticket-gift-received',
       context: { ...data, ticketsUrl: this.reauthUrl('/profil/billets') },
     });
     await this.mail.send({
       to: data.senderEmail,
-      subject: `Billet ${data.ticketReference} transféré — BilletiX`,
+      subject: `Billet ${data.ticketReference} transféré — BilleTix`,
       template: 'ticket-gift-sent',
       context: { ...data, historyUrl: this.reauthUrl('/profil/billets') },
     });
@@ -232,13 +232,13 @@ export class NotificationController {
   async onTransferReverted(@Payload() data: TransferRevertedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.senderEmail,
-      subject: `Votre billet ${data.ticketReference} vous a été restitué — BilletiX`,
+      subject: `Votre billet ${data.ticketReference} vous a été restitué — BilleTix`,
       template: 'transfer-reverted-sender',
       context: { ...data, ticketsUrl: this.reauthUrl('/profil/billets') },
     });
     await this.mail.send({
       to: data.recipientEmail,
-      subject: `Billet ${data.ticketReference} retiré de votre compte — BilletiX`,
+      subject: `Billet ${data.ticketReference} retiré de votre compte — BilleTix`,
       template: 'transfer-reverted-recipient',
       context: { ...data },
     });
@@ -249,7 +249,7 @@ export class NotificationController {
   async onTransferRevertRequested(@Payload() data: TransferRevertRequestedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.senderEmail,
-      subject: `Demande d'annulation du transfert ${data.ticketReference} reçue — BilletiX`,
+      subject: `Demande d'annulation du transfert ${data.ticketReference} reçue — BilleTix`,
       template: 'transfer-revert-requested',
       context: { ...data },
     });
@@ -260,7 +260,7 @@ export class NotificationController {
   async onTransferRevertRejected(@Payload() data: TransferRevertRejectedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.senderEmail,
-      subject: `Demande d'annulation du transfert ${data.ticketReference} refusée — BilletiX`,
+      subject: `Demande d'annulation du transfert ${data.ticketReference} refusée — BilleTix`,
       template: 'transfer-revert-rejected',
       context: { ...data },
     });
@@ -284,7 +284,7 @@ export class NotificationController {
 
     await this.mail.send({
       to: data.email,
-      subject: `Votre facture — commande ${data.orderReference} — BilletiX`,
+      subject: `Votre facture — commande ${data.orderReference} — BilleTix`,
       template: 'purchase-invoice',
       context: {
         ...data,
@@ -301,7 +301,7 @@ export class NotificationController {
   async onEventPublished(@Payload() data: EventPublishedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: `Votre événement "${data.event_name}" est publié — BilletiX`,
+      subject: `Votre événement "${data.event_name}" est publié — BilleTix`,
       template: 'event-published',
       context: {
         firstName: data.firstName,
@@ -316,7 +316,7 @@ export class NotificationController {
   async onEventRejected(@Payload() data: EventRejectedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: `Votre événement "${data.event_name}" a été refusé — BilletiX`,
+      subject: `Votre événement "${data.event_name}" a été refusé — BilleTix`,
       template: 'event-rejected',
       context: {
         firstName: data.firstName,
@@ -333,7 +333,7 @@ export class NotificationController {
   async onEventInfoRequested(@Payload() data: EventInfoRequestedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: `Complément d'information requis pour "${data.event_name}" — BilletiX`,
+      subject: `Complément d'information requis pour "${data.event_name}" — BilleTix`,
       template: 'event-info-requested',
       context: {
         firstName: data.firstName,
@@ -388,7 +388,7 @@ export class NotificationController {
   async onKycApproved(@Payload() data: KycApprovedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: 'Votre identité a été vérifiée — BilletiX',
+      subject: 'Votre identité a été vérifiée — BilleTix',
       template: 'kyc-approved',
       context: { firstName: data.firstName, appUrl: this.appUrl },
     });
@@ -399,7 +399,7 @@ export class NotificationController {
   async onKycRejected(@Payload() data: KycRejectedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: 'Vérification d\'identité refusée — BilletiX',
+      subject: 'Vérification d\'identité refusée — BilleTix',
       template: 'kyc-rejected',
       context: { firstName: data.firstName, reason: data.reason, appUrl: this.appUrl },
     });
@@ -639,7 +639,7 @@ export class NotificationController {
   async onIbanChanged(@Payload() data: IbanChangedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: 'Coordonnées bancaires modifiées — BilletiX',
+      subject: 'Coordonnées bancaires modifiées — BilleTix',
       template: 'iban-changed',
       context: { ...data, paymentsUrl: `${this.appUrl}/dashboard/paiements` },
     });
@@ -698,7 +698,7 @@ export class NotificationController {
   async onAccountSuspended(@Payload() data: AccountSuspendedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: 'Compte suspendu — BilletiX',
+      subject: 'Compte suspendu — BilleTix',
       template: 'account-suspended',
       context: { ...data },
     });
@@ -709,7 +709,7 @@ export class NotificationController {
   async onAccountUnsuspended(@Payload() data: AccountUnsuspendedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: 'Compte réactivé — BilletiX',
+      subject: 'Compte réactivé — BilleTix',
       template: 'account-unsuspended',
       context: { ...data },
     });
@@ -720,7 +720,7 @@ export class NotificationController {
   async onAccountUnlocked(@Payload() data: AccountUnlockedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: 'Compte déverrouillé — BilletiX',
+      subject: 'Compte déverrouillé — BilleTix',
       template: 'account-unlocked',
       context: { ...data },
     });
@@ -731,7 +731,7 @@ export class NotificationController {
   async onAccountActivated(@Payload() data: AccountActivatedDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: 'Compte activé — BilletiX',
+      subject: 'Compte activé — BilleTix',
       template: 'account-activated',
       context: { ...data },
     });
@@ -742,7 +742,7 @@ export class NotificationController {
   async onTwoFactorResetByAdmin(@Payload() data: TwoFactorResetByAdminDto, @Ctx() rmqContext: RmqContext) {
     await this.mail.send({
       to: data.email,
-      subject: 'Double authentification réinitialisée — BilletiX',
+      subject: 'Double authentification réinitialisée — BilleTix',
       template: 'two-factor-reset-by-admin',
       context: { ...data },
     });

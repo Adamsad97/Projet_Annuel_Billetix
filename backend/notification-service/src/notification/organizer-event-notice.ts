@@ -20,9 +20,9 @@ export function organizerEventNotice(kind: OrganizerEventNoticeKind, eventName: 
   switch (kind) {
     case 'CREATED_FOR_YOU':
       return {
-        subject: `Votre événement "${eventName}" a été créé — BilletiX`,
+        subject: `Votre événement "${eventName}" a été créé — BilleTix`,
         headline: 'Votre événement a été créé',
-        intro: "L'équipe BilletiX a créé cet événement pour vous, à votre demande :",
+        intro: "L'équipe BilleTix a créé cet événement pour vous, à votre demande :",
         messageLabel: 'Note',
         tone: '',
         details: 'Vérifiez ses informations et ses billets depuis votre espace organisateur.',
@@ -30,7 +30,7 @@ export function organizerEventNotice(kind: OrganizerEventNoticeKind, eventName: 
       };
     case 'NON_PROFIT_VERIFIED':
       return {
-        subject: `Statut « but non lucratif » validé pour "${eventName}" — BilletiX`,
+        subject: `Statut « but non lucratif » validé pour "${eventName}" — BilleTix`,
         headline: 'Votre justificatif a été validé',
         intro: 'Le caractère non lucratif de votre événement a été vérifié :',
         messageLabel: 'Note',
@@ -40,7 +40,7 @@ export function organizerEventNotice(kind: OrganizerEventNoticeKind, eventName: 
       };
     case 'NON_PROFIT_REJECTED':
       return {
-        subject: `Justificatif « but non lucratif » refusé pour "${eventName}" — BilletiX`,
+        subject: `Justificatif « but non lucratif » refusé pour "${eventName}" — BilleTix`,
         headline: "Votre justificatif n'a pas été accepté",
         intro: "Le justificatif « but non lucratif » fourni pour cet événement n'a pas pu être validé :",
         messageLabel: 'Motif',
@@ -50,7 +50,7 @@ export function organizerEventNotice(kind: OrganizerEventNoticeKind, eventName: 
       };
     case 'SUSPENDED':
       return {
-        subject: `Ventes suspendues pour "${eventName}" — BilletiX`,
+        subject: `Ventes suspendues pour "${eventName}" — BilleTix`,
         headline: 'Les ventes de votre événement sont suspendues',
         intro: "L'administration a désactivé temporairement la billetterie de votre événement :",
         messageLabel: 'Message affiché au public',
@@ -61,7 +61,7 @@ export function organizerEventNotice(kind: OrganizerEventNoticeKind, eventName: 
       };
     case 'UNSUSPENDED':
       return {
-        subject: `Ventes rouvertes pour "${eventName}" — BilletiX`,
+        subject: `Ventes rouvertes pour "${eventName}" — BilleTix`,
         headline: 'Les ventes de votre événement ont repris',
         intro: "L'administration a réactivé la billetterie de votre événement :",
         messageLabel: 'Note',
@@ -71,7 +71,7 @@ export function organizerEventNotice(kind: OrganizerEventNoticeKind, eventName: 
       };
     case 'HIDDEN':
       return {
-        subject: `Votre événement "${eventName}" a été masqué — BilletiX`,
+        subject: `Votre événement "${eventName}" a été masqué — BilleTix`,
         headline: 'Votre événement a été masqué au public',
         intro: "L'administration a masqué votre événement :",
         messageLabel: 'Motif',
@@ -82,7 +82,7 @@ export function organizerEventNotice(kind: OrganizerEventNoticeKind, eventName: 
       };
     case 'UNHIDDEN':
       return {
-        subject: `Votre événement "${eventName}" est de nouveau visible — BilletiX`,
+        subject: `Votre événement "${eventName}" est de nouveau visible — BilleTix`,
         headline: 'Votre événement est de nouveau visible',
         intro: "L'administration a rendu votre événement de nouveau visible au public :",
         messageLabel: 'Note',
@@ -92,7 +92,7 @@ export function organizerEventNotice(kind: OrganizerEventNoticeKind, eventName: 
       };
     case 'CANCELLED_BY_ADMIN':
       return {
-        subject: `Votre événement "${eventName}" a été annulé — BilletiX`,
+        subject: `Votre événement "${eventName}" a été annulé — BilleTix`,
         headline: 'Votre événement a été annulé',
         intro: "L'administration a annulé votre événement :",
         messageLabel: 'Motif',

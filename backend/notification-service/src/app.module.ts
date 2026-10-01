@@ -26,7 +26,7 @@ import { validateEnvironment } from './common/env.validation';
               : {}),
           },
           defaults: {
-            from: `"${config.get<string>('EMAIL_FROM_NAME', 'BilletiX')}" <${config.get<string>('EMAIL_FROM', 'noreply@billetix.fr')}>`,
+            from: `"${config.get<string>('EMAIL_FROM_NAME', 'BilleTix')}" <${config.get<string>('EMAIL_FROM', 'noreply@billetix.fr')}>`,
             // Encodage explicite plutôt que la détection automatique de
             // nodemailer (quoted-printable par défaut) — élimine tout risque
             // d'accents mal rendus selon le contenu, indépendamment de la
