@@ -18,6 +18,19 @@ const AUTOPLAY_DELAY_MS = 5000;
 export function FeaturedEvents({ events }: { events: FeaturedEvent[] }) {
   const trackRef = useRef<HTMLUListElement>(null);
   const [paused, setPaused] = useState(false);
+  // Carrousel actif seulement si des cartes dépassent de l'écran (plus de 3
+  // sur grand écran, 2 sur tablette, 1 sur mobile) : sinon, côte à côte.
+  const [overflowing, setOverflowing] = useState(false);
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const measure = () => setOverflowing(track.scrollWidth > track.clientWidth + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(track);
+    return () => observer.disconnect();
+  }, [events.length]);
 
   const step = useCallback((direction: 1 | -1) => {
     const track = trackRef.current;
@@ -37,14 +50,14 @@ export function FeaturedEvents({ events }: { events: FeaturedEvent[] }) {
   }, []);
 
   useEffect(() => {
-    if (paused || events.length < 2) return;
+    if (paused || !overflowing) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") step(1);
     }, AUTOPLAY_DELAY_MS);
     return () => window.clearInterval(timer);
-  }, [paused, events.length, step]);
+  }, [paused, overflowing, step]);
 
   return (
     <section className="mx-auto max-w-7xl px-6 pb-20" aria-roledescription="carrousel" aria-label="Événements à la une">
@@ -57,7 +70,7 @@ export function FeaturedEvents({ events }: { events: FeaturedEvent[] }) {
           >
             Voir tout →
           </Link>
-          {events.length > 1 ? (
+          {overflowing ? (
             <>
               <button
                 type="button"
@@ -94,7 +107,8 @@ export function FeaturedEvents({ events }: { events: FeaturedEvent[] }) {
           {events.map((event) => (
             <li
               key={event.id}
-              className="w-full shrink-0 snap-start md:w-[calc((100%-1.25rem)/2)]"
+              // 1 carte sur mobile, 2 sur tablette, 3 sur grand écran (gap-5 = 1,25rem).
+              className="w-full shrink-0 snap-start md:w-[calc((100%-1.25rem)/2)] lg:w-[calc((100%-2.5rem)/3)]"
             >
               <FeaturedEventCard event={event} />
             </li>
