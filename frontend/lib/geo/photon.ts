@@ -1,5 +1,6 @@
 // Autocomplétion d'adresse au fil de la frappe via Photon (OpenStreetMap), gratuit et sans clé.
 import { ApiError } from "@/lib/api/http-error";
+import { t } from "@/lib/i18n/translate";
 
 export interface AddressSuggestion {
   label: string;
@@ -66,11 +67,11 @@ export async function searchAddress(
   try {
     response = await fetch(`https://photon.komoot.io/api/?${search.toString()}`);
   } catch {
-    throw new ApiError(0, "Impossible de contacter le service d'adresses.");
+    throw new ApiError(0, t("Impossible de contacter le service d'adresses."));
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, "Service d'adresses indisponible, réessayez plus tard.");
+    throw new ApiError(response.status, t("Service d'adresses indisponible, réessayez plus tard."));
   }
 
   const data = (await response.json()) as { features: PhotonFeature[] };

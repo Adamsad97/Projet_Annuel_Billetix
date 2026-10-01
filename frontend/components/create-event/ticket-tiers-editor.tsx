@@ -7,6 +7,7 @@ import { commissionPercentFor, computePriceBreakdown } from "@/lib/pricing/price
 import { euros } from "@/lib/format/money";
 import { formatVatPercent } from "@/lib/api/vat-rates";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 /** Détail d'un prix saisi : ce que paie le client et ce que perçoit l'organisateur. */
 function PriceDetail({ price, pricing, commissionPercent }: { price: string; pricing: PricingPolicy; commissionPercent: number }) {
@@ -17,10 +18,8 @@ function PriceDetail({ price, pricing, commissionPercent }: { price: string; pri
   if (detail.priceHt === 0) {
     return (
       <div className="col-span-2 rounded-xl bg-hairline-1 px-4 py-3 text-xs text-ink-4 sm:col-span-5">
-        <p className="text-sm font-semibold text-ink-1">Billet gratuit pour le client</p>
-        <p className="mt-1">
-          Frais de {euros.format(detail.freeTicketFee)} par billet à votre charge, déduits de vos reversements.
-        </p>
+        <p className="text-sm font-semibold text-ink-1">{t("Billet gratuit pour le client")}</p>
+        <p className="mt-1">{t("Frais de {value} par billet à votre charge, déduits de vos reversements.", { value: euros.format(detail.freeTicketFee) })}</p>
       </div>
     );
   }
@@ -29,7 +28,7 @@ function PriceDetail({ price, pricing, commissionPercent }: { price: string; pri
     <div className="col-span-2 grid gap-x-6 gap-y-1 rounded-xl bg-hairline-1 px-4 py-3 text-xs text-ink-4 sm:col-span-5 sm:grid-cols-2">
       <div>
         <p className="flex justify-between gap-3">
-          <span>Votre prix HT</span>
+          <span>{t("Votre prix HT")}</span>
           <span>{euros.format(detail.priceHt)}</span>
         </p>
         <p className="flex justify-between gap-3">
@@ -37,21 +36,21 @@ function PriceDetail({ price, pricing, commissionPercent }: { price: string; pri
           <span>{euros.format(detail.vat)}</span>
         </p>
         <p className="mt-1 flex justify-between gap-3 border-t border-hairline-2 pt-1 text-sm font-semibold text-ink-1">
-          <span>Prix affiché et payé par le client</span>
+          <span>{t("Prix affiché et payé par le client")}</span>
           <span>{euros.format(detail.priceTtc)}</span>
         </p>
       </div>
       <div className="mt-2 sm:mt-0">
         <p className="flex justify-between gap-3">
-          <span>Commission BilleTix {commissionPercent} % (sur le HT)</span>
+          <span>{t("Commission BilleTix {commissionPercent} % (sur le HT)", { commissionPercent })}</span>
           <span>− {euros.format(detail.commission)}</span>
         </p>
         <p className="flex justify-between gap-3">
-          <span>Frais de paiement (environ)</span>
+          <span>{t("Frais de paiement (environ)")}</span>
           <span>− {euros.format(detail.paymentFees)}</span>
         </p>
         <p className="mt-1 flex justify-between gap-3 border-t border-hairline-2 pt-1 text-sm font-semibold text-ink-1">
-          <span>Vous recevez par billet</span>
+          <span>{t("Vous recevez par billet")}</span>
           <span>≈ {euros.format(detail.organizerNet)}</span>
         </p>
       </div>
@@ -131,21 +130,21 @@ export function TicketTiersEditor({
     <div className="flex flex-col gap-3">
       {free ? (
         <div className="rounded-xl bg-emerald-500/10 px-4 py-3 text-xs text-ink-3 ring-1 ring-inset ring-emerald-500/30">
-          <p className="text-sm font-semibold text-ink-1">Entrée gratuite pour le public</p>
+          <p className="text-sm font-semibold text-ink-1">{t("Entrée gratuite pour le public")}</p>
           <p className="mt-1">
-            Les participants réservent leur billet sans payer.
+            {t("Les participants réservent leur billet sans payer.")}
             {freeTicketFee !== null && freeTicketFee > 0
-              ? ` Frais de ${euros.format(freeTicketFee)} par billet à votre charge, déduits de vos reversements.`
+              ? ` ${t("Frais de {fee} par billet à votre charge, déduits de vos reversements.", { fee: euros.format(freeTicketFee) })}`
               : ""}
           </p>
         </div>
       ) : null}
 
       <div className="hidden grid-cols-[1fr_120px_100px_100px_28px] gap-3 px-1 text-xs font-medium uppercase tracking-wide text-ink-5 sm:grid">
-        <span>Nom</span>
-        <span>{free ? "Prix" : "Prix HT (€)"}</span>
-        <span>Quota</span>
-        <span>Max/cmd</span>
+        <span>{t("Nom")}</span>
+        <span>{free ? t("Prix") : t("Prix HT (€)")}</span>
+        <span>{t("Quota")}</span>
+        <span>{t("Max/cmd")}</span>
         <span />
       </div>
 
@@ -168,29 +167,27 @@ export function TicketTiersEditor({
               className={fieldClass("col-span-2 px-3 py-2.5 sm:col-span-1")}
             >
               {optionsForRow.length === 0 ? (
-                <option value="" className="bg-card">Aucun nom disponible</option>
+                <option value="" className="bg-card">{t("Aucun nom disponible")}</option>
               ) : (
                 optionsForRow.map((type) => (
-                  <option key={type.label} value={type.label} className="bg-card">
+                  <option key={type.label} value={t(type.label)} className="bg-card">
                     {type.emoji ? `${type.emoji} ` : ""}
-                    {type.label}
+                    {t(type.label)}
                   </option>
                 ))
               )}
             </select>
             {free ? (
-              <span className="rounded-xl bg-emerald-500/10 px-3 py-2.5 text-center text-sm font-semibold text-emerald-600 ring-1 ring-inset ring-emerald-500/30">
-                Gratuit
-              </span>
+              <span className="rounded-xl bg-emerald-500/10 px-3 py-2.5 text-center text-sm font-semibold text-emerald-600 ring-1 ring-inset ring-emerald-500/30">{t("Gratuit")}</span>
             ) : (
               <input
                 type="number"
                 value={row.price}
                 onChange={(event) => updateRow(row.id, "price", event.target.value)}
-                placeholder="Prix"
+                placeholder={t("Prix")}
                 min="0"
                 step="0.01"
-                aria-label={`Prix HT de la catégorie ${row.name}`}
+                aria-label={t("Prix HT de la catégorie {name}", { name: row.name })}
                 className={fieldClass("px-3 py-2.5")}
               />
             )}
@@ -198,7 +195,7 @@ export function TicketTiersEditor({
               type="number"
               value={row.quota}
               onChange={(event) => updateRow(row.id, "quota", event.target.value)}
-              placeholder="Quota"
+              placeholder={t("Quota")}
               min="1"
               max={maxForRow}
               className={fieldClass("px-3 py-2.5")}
@@ -207,7 +204,7 @@ export function TicketTiersEditor({
               type="number"
               value={row.maxPerOrder}
               onChange={(event) => updateRow(row.id, "maxPerOrder", event.target.value)}
-              placeholder="Max"
+              placeholder={t("Max")}
               min="1"
               className={fieldClass("px-3 py-2.5")}
             />
@@ -215,7 +212,7 @@ export function TicketTiersEditor({
               type="button"
               onClick={() => removeRow(row.id)}
               disabled={rows.length === 1}
-              aria-label="Retirer cette catégorie de billet"
+              aria-label={t("Retirer cette catégorie de billet")}
               className="justify-self-end text-ink-5 transition-colors hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-30 sm:justify-self-center"
             >
               ✕
@@ -227,18 +224,17 @@ export function TicketTiersEditor({
 
       {pricing && !free ? (
         <p className="text-center text-xs text-ink-5">
-          Le prix affiché aux clients inclut la TVA. « Vous recevez » est une estimation : les frais de
-          paiement réels dépendent du montant de chaque commande.
+          {t("Le prix affiché aux clients inclut la TVA. « Vous recevez » est une estimation : les frais de paiement réels dépendent du montant de chaque commande.")}
           {totalCapacity > pricing.large_event_threshold
-            ? ` Commission réduite à ${pricing.commission_large_event_percent} % : plus de ${pricing.large_event_threshold} places.`
+            ? ` ${t("Commission réduite à {percent} % : plus de {threshold} places.", { percent: pricing.commission_large_event_percent, threshold: pricing.large_event_threshold })}`
             : ""}
         </p>
       ) : null}
 
       {totalCapacity > 0 ? (
         <p className={overCapacity ? "text-center text-xs font-medium text-red-400" : "text-center text-xs text-ink-5"}>
-          {totalQuota} / {totalCapacity} places réparties
-          {overCapacity ? ` — dépasse la capacité totale de ${totalQuota - totalCapacity}` : ""}
+          {t("{allocated} / {capacity} places réparties", { allocated: totalQuota, capacity: totalCapacity })}
+          {overCapacity ? ` — ${t("dépasse la capacité totale de {count}", { count: totalQuota - totalCapacity })}` : ""}
         </p>
       ) : null}
 
@@ -247,13 +243,9 @@ export function TicketTiersEditor({
         onClick={addRow}
         disabled={availableForNewRow.length === 0}
         className="mt-1 rounded-xl border border-dashed border-hairline-2 py-2.5 text-sm font-medium text-link transition-colors hover:border-hairline-4 hover:text-link-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-hairline-2 disabled:hover:text-link"
-      >
-        + Ajouter une catégorie
-      </button>
+      >{t("+ Ajouter une catégorie")}</button>
       {tierTypes.length > 0 && availableForNewRow.length === 0 ? (
-        <p className="text-center text-xs text-ink-5">
-          Tous les noms disponibles sont déjà utilisés — demandez à un administrateur d&apos;en ajouter un si besoin.
-        </p>
+        <p className="text-center text-xs text-ink-5">{t("Tous les noms disponibles sont déjà utilisés — demandez à un administrateur d'en ajouter un si besoin.")}</p>
       ) : null}
     </div>
   );

@@ -14,6 +14,7 @@ import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import { euros as currency } from "@/lib/format/money";
 import { longDateTime as saleDateFormatter } from "@/lib/format/dates";
 import { buttonClass } from "@/components/ui/button";
+import { t as tr } from "@/lib/i18n/translate";
 
 /** Quantité maximale réservable : places restantes, plafonnées par commande. */
 function maxQuantity(ticket: TicketOption): number {
@@ -130,7 +131,7 @@ export function TicketSelector({
 
     if (items.length === 0) return;
     if (previewMode) {
-      setError(`${PREVIEW_READ_ONLY_MESSAGE} Un compte administrateur ne peut pas réserver.`);
+      setError(`${tr(PREVIEW_READ_ONLY_MESSAGE)} ${tr("Un compte administrateur ne peut pas réserver.")}`);
       return;
     }
 
@@ -156,7 +157,7 @@ export function TicketSelector({
       router.push("/commande");
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Réservation impossible, veuillez réessayer.",
+        err instanceof ApiError ? err.message : tr("Réservation impossible, veuillez réessayer."),
       );
     } finally {
       setLoading(false);
@@ -173,24 +174,19 @@ export function TicketSelector({
   if (blockReason === "admin") {
     return shell(
       <>
-        <p className="text-sm text-ink-4">
-          Un compte administrateur ne peut pas acheter de billets.
-        </p>
+        <p className="text-sm text-ink-4">{tr("Un compte administrateur ne peut pas acheter de billets.")}</p>
         {/* État des ventes affiché aussi à l'organisateur et à l'admin, en lecture seule. */}
         {salesState === "not_open" ? (
           <div className="mt-4 border-t border-hairline-2 pt-4">
             <p className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-ink-5">
-              <LiveDot /> Ouverture des ventes dans
-            </p>
+              <LiveDot />{" "}{tr("Ouverture des ventes dans")}</p>
             <CountdownDigits targetIso={salesStartAt} onZero={() => {}} />
           </div>
         ) : null}
         <Link
           href="/admin"
           className={buttonClass("secondary", "mt-4 block rounded-full px-4 py-2.5 text-center text-sm")}
-        >
-          Retour au back-office →
-        </Link>
+        >{tr("Retour au back-office →")}</Link>
       </>,
     );
   }
@@ -198,30 +194,24 @@ export function TicketSelector({
   if (blockReason === "own_event") {
     return shell(
       <>
-        <p className="text-sm text-ink-4">
-          C&apos;est votre événement — un organisateur ne peut pas acheter de billet pour son propre
-          événement.
-        </p>
+        <p className="text-sm text-ink-4">{tr("C'est votre événement — un organisateur ne peut pas acheter de billet pour son propre événement.")}</p>
         {salesState === "not_open" ? (
           <div className="mt-4 border-t border-hairline-2 pt-4">
             <p className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-ink-5">
-              <LiveDot /> Ouverture des ventes dans
-            </p>
+              <LiveDot />{" "}{tr("Ouverture des ventes dans")}</p>
             <CountdownDigits targetIso={salesStartAt} onZero={() => {}} />
           </div>
         ) : null}
         <Link
           href={`/dashboard/evenements/${eventId}`}
           className={buttonClass("secondary", "mt-4 block rounded-full px-4 py-2.5 text-center text-sm")}
-        >
-          Gérer cet événement →
-        </Link>
+        >{tr("Gérer cet événement →")}</Link>
       </>,
     );
   }
 
   if (salesState === "loading") {
-    return shell(<p className="text-sm text-ink-5">Chargement…</p>);
+    return shell(<p className="text-sm text-ink-5">{tr("Chargement…")}</p>);
   }
 
   // Bascule automatiquement sur le formulaire d'achat à zéro, sans recharger.
@@ -230,13 +220,10 @@ export function TicketSelector({
       <>
         <div className="flex flex-col items-center gap-3 text-center">
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink-4">
-            <LiveDot /> Ouverture des ventes dans
-          </p>
+            <LiveDot />{" "}{tr("Ouverture des ventes dans")}</p>
           <CountdownDigits targetIso={salesStartAt} onZero={() => setSalesState("open")} />
-          <p className="text-sm text-ink-4">
-            Le {saleDateFormatter.format(new Date(salesStartAt))}
-          </p>
-          <p className="text-xs text-ink-5">La billetterie s&apos;ouvre automatiquement, sans recharger la page.</p>
+          <p className="text-sm text-ink-4">{tr("Le {value}", { value: saleDateFormatter.format(new Date(salesStartAt)) })}</p>
+          <p className="text-xs text-ink-5">{tr("La billetterie s'ouvre automatiquement, sans recharger la page.")}</p>
         </div>
       </>,
     );
@@ -244,7 +231,7 @@ export function TicketSelector({
 
   if (salesState === "closed") {
     return shell(
-      <p className="text-sm text-ink-4">Les ventes pour cet événement sont closes.</p>,
+      <p className="text-sm text-ink-4">{tr("Les ventes pour cet événement sont closes.")}</p>,
     );
   }
 
@@ -253,16 +240,14 @@ export function TicketSelector({
     return shell(
       <>
         <div className="rounded-xl bg-red-500/5 px-4 py-4 text-center ring-1 ring-inset ring-red-500/25">
-          <p className="text-sm font-semibold text-ink-1">Complet</p>
-          <p className="mt-1 text-xs text-ink-4">Toutes les places de cet événement ont été vendues.</p>
+          <p className="text-sm font-semibold text-ink-1">{tr("Complet")}</p>
+          <p className="mt-1 text-xs text-ink-4">{tr("Toutes les places de cet événement ont été vendues.")}</p>
         </div>
         <button
           type="button"
           disabled
           className="mt-4 w-full cursor-not-allowed rounded-xl bg-hairline-3 py-3 text-sm font-semibold text-ink-4"
-        >
-          Complet
-        </button>
+        >{tr("Complet")}</button>
       </>,
     );
   }
@@ -270,9 +255,7 @@ export function TicketSelector({
   return shell(
     <>
       {tickets.length === 0 ? (
-        <p className="text-sm text-ink-5">
-          Aucune catégorie de billet disponible pour le moment.
-        </p>
+        <p className="text-sm text-ink-5">{tr("Aucune catégorie de billet disponible pour le moment.")}</p>
       ) : (
         <div className="flex flex-col gap-3">
           {tickets.map((ticket) => {
@@ -293,9 +276,7 @@ export function TicketSelector({
                     {ticket.label}
                   </span>
                   {soldOut ? (
-                    <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-semibold text-red-500 ring-1 ring-inset ring-red-500/30">
-                      Complet
-                    </span>
+                    <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-semibold text-red-500 ring-1 ring-inset ring-red-500/30">{tr("Complet")}</span>
                   ) : null}
                   {ticket.tag ? (
                     <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
@@ -310,26 +291,26 @@ export function TicketSelector({
                     </span>
                   ) : null}
                   <span className={`text-sm font-bold ${soldOut ? "text-ink-5 line-through" : "text-ink-1"}`}>
-                    {ticket.price === 0 ? "Gratuit" : currency.format(ticket.price)}
+                    {ticket.price === 0 ? tr("Gratuit") : currency.format(ticket.price)}
                   </span>
                 </div>
                 {!soldOut && atMax && quantity > 0 ? (
                   <p className="mt-1 text-[11px] text-ink-5">
                     {quantity >= (ticket.remaining ?? Number.POSITIVE_INFINITY)
-                      ? "Plus aucune place supplémentaire dans cette catégorie."
-                      : `Maximum ${quantity} billet${quantity > 1 ? "s" : ""} par commande.`}
+                      ? tr("Plus aucune place supplémentaire dans cette catégorie.")
+                      : (quantity > 1 ? tr("Maximum {quantity} billets par commande.", { quantity }) : tr("Maximum {quantity} billet par commande.", { quantity }))}
                   </p>
                 ) : null}
               </div>
 
               {soldOut ? (
-                <span className="shrink-0 text-xs font-medium text-ink-5">Épuisé</span>
+                <span className="shrink-0 text-xs font-medium text-ink-5">{tr("Épuisé")}</span>
               ) : (
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={() => updateQuantity(ticket, -1)}
-                  aria-label={`Retirer un billet ${ticket.label}`}
+                  aria-label={tr("Retirer un billet {label}", { label: ticket.label })}
                   disabled={quantity === 0}
                   className="flex h-7 w-7 items-center justify-center rounded-full bg-hairline-3 text-ink-1 transition-colors hover:bg-hairline-4 disabled:opacity-40"
                 >
@@ -341,7 +322,7 @@ export function TicketSelector({
                 <button
                   type="button"
                   onClick={() => updateQuantity(ticket, 1)}
-                  aria-label={`Ajouter un billet ${ticket.label}`}
+                  aria-label={tr("Ajouter un billet {label}", { label: ticket.label })}
                   disabled={atMax}
                   className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -357,7 +338,7 @@ export function TicketSelector({
 
       <div className="mt-4 flex items-center justify-between text-sm font-semibold text-ink-1">
         <span>
-          {selectedCount} billet{selectedCount > 1 ? "s" : ""}
+          {selectedCount > 1 ? tr("{count} billets", { count: selectedCount }) : tr("{count} billet", { count: selectedCount })}
         </span>
         <span className="text-base font-bold">{currency.format(total)}</span>
       </div>
@@ -374,12 +355,10 @@ export function TicketSelector({
         onClick={handleReserve}
         className="mt-4 w-full rounded-xl bg-brand py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {loading ? "Réservation…" : "Réserver"}
+        {loading ? tr("Réservation…") : tr("Réserver")}
       </button>
 
-      <p className="mt-3 text-center text-xs text-ink-5">
-        Prix TTC. Votre billet sera disponible dans votre espace BilleTix après le paiement.
-      </p>
+      <p className="mt-3 text-center text-xs text-ink-5">{tr("Prix TTC. Votre billet sera disponible dans votre espace BilleTix après le paiement.")}</p>
     </>,
   );
 }
@@ -398,9 +377,7 @@ function BookingShell({
   return (
     <div className="sticky top-24 flex flex-col gap-3">
       <div className="rounded-2xl border border-hairline-2 bg-card p-5">
-        <h2 className="border-b border-hairline-2 pb-3 text-base font-bold text-ink-1">
-          Date et billets disponibles
-        </h2>
+        <h2 className="border-b border-hairline-2 pb-3 text-base font-bold text-ink-1">{tr("Date et billets disponibles")}</h2>
 
         {dateRangeLabel ? (
           <div className="mt-4 flex items-center gap-3 rounded-xl bg-brand/5 p-3 ring-1 ring-inset ring-brand/25">
@@ -467,7 +444,7 @@ function ShareButton() {
           <circle cx="18" cy="19" r="3" />
           <path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" />
         </svg>
-        {copied ? "Lien copié !" : "Partager"}
+        {copied ? tr("Lien copié !") : tr("Partager")}
       </button>
       {manualUrl ? (
         <input
@@ -475,7 +452,7 @@ function ShareButton() {
           autoFocus
           value={manualUrl}
           onFocus={(event) => event.currentTarget.select()}
-          aria-label="Lien de l'événement à copier"
+          aria-label={tr("Lien de l'événement à copier")}
           className="w-full rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-xs text-ink-2"
         />
       ) : null}

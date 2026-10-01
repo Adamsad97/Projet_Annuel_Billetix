@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { getTicketQr } from "@/lib/api/tickets";
 import { ApiError } from "@/lib/api/http-error";
+import { t } from "@/lib/i18n/translate";
 
 export function TicketQrReveal({ ticketId, holderName }: { ticketId: string; holderName: string }) {
   const [qr, setQr] = useState<{ url: string; expiresAt: number; refreshIn: number } | null>(null);
@@ -55,7 +56,7 @@ export function TicketQrReveal({ ticketId, holderName }: { ticketId: string; hol
         refreshIn: result.refresh_in_seconds,
       });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible d'afficher le QR code, veuillez réessayer.");
+      setError(err instanceof ApiError ? err.message : t("Impossible d'afficher le QR code, veuillez réessayer."));
     } finally {
       setLoading(false);
     }
@@ -76,12 +77,9 @@ export function TicketQrReveal({ ticketId, holderName }: { ticketId: string; hol
           disabled={loading}
           className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
         >
-          {loading ? "Chargement…" : "Afficher mon QR code"}
+          {loading ? t("Chargement…") : t("Afficher mon QR code")}
         </button>
-        <p className="max-w-xs text-center text-xs text-ink-5">
-          Affichez-le seulement au moment du contrôle, et ne le partagez jamais : il permet
-          d&apos;entrer à votre place.
-        </p>
+        <p className="max-w-xs text-center text-xs text-ink-5">{t("Affichez-le seulement au moment du contrôle, et ne le partagez jamais : il permet d'entrer à votre place.")}</p>
         {error ? <p className="text-center text-sm text-danger">{error}</p> : null}
       </div>
     );
@@ -91,22 +89,17 @@ export function TicketQrReveal({ ticketId, holderName }: { ticketId: string; hol
     <div className="flex w-full flex-col items-center gap-2">
       <div className="w-48 rounded-lg bg-white p-2">
         {/* eslint-disable-next-line @next/next/no-img-element -- data URI fourni à la demande par l'API, pas une image à optimiser */}
-        <img src={qr.url} alt="QR code du billet" className="w-full" />
+        <img src={qr.url} alt={t("QR code du billet")} className="w-full" />
       </div>
       <p className="text-sm font-bold text-ink-1">{holderName}</p>
-      <p className="text-xs font-medium text-success">
-        Code dynamique : il change régulièrement, une capture d&apos;écran ne sera pas acceptée.
-      </p>
-      <p className="text-xs text-ink-5" aria-live="polite">
-        Masqué automatiquement dans <span className="font-mono tabular-nums">{secondsLeft} s</span>
+      <p className="text-xs font-medium text-success">{t("Code dynamique : il change régulièrement, une capture d'écran ne sera pas acceptée.")}</p>
+      <p className="text-xs text-ink-5" aria-live="polite">{t("Masqué automatiquement dans")}{" "}<span className="font-mono tabular-nums">{secondsLeft} s</span>
       </p>
       <button
         type="button"
         onClick={() => setQr(null)}
         className="text-xs font-medium text-link hover:text-link-hover"
-      >
-        Masquer maintenant
-      </button>
+      >{t("Masquer maintenant")}</button>
     </div>
   );
 }

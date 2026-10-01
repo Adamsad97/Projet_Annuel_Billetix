@@ -12,6 +12,7 @@ import { FormError } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 export function ResetPasswordForm({ token }: { token: string | null }) {
   const [done, setDone] = useState(false);
@@ -28,16 +29,16 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token) {
-      setError("Lien invalide — le jeton de réinitialisation est manquant.");
+      setError(t("Lien invalide — le jeton de réinitialisation est manquant."));
       return;
     }
 
     if (!passwordValid) {
-      setError("Le mot de passe ne respecte pas toutes les règles indiquées.");
+      setError(t("Le mot de passe ne respecte pas toutes les règles indiquées."));
       return;
     }
     if (password !== confirmPassword) {
-      setError("Les mots de passe ne correspondent pas.");
+      setError(t("Les mots de passe ne correspondent pas."));
       return;
     }
 
@@ -48,7 +49,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
       setDone(true);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Réinitialisation impossible, veuillez réessayer.",
+        err instanceof ApiError ? err.message : t("Réinitialisation impossible, veuillez réessayer."),
       );
     } finally {
       setLoading(false);
@@ -61,16 +62,12 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">
           ✓
         </div>
-        <h1 className="text-2xl font-bold text-ink-1">Mot de passe mis à jour</h1>
-        <p className="mt-2 text-sm text-accent/70">
-          Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.
-        </p>
+        <h1 className="text-2xl font-bold text-ink-1">{t("Mot de passe mis à jour")}</h1>
+        <p className="mt-2 text-sm text-accent/70">{t("Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.")}</p>
         <Link
           href="/connexion"
           className={buttonClass("primary", "mt-6 inline-flex w-full items-center justify-center rounded-xl py-3 text-sm")}
-        >
-          Se connecter
-        </Link>
+        >{t("Se connecter")}</Link>
       </div>
     );
   }
@@ -78,20 +75,14 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
   return (
     <div className={cardClass("w-full max-w-md p-8")}>
       <div className="mb-6 text-center">
-        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">
-          Nouveau mot de passe <span>🔑</span>
+        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">{t("Nouveau mot de passe")}{" "}<span>🔑</span>
         </h1>
-        <p className="mt-1 text-sm text-accent/70">
-          Choisissez un nouveau mot de passe pour votre compte BilleTix.
-        </p>
+        <p className="mt-1 text-sm text-accent/70">{t("Choisissez un nouveau mot de passe pour votre compte BilleTix.")}</p>
       </div>
 
       {!token ? (
-        <FormError>
-          Ce lien est invalide ou incomplet — demandez un nouvel email depuis{" "}
-          <Link href="/mot-de-passe-oublie" className="font-medium underline">
-            mot de passe oublié
-          </Link>
+        <FormError>{t("Ce lien est invalide ou incomplet — demandez un nouvel email depuis")}{" "}
+          <Link href="/mot-de-passe-oublie" className="font-medium underline">{t("mot de passe oublié")}</Link>
           .
         </FormError>
       ) : null}
@@ -104,24 +95,20 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-accent/80">
-            Nouveau mot de passe
-          </span>
+          <span className="text-sm font-medium text-accent/80">{t("Nouveau mot de passe")}</span>
           <PasswordInput
             name="password"
             required
             autoComplete="new-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder={`${minLength} caractères minimum`}
+            placeholder={t("{minLength} caractères minimum", { minLength })}
             className={fieldClass("px-4 py-3")}
           />
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-accent/80">
-            Confirmer le mot de passe
-          </span>
+          <span className="text-sm font-medium text-accent/80">{t("Confirmer le mot de passe")}</span>
           <PasswordInput
             name="confirmPassword"
             required
@@ -144,7 +131,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
           disabled={loading || !token || !passwordValid || password !== confirmPassword}
           className={buttonClass("primary", "mt-1 w-full rounded-xl py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
         >
-          {loading ? "Réinitialisation…" : "Réinitialiser le mot de passe →"}
+          {loading ? t("Réinitialisation…") : t("Réinitialiser le mot de passe →")}
         </button>
       </form>
     </div>

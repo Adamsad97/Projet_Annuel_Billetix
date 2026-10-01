@@ -1,3 +1,5 @@
+"use client";
+
 // Graphique de tendance des ventes autonome : plage et métrique propres, données de GET /admin/sales-trend.
 
 import { useEffect, useState } from "react";
@@ -6,13 +8,14 @@ import { ApiError } from "@/lib/api/http-error";
 import { roundEuros as currency } from "@/lib/format/money";
 import { dayMonth as dayFormatter } from "@/lib/format/dates";
 import { cardClass } from "@/components/ui/card";
+import { t, msg } from "@/lib/i18n/translate";
 
 type Metric = "orders_count" | "tickets_count" | "revenue_ttc";
 
 const METRICS: Array<{ id: Metric; label: string; format: (value: number) => string }> = [
-  { id: "orders_count", label: "Ventes totales", format: (value) => `${value}` },
-  { id: "tickets_count", label: "Total billets", format: (value) => `${value}` },
-  { id: "revenue_ttc", label: "Chiffre d'affaires", format: (value) => currency.format(value) },
+  { id: "orders_count", label: msg("Ventes totales"), format: (value) => `${value}` },
+  { id: "tickets_count", label: msg("Total billets"), format: (value) => `${value}` },
+  { id: "revenue_ttc", label: msg("Chiffre d'affaires"), format: (value) => currency.format(value) },
 ];
 
 function toDateInputValue(date: Date): string {
@@ -43,7 +46,7 @@ export function RevenueTrendChart() {
         if (!cancelled) {
           setResult({
             range: `${from}|${to}`,
-            error: err instanceof ApiError ? err.message : "Impossible de charger la tendance des ventes.",
+            error: err instanceof ApiError ? err.message : t("Impossible de charger la tendance des ventes."),
           });
         }
       });
@@ -68,7 +71,7 @@ export function RevenueTrendChart() {
                   : "rounded-full bg-hairline-1 px-3 py-1.5 text-xs font-medium text-ink-4 hover:bg-hairline-2 hover:text-ink-2"
               }
             >
-              {entry.label}
+              {t(entry.label)}
             </button>
           ))}
         </div>
@@ -95,9 +98,9 @@ export function RevenueTrendChart() {
       {error ? (
         <p className="px-1 py-6 text-center text-sm text-red-300">{error}</p>
       ) : trend === undefined ? (
-        <p className="px-1 py-6 text-center text-sm text-ink-5">Chargement…</p>
+        <p className="px-1 py-6 text-center text-sm text-ink-5">{t("Chargement…")}</p>
       ) : trend.length === 0 ? (
-        <p className="px-1 py-6 text-center text-sm text-ink-5">Pas encore de données de vente sur cette période.</p>
+        <p className="px-1 py-6 text-center text-sm text-ink-5">{t("Pas encore de données de vente sur cette période.")}</p>
       ) : (
         <div className="flex items-end gap-2 overflow-x-auto" style={{ height: 160 }}>
           {trend.map((point) => {

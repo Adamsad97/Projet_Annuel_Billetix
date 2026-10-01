@@ -13,6 +13,7 @@ import { Alert } from "@/components/ui/alert";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 export function OrderConfirmation({ orderId }: { orderId: string }) {
   const [order, setOrder] = useState<ApiOrder | null>(null);
@@ -45,7 +46,7 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
       } catch (err) {
         if (cancelled) return;
         setLoadError(
-          err instanceof ApiError ? err.message : "Impossible de charger cette commande.",
+          err instanceof ApiError ? err.message : t("Impossible de charger cette commande."),
         );
         setLoading(false);
       }
@@ -64,7 +65,7 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
       </div>
 
       {loading ? (
-        <MutedMessage>Chargement de votre commande…</MutedMessage>
+        <MutedMessage>{t("Chargement de votre commande…")}</MutedMessage>
       ) : loadError || !order ? (
         <Alert centered className="mx-auto max-w-lg">
           {loadError}
@@ -78,13 +79,12 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
           <div>
             <h1 className="text-2xl font-bold text-ink-1">
               {order.status === "PENDING_PAYMENT"
-                ? "Commande créée"
+                ? t("Commande créée")
                 : Number(order.total_amount_ttc) === 0
-                  ? "Réservation confirmée !"
-                  : "Paiement confirmé !"}
+                  ? t("Réservation confirmée !")
+                  : t("Paiement confirmé !")}
             </h1>
-            <p className="mt-1 text-sm text-ink-5">
-              Commande <span className="text-ink-1">{order.reference}</span>
+            <p className="mt-1 text-sm text-ink-5">{t("Commande")}{" "}<span className="text-ink-1">{order.reference}</span>
             </p>
           </div>
 
@@ -100,31 +100,27 @@ export function OrderConfirmation({ orderId }: { orderId: string }) {
               </div>
             ))}
             <div className="mt-3 flex items-center justify-between border-t border-hairline-2 pt-3">
-              <span className="font-bold text-ink-1">Total payé</span>
+              <span className="font-bold text-ink-1">{t("Total payé")}</span>
               <span className="font-bold text-ink-1">
-                {Number(order.total_amount_ttc) === 0 ? "Gratuit" : currency.format(Number(order.total_amount_ttc))}
+                {Number(order.total_amount_ttc) === 0 ? t("Gratuit") : currency.format(Number(order.total_amount_ttc))}
               </span>
             </div>
           </div>
 
           <p className="text-sm text-accent">
-            🎫 Vos billets sont disponibles dans « Mes billets ».
-            {Number(order.total_amount_ttc) > 0 ? " Votre facture vous est envoyée par email." : ""}
+            🎫 {t("Vos billets sont disponibles dans « Mes billets ».")}
+            {Number(order.total_amount_ttc) > 0 ? t(" Votre facture vous est envoyée par email.") : ""}
           </p>
 
           <div className="flex w-full flex-col gap-3 sm:flex-row">
             <Link
               href="/profil/billets"
               className={buttonClass("primary", "flex-1 rounded-full py-3 text-sm")}
-            >
-              Voir mes billets
-            </Link>
+            >{t("Voir mes billets")}</Link>
             <Link
               href="/evenements"
               className={buttonClass("secondary", "flex-1 rounded-full py-3 text-sm")}
-            >
-              Voir les événements
-            </Link>
+            >{t("Voir les événements")}</Link>
           </div>
         </div>
       )}

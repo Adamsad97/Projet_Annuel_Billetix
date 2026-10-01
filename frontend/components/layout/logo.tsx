@@ -3,6 +3,7 @@
 // Logo BilleTix (mot-symbole et icône de deux billets) ; useId() rend les ids de mask uniques.
 
 import { useId } from "react";
+import { t } from "@/lib/i18n/translate";
 
 export function Logo({ className = "" }: { className?: string }) {
   const id = useId();
@@ -12,12 +13,9 @@ export function Logo({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-start ${className}`} aria-label="BilleTix">
       <span className="flex flex-col items-end leading-none" aria-hidden="true">
-        <span className="text-[24px] font-black tracking-[-0.05em] text-ink-1 sm:text-[30px]">
-          Bille<span className="text-brand">Tix</span>
+        <span className="text-[24px] font-black tracking-[-0.05em] text-ink-1 sm:text-[30px]">{t("Bille")}<span className="text-brand">{t("Tix")}</span>
         </span>
-        <span className="-mt-0.5 pr-0.5 text-[9px] font-semibold tracking-tight text-brand sm:text-[10px]">
-          Simple &amp; sûr !
-        </span>
+        <span className="-mt-0.5 pr-0.5 text-[9px] font-semibold tracking-tight text-brand sm:text-[10px]">{t("Simple & sûr !")}</span>
       </span>
       <svg
         width="50"

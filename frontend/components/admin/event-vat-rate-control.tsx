@@ -6,6 +6,7 @@ import { setEventVatRate } from "@/lib/api/admin";
 import { buttonClass } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/field";
 import { listVatRates, vatRateOptionLabel, type ApiVatRate } from "@/lib/api/vat-rates";
+import { t } from "@/lib/i18n/translate";
 
 /** Taux de TVA d'un événement à la validation, corrigeable tant qu'il n'est pas publié. */
 export function EventVatRateControl({
@@ -33,7 +34,7 @@ export function EventVatRateControl({
       .catch(() => setVatRates([]));
   }, [editable]);
 
-  const current = vatRateOptionLabel({ rate: vatRate ?? "0.2", label: vatRateLabel ?? "Taux normal" });
+  const current = vatRateOptionLabel({ rate: vatRate ?? "0.2", label: vatRateLabel ?? t("Taux normal") });
   const currentId =
     vatRates.find((rate) => Number(rate.rate) === Number(vatRate ?? 0.2) && rate.label === (vatRateLabel ?? rate.label))?.id ?? "";
   const selected = choice || currentId;
@@ -47,7 +48,7 @@ export function EventVatRateControl({
       setChoice("");
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Le taux n'a pas pu être corrigé.");
+      setError(err instanceof ApiError ? err.message : t("Le taux n'a pas pu être corrigé."));
     } finally {
       setBusy(false);
     }
@@ -55,17 +56,17 @@ export function EventVatRateControl({
 
   return (
     <div className="sm:col-span-2">
-      <dt className="text-ink-5">Taux de TVA</dt>
+      <dt className="text-ink-5">{t("Taux de TVA")}</dt>
       <dd className="text-ink-2">{current}</dd>
       {editable && vatRates.length > 0 ? (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <select
-            aria-label="Corriger le taux de TVA"
+            aria-label={t("Corriger le taux de TVA")}
             value={selected}
             onChange={(event) => setChoice(event.target.value)}
             className={fieldClass("px-3 py-2")}
           >
-            {!currentId ? <option value="">{current} (taux actuel)</option> : null}
+            {!currentId ? <option value="">{t("{current} (taux actuel)", { current })}</option> : null}
             {vatRates.map((rate) => (
               <option key={rate.id} value={rate.id}>
                 {vatRateOptionLabel(rate)}
@@ -78,7 +79,7 @@ export function EventVatRateControl({
             onClick={apply}
             className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm disabled:opacity-50")}
           >
-            {busy ? "Correction…" : "Corriger le taux"}
+            {busy ? t("Correction…") : t("Corriger le taux")}
           </button>
         </div>
       ) : null}

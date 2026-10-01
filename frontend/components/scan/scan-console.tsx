@@ -26,6 +26,8 @@ import { dateTime, time as timeOnly } from "@/lib/format/dates";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
+import { t as tr, msg } from "@/lib/i18n/translate";
+import { localizedDate } from "@/lib/i18n/intl";
 
 const SELECTED_EVENT_KEY = "billetix_scan_event";
 // Même QR relu par la caméra pendant l'affichage du verdict : ignoré.
@@ -43,30 +45,30 @@ type Tone = "success" | "warning" | "danger";
 
 // Refusé (rouge) : n'entrera jamais ; à vérifier (orange) : une action immédiate peut régler le problème.
 const VERDICTS: Record<ScanResultCode, { label: string; hint: string; tone: Tone }> = {
-  SUCCESS: { label: "Entrée validée", hint: "Le billet est valide.", tone: "success" },
-  ALREADY_USED: { label: "Billet déjà utilisé", hint: "Ce billet a déjà servi à entrer.", tone: "danger" },
-  INVALID: { label: "QR code invalide", hint: "Code inconnu ou falsifié.", tone: "danger" },
-  CANCELLED: { label: "Billet annulé", hint: "Billet annulé ou remboursé.", tone: "danger" },
+  SUCCESS: { label: msg("Entrée validée"), hint: msg("Le billet est valide."), tone: "success" },
+  ALREADY_USED: { label: msg("Billet déjà utilisé"), hint: msg("Ce billet a déjà servi à entrer."), tone: "danger" },
+  INVALID: { label: msg("QR code invalide"), hint: msg("Code inconnu ou falsifié."), tone: "danger" },
+  CANCELLED: { label: msg("Billet annulé"), hint: msg("Billet annulé ou remboursé."), tone: "danger" },
   SUPERSEDED: {
-    label: "Billet revendu ou offert",
-    hint: "Ce QR appartient à l'ancien titulaire : seul le nouveau titulaire peut entrer.",
+    label: msg("Billet revendu ou offert"),
+    hint: msg("Ce QR appartient à l'ancien titulaire : seul le nouveau titulaire peut entrer."),
     tone: "danger",
   },
   FOR_RESALE: {
-    label: "Billet mis en revente",
-    hint: "Son titulaire l'a mis en vente : entrée impossible tant que l'annonce est active.",
+    label: msg("Billet mis en revente"),
+    hint: msg("Son titulaire l'a mis en vente : entrée impossible tant que l'annonce est active."),
     tone: "danger",
   },
-  WRONG_EVENT: { label: "Autre événement", hint: "Ce billet est valable pour un autre événement.", tone: "danger" },
-  EVENT_UNAVAILABLE: { label: "Événement fermé", hint: "Événement annulé, suspendu ou non publié.", tone: "danger" },
-  TOO_LATE: { label: "Contrôle terminé", hint: "L'événement est terminé : plus d'entrée possible.", tone: "danger" },
-  EXPIRED: { label: "QR expiré", hint: "Demandez d'afficher le billet en direct dans l'application.", tone: "warning" },
+  WRONG_EVENT: { label: msg("Autre événement"), hint: msg("Ce billet est valable pour un autre événement."), tone: "danger" },
+  EVENT_UNAVAILABLE: { label: msg("Événement fermé"), hint: msg("Événement annulé, suspendu ou non publié."), tone: "danger" },
+  TOO_LATE: { label: msg("Contrôle terminé"), hint: msg("L'événement est terminé : plus d'entrée possible."), tone: "danger" },
+  EXPIRED: { label: msg("QR expiré"), hint: msg("Demandez d'afficher le billet en direct dans l'application."), tone: "warning" },
   STATIC_REFUSED: {
-    label: "Capture ou PDF",
-    hint: "Demandez d'afficher le billet en direct dans l'application.",
+    label: msg("Capture ou PDF"),
+    hint: msg("Demandez d'afficher le billet en direct dans l'application."),
     tone: "warning",
   },
-  TOO_EARLY: { label: "Contrôle pas encore ouvert", hint: "Trop tôt : la personne doit revenir à l'ouverture.", tone: "warning" },
+  TOO_EARLY: { label: msg("Contrôle pas encore ouvert"), hint: msg("Trop tôt : la personne doit revenir à l'ouverture."), tone: "warning" },
 };
 
 const TONE_STYLES: Record<Tone, string> = {
@@ -128,19 +130,19 @@ function agentSchedule(list: ScanEvent[], now = Date.now()): { current: ScanEven
 function checkpointState(pack: OfflinePack | null, now = Date.now()): { label: string; tone: "open" | "soon" | "closed" } | null {
   if (!pack) return null;
   if (pack.event.is_hidden || !["PUBLISHED", "TERMINATED"].includes(pack.event.status)) {
-    return { label: "Événement fermé au public", tone: "closed" };
+    return { label: tr("Événement fermé au public"), tone: "closed" };
   }
   const opens = new Date(pack.event.start_date).getTime() - pack.scan_opens_before_minutes * 60_000;
   const closes = new Date(pack.event.end_date ?? pack.event.start_date).getTime() + pack.scan_closes_after_minutes * 60_000;
   if (now < opens) {
     const sameDay = new Date(opens).toDateString() === new Date(now).toDateString();
     return {
-      label: `Contrôle ouvert ${sameDay ? `à ${timeOnly.format(new Date(opens))}` : `le ${dateTime.format(new Date(opens))}`}`,
+      label: sameDay ? tr("Contrôle ouvert à {time}", { time: timeOnly.format(new Date(opens)) }) : tr("Contrôle ouvert le {date}", { date: dateTime.format(new Date(opens)) }),
       tone: "soon",
     };
   }
-  if (now > closes) return { label: "Contrôle terminé", tone: "closed" };
-  return { label: "Contrôle ouvert", tone: "open" };
+  if (now > closes) return { label: tr("Contrôle terminé"), tone: "closed" };
+  return { label: tr("Contrôle ouvert"), tone: "open" };
 }
 
 interface Verdict {
@@ -152,7 +154,7 @@ interface Verdict {
   holder?: string;
 }
 
-const timeWithSeconds = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+const timeWithSeconds = localizedDate({ hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
 function readSelectedEvent(): string | null {
   try {
@@ -240,7 +242,7 @@ export function ScanConsole() {
           remembered && sorted.some((e) => e.id === remembered) ? remembered : (currentEvent(sorted)?.id ?? null),
         );
       })
-      .catch((err) => setEventsError(err instanceof ApiError ? err.message : "Impossible de charger vos événements."));
+      .catch((err) => setEventsError(err instanceof ApiError ? err.message : tr("Impossible de charger vos événements.")));
   }, []);
 
   // --- Connexion réseau
@@ -266,7 +268,7 @@ export function ScanConsole() {
       setPackError(
         err instanceof ApiError && err.status !== 0
           ? err.message
-          : "Pas de réseau : la liste enregistrée sur ce téléphone n'a pas pu être actualisée.",
+          : tr("Pas de réseau : la liste enregistrée sur ce téléphone n'a pas pu être actualisée."),
       );
     } finally {
       setPackLoading(false);
@@ -292,10 +294,10 @@ export function ScanConsole() {
         clearQueue(id);
         setPending(0);
         setSyncMessage(
-          `${queue.length} scan${queue.length > 1 ? "s" : ""} hors ligne synchronisé${queue.length > 1 ? "s" : ""} : ` +
-            `${result.synced} validé${result.synced > 1 ? "s" : ""}` +
-            (result.conflicts ? `, ${result.conflicts} déjà utilisé${result.conflicts > 1 ? "s" : ""}` : "") +
-            (result.errors ? `, ${result.errors} refusé${result.errors > 1 ? "s" : ""}` : "") +
+          (queue.length > 1 ? tr("{length} scans hors ligne synchronisés : ", { length: queue.length }) : tr("{length} scan hors ligne synchronisé : ", { length: queue.length })) +
+            (result.synced > 1 ? tr("{synced} validés", { synced: result.synced }) : tr("{synced} validé", { synced: result.synced })) +
+            (result.conflicts ? (result.conflicts > 1 ? tr(", {conflicts} déjà utilisés", { conflicts: result.conflicts }) : tr(", {conflicts} déjà utilisé", { conflicts: result.conflicts })) : "") +
+            (result.errors ? (result.errors > 1 ? tr(", {errors} refusés", { errors: result.errors }) : tr(", {errors} refusé", { errors: result.errors })) : "") +
             ".",
         );
         await refreshPack(id);
@@ -372,13 +374,13 @@ export function ScanConsole() {
   async function judgeOffline(text: string, id: string) {
     const current = loadPack(id);
     if (!current) {
-      show({ code: "ERROR", label: "Pas de réseau", hint: "La liste des billets n'est pas encore enregistrée sur ce téléphone : reconnectez-vous pour l'obtenir.", tone: "danger", offline: true });
+      show({ code: "ERROR", label: tr("Pas de réseau"), hint: tr("La liste des billets n'est pas encore enregistrée sur ce téléphone : reconnectez-vous pour l'obtenir."), tone: "danger", offline: true });
       return;
     }
     const now = new Date();
     const verdictOffline = await verifyOffline(text, current, now);
     if (verdictOffline.result === null) {
-      show({ code: "ERROR", label: "Vérification impossible", hint: "Ce navigateur ne sait pas vérifier les QR hors ligne : utilisez un navigateur récent.", tone: "danger", offline: true });
+      show({ code: "ERROR", label: tr("Vérification impossible"), hint: tr("Ce navigateur ne sait pas vérifier les QR hors ligne : utilisez un navigateur récent."), tone: "danger", offline: true });
       return;
     }
     if (verdictOffline.result === "SUCCESS" && verdictOffline.ticketId) {
@@ -414,7 +416,7 @@ export function ScanConsole() {
       });
     } catch (err) {
       if (err instanceof ApiError && err.status !== 0) {
-        show({ code: "ERROR", label: "Scan refusé", hint: err.message, tone: "danger", offline: false });
+        show({ code: "ERROR", label: tr("Scan refusé"), hint: err.message, tone: "danger", offline: false });
       } else {
         // Réseau perdu pendant l'envoi : décision locale avec le paquet.
         await judgeOffline(text, eventId);
@@ -462,13 +464,13 @@ export function ScanConsole() {
         <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-br from-slate-950/60 via-slate-950/80 to-blue-950/90" />
 
         <div className="flex items-center justify-between gap-3 px-5 pt-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">Contrôle d&apos;accès</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/70">{tr("Contrôle d'accès")}</p>
           <div className="flex items-center gap-2">
           {isAgent ? (
             // Mobile : l'en-tête du site masque le menu agent, accès au compte ici.
             <Link
               href="/profil"
-              aria-label="Mon compte"
+              aria-label={tr("Mon compte")}
               className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white/80 transition-colors hover:bg-white/20 sm:hidden"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -484,7 +486,7 @@ export function ScanConsole() {
             }`}
           >
             <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${online ? "bg-[#34d399]" : "bg-[#fcd34d] animate-pulse"}`} />
-            {online ? "En ligne" : "Hors ligne"}
+            {online ? tr("En ligne") : tr("Hors ligne")}
           </span>
           </div>
         </div>
@@ -507,7 +509,7 @@ export function ScanConsole() {
                 </p>
                 {closedNotice && selectedStatus ? (
                   <span className={`mt-2 inline-flex items-center rounded-full bg-white px-2.5 py-1 text-xs font-semibold ${selectedStatus.badge.split(" ").filter((c) => c.startsWith("text-")).join(" ")}`}>
-                    {selectedStatus.label}
+                    {tr(selectedStatus.label)}
                   </span>
                 ) : checkpoint ? (
                   <span
@@ -519,12 +521,12 @@ export function ScanConsole() {
                           : "bg-white/15 text-white/80"
                     }`}
                   >
-                    {checkpoint.label}
+                    {tr(checkpoint.label)}
                   </span>
                 ) : null}
               </>
             ) : (
-              <h1 className="text-lg font-bold">Scan des billets</h1>
+              <h1 className="text-lg font-bold">{tr("Scan des billets")}</h1>
             )}
           </div>
         </div>
@@ -538,7 +540,7 @@ export function ScanConsole() {
               onClick={() => setShowSchedule((open) => !open)}
               className="flex w-full items-center justify-between rounded-xl bg-white/10 px-3.5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/15"
             >
-              <span>Mes événements ({events.length})</span>
+              <span>{tr("Mes événements ({length})", { length: events.length })}</span>
               <svg
                 width="16"
                 height="16"
@@ -560,7 +562,7 @@ export function ScanConsole() {
       </section>
 
       {showSchedule && events ? (
-        <section aria-label="Mes événements" className={cardClass("overflow-hidden")}>
+        <section aria-label={tr("Mes événements")} className={cardClass("overflow-hidden")}>
           {(() => {
             const { current, past } = agentSchedule(events);
             const row = (e: ScanEvent, isPast: boolean) => {
@@ -597,13 +599,13 @@ export function ScanConsole() {
                       {dateTime.format(new Date(e.start_date))} · {e.venue}
                     </p>
                     {active && status.key === "ONGOING" ? (
-                      <p className="mt-0.5 text-xs font-semibold text-blue-600">Contrôle en cours</p>
+                      <p className="mt-0.5 text-xs font-semibold text-blue-600">{tr("Contrôle en cours")}</p>
                     ) : active && status.key === "UPCOMING" ? (
-                      <p className="mt-0.5 text-xs font-semibold text-blue-600">Prochain contrôle</p>
+                      <p className="mt-0.5 text-xs font-semibold text-blue-600">{tr("Prochain contrôle")}</p>
                     ) : null}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${status.badge}`}>{status.label}</span>
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${status.badge}`}>{tr(status.label)}</span>
                   </div>
                   </button>
                 </li>
@@ -612,19 +614,17 @@ export function ScanConsole() {
             return (
               <>
                 <div className="border-b border-hairline-1 px-4 py-2.5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-5">À venir · du plus proche au plus lointain</p>
-                  {canChoose ? <p className="mt-0.5 text-[11px] text-ink-5">Touchez un événement pour le contrôler.</p> : null}
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-5">{tr("À venir · du plus proche au plus lointain")}</p>
+                  {canChoose ? <p className="mt-0.5 text-[11px] text-ink-5">{tr("Touchez un événement pour le contrôler.")}</p> : null}
                 </div>
                 {current.length > 0 ? (
                   <ul className="divide-y divide-hairline-1">{current.map((e) => row(e, false))}</ul>
                 ) : (
-                  <p className="px-4 py-3 text-sm text-ink-5">Aucun événement à venir.</p>
+                  <p className="px-4 py-3 text-sm text-ink-5">{tr("Aucun événement à venir.")}</p>
                 )}
                 {past.length > 0 ? (
                   <>
-                    <p className="border-y border-hairline-1 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-5">
-                      Passés
-                    </p>
+                    <p className="border-y border-hairline-1 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-5">{tr("Passés")}</p>
                     <ul className="divide-y divide-hairline-1">{past.map((e) => row(e, true))}</ul>
                   </>
                 ) : null}
@@ -642,12 +642,12 @@ export function ScanConsole() {
         <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-hairline-2 bg-card px-6 py-12 text-center">
           <span className="text-4xl" aria-hidden="true">🛡️</span>
           <p className="font-semibold text-ink-1">
-            {isAgent ? "Aucun événement ne vous est assigné" : "Aucun événement à contrôler"}
+            {isAgent ? tr("Aucun événement ne vous est assigné") : tr("Aucun événement à contrôler")}
           </p>
           <p className="text-sm text-ink-5">
             {isAgent
-              ? "L'organisateur doit vous assigner à son événement pour que vous puissiez scanner les billets."
-              : "Vos événements publiés apparaîtront ici."}
+              ? tr("L'organisateur doit vous assigner à son événement pour que vous puissiez scanner les billets.")
+              : tr("Vos événements publiés apparaîtront ici.")}
           </p>
         </div>
       ) : selected && closedNotice ? (
@@ -665,16 +665,16 @@ export function ScanConsole() {
               {selectedStatus?.key === "CANCELLED" ? <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" /> : <path d="M12 6v8M12 18.5v.01" />}
             </svg>
           </span>
-          <p className="text-lg font-bold text-ink-1">{closedNotice.title}</p>
-          <p className="max-w-sm text-sm text-ink-3">{closedNotice.text}</p>
+          <p className="text-lg font-bold text-ink-1">{tr(closedNotice.title)}</p>
+          <p className="max-w-sm text-sm text-ink-3">{tr(closedNotice.text)}</p>
           {closedNotice.reason ? (
             <p className="max-w-sm rounded-xl bg-card/70 px-4 py-2 text-sm text-ink-2">
-              <span className="font-semibold">Motif : </span>
+              <span className="font-semibold">{tr("Motif :")}{" "}</span>
               {closedNotice.reason}
             </p>
           ) : null}
           {events && events.length > 1 ? (
-            <p className="text-xs text-ink-5">Vos autres événements sont dans « Mes événements ».</p>
+            <p className="text-xs text-ink-5">{tr("Vos autres événements sont dans « Mes événements ».")}</p>
           ) : null}
         </div>
       ) : selected ? (
@@ -694,8 +694,8 @@ export function ScanConsole() {
                     <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M7 12h10" />
                   </svg>
                 </span>
-                <span className="text-base font-semibold">Démarrer le scan</span>
-                <span className="text-xs text-white/60">La caméra arrière de l&apos;appareil s&apos;ouvre</span>
+                <span className="text-base font-semibold">{tr("Démarrer le scan")}</span>
+                <span className="text-xs text-white/60">{tr("La caméra arrière de l'appareil s'ouvre")}</span>
               </button>
             )}
 
@@ -715,11 +715,11 @@ export function ScanConsole() {
                 <span className="flex h-20 w-20 items-center justify-center rounded-full bg-white/20 text-5xl font-black" aria-hidden="true">
                   <VerdictIcon tone={verdict.tone} className="h-3/5 w-3/5" />
                 </span>
-                <p className="text-3xl font-extrabold leading-tight">{verdict.label}</p>
+                <p className="text-3xl font-extrabold leading-tight">{tr(verdict.label)}</p>
                 {verdict.holder ? <p className="text-lg font-semibold">{verdict.holder}</p> : null}
-                <p className="text-sm opacity-90">{verdict.hint}</p>
+                <p className="text-sm opacity-90">{tr(verdict.hint)}</p>
                 {verdict.offline ? (
-                  <span className="rounded-full bg-black/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">Vérifié hors ligne</span>
+                  <span className="rounded-full bg-black/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">{tr("Vérifié hors ligne")}</span>
                 ) : null}
               </div>
             ) : null}
@@ -737,20 +737,20 @@ export function ScanConsole() {
                 </span>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-ink-1">
-                    {verdict.label}
+                    {tr(verdict.label)}
                     {verdict.holder ? ` — ${verdict.holder}` : ""}
                   </p>
                   <p className="truncate text-xs text-ink-5">
-                    {verdict.offline ? "Vérifié hors ligne · " : ""}
-                    {verdict.hint}
+                    {verdict.offline ? tr("Vérifié hors ligne · ") : ""}
+                    {tr(verdict.hint)}
                   </p>
                 </div>
               </div>
             ) : (
               <MutedMessage>
                 {cameraOn
-                  ? "Visez le QR code affiché sur le téléphone du participant."
-                  : "Démarrez le scan, puis visez le QR code affiché sur le téléphone du participant."}
+                  ? tr("Visez le QR code affiché sur le téléphone du participant.")
+                  : tr("Démarrez le scan, puis visez le QR code affiché sur le téléphone du participant.")}
               </MutedMessage>
             )}
           </div>
@@ -766,15 +766,13 @@ export function ScanConsole() {
 
           {/* Bilan de l'appareil : entrées, refus, cas à vérifier */}
           <div>
-            <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-ink-5">
-              Bilan de cet appareil
-            </p>
+            <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-ink-5">{tr("Bilan de cet appareil")}</p>
             <div className="grid grid-cols-3 gap-2.5">
               {(
                 [
-                  { tone: "success", label: entered > 1 ? "Entrées" : "Entrée", value: entered, color: "text-emerald-600", ring: "border-emerald-500/30" },
-                  { tone: "danger", label: refused > 1 ? "Refusés" : "Refusé", value: refused, color: "text-red-600", ring: "border-red-500/30" },
-                  { tone: "warning", label: "À vérifier", value: toCheck, color: "text-amber-500", ring: "border-amber-500/30" },
+                  { tone: "success", label: entered > 1 ? tr("Entrées") : tr("Entrée"), value: entered, color: "text-emerald-600", ring: "border-emerald-500/30" },
+                  { tone: "danger", label: refused > 1 ? tr("Refusés") : tr("Refusé"), value: refused, color: "text-red-600", ring: "border-red-500/30" },
+                  { tone: "warning", label: tr("À vérifier"), value: toCheck, color: "text-amber-500", ring: "border-amber-500/30" },
                 ] as const
               ).map((item) => (
                 <button
@@ -788,7 +786,7 @@ export function ScanConsole() {
                   } ${historyFilter === item.tone ? "ring-2 ring-offset-2 ring-offset-page ring-current " + item.color : ""}`}
                 >
                   <p className={`text-2xl font-extrabold ${item.value > 0 ? item.color : "text-ink-4"}`}>{item.value}</p>
-                  <p className="text-xs font-semibold text-ink-2">{item.label}</p>
+                  <p className="text-xs font-semibold text-ink-2">{tr(item.label)}</p>
                 </button>
               ))}
             </div>
@@ -799,27 +797,23 @@ export function ScanConsole() {
             <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/5 px-4 py-3">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-ink-1">
-                  {pending} {pending > 1 ? "entrées à envoyer" : "entrée à envoyer"}
+                  {pending} {pending > 1 ? tr("entrées à envoyer") : tr("entrée à envoyer")}
                 </p>
-                <p className="text-xs text-ink-5">Validées sans réseau : envoyées automatiquement au retour de la connexion.</p>
+                <p className="text-xs text-ink-5">{tr("Validées sans réseau : envoyées automatiquement au retour de la connexion.")}</p>
               </div>
               {online ? (
                 <button
                   type="button"
                   onClick={() => eventId && syncQueue(eventId)}
                   className="shrink-0 rounded-full bg-amber-500 px-3 py-1.5 text-xs font-semibold text-slate-950"
-                >
-                  Envoyer
-                </button>
+                >{tr("Envoyer")}</button>
               ) : null}
             </div>
           ) : (
             <p className="flex items-center justify-center gap-1.5 text-xs text-ink-5">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-emerald-600">
                 <path d="m5 12.5 4.5 4.5L19 7.5" />
-              </svg>
-              Toutes les entrées sont enregistrées sur le serveur.
-            </p>
+              </svg>{tr("Toutes les entrées sont enregistrées sur le serveur.")}</p>
           )}
 
           {/* Historique des scans */}
@@ -827,15 +821,13 @@ export function ScanConsole() {
             <div className={cardClass("overflow-hidden")}>
               <div className="flex items-center justify-between gap-3 border-b border-hairline-1 px-4 py-2.5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ink-5">
-                  Derniers scans
+                  {tr("Derniers scans")}
                   {historyFilter
-                    ? ` · ${historyFilter === "success" ? "entrées" : historyFilter === "danger" ? "refusés" : "à vérifier"}`
+                    ? ` · ${historyFilter === "success" ? tr("entrées") : historyFilter === "danger" ? tr("refusés") : tr("à vérifier")}`
                     : ""}
                 </p>
                 {historyFilter ? (
-                  <button type="button" onClick={() => setHistoryFilter(null)} className="text-xs font-semibold text-link hover:text-link-hover">
-                    Tout afficher
-                  </button>
+                  <button type="button" onClick={() => setHistoryFilter(null)} className="text-xs font-semibold text-link hover:text-link-hover">{tr("Tout afficher")}</button>
                 ) : null}
               </div>
               <ul className="max-h-80 divide-y divide-hairline-1 overflow-y-auto">
@@ -850,10 +842,10 @@ export function ScanConsole() {
                       <VerdictIcon tone={item.tone} className="h-3.5 w-3.5" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-ink-1">{item.label}</p>
+                      <p className="truncate text-sm font-medium text-ink-1">{tr(item.label)}</p>
                       <p className="truncate text-xs text-ink-5">
-                        {item.holder ?? item.hint}
-                        {item.offline ? " · sans réseau" : ""}
+                        {item.holder ?? (item.hint ? tr(item.hint) : item.hint)}
+                        {item.offline ? tr(" · sans réseau") : ""}
                       </p>
                     </div>
                     <span className="shrink-0 text-xs tabular-nums text-ink-5">{timeWithSeconds.format(new Date(item.at))}</span>
@@ -867,12 +859,12 @@ export function ScanConsole() {
           {(() => {
             const count = pack?.tickets.length ?? 0;
             const state = !pack
-              ? { label: "À préparer", className: "bg-amber-500/15 text-amber-600" }
+              ? { label: tr("À préparer"), className: "bg-amber-500/15 text-amber-600" }
               : count === 0
-                ? { label: "Rien à vérifier", className: "bg-hairline-2 text-ink-3" }
-                : { label: "Prêt", className: "bg-emerald-500/15 text-emerald-600" };
+                ? { label: tr("Rien à vérifier"), className: "bg-hairline-2 text-ink-3" }
+                : { label: tr("Prêt"), className: "bg-emerald-500/15 text-emerald-600" };
             return (
-              <section aria-label="Contrôle sans réseau" className={cardClass("p-4")}>
+              <section aria-label={tr("Contrôle sans réseau")} className={cardClass("p-4")}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600/10 text-blue-600" aria-hidden="true">
@@ -882,22 +874,22 @@ export function ScanConsole() {
                       </svg>
                     </span>
                     <div>
-                      <p className="text-sm font-bold text-ink-1">Contrôle sans réseau</p>
-                      <p className="text-xs text-ink-5">Si la connexion coupe, ce téléphone vérifie seul les billets.</p>
+                      <p className="text-sm font-bold text-ink-1">{tr("Contrôle sans réseau")}</p>
+                      <p className="text-xs text-ink-5">{tr("Si la connexion coupe, ce téléphone vérifie seul les billets.")}</p>
                     </div>
                   </div>
-                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${state.className}`}>{state.label}</span>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${state.className}`}>{tr(state.label)}</span>
                 </div>
 
                 <dl className="mt-4 grid grid-cols-2 gap-2.5">
                   <div className="rounded-xl bg-hairline-1 px-3 py-2.5">
-                    <dt className="text-[11px] font-medium text-ink-5">Billets vérifiables</dt>
+                    <dt className="text-[11px] font-medium text-ink-5">{tr("Billets vérifiables")}</dt>
                     <dd className="text-base font-bold text-ink-1">
-                      {pack ? `${count} billet${count > 1 ? "s" : ""}` : "—"}
+                      {pack ? (count > 1 ? tr("{count} billets", { count }) : tr("{count} billet", { count })) : "—"}
                     </dd>
                   </div>
                   <div className="rounded-xl bg-hairline-1 px-3 py-2.5">
-                    <dt className="text-[11px] font-medium text-ink-5">Liste actualisée à</dt>
+                    <dt className="text-[11px] font-medium text-ink-5">{tr("Liste actualisée à")}</dt>
                     <dd className="text-base font-bold text-ink-1">{pack ? timeOnly.format(new Date(pack.generated_at)) : "—"}</dd>
                   </div>
                 </dl>
@@ -905,10 +897,10 @@ export function ScanConsole() {
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <p className="text-xs text-ink-5">
                     {!pack
-                      ? "Connectez-vous pour enregistrer la liste sur ce téléphone."
+                      ? tr("Connectez-vous pour enregistrer la liste sur ce téléphone.")
                       : count === 0
-                        ? "Aucun billet vendu pour l'instant."
-                        : "Actualisée automatiquement à chaque retour sur la page."}
+                        ? tr("Aucun billet vendu pour l'instant.")
+                        : tr("Actualisée automatiquement à chaque retour sur la page.")}
                   </p>
                   <button
                     type="button"
@@ -930,7 +922,7 @@ export function ScanConsole() {
                     >
                       <path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" />
                     </svg>
-                    {packLoading ? "Actualisation…" : "Actualiser"}
+                    {packLoading ? tr("Actualisation…") : tr("Actualiser")}
                   </button>
                 </div>
                 {packError ? <p className="mt-2 text-xs text-amber-600">{packError}</p> : null}
@@ -945,15 +937,11 @@ export function ScanConsole() {
               type="button"
               onClick={() => setCameraOn(false)}
               className={buttonClass("secondary", "rounded-full py-3 text-sm")}
-            >
-              Arrêter la caméra
-            </button>
+            >{tr("Arrêter la caméra")}</button>
           ) : null}
         </>
       ) : (
-        <p className={cardClass("px-4 py-6 text-center text-sm text-ink-5")}>
-          Choisissez l&apos;événement à contrôler.
-        </p>
+        <p className={cardClass("px-4 py-6 text-center text-sm text-ink-5")}>{tr("Choisissez l'événement à contrôler.")}</p>
       )}
     </div>
   );

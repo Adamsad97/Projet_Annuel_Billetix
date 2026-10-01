@@ -1,15 +1,16 @@
 "use client";
 
+import { t } from "@/lib/i18n/translate";
 // Deux cases liées « Payant » / « Gratuit » : cocher ou décocher l'une
 // bascule l'autre. Partagé par la création et la modification d'un événement.
 
 export function TicketingTypeToggle({ free, onChange }: { free: boolean; onChange: (free: boolean) => void }) {
   return (
-    <div role="group" aria-label="Type d'entrée" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div role="group" aria-label={t("Type d'entrée")} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {(
         [
-          { free: false, label: "Payant", description: "Les participants achètent leur billet." },
-          { free: true, label: "Gratuit", description: "Entrée libre, sur réservation." },
+          { free: false, label: t("Payant"), description: t("Les participants achètent leur billet.") },
+          { free: true, label: t("Gratuit"), description: t("Entrée libre, sur réservation.") },
         ] as const
       ).map((option) => {
         const checked = option.free === free;
@@ -31,8 +32,8 @@ export function TicketingTypeToggle({ free, onChange }: { free: boolean; onChang
               className={`mt-0.5 h-4 w-4 ${option.free ? "accent-emerald-600" : "accent-blue-600"}`}
             />
             <span>
-              <span className="block text-sm font-semibold text-ink-1">{option.label}</span>
-              <span className="block text-xs text-ink-5">{option.description}</span>
+              <span className="block text-sm font-semibold text-ink-1">{t(option.label)}</span>
+              <span className="block text-xs text-ink-5">{t(option.description)}</span>
             </span>
           </label>
         );

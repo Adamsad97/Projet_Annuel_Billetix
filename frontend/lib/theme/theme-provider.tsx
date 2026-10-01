@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { t } from "@/lib/i18n/translate";
 
 export type Theme = "light" | "dark";
 
@@ -59,6 +60,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
 export function useTheme() {
   const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error("useTheme() doit être utilisé sous ThemeProvider");
+  if (!ctx) throw new Error(t("useTheme() doit être utilisé sous ThemeProvider"));
   return ctx;
 }

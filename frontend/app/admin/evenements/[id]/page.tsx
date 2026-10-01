@@ -21,16 +21,17 @@ import { MutedMessage } from "@/components/ui/muted-message";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { t, msg } from "@/lib/i18n/translate";
 
 const statusBadge: Record<string, { label: string; className: string }> = {
-  PUBLISHED: { label: "● Publié", className: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30" },
-  PENDING_VALIDATION: { label: "⏳ En validation", className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30" },
-  DRAFT: { label: "Brouillon", className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
-  ARCHIVED: { label: "Archivé", className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
-  CANCELLED: { label: "✕ Annulé", className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
-  SUSPENDED: { label: "⊘ Désactivé", className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
-  POSTPONED: { label: "↻ Reporté", className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30" },
-  TERMINATED: { label: "Terminé", className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
+  PUBLISHED: { label: msg("● Publié"), className: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30" },
+  PENDING_VALIDATION: { label: msg("⏳ En validation"), className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30" },
+  DRAFT: { label: msg("Brouillon"), className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
+  ARCHIVED: { label: msg("Archivé"), className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
+  CANCELLED: { label: msg("✕ Annulé"), className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
+  SUSPENDED: { label: msg("⊘ Désactivé"), className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
+  POSTPONED: { label: msg("↻ Reporté"), className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30" },
+  TERMINATED: { label: msg("Terminé"), className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
 };
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -61,7 +62,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
         if (err instanceof ApiError && err.status === 404) {
           setEvent(null);
         } else {
-          setError(err instanceof ApiError ? err.message : "Impossible de charger cet événement.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de charger cet événement."));
         }
       });
     getAdminEventOverview(id)
@@ -74,7 +75,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
   if (event === undefined) {
     return (
       <AdminShell active="/admin/evenements">
-        <MutedMessage>{error ?? "Chargement…"}</MutedMessage>
+        <MutedMessage>{error ?? t("Chargement…")}</MutedMessage>
       </AdminShell>
     );
   }
@@ -83,7 +84,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
     return (
       <AdminShell active="/admin/evenements">
         <div className={cardClass("p-8 text-center")}>
-          <h1 className="text-lg font-bold text-ink-1">Événement introuvable</h1>
+          <h1 className="text-lg font-bold text-ink-1">{t("Événement introuvable")}</h1>
         </div>
       </AdminShell>
     );
@@ -97,7 +98,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <AdminShell active="/admin/evenements">
-      <BackLink href="/admin/evenements">Événements</BackLink>
+      <BackLink href="/admin/evenements">{t("Événements")}</BackLink>
 
       {error ? (
         <Alert className="mb-6">{error}</Alert>
@@ -107,14 +108,12 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-bold text-ink-1">{event.title}</h1>
-            <Badge tone={badge.className} size="md">{badge.label}</Badge>
+            <Badge tone={badge.className} size="md">{t(badge.label)}</Badge>
             <span className="rounded-full bg-hairline-1 px-2.5 py-1 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2">
               {eventTiming(event.start_date, event.end_date)}
             </span>
             {event.is_hidden ? (
-              <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
-                Masqué au public
-              </span>
+              <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">{t("Masqué au public")}</span>
             ) : null}
           </div>
           <p className="mt-1 text-sm text-ink-5">
@@ -124,23 +123,19 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
         <Link
           href={eventPath(event)}
           className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
-        >
-          Voir la page publique →
-        </Link>
+        >{t("Voir la page publique →")}</Link>
       </div>
 
       <EventAdminControls event={event} onChanged={load} />
 
-      <Section title="Organisateur">
+      <Section title={t("Organisateur")}>
         <div className={cardClass("flex flex-wrap items-center justify-between gap-4 px-5 py-4")}>
           {overview?.organizer ? (
             <div className="text-sm">
               <p className="font-semibold text-ink-1">
                 {overview.organizer.first_name} {overview.organizer.last_name}
                 {overview.organizer.is_suspended ? (
-                  <span className="ml-2 rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-300 ring-1 ring-inset ring-red-500/30">
-                    Compte suspendu
-                  </span>
+                  <span className="ml-2 rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-300 ring-1 ring-inset ring-red-500/30">{t("Compte suspendu")}</span>
                 ) : null}
               </p>
               <p className="text-ink-4">{overview.organizer.email}</p>
@@ -152,9 +147,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
           <Link
             href={`/admin/utilisateurs/${event.organizer_id}`}
             className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
-          >
-            Voir la fiche de l&apos;organisateur
-          </Link>
+          >{t("Voir la fiche de l'organisateur")}</Link>
         </div>
       </Section>
 
@@ -174,10 +167,10 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
           viewer="ADMIN"
         />
       ) : (
-        <p className={cardClass("mb-8 px-5 py-4 text-sm text-ink-5")}>Chargement des ventes et des finances…</p>
+        <p className={cardClass("mb-8 px-5 py-4 text-sm text-ink-5")}>{t("Chargement des ventes et des finances…")}</p>
       )}
 
-      <Section title="Lieu">
+      <Section title={t("Lieu")}>
         <div className={cardClass("p-5")}>
           <p className="text-sm font-semibold text-ink-1">{event.venue_name}</p>
           <p className="mb-3 text-sm text-ink-4">{address}</p>
@@ -189,20 +182,20 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
         </div>
       </Section>
 
-      <Section title="Description">
+      <Section title={t("Description")}>
         <div className={cardClass("p-5")}>
           <p className="whitespace-pre-line text-sm leading-relaxed text-ink-3">{event.description}</p>
         </div>
       </Section>
 
-      <Section title="Documents">
+      <Section title={t("Documents")}>
         <div className={cardClass("p-5")}>
           <DocumentGrid
             documents={[
-              { id: "poster", label: "Affiche de l'événement", url: event.poster_url ?? "" },
-              ...(event.cover_url ? [{ id: "cover", label: "Image de couverture", url: event.cover_url }] : []),
+              { id: "poster", label: t("Affiche de l'événement"), url: event.poster_url ?? "" },
+              ...(event.cover_url ? [{ id: "cover", label: t("Image de couverture"), url: event.cover_url }] : []),
               ...(event.non_profit_document_url
-                ? [{ id: "non-profit", label: "Justificatif à but non lucratif", url: event.non_profit_document_url }]
+                ? [{ id: "non-profit", label: t("Justificatif à but non lucratif"), url: event.non_profit_document_url }]
                 : []),
             ]}
           />
@@ -210,19 +203,19 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
       </Section>
 
       {overview && overview.validation_requests.length > 0 ? (
-        <Section title="Demandes de complément">
+        <Section title={t("Demandes de complément")}>
           <div className="flex flex-col gap-3">
             {overview.validation_requests.map((request) => (
               <div key={request.id} className={cardClass("px-5 py-4 text-sm")}>
-                <p className="text-xs text-ink-5">Demandé le {shortDateTime.format(new Date(request.created_at))}</p>
+                <p className="text-xs text-ink-5">{t("Demandé le {value}", { value: shortDateTime.format(new Date(request.created_at)) })}</p>
                 <p className="mt-1 text-ink-1">{request.message}</p>
                 {request.response ? (
                   <p className="mt-2 rounded-xl bg-hairline-1 px-3 py-2 text-ink-3">
-                    <span className="font-semibold">Réponse de l&apos;organisateur</span>
+                    <span className="font-semibold">{t("Réponse de l'organisateur")}</span>
                     {request.responded_at ? ` (${shortDateTime.format(new Date(request.responded_at))})` : ""} : {request.response}
                   </p>
                 ) : (
-                  <p className="mt-2 text-xs text-amber-500">En attente de réponse de l&apos;organisateur.</p>
+                  <p className="mt-2 text-xs text-amber-500">{t("En attente de réponse de l'organisateur.")}</p>
                 )}
               </div>
             ))}
@@ -230,32 +223,32 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
         </Section>
       ) : null}
 
-      <Section title="Participants">
+      <Section title={t("Participants")}>
         {overview ? (
           <AttendeesExplorer tickets={overview.attendees} exportName={exportName} />
         ) : (
-          <p className={cardClass("px-5 py-4 text-sm text-ink-5")}>Chargement…</p>
+          <p className={cardClass("px-5 py-4 text-sm text-ink-5")}>{t("Chargement…")}</p>
         )}
       </Section>
 
-      <Section title="Historique des actions">
+      <Section title={t("Historique des actions")}>
         <div className={cardClass("overflow-hidden")}>
           {overview && overview.history.length > 0 ? (
             overview.history.map((log) => (
               <div key={log.id} className="border-b border-hairline-1 px-5 py-3 text-sm last:border-b-0">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-semibold text-ink-1">
-                    {log.action === "CUSTOM" && log.reason ? log.reason : auditActionLabels[log.action] ?? log.action}
+                    {log.action === "CUSTOM" && log.reason ? log.reason : t(auditActionLabels[log.action] ?? log.action)}
                   </span>
                   <span className="text-xs text-ink-5">{shortDateTime.format(new Date(log.created_at))}</span>
                 </div>
-                <p className="text-xs text-ink-5">Par {log.performed_by_email ?? log.performed_by}</p>
+                <p className="text-xs text-ink-5">{t("Par {value}", { value: log.performed_by_email ?? log.performed_by })}</p>
                 {log.reason && log.action !== "CUSTOM" ? <p className="mt-1 text-ink-3">{log.reason}</p> : null}
               </div>
             ))
           ) : (
             <p className="px-5 py-6 text-center text-sm text-ink-5">
-              {overview ? "Aucune action enregistrée sur cet événement." : "Chargement…"}
+              {overview ? t("Aucune action enregistrée sur cet événement.") : t("Chargement…")}
             </p>
           )}
         </div>

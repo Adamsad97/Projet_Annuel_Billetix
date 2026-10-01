@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n/translate";
 // Miroir de backend/auth-service/src/auth/age.ts — auth-service refait le
 // contrôle d'âge à l'inscription et fait foi.
 
@@ -15,6 +16,6 @@ export function ageInYears(birthDate: string, today: Date = new Date()): number 
 export function underageMessage(minimumAge: number): string {
   // L'âge minimum est réglable par l'admin : « majeures » seulement s'il
   // correspond bien à la majorité (ou plus).
-  const audience = minimumAge >= 18 ? "aux personnes majeures" : `aux personnes d'au moins ${minimumAge} ans`;
-  return `Vous devez avoir au moins ${minimumAge} ans pour utiliser BilleTix. L'inscription est réservée ${audience}.`;
+  const audience = minimumAge >= 18 ? t("aux personnes majeures") : t("aux personnes d'au moins {minimumAge} ans", { minimumAge });
+  return t("Vous devez avoir au moins {minimumAge} ans pour utiliser BilleTix. L'inscription est réservée {audience}.", { minimumAge, audience });
 }

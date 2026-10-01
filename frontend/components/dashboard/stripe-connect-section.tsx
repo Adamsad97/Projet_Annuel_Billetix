@@ -10,14 +10,15 @@ import {
 import { ApiError } from "@/lib/api/http-error";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 type Badge = { label: string; className: string };
 
 function badgeFor(status: ApiConnectStatus): Badge {
-  if (status.onboarded) return { label: "Actif", className: "bg-emerald-500/15 text-emerald-500" };
-  if (status.details_submitted) return { label: "En vérification", className: "bg-amber-500/15 text-amber-500" };
-  if (status.connected) return { label: "À compléter", className: "bg-amber-500/15 text-amber-500" };
-  return { label: "Non configuré", className: "bg-hairline-2 text-ink-3" };
+  if (status.onboarded) return { label: t("Actif"), className: "bg-emerald-500/15 text-emerald-500" };
+  if (status.details_submitted) return { label: t("En vérification"), className: "bg-amber-500/15 text-amber-500" };
+  if (status.connected) return { label: t("À compléter"), className: "bg-amber-500/15 text-amber-500" };
+  return { label: t("Non configuré"), className: "bg-hairline-2 text-ink-3" };
 }
 
 /** Option Stripe Connect pour des reversements automatiques plutôt que par virement sur IBAN. */
@@ -35,7 +36,7 @@ export function StripeConnectSection() {
       const { url } = await request();
       window.location.assign(url);
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : "Stripe est momentanément indisponible, veuillez réessayer.");
+      setActionError(err instanceof ApiError ? err.message : t("Stripe est momentanément indisponible, veuillez réessayer."));
       setRedirecting(false);
     }
   }
@@ -61,10 +62,10 @@ export function StripeConnectSection() {
         if (cancelled) return;
         setLoadError(
           err instanceof ApiError && err.status === 404
-            ? "Créez d'abord votre profil organisateur pour configurer vos reversements."
+            ? t("Créez d'abord votre profil organisateur pour configurer vos reversements.")
             : err instanceof ApiError
               ? err.message
-              : "Impossible de charger votre compte de reversement.",
+              : t("Impossible de charger votre compte de reversement."),
         );
       });
     return () => {
@@ -77,29 +78,25 @@ export function StripeConnectSection() {
   return (
     <section className={cardClass("p-6")}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-bold text-ink-1">
-          Stripe Connect <span className="text-sm font-normal text-ink-5">(facultatif)</span>
+        <h2 className="text-lg font-bold text-ink-1">{t("Stripe Connect")}{" "}<span className="text-sm font-normal text-ink-5">{t("(facultatif)")}</span>
         </h2>
-        {badge ? <span className={`rounded-full px-3 py-1 text-xs font-semibold ${badge.className}`}>{badge.label}</span> : null}
+        {badge ? <span className={`rounded-full px-3 py-1 text-xs font-semibold ${badge.className}`}>{t(badge.label)}</span> : null}
       </div>
 
       {loadError ? (
         <p className="text-sm text-ink-5">{loadError}</p>
       ) : status === null ? (
-        <p className="text-sm text-ink-5">{redirecting ? "Redirection vers Stripe…" : "Chargement…"}</p>
+        <p className="text-sm text-ink-5">{redirecting ? t("Redirection vers Stripe…") : t("Chargement…")}</p>
       ) : (
         <div className="flex flex-col gap-4">
           {status.onboarded ? (
             <>
-              <p className="text-sm text-ink-4">
-                Votre compte Stripe est prêt. Choisissez « Stripe Connect » comme moyen de reversement pour être
-                payé automatiquement par Stripe.
-              </p>
+              <p className="text-sm text-ink-4">{t("Votre compte Stripe est prêt. Choisissez « Stripe Connect » comme moyen de reversement pour être payé automatiquement par Stripe.")}</p>
               {status.bank ? (
                 <div className="flex items-center gap-3 rounded-xl bg-hairline-1 px-4 py-3 ring-1 ring-inset ring-hairline-2">
                   <span aria-hidden="true" className="text-xl">🏦</span>
                   <div>
-                    <p className="text-sm font-semibold text-ink-1">{status.bank.bank_name ?? "Compte bancaire"}</p>
+                    <p className="text-sm font-semibold text-ink-1">{status.bank.bank_name ?? t("Compte bancaire")}</p>
                     <p className="font-mono text-xs text-ink-5">•••• •••• •••• {status.bank.last4}</p>
                   </div>
                 </div>
@@ -107,22 +104,19 @@ export function StripeConnectSection() {
             </>
           ) : status.details_submitted ? (
             <p className="text-sm text-ink-4">
-              Stripe vérifie les informations transmises (quelques minutes à quelques jours).
+              {t("Stripe vérifie les informations transmises (quelques minutes à quelques jours).")}
               {status.requirements_due > 0
-                ? ` ${status.requirements_due} information${status.requirements_due > 1 ? "s" : ""} reste${status.requirements_due > 1 ? "nt" : ""} à fournir.`
+                ? ` ${status.requirements_due > 1 ? t("{count} informations restent à fournir.", { count: status.requirements_due }) : t("1 information reste à fournir.")}`
                 : ""}
             </p>
           ) : status.connected ? (
             <p className="text-sm text-ink-4">
               {returned
-                ? "Votre inscription chez Stripe n'est pas terminée : reprenez-la là où vous l'avez laissée."
-                : "Votre inscription chez Stripe a commencé mais n'est pas terminée."}
+                ? t("Votre inscription chez Stripe n'est pas terminée : reprenez-la là où vous l'avez laissée.")
+                : t("Votre inscription chez Stripe a commencé mais n'est pas terminée.")}
             </p>
           ) : (
-            <p className="text-sm text-ink-4">
-              Si vous le souhaitez, vous pouvez être payé par Stripe, notre prestataire de paiement, plutôt que par
-              virement sur votre IBAN. Votre identité et votre compte bancaire sont alors saisis chez Stripe.
-            </p>
+            <p className="text-sm text-ink-4">{t("Si vous le souhaitez, vous pouvez être payé par Stripe, notre prestataire de paiement, plutôt que par virement sur votre IBAN. Votre identité et votre compte bancaire sont alors saisis chez Stripe.")}</p>
           )}
 
           {actionError ? (
@@ -139,7 +133,7 @@ export function StripeConnectSection() {
                 onClick={() => goTo(openConnectDashboard)}
                 className={buttonClass("secondary", "rounded-full px-5 py-2.5 text-sm disabled:opacity-50")}
               >
-                {redirecting ? "Redirection…" : "Gérer sur Stripe ↗"}
+                {redirecting ? t("Redirection…") : t("Gérer sur Stripe ↗")}
               </button>
             ) : null}
             {!status.onboarded && (!status.details_submitted || status.requirements_due > 0) ? (
@@ -150,10 +144,10 @@ export function StripeConnectSection() {
                 className={buttonClass("primary", "rounded-full px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50")}
               >
                 {redirecting
-                  ? "Redirection vers Stripe…"
+                  ? t("Redirection vers Stripe…")
                   : status.connected
-                    ? "Reprendre l'inscription"
-                    : "Connecter un compte Stripe"}
+                    ? t("Reprendre l'inscription")
+                    : t("Connecter un compte Stripe")}
               </button>
             ) : null}
           </div>

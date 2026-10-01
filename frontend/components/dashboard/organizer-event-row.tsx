@@ -1,8 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import {
   statusBadgeStyles,
   type OrganizerEvent,
 } from "@/lib/constants/dashboard";
+import { t } from "@/lib/i18n/translate";
 
 export function OrganizerEventRow({ event }: { event: OrganizerEvent }) {
   const badge = statusBadgeStyles[event.status];
@@ -27,12 +30,10 @@ export function OrganizerEventRow({ event }: { event: OrganizerEvent }) {
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
             >
-              {badge.label}
+              {t(badge.label)}
             </span>
             {event.isHidden ? (
-              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
-                Masqué au public
-              </span>
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">{t("Masqué au public")}</span>
             ) : null}
           </div>
 

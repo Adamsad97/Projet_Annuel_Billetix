@@ -11,22 +11,23 @@ import type { ApiPayout, ApiPayoutStatus } from "@/lib/api/organizer";
 import { matchesSearch } from "@/lib/format/search";
 import { cardClass } from "@/components/ui/card";
 import { filterSelectClass } from "@/components/ui/field";
+import { t, msg } from "@/lib/i18n/translate";
 
 type SortOrder = "scheduled_desc" | "scheduled_asc" | "amount";
 
 const STATUS_OPTIONS: { id: "all" | ApiPayoutStatus; label: string }[] = [
-  { id: "all", label: "Tous" },
-  { id: "PENDING", label: "En attente" },
-  { id: "PROCESSING", label: "En cours" },
-  { id: "COMPLETED", label: "Versés" },
-  { id: "BLOCKED", label: "Bloqués" },
-  { id: "FAILED", label: "Échoués" },
+  { id: "all", label: msg("Tous") },
+  { id: "PENDING", label: msg("En attente") },
+  { id: "PROCESSING", label: msg("En cours") },
+  { id: "COMPLETED", label: msg("Versés") },
+  { id: "BLOCKED", label: msg("Bloqués") },
+  { id: "FAILED", label: msg("Échoués") },
 ];
 
 const SORT_OPTIONS: { id: SortOrder; label: string }[] = [
-  { id: "scheduled_desc", label: "Date prévue (récente)" },
-  { id: "scheduled_asc", label: "Date prévue (ancienne)" },
-  { id: "amount", label: "Montant net" },
+  { id: "scheduled_desc", label: msg("Date prévue (récente)") },
+  { id: "scheduled_asc", label: msg("Date prévue (ancienne)") },
+  { id: "amount", label: msg("Montant net") },
 ];
 
 export function OrganizerPayoutsExplorer({
@@ -63,26 +64,22 @@ export function OrganizerPayoutsExplorer({
 
   if (payouts.length === 0) {
     return (
-      <div className={cardClass("px-5 py-10 text-center text-sm text-ink-5")}>
-        Aucun reversement pour le moment.
-      </div>
+      <div className={cardClass("px-5 py-10 text-center text-sm text-ink-5")}>{t("Aucun reversement pour le moment.")}</div>
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <SearchField value={search} onChange={setSearch} placeholder="Rechercher un événement…" className="w-full sm:max-w-sm" />
-        <label className="flex items-center gap-2 text-sm text-ink-5">
-          Trier par
-          <select
+        <SearchField value={search} onChange={setSearch} placeholder={t("Rechercher un événement…")} className="w-full sm:max-w-sm" />
+        <label className="flex items-center gap-2 text-sm text-ink-5">{t("Trier par")}<select
             value={sort}
             onChange={(event) => setSort(event.target.value as SortOrder)}
             className={filterSelectClass}
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.id} value={option.id}>
-                {option.label}
+                {t(option.label)}
               </option>
             ))}
           </select>
@@ -98,7 +95,7 @@ export function OrganizerPayoutsExplorer({
           ))
         ) : (
           <div className="flex flex-col items-center gap-2 px-5 py-8 text-center">
-            <p className="text-sm text-ink-5">Aucun reversement ne correspond à ces critères.</p>
+            <p className="text-sm text-ink-5">{t("Aucun reversement ne correspond à ces critères.")}</p>
             <button
               type="button"
               onClick={() => {
@@ -106,9 +103,7 @@ export function OrganizerPayoutsExplorer({
                 setStatus("all");
               }}
               className="text-sm font-medium text-link hover:text-link-hover"
-            >
-              Réinitialiser
-            </button>
+            >{t("Réinitialiser")}</button>
           </div>
         )}
       </div>

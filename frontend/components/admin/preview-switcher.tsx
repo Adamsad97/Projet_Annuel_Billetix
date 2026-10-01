@@ -4,13 +4,14 @@
 
 import { useRouter } from "next/navigation";
 import { PREVIEW_ROLES, previewHome, startPreview, type PreviewRole } from "@/lib/auth/preview";
+import { t } from "@/lib/i18n/translate";
 
 export function PreviewSwitcher({ current, compact = false }: { current?: PreviewRole | null; compact?: boolean }) {
   const router = useRouter();
 
   return (
     <label className="relative inline-flex items-center">
-      <span className="sr-only">Voir la plateforme en tant que</span>
+      <span className="sr-only">{t("Voir la plateforme en tant que")}</span>
       <select
         value={current ?? ""}
         onChange={(event) => {
@@ -21,12 +22,10 @@ export function PreviewSwitcher({ current, compact = false }: { current?: Previe
         }}
         className={`cursor-pointer appearance-none rounded-full border border-hairline-3 bg-card py-2 pl-3 pr-8 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 focus:border-blue-500 focus:outline-none ${compact ? "max-w-[9rem]" : ""}`}
       >
-        <option value="" disabled>
-          👁 Voir en tant que…
-        </option>
+        <option value="" disabled>{t("👁 Voir en tant que…")}</option>
         {PREVIEW_ROLES.map((option) => (
           <option key={option.role} value={option.role}>
-            {option.label}
+            {t(option.label)}
           </option>
         ))}
       </select>

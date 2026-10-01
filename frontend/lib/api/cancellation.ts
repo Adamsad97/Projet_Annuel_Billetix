@@ -2,6 +2,7 @@
 
 import { apiGet, apiPost } from "./client";
 import { withCountsRefresh } from "@/lib/admin/count-events";
+import { msg } from "@/lib/i18n/translate";
 
 export type CancellationStatus = "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
 export type ChangeRequestKind = "CANCELLATION" | "POSTPONEMENT";
@@ -35,21 +36,21 @@ export interface ApiCancellationRequest {
 }
 
 export const cancellationStatusLabels: Record<CancellationStatus, { label: string; className: string }> = {
-  PENDING: { label: "En attente", className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30" },
-  APPROVED: { label: "Acceptée", className: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30" },
-  REJECTED: { label: "Refusée", className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
-  WITHDRAWN: { label: "Retirée", className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
+  PENDING: { label: msg("En attente"), className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30" },
+  APPROVED: { label: msg("Acceptée"), className: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30" },
+  REJECTED: { label: msg("Refusée"), className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30" },
+  WITHDRAWN: { label: msg("Retirée"), className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2" },
 };
 
 export const changeRequestKindLabels: Record<ChangeRequestKind, { title: string; badge: string; className: string }> = {
   CANCELLATION: {
-    title: "Demande d'annulation",
-    badge: "Annulation",
+    title: msg("Demande d'annulation"),
+    badge: msg("Annulation"),
     className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
   },
   POSTPONEMENT: {
-    title: "Demande de report",
-    badge: "Report",
+    title: msg("Demande de report"),
+    badge: msg("Report"),
     className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
   },
 };

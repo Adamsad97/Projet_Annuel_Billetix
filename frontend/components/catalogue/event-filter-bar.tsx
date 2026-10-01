@@ -18,6 +18,7 @@ import {
   type CatalogueFilters,
 } from "@/lib/catalogue/filters";
 import type { EventSearch } from "@/lib/catalogue/use-event-search";
+import { t } from "@/lib/i18n/translate";
 
 const fieldClassName =
   "h-11 w-full rounded-full border border-hairline-3 bg-card pl-11 pr-4 text-sm text-ink-1 placeholder:text-ink-5 focus:border-blue-500 focus:outline-none";
@@ -47,7 +48,7 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
         {/* Recherche */}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_280px]">
           <label className="relative">
-            <span className="sr-only">Rechercher</span>
+            <span className="sr-only">{t("Rechercher")}</span>
             <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-5">
               <SearchIcon />
             </span>
@@ -55,12 +56,12 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
               type="search"
               value={search.filters.q}
               onChange={(event) => search.update({ q: event.target.value })}
-              placeholder="Événement, artiste, lieu…"
+              placeholder={t("Événement, artiste, lieu…")}
               className={fieldClassName}
             />
           </label>
           <label className="relative">
-            <span className="sr-only">Ville</span>
+            <span className="sr-only">{t("Ville")}</span>
             <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-5">
               <LocationPinIcon />
             </span>
@@ -68,7 +69,7 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
               type="text"
               value={search.filters.city}
               onChange={(event) => search.update({ city: event.target.value })}
-              placeholder="Ville"
+              placeholder={t("Ville")}
               className={fieldClassName}
             />
           </label>
@@ -77,16 +78,14 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
         {/* Filtres */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <FilterMenu label="Catégorie" value={categoryLabel} active={search.filters.category !== ""}>
+            <FilterMenu label={t("Catégorie")} value={categoryLabel} active={search.filters.category !== ""}>
               {(close) => (
                 <div role="menu">
                   <FilterOption
                     selected={search.filters.category === ""}
                     onSelect={() => { search.update({ category: "" }); close(); }}
                     count={search.categoryCounts ? Object.values(search.categoryCounts).reduce((sum, n) => sum + n, 0) : undefined}
-                  >
-                    Toutes les catégories
-                  </FilterOption>
+                  >{t("Toutes les catégories")}</FilterOption>
                   {search.categories.map((category) => (
                     <FilterOption
                       key={category.id}
@@ -102,7 +101,7 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
               )}
             </FilterMenu>
 
-            <FilterMenu label="Date" value={whenLabel(search.filters)} active={search.filters.when !== "all"}>
+            <FilterMenu label={t("Date")} value={whenLabel(search.filters)} active={search.filters.when !== "all"}>
               {(close) => (
                 <div role="menu">
                   {WHEN_OPTIONS.filter((option) => option.id !== "custom").map((option) => (
@@ -112,24 +111,20 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
                       count={search.periodCounts?.[option.id]}
                       onSelect={() => { search.update({ when: option.id, from: "", to: "" }); close(); }}
                     >
-                      {option.label}
+                      {t(option.label)}
                     </FilterOption>
                   ))}
                   <div className="mt-2 border-t border-hairline-1 px-2 pb-1 pt-3">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-5">Choisir des dates</p>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-5">{t("Choisir des dates")}</p>
                     <div className="grid grid-cols-2 gap-2">
-                      <label className="flex flex-col gap-1 text-xs text-ink-5">
-                        Du
-                        <input
+                      <label className="flex flex-col gap-1 text-xs text-ink-5">{t("Du")}<input
                           type="date"
                           value={draftDates.from}
                           onChange={(event) => setDraftDates((d) => ({ ...d, from: event.target.value }))}
                           className={smallInputClassName}
                         />
                       </label>
-                      <label className="flex flex-col gap-1 text-xs text-ink-5">
-                        Au
-                        <input
+                      <label className="flex flex-col gap-1 text-xs text-ink-5">{t("Au")}<input
                           type="date"
                           value={draftDates.to}
                           min={draftDates.from || undefined}
@@ -143,29 +138,21 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
                       disabled={!draftDates.from && !draftDates.to}
                       onClick={() => { search.update({ when: "custom", from: draftDates.from, to: draftDates.to }); close(); }}
                       className={`${applyButtonClassName} mt-3`}
-                    >
-                      Appliquer
-                    </button>
+                    >{t("Appliquer")}</button>
                   </div>
                 </div>
               )}
             </FilterMenu>
 
-            <FilterMenu label="Prix" value={priceLabel(search.filters)} active={search.filters.price !== "all"}>
+            <FilterMenu label={t("Prix")} value={priceLabel(search.filters)} active={search.filters.price !== "all"}>
               {(close) => (
                 <div role="menu">
-                  <FilterOption selected={search.filters.price === "all"} onSelect={() => { search.update({ price: "all", minPrice: "", maxPrice: "" }); close(); }}>
-                    Tous les prix
-                  </FilterOption>
-                  <FilterOption selected={search.filters.price === "free"} onSelect={() => { search.update({ price: "free", minPrice: "", maxPrice: "" }); close(); }}>
-                    Gratuit
-                  </FilterOption>
+                  <FilterOption selected={search.filters.price === "all"} onSelect={() => { search.update({ price: "all", minPrice: "", maxPrice: "" }); close(); }}>{t("Tous les prix")}</FilterOption>
+                  <FilterOption selected={search.filters.price === "free"} onSelect={() => { search.update({ price: "free", minPrice: "", maxPrice: "" }); close(); }}>{t("Gratuit")}</FilterOption>
                   <div className="mt-2 border-t border-hairline-1 px-2 pb-1 pt-3">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-5">Fourchette de prix (TTC)</p>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-5">{t("Fourchette de prix (TTC)")}</p>
                     <div className="grid grid-cols-2 gap-2">
-                      <label className="flex flex-col gap-1 text-xs text-ink-5">
-                        Minimum (€)
-                        <input
+                      <label className="flex flex-col gap-1 text-xs text-ink-5">{t("Minimum (€)")}<input
                           inputMode="decimal"
                           value={draftPrice.min}
                           onChange={(event) => setDraftPrice((p) => ({ ...p, min: event.target.value }))}
@@ -173,9 +160,7 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
                           className={smallInputClassName}
                         />
                       </label>
-                      <label className="flex flex-col gap-1 text-xs text-ink-5">
-                        Maximum (€)
-                        <input
+                      <label className="flex flex-col gap-1 text-xs text-ink-5">{t("Maximum (€)")}<input
                           inputMode="decimal"
                           value={draftPrice.max}
                           onChange={(event) => setDraftPrice((p) => ({ ...p, max: event.target.value }))}
@@ -189,21 +174,17 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
                       disabled={!draftPrice.min.trim() && !draftPrice.max.trim()}
                       onClick={() => { search.update({ price: "custom", minPrice: draftPrice.min, maxPrice: draftPrice.max }); close(); }}
                       className={`${applyButtonClassName} mt-3`}
-                    >
-                      Appliquer
-                    </button>
+                    >{t("Appliquer")}</button>
                   </div>
                 </div>
               )}
             </FilterMenu>
 
-            <FilterMenu label="Distance" value={distanceLabel(search.radiusKm)} active={search.nearMe !== null}>
+            <FilterMenu label={t("Distance")} value={distanceLabel(search.radiusKm)} active={search.nearMe !== null}>
               {(close) => (
                 <div className="flex flex-col gap-3 p-2">
-                  <p className="text-sm text-ink-3">Événements autour de votre position actuelle.</p>
-                  <label className="flex flex-col gap-1 text-xs text-ink-5">
-                    Rayon
-                    <select
+                  <p className="text-sm text-ink-3">{t("Événements autour de votre position actuelle.")}</p>
+                  <label className="flex flex-col gap-1 text-xs text-ink-5">{t("Rayon")}<select
                       value={search.radiusKm}
                       onChange={(event) => search.setRadiusKm(Number(event.target.value))}
                       className={smallInputClassName}
@@ -213,7 +194,7 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
                           {km} km
                         </option>
                       ))}
-                      <option value={BEYOND_MAX_RADIUS}>Plus de {MAX_RADIUS_KM} km</option>
+                      <option value={BEYOND_MAX_RADIUS}>{t("Plus de {MAX_RADIUS_KM} km", { MAX_RADIUS_KM })}</option>
                     </select>
                   </label>
                   {search.locateError ? <p className="text-xs text-danger">{search.locateError}</p> : null}
@@ -223,12 +204,10 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
                         type="button"
                         onClick={() => { search.disableNearMe(); close(); }}
                         className="h-10 flex-1 rounded-xl border border-hairline-3 text-sm font-medium text-ink-2 hover:text-ink-1"
-                      >
-                        Désactiver
-                      </button>
+                      >{t("Désactiver")}</button>
                     ) : null}
                     <button type="button" onClick={search.locate} disabled={search.locating} className={`${applyButtonClassName} flex-1`}>
-                      {search.locating ? "Localisation…" : search.nearMe ? "Actualiser ma position" : "Utiliser ma position"}
+                      {search.locating ? t("Localisation…") : search.nearMe ? t("Actualiser ma position") : t("Utiliser ma position")}
                     </button>
                   </div>
                 </div>
@@ -240,22 +219,18 @@ export function EventFilterBar({ search }: { search: EventSearch }) {
                 type="button"
                 onClick={search.resetAll}
                 className="h-10 px-2 text-sm font-medium text-link transition-colors hover:text-link-hover"
-              >
-                Réinitialiser
-              </button>
+              >{t("Réinitialiser")}</button>
             ) : null}
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-ink-5">
-            Trier par
-            <select
+          <label className="flex items-center gap-2 text-sm text-ink-5">{t("Trier par")}<select
               value={search.filters.sort}
               onChange={(event) => search.update({ sort: event.target.value as CatalogueFilters["sort"] })}
               className={filterSelectClass}
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.id} value={option.id}>
-                  {option.label}
+                  {t(option.label)}
                 </option>
               ))}
             </select>

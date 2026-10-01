@@ -1,3 +1,4 @@
+import { t, msg } from "@/lib/i18n/translate";
 // Statut d'un événement vu par l'appareil de contrôle (agent, organisateur) :
 // l'état décidé par l'organisation passe avant le calendrier.
 
@@ -28,14 +29,14 @@ export interface ScanEventStatus {
 }
 
 const STATUSES: Record<ScanEventStatusKey, Omit<ScanEventStatus, "key">> = {
-  CANCELLED: { label: "Annulé", badge: "bg-red-500/15 text-red-600", closed: true },
-  SUSPENDED: { label: "Suspendu", badge: "bg-amber-500/15 text-amber-600", closed: true },
-  POSTPONED: { label: "Reporté", badge: "bg-amber-500/15 text-amber-600", closed: true },
-  UNAVAILABLE: { label: "Indisponible", badge: "bg-amber-500/15 text-amber-600", closed: true },
-  PENDING: { label: "En attente de validation", badge: "bg-hairline-2 text-ink-3", closed: true },
-  ENDED: { label: "Terminé", badge: "bg-hairline-2 text-ink-4", closed: false },
-  ONGOING: { label: "En cours", badge: "bg-emerald-500/15 text-emerald-600", closed: false },
-  UPCOMING: { label: "À venir", badge: "bg-blue-500/15 text-blue-600", closed: false },
+  CANCELLED: { label: msg("Annulé"), badge: "bg-red-500/15 text-red-600", closed: true },
+  SUSPENDED: { label: msg("Suspendu"), badge: "bg-amber-500/15 text-amber-600", closed: true },
+  POSTPONED: { label: msg("Reporté"), badge: "bg-amber-500/15 text-amber-600", closed: true },
+  UNAVAILABLE: { label: msg("Indisponible"), badge: "bg-amber-500/15 text-amber-600", closed: true },
+  PENDING: { label: msg("En attente de validation"), badge: "bg-hairline-2 text-ink-3", closed: true },
+  ENDED: { label: msg("Terminé"), badge: "bg-hairline-2 text-ink-4", closed: false },
+  ONGOING: { label: msg("En cours"), badge: "bg-emerald-500/15 text-emerald-600", closed: false },
+  UPCOMING: { label: msg("À venir"), badge: "bg-blue-500/15 text-blue-600", closed: false },
 };
 
 export function scanEventStatus(event: StatusSource, now = Date.now()): ScanEventStatus {
@@ -61,19 +62,19 @@ export function closedEventNotice(
   const motive = reason?.trim() || null;
   switch (status) {
     case "CANCELLED":
-      return { title: "Événement annulé", text: "Aucun contrôle à effectuer : les participants sont remboursés.", reason: motive };
+      return { title: t("Événement annulé"), text: t("Aucun contrôle à effectuer : les participants sont remboursés."), reason: motive };
     case "SUSPENDED":
-      return { title: "Événement suspendu", text: "Les entrées sont bloquées jusqu'à nouvel ordre de l'organisation.", reason: motive };
+      return { title: t("Événement suspendu"), text: t("Les entrées sont bloquées jusqu'à nouvel ordre de l'organisation."), reason: motive };
     case "POSTPONED":
       return {
-        title: "Événement reporté",
-        text: "Nouvelle date à venir : le contrôle reprendra à la date fixée par l'organisateur.",
+        title: t("Événement reporté"),
+        text: t("Nouvelle date à venir : le contrôle reprendra à la date fixée par l'organisateur."),
         reason: motive,
       };
     case "UNAVAILABLE":
-      return { title: "Événement indisponible", text: "L'administration a retiré l'événement : les entrées sont bloquées.", reason: null };
+      return { title: t("Événement indisponible"), text: t("L'administration a retiré l'événement : les entrées sont bloquées."), reason: null };
     case "PENDING":
-      return { title: "Événement pas encore publié", text: "Aucun billet n'est encore vendu : rien à contrôler pour l'instant.", reason: null };
+      return { title: t("Événement pas encore publié"), text: t("Aucun billet n'est encore vendu : rien à contrôler pour l'instant."), reason: null };
     default:
       return null;
   }

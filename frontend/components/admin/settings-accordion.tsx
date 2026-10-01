@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api/http-error";
 import { FIELDS, fromInput, SECTION_ORDER, SECTIONS, settingLabel, toInput } from "@/lib/admin/settings-catalog";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 interface SectionGroup {
   id: string;
@@ -23,7 +24,7 @@ export function SettingsAccordion() {
   useEffect(() => {
     listPlatformSettings()
       .then(setSettings)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger les paramètres."));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t("Impossible de charger les paramètres.")));
   }, []);
 
   const groups = useMemo<SectionGroup[]>(() => {
@@ -49,7 +50,7 @@ export function SettingsAccordion() {
   }
 
   if (settings === null) {
-    return <p className={cardClass("px-5 py-6 text-sm text-ink-5")}>{error ?? "Chargement…"}</p>;
+    return <p className={cardClass("px-5 py-6 text-sm text-ink-5")}>{error ?? t("Chargement…")}</p>;
   }
 
   return (
@@ -111,11 +112,11 @@ function SectionPanel({
         const original = group.settings.find((setting) => setting.key === key)!;
         saved.push({ ...original, value: result.value });
       }
-      setMessage({ kind: "success", text: `${saved.length} paramètre${saved.length > 1 ? "s" : ""} enregistré${saved.length > 1 ? "s" : ""}.` });
+      setMessage({ kind: "success", text: (saved.length > 1 ? t("{length} paramètres enregistrés.", { length: saved.length }) : t("{length} paramètre enregistré.", { length: saved.length })) });
     } catch (err) {
       setMessage({
         kind: "error",
-        text: `${saved.length ? `${saved.length} enregistré(s), puis erreur : ` : ""}${err instanceof ApiError ? err.message : "L'enregistrement a échoué."}`,
+        text: `${saved.length ? t("{length} enregistré(s), puis erreur : ", { length: saved.length }) : ""}${err instanceof ApiError ? err.message : t("L'enregistrement a échoué.")}`,
       });
     } finally {
       if (saved.length) onSaved(saved);
@@ -138,23 +139,23 @@ function SectionPanel({
           </span>
           <span className="min-w-0">
             <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink-1">
-              {meta.title}
+              {t(meta.title)}
               {group.superAdminOnly ? (
                 // Indication discrète : section invisible pour un admin.
-                <span title="Visible uniquement par le super admin" className="inline-flex text-ink-5">
+                <span title={t("Visible uniquement par le super admin")} className="inline-flex text-ink-5">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <rect x="4" y="11" width="16" height="10" rx="2" />
                     <path d="M8 11V7a4 4 0 0 1 8 0v4" />
                   </svg>
-                  <span className="sr-only">Visible uniquement par le super admin</span>
+                  <span className="sr-only">{t("Visible uniquement par le super admin")}</span>
                 </span>
               ) : null}
             </span>
-            <span className="mt-0.5 block text-xs text-ink-5">{meta.description}</span>
+            <span className="mt-0.5 block text-xs text-ink-5">{t(meta.description)}</span>
           </span>
         </span>
         <span className="flex shrink-0 items-center gap-3 text-xs text-ink-5">
-          {group.settings.length} réglage{group.settings.length > 1 ? "s" : ""}
+          {group.settings.length}{" "}{t("réglage")}{group.settings.length > 1 ? "s" : ""}
           <span aria-hidden="true" className={`text-base transition-transform ${open ? "rotate-180" : ""}`}>
             ▾
           </span>
@@ -178,9 +179,9 @@ function SectionPanel({
                       onChange={(event) => setValues((current) => ({ ...current, [setting.key]: event.target.value }))}
                       className={fieldClass("w-full px-3.5 py-2.5")}
                     />
-                    {field?.unit ? <span className="shrink-0 text-xs text-ink-5">{field.unit}</span> : null}
+                    {field?.unit ? <span className="shrink-0 text-xs text-ink-5">{t(field.unit)}</span> : null}
                   </span>
-                  {field?.help ? <span className="text-xs text-ink-5">{field.help}</span> : null}
+                  {field?.help ? <span className="text-xs text-ink-5">{t(field.help)}</span> : null}
                 </label>
               );
             })}
@@ -195,16 +196,14 @@ function SectionPanel({
                 type="button"
                 onClick={onToggle}
                 className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-3 transition-colors hover:border-hairline-5 hover:text-ink-1"
-              >
-                Fermer
-              </button>
+              >{t("Fermer")}</button>
               <button
                 type="button"
                 onClick={save}
                 disabled={saving || changedKeys.length === 0}
                 className="rounded-full bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {saving ? "Enregistrement…" : changedKeys.length ? `Enregistrer (${changedKeys.length})` : "Enregistrer"}
+                {saving ? t("Enregistrement…") : changedKeys.length ? `Enregistrer (${changedKeys.length})` : t("Enregistrer")}
               </button>
             </div>
           </div>

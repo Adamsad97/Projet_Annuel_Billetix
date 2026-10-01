@@ -1,8 +1,12 @@
+"use client";
+
 import type { ApiAuditLogEntry } from "@/lib/api/admin";
 import { auditActionLabels } from "@/lib/mappers/audit-mappers";
 import { entityTypeBadgeStyles, type AuditEntityType } from "@/lib/constants/admin-audit";
+import { t } from "@/lib/i18n/translate";
+import { localizedDate } from "@/lib/i18n/intl";
 
-const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeStyle: "medium" });
+const dateTimeFormatter = localizedDate({ dateStyle: "short", timeStyle: "medium" });
 
 /** Ligne résumée du journal : le détail (contexte, appareil…) s'ouvre via « Consulter ». */
 export function AuditRow({ log, onOpen }: { log: ApiAuditLogEntry; onOpen: () => void }) {
@@ -13,16 +17,14 @@ export function AuditRow({ log, onOpen }: { log: ApiAuditLogEntry; onOpen: () =>
         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${entityTypeBadgeStyles[log.entity_type as AuditEntityType] ?? ""}`}>
           {log.entity_type}
         </span>
-        <span className="text-sm font-bold text-ink-1">{auditActionLabels[log.action] ?? log.action}</span>
+        <span className="text-sm font-bold text-ink-1">{t(auditActionLabels[log.action] ?? log.action)}</span>
         <span className="truncate text-xs text-ink-5">· {log.performed_by_email ?? log.performed_by}</span>
       </div>
       <button
         type="button"
         onClick={onOpen}
         className="shrink-0 whitespace-nowrap rounded-lg bg-hairline-1 px-3 py-1.5 text-xs font-medium text-ink-2 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
-      >
-        Consulter
-      </button>
+      >{t("Consulter")}</button>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { downloadCreditNote, listCreditNotes, type ApiCreditNote } from "@/lib/a
 import { ApiError } from "@/lib/api/http-error";
 import { euros } from "@/lib/format/money";
 import { longDate } from "@/lib/format/dates";
+import { t } from "@/lib/i18n/translate";
 
 // Un avoir vient d'être émis : son PDF est généré en quelques secondes.
 const PENDING_REFRESH_MS = 4000;
@@ -45,22 +46,20 @@ export function CreditNotes({ orderId, refreshKey = 0 }: { orderId: string; refr
     try {
       await downloadCreditNote(orderId, note.id, note.number);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Téléchargement impossible, veuillez réessayer.");
+      setError(err instanceof ApiError ? err.message : t("Téléchargement impossible, veuillez réessayer."));
     } finally {
       setDownloading(null);
     }
   }
 
   return (
-    <section aria-label="Avoirs" className="mt-6">
-      <h2 className="mb-3 text-sm font-semibold text-ink-2">Avoirs</h2>
+    <section aria-label={t("Avoirs")} className="mt-6">
+      <h2 className="mb-3 text-sm font-semibold text-ink-2">{t("Avoirs")}</h2>
       <div className={cardClass("overflow-hidden")}>
         {notes.map((note) => (
           <div key={note.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline-1 px-5 py-4 last:border-b-0">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-ink-1">
-                Avoir {note.number} · {euros.format(note.amount_ttc)}
-              </p>
+              <p className="text-sm font-semibold text-ink-1">{t("Avoir {number} · {value}", { number: note.number, value: euros.format(note.amount_ttc) })}</p>
               <p className="text-xs text-ink-5">
                 {longDate.format(new Date(note.created_at))} · {note.reason}
               </p>
@@ -71,7 +70,7 @@ export function CreditNotes({ orderId, refreshKey = 0 }: { orderId: string; refr
               onClick={() => download(note)}
               className={buttonClass("secondary", "rounded-full px-4 py-2 text-xs disabled:opacity-50")}
             >
-              {!note.pdf_ready ? "En préparation…" : downloading === note.id ? "Téléchargement…" : "📄 Télécharger (PDF)"}
+              {!note.pdf_ready ? t("En préparation…") : downloading === note.id ? t("Téléchargement…") : t("📄 Télécharger (PDF)")}
             </button>
           </div>
         ))}

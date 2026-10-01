@@ -11,6 +11,7 @@ import type { ApiResaleListing } from "@/lib/api/resale";
 import { euros as currency } from "@/lib/format/money";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 type Step = "billing" | "payment";
 
@@ -41,17 +42,12 @@ export function ResaleCheckoutFlow({ listing }: { listing: ApiResaleListing }) {
     return (
       <div className={cardClass("mx-auto max-w-md p-8 text-center")}>
         <div className="mb-3 text-4xl">🎫</div>
-        <h1 className="text-lg font-bold text-ink-1">C&apos;est votre propre annonce</h1>
-        <p className="mt-2 text-sm text-ink-5">
-          Vous ne pouvez pas racheter un billet que vous avez vous-même mis en revente.
-          Change d&apos;avis directement depuis le billet.
-        </p>
+        <h1 className="text-lg font-bold text-ink-1">{t("C'est votre propre annonce")}</h1>
+        <p className="mt-2 text-sm text-ink-5">{t("Vous ne pouvez pas racheter un billet que vous avez vous-même mis en revente. Pour changer d'avis, rendez-vous directement sur le billet.")}</p>
         <Link
           href={`/billets/${listing.ticket_id}`}
           className="mt-4 inline-flex rounded-full bg-hairline-1 px-4 py-2 text-sm font-medium text-ink-2 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
-        >
-          Voir le billet →
-        </Link>
+        >{t("Voir le billet →")}</Link>
       </div>
     );
   }

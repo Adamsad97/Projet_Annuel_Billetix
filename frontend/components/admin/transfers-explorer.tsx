@@ -19,23 +19,24 @@ import { describeDevice, formatIp } from "@/lib/format/device";
 import { dateTime as dateTimeFormatter } from "@/lib/format/dates";
 import { cardClass } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
+import { t, msg } from "@/lib/i18n/translate";
 
 const PAGE_SIZE = 20;
 const views = [
-  { id: "all", label: "Tous les transferts" },
-  { id: "pending", label: "Demandes d'annulation" },
+  { id: "all", label: msg("Tous les transferts") },
+  { id: "pending", label: msg("Demandes d'annulation") },
 ];
-const sourceLabel = { PHONE: "sur appel", PLATFORM: "sur demande en ligne" } as const;
+const sourceLabel = { PHONE: msg("sur appel"), PLATFORM: msg("sur demande en ligne") } as const;
 const badgeBase = "whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset";
 
 function StatusBadge({ transfer }: { transfer: ApiTicketTransfer }) {
   if (transfer.status === "REVERTED") {
-    return <span className={`${badgeBase} bg-success/10 text-success ring-success/30`}>Annulé — billet rendu</span>;
+    return <span className={`${badgeBase} bg-success/10 text-success ring-success/30`}>{t("Annulé — billet rendu")}</span>;
   }
   if (transfer.pending_revert_request) {
-    return <span className={`${badgeBase} bg-warning/10 text-warning ring-warning/30`}>Annulation demandée</span>;
+    return <span className={`${badgeBase} bg-warning/10 text-warning ring-warning/30`}>{t("Annulation demandée")}</span>;
   }
-  return <span className={`${badgeBase} bg-hairline-1 text-ink-4 ring-hairline-2`}>Actif</span>;
+  return <span className={`${badgeBase} bg-hairline-1 text-ink-4 ring-hairline-2`}>{t("Actif")}</span>;
 }
 
 export function TransfersExplorer() {
@@ -69,7 +70,7 @@ export function TransfersExplorer() {
           setTotal(result.total);
           setError(null);
         })
-        .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger les transferts."));
+        .catch((err) => setError(err instanceof ApiError ? err.message : t("Impossible de charger les transferts.")));
     }, 300);
     return () => clearTimeout(timeout);
   }, [view, search, page, version]);
@@ -85,7 +86,7 @@ export function TransfersExplorer() {
       setNotice(success);
       setVersion((current) => current + 1);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "L'action a échoué, veuillez réessayer.");
+      setError(err instanceof ApiError ? err.message : t("L'action a échoué, veuillez réessayer."));
     } finally {
       setBusy(false);
     }
@@ -95,12 +96,12 @@ export function TransfersExplorer() {
     const request = transfer.pending_revert_request;
     setSelected(null);
     setDialog({
-      title: request ? "Accepter la demande d'annulation ?" : "Annuler ce transfert ?",
+      title: request ? t("Accepter la demande d'annulation ?") : t("Annuler ce transfert ?"),
       message:
-        `Le billet ${transfer.ticket_reference} sera rendu à ${transfer.from_first_name} ${transfer.from_last_name} ` +
-        `(${transfer.from_email}), au nom de ${transfer.from_holder_first_name} ${transfer.from_holder_last_name}. ` +
-        `${transfer.to_email} le perdra et son QR code ne sera plus valable. Les deux seront prévenus par email.`,
-      confirmLabel: request ? "Accepter et rendre le billet" : "Annuler le transfert",
+        t("Le billet {ticket_reference} sera rendu à {from_first_name} {from_last_name} ", { ticket_reference: transfer.ticket_reference, from_first_name: transfer.from_first_name, from_last_name: transfer.from_last_name }) +
+        t("({from_email}), au nom de {from_holder_first_name} {from_holder_last_name}. ", { from_email: transfer.from_email, from_holder_first_name: transfer.from_holder_first_name, from_holder_last_name: transfer.from_holder_last_name }) +
+        t("{to_email} le perdra et son QR code ne sera plus valable. Les deux seront prévenus par email.", { to_email: transfer.to_email }),
+      confirmLabel: request ? t("Accepter et rendre le billet") : t("Annuler le transfert"),
       danger: true,
       // Accepter une demande (en ligne ou par téléphone) ne demande aucune
       // saisie : l'admin, la date et l'origine sont tracés automatiquement.
@@ -111,7 +112,7 @@ export function TransfersExplorer() {
               source: request ? "PLATFORM" : "PHONE",
               request_id: request?.id,
             }),
-          `Transfert ${transfer.ticket_reference} annulé : billet rendu à ${transfer.from_email}.`,
+          t("Transfert {ticket_reference} annulé : billet rendu à {from_email}.", { ticket_reference: transfer.ticket_reference, from_email: transfer.from_email }),
         ),
     });
   }
@@ -121,14 +122,14 @@ export function TransfersExplorer() {
     if (!request) return;
     setSelected(null);
     setDialog({
-      title: "Refuser la demande d'annulation ?",
-      message: `Le billet ${transfer.ticket_reference} restera chez ${transfer.to_email}. Le motif sera transmis à ${transfer.from_email}.`,
-      confirmLabel: "Refuser la demande",
+      title: t("Refuser la demande d'annulation ?"),
+      message: t("Le billet {ticket_reference} restera chez {to_email}. Le motif sera transmis à {from_email}.", { ticket_reference: transfer.ticket_reference, to_email: transfer.to_email, from_email: transfer.from_email }),
+      confirmLabel: t("Refuser la demande"),
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Motif du refus (transmis à l'expéditeur)…",
+      reasonPlaceholder: t("Motif du refus (transmis à l'expéditeur)…"),
       onConfirm: (reason) =>
-        run(() => rejectTransferRevert(request.id, reason ?? ""), `Demande sur ${transfer.ticket_reference} refusée.`),
+        run(() => rejectTransferRevert(request.id, reason ?? ""), t("Demande sur {ticket_reference} refusée.", { ticket_reference: transfer.ticket_reference })),
     });
   }
 
@@ -152,12 +153,12 @@ export function TransfersExplorer() {
               setSearch(value);
               setPage(1);
             }}
-            placeholder="Référence, email ou événement…"
+            placeholder={t("Référence, email ou événement…")}
           />
         ) : null}
       </div>
       <p className="text-sm text-ink-5">
-        {total} {view === "pending" ? `demande${total > 1 ? "s" : ""} en attente` : `transfert${total > 1 ? "s" : ""}`}
+        {total} {view === "pending" ? (total > 1 ? t("demandes en attente") : t("demande en attente")) : `transfert${total > 1 ? "s" : ""}`}
       </p>
 
       {notice ? (
@@ -169,17 +170,17 @@ export function TransfersExplorer() {
 
       <div className={cardClass("overflow-x-auto")}>
         {transfers === null ? (
-          <p className="px-5 py-4 text-sm text-ink-5">{error ?? "Chargement…"}</p>
+          <p className="px-5 py-4 text-sm text-ink-5">{error ?? t("Chargement…")}</p>
         ) : transfers.length === 0 ? (
-          <p className="px-5 py-4 text-sm text-ink-5">{view === "pending" ? "Aucune demande en attente." : "Aucun transfert."}</p>
+          <p className="px-5 py-4 text-sm text-ink-5">{view === "pending" ? t("Aucune demande en attente.") : t("Aucun transfert.")}</p>
         ) : (
           <table className="w-full text-left text-sm">
             <thead className="border-b border-hairline-1 text-xs uppercase tracking-wide text-ink-5">
               <tr>
-                <th className="px-5 py-3 font-semibold">Date</th>
-                <th className="px-5 py-3 font-semibold">Billet</th>
-                <th className="px-5 py-3 font-semibold">Événement</th>
-                <th className="px-5 py-3 font-semibold">Statut</th>
+                <th className="px-5 py-3 font-semibold">{t("Date")}</th>
+                <th className="px-5 py-3 font-semibold">{t("Billet")}</th>
+                <th className="px-5 py-3 font-semibold">{t("Événement")}</th>
+                <th className="px-5 py-3 font-semibold">{t("Statut")}</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
@@ -197,9 +198,7 @@ export function TransfersExplorer() {
                       type="button"
                       onClick={() => setSelected(transfer)}
                       className="whitespace-nowrap rounded-lg bg-hairline-1 px-3 py-1.5 text-xs font-medium text-ink-2 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
-                    >
-                      Consulter
-                    </button>
+                    >{t("Consulter")}</button>
                   </td>
                 </tr>
               ))}
@@ -212,7 +211,7 @@ export function TransfersExplorer() {
 
       <DetailDialog
         open={selected !== null}
-        title={selected ? `Transfert du billet ${selected.ticket_reference}` : ""}
+        title={selected ? t("Transfert du billet {ticket_reference}", { ticket_reference: selected.ticket_reference }) : ""}
         subtitle={selected ? `${selected.event_name} · ${selected.ticket_category_name}` : undefined}
         onClose={() => setSelected(null)}
         footer={
@@ -224,9 +223,7 @@ export function TransfersExplorer() {
                   disabled={busy}
                   onClick={() => askReject(selected)}
                   className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-3 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-50"
-                >
-                  Refuser la demande
-                </button>
+                >{t("Refuser la demande")}</button>
               ) : null}
               <button
                 type="button"
@@ -234,7 +231,7 @@ export function TransfersExplorer() {
                 onClick={() => askRevert(selected)}
                 className="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
-                {request ? "Accepter et rendre le billet" : "Annuler le transfert"}
+                {request ? t("Accepter et rendre le billet") : t("Annuler le transfert")}
               </button>
             </>
           ) : null
@@ -242,20 +239,20 @@ export function TransfersExplorer() {
       >
         {selected ? (
           <>
-            <DetailSection title="Statut">
+            <DetailSection title={t("Statut")}>
               <StatusBadge transfer={selected} />
-              <p className="mt-2 text-ink-4">Offert le {dateTimeFormatter.format(new Date(selected.created_at))}</p>
+              <p className="mt-2 text-ink-4">{t("Offert le {value}", { value: dateTimeFormatter.format(new Date(selected.created_at)) })}</p>
             </DetailSection>
-            <DetailSection title="Expéditeur">
+            <DetailSection title={t("Expéditeur")}>
               <p className="text-ink-1">
                 {selected.from_first_name} {selected.from_last_name}
               </p>
               <p className="text-ink-5">{selected.from_email}</p>
             </DetailSection>
-            <DetailSection title="Bénéficiaire">
+            <DetailSection title={t("Bénéficiaire")}>
               <p className="text-ink-1">{selected.to_email}</p>
             </DetailSection>
-            <DetailSection title="Titulaire du billet">
+            <DetailSection title={t("Titulaire du billet")}>
               <p>
                 {selected.from_holder_first_name} {selected.from_holder_last_name} →{" "}
                 <span className="font-medium text-ink-1">
@@ -263,26 +260,26 @@ export function TransfersExplorer() {
                 </span>
               </p>
             </DetailSection>
-            <DetailSection title="Contexte du transfert">
-              <p className="text-ink-4">Appareil : {describeDevice(selected.user_agent)}</p>
+            <DetailSection title={t("Contexte du transfert")}>
+              <p className="text-ink-4">{t("Appareil : {describeDevice}", { describeDevice: describeDevice(selected.user_agent) })}</p>
               {/* IP renvoyée au super admin uniquement (donnée personnelle). */}
               {selected.ip_address !== undefined ? (
-                <p className="text-ink-4">Adresse IP : {formatIp(selected.ip_address)}</p>
+                <p className="text-ink-4">{t("Adresse IP : {ip}", { ip: formatIp(selected.ip_address) })}</p>
               ) : null}
             </DetailSection>
             {request ? (
-              <DetailSection title="Demande d'annulation de l'expéditeur">
-                <p className="text-ink-4">Le {dateTimeFormatter.format(new Date(request.created_at))}</p>
+              <DetailSection title={t("Demande d'annulation de l'expéditeur")}>
+                <p className="text-ink-4">{t("Le {value}", { value: dateTimeFormatter.format(new Date(request.created_at)) })}</p>
                 <p className="mt-1 text-ink-1">« {request.reason} »</p>
               </DetailSection>
             ) : null}
             {selected.status === "REVERTED" ? (
-              <DetailSection title="Annulation">
+              <DetailSection title={t("Annulation")}>
                 <p className="text-ink-4">
-                  {selected.reverted_at ? `Le ${dateTimeFormatter.format(new Date(selected.reverted_at))}` : null}
+                  {selected.reverted_at ? t("Le {value}", { value: dateTimeFormatter.format(new Date(selected.reverted_at)) }) : null}
                   {selected.revert_source ? ` · ${sourceLabel[selected.revert_source]}` : null}
                 </p>
-                <p className="text-ink-4">Par {selected.reverted_by_email ?? "—"}</p>
+                <p className="text-ink-4">{t("Par {value}", { value: selected.reverted_by_email ?? "—" })}</p>
                 {selected.revert_reason ? <p className="mt-1 text-ink-1">« {selected.revert_reason} »</p> : null}
               </DetailSection>
             ) : null}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { t } from "@/lib/i18n/translate";
 import type { FaqCategory } from "@/lib/constants/faq";
 import { cardClass } from "@/components/ui/card";
 
@@ -11,7 +12,7 @@ export function FaqAccordion({ category }: { category: FaqCategory }) {
     <div className={cardClass()}>
       <h2 className="flex items-center gap-2 border-b border-hairline-1 px-5 py-4 text-sm font-semibold text-ink-2">
         <span>{category.emoji}</span>
-        {category.title}
+        {t(category.title)}
       </h2>
 
       <div>
@@ -24,14 +25,14 @@ export function FaqAccordion({ category }: { category: FaqCategory }) {
                 onClick={() => setOpenIndex(isOpen ? null : index)}
                 className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-medium text-ink-1"
               >
-                {item.question}
+                {t(item.question)}
                 <span className={isOpen ? "text-link" : "text-ink-5"}>
                   {isOpen ? "−" : "+"}
                 </span>
               </button>
               {isOpen ? (
                 <p className="px-5 pb-4 text-sm leading-relaxed text-ink-4">
-                  {item.answer}
+                  {t(item.answer)}
                 </p>
               ) : null}
             </div>

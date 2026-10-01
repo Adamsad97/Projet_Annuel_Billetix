@@ -10,6 +10,7 @@ import { ApiError } from "@/lib/api/http-error";
 import { Alert } from "@/components/ui/alert";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 const defaultValues = Object.fromEntries(
   notificationPrefGroups.flatMap((group) =>
@@ -30,7 +31,7 @@ export function NotificationPrefsManager() {
       })
       .catch(() => {
         if (!cancelled) {
-          setError("Impossible de charger vos préférences, valeurs par défaut affichées.");
+          setError(t("Impossible de charger vos préférences, valeurs par défaut affichées."));
           setValues(defaultValues);
         }
       });
@@ -48,7 +49,7 @@ export function NotificationPrefsManager() {
       await updateNotificationPrefs({ [id]: value });
     } catch (err) {
       setValues(previous ?? null); // annule le changement optimiste en cas d'échec
-      setError(err instanceof ApiError ? err.message : "Impossible d'enregistrer, veuillez réessayer.");
+      setError(err instanceof ApiError ? err.message : t("Impossible d'enregistrer, veuillez réessayer."));
     } finally {
       setSavingId(null);
     }
@@ -68,21 +69,19 @@ export function NotificationPrefsManager() {
 
       {notificationPrefGroups.map((group) => (
         <div key={group.title} className={cardClass("p-5")}>
-          <h2 className="mb-3 text-sm font-semibold text-ink-2">{group.title}</h2>
+          <h2 className="mb-3 text-sm font-semibold text-ink-2">{t(group.title)}</h2>
           <div className="flex flex-col divide-y divide-hairline-1">
             {group.prefs.map((pref) => (
               <div key={pref.id} className="flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0">
                 <div>
-                  <p className="text-sm font-medium text-ink-1">{pref.label}</p>
-                  <p className="text-xs text-ink-5">{pref.description}</p>
+                  <p className="text-sm font-medium text-ink-1">{t(pref.label)}</p>
+                  <p className="text-xs text-ink-5">{t(pref.description)}</p>
                   {pref.locked ? (
-                    <p className="mt-0.5 text-xs text-ink-6">
-                      🔒 Notification essentielle, non désactivable
-                    </p>
+                    <p className="mt-0.5 text-xs text-ink-6">{t("🔒 Notification essentielle, non désactivable")}</p>
                   ) : null}
                 </div>
                 <ToggleSwitch
-                  label={pref.label}
+                  label={t(pref.label)}
                   checked={values[pref.id]}
                   disabled={pref.locked || savingId === pref.id}
                   onChange={(value) => handleChange(pref.id, value)}

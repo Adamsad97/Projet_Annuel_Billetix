@@ -5,6 +5,7 @@ import type { ApiOrganizerDashboard, ApiOrganizerEventSummary, ApiEventStatus } 
 import type { DashboardStat, OrganizerEvent } from "@/lib/constants/dashboard";
 import { euros as currency } from "@/lib/format/money";
 import { longDate as dateFormatter } from "@/lib/format/dates";
+import { t } from "@/lib/i18n/translate";
 
 // Emoji de la catégorie depuis le référentiel admin ; couleur dérivée d'un hash stable du code.
 const COLOR_PALETTE: Array<{ iconBg: string; progressColor: string }> = [
@@ -42,10 +43,10 @@ export function apiEventSummaryToOrganizerEvent(
     progressColor: color.progressColor,
     progressPercent: hasQuota ? fillRate : 0,
     progressLabel: hasQuota
-      ? `${event.sold} / ${event.total_quota} billets (${fillRate}%)`
+      ? t("{sold} / {total} billets ({rate} %)", { sold: event.sold, total: event.total_quota, rate: fillRate })
       : event.status === "PUBLISHED"
-        ? "Ventes en cours"
-        : "Ventes pas encore ouvertes",
+        ? t("Ventes en cours")
+        : t("Ventes pas encore ouvertes"),
     amountLabel: currency.format(Number(event.revenue_ttc)),
     amountSubLabel: "chiffre d'affaires TTC",
     isHidden: event.is_hidden ?? false,
@@ -67,30 +68,30 @@ export function buildOrganizerDashboardStats(
   return [
     {
       id: "revenue",
-      label: "Ventes totales",
+      label: t("Ventes totales"),
       value: currency.format(Number(dashboard.totals.revenue_ttc)),
       accent: "bg-blue-500",
     },
     {
       id: "tickets",
-      label: "Billets vendus",
+      label: t("Billets vendus"),
       value: String(dashboard.totals.tickets_sold),
       accent: "bg-amber-500",
     },
     {
       id: "events",
-      label: "Événements actifs",
+      label: t("Événements actifs"),
       value: String(activeCount),
-      trend: pendingValidationCount > 0 ? `${pendingValidationCount} en attente de validation` : undefined,
+      trend: pendingValidationCount > 0 ? t("{pendingValidationCount} en attente de validation", { pendingValidationCount }) : undefined,
       accent: "bg-emerald-500",
     },
     {
       id: "payout",
-      label: "Prochain reversement",
+      label: t("Prochain reversement"),
       value: currency.format(Number(dashboard.totals.pending_balance)),
       trend: nextPayoutDate
-        ? `Prévu le ${dateFormatter.format(new Date(nextPayoutDate))}`
-        : "Aucun reversement en attente",
+        ? t("Prévu le {value}", { value: dateFormatter.format(new Date(nextPayoutDate)) })
+        : t("Aucun reversement en attente"),
       accent: "bg-blue-500",
     },
   ];

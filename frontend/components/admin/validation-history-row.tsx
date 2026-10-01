@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import type { ValidationHistoryEntry } from "@/lib/mappers/admin-mappers";
+import { t } from "@/lib/i18n/translate";
 
 export function ValidationHistoryRow({
   entry,
@@ -18,10 +21,7 @@ export function ValidationHistoryRow({
         </span>
         <div>
           <p className="text-sm font-bold text-ink-1">{entry.title}</p>
-          <p className="text-xs text-ink-5">
-            Par {entry.performedBy} · {entry.decidedLabel}
-            {entry.reason ? ` · ${entry.reason}` : ""}
-          </p>
+          <p className="text-xs text-ink-5">{t("Par {performedBy} · {decidedLabel}{value}", { performedBy: entry.performedBy, decidedLabel: entry.decidedLabel, value: entry.reason ? ` · ${entry.reason}` : "" })}</p>
         </div>
       </div>
 
@@ -33,9 +33,9 @@ export function ValidationHistoryRow({
               : "rounded-full bg-red-500/15 px-2.5 py-1 text-xs font-medium text-red-300 ring-1 ring-inset ring-red-500/30"
           }
         >
-          {outcome === "approved" ? "✓ Validé" : "✕ Rejeté"}
+          {outcome === "approved" ? t("✓ Validé") : t("✕ Rejeté")}
         </span>
-        {entry.eventId ? <span className="text-sm text-link">● Info</span> : null}
+        {entry.eventId ? <span className="text-sm text-link">{t("● Info")}</span> : null}
       </div>
     </div>
   );

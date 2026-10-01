@@ -4,6 +4,7 @@
 
 import { useId, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
+import { t } from "@/lib/i18n/translate";
 
 export function DetailDialog({
   open,
@@ -37,7 +38,7 @@ export function DetailDialog({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={t("Fermer")}
             className="rounded-full px-2 text-xl leading-none text-ink-5 transition-colors hover:text-ink-1"
           >
             ×

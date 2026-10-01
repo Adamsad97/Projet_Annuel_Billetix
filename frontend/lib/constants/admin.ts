@@ -1,3 +1,4 @@
+import { msg } from "@/lib/i18n/translate";
 // Navigation de l'espace Admin — les données KPIs/file de validation sont
 // réelles (cf. lib/api/admin.ts, lib/mappers/admin-mappers.ts).
 
@@ -18,103 +19,103 @@ export interface AdminNavSection {
 export const adminNavSections: AdminNavSection[] = [
   {
     id: "principal",
-    label: "Principal",
+    label: msg("Principal"),
     items: [
-      { id: "dashboard", href: "/admin", label: "Dashboard", icon: "📊" },
+      { id: "dashboard", href: "/admin", label: msg("Dashboard"), icon: "📊" },
       {
         id: "validation",
         href: "/admin/validation",
-        label: "Validation",
+        label: msg("Validation"),
         icon: "✅",
       },
       {
         id: "users",
         href: "/admin/utilisateurs",
-        label: "Utilisateurs",
+        label: msg("Utilisateurs"),
         icon: "👥",
       },
       {
         id: "kyc",
         href: "/admin/kyc",
-        label: "Identités",
+        label: msg("Identités"),
         icon: "🪪",
       },
       {
         id: "events",
         href: "/admin/evenements",
-        label: "Événements",
+        label: msg("Événements"),
         icon: "✏️",
       },
       {
         id: "cancellations",
         href: "/admin/annulations",
-        label: "Annulations et reports",
+        label: msg("Annulations et reports"),
         icon: "🛑",
       },
       {
         id: "transfers",
         href: "/admin/transferts",
-        label: "Billets offerts",
+        label: msg("Billets offerts"),
         icon: "🎁",
       },
       {
         id: "resales",
         href: "/admin/reventes",
-        label: "Reventes",
+        label: msg("Reventes"),
         icon: "🔄",
       },
     ],
   },
   {
     id: "finances",
-    label: "Finances",
+    label: msg("Finances"),
     items: [
       {
         id: "payouts",
         href: "/admin/reversements",
-        label: "Reversements",
+        label: msg("Reversements"),
         icon: "💰",
       },
       {
         id: "disputes",
         href: "/admin/litiges",
-        label: "Litiges",
+        label: msg("Litiges"),
         icon: "⚠️",
       },
       {
         id: "commissions",
         href: "/admin/commissions",
-        label: "Commissions",
+        label: msg("Commissions"),
         icon: "☑️",
       },
     ],
   },
   {
     id: "systeme",
-    label: "Système",
+    label: msg("Système"),
     items: [
       {
         id: "audit",
         href: "/admin/audit-trail",
-        label: "Audit trail",
+        label: msg("Audit trail"),
         icon: "📄",
       },
       {
         id: "settings",
         href: "/admin/parametres",
-        label: "Paramètres",
+        label: msg("Paramètres"),
         icon: "⚙️",
       },
       {
         id: "categories",
         href: "/admin/categories",
-        label: "Catégories",
+        label: msg("Catégories"),
         icon: "🏷️",
       },
       {
         id: "newsletter",
         href: "/admin/newsletter",
-        label: "Newsletter",
+        label: msg("Newsletter"),
         icon: "📧",
       },
     ],

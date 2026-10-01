@@ -4,6 +4,7 @@ import { getApiBaseUrl } from "./base-url";
 import { eventsQueryString, type ListEventsParams } from "./events";
 import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
 import { ApiError, extractErrorMessage } from "./http-error";
+import { t } from "@/lib/i18n/translate";
 
 const API_URL = getApiBaseUrl();
 
@@ -23,7 +24,7 @@ async function getPublicJson<T>(path: string): Promise<T> {
   try {
     response = await fetch(`${API_URL}${path}`);
   } catch {
-    throw new ApiError(0, "Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard.");
+    throw new ApiError(0, t("Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard."));
   }
   let data: unknown = null;
   try {
@@ -32,7 +33,7 @@ async function getPublicJson<T>(path: string): Promise<T> {
     // Réponse sans corps JSON.
   }
   if (!response.ok) {
-    throw new ApiError(response.status, extractErrorMessage(data, "Une erreur est survenue, veuillez réessayer."));
+    throw new ApiError(response.status, extractErrorMessage(data, t("Une erreur est survenue, veuillez réessayer.")));
   }
   return data as T;
 }

@@ -29,9 +29,11 @@ import { BackLink } from "@/components/ui/back-link";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
+import { dateFormat, localizedDate } from "@/lib/i18n/intl";
 
 // L'en-tête affiche la date de l'événement (start_date), pas celle de création.
-const dateTimeFormatter = new Intl.DateTimeFormat("fr-FR", {
+const dateTimeFormatter = localizedDate({
   day: "numeric",
   month: "long",
   year: "numeric",
@@ -73,7 +75,7 @@ export default function AdminValidationDetailPage({
           setEvent(null);
           return;
         }
-        setError(err instanceof ApiError ? err.message : "Impossible de charger cet événement.");
+        setError(err instanceof ApiError ? err.message : t("Impossible de charger cet événement."));
       });
   }
 
@@ -86,8 +88,8 @@ export default function AdminValidationDetailPage({
 
   function handleApprove() {
     setDialog({
-      title: "Valider cet événement ?",
-      message: "Il sera publié immédiatement et visible par tous.",
+      title: t("Valider cet événement ?"),
+      message: t("Il sera publié immédiatement et visible par tous."),
       confirmLabel: "✓ Valider",
       onConfirm: async () => {
         setBusy(true);
@@ -96,7 +98,7 @@ export default function AdminValidationDetailPage({
           await approveEvent(id);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de valider cet événement.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de valider cet événement."));
         } finally {
           setBusy(false);
         }
@@ -106,13 +108,13 @@ export default function AdminValidationDetailPage({
 
   function handleReject() {
     setDialog({
-      title: "Rejeter cet événement",
-      message: "Le motif sera communiqué à l'organisateur.",
+      title: t("Rejeter cet événement"),
+      message: t("Le motif sera communiqué à l'organisateur."),
       confirmLabel: "✕ Rejeter",
       danger: true,
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Motif du rejet…",
+      reasonPlaceholder: t("Motif du rejet…"),
       onConfirm: async (reason) => {
         setBusy(true);
         setError(null);
@@ -120,7 +122,7 @@ export default function AdminValidationDetailPage({
           await rejectEvent(id, reason!);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de rejeter cet événement.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de rejeter cet événement."));
         } finally {
           setBusy(false);
         }
@@ -135,12 +137,12 @@ export default function AdminValidationDetailPage({
       await verifyNonProfit(id, approved, reason);
       setInfo(
         approved
-          ? "Justificatif validé — exonération de commission appliquée."
-          : "Justificatif refusé — l'organisateur a été informé du motif.",
+          ? t("Justificatif validé — exonération de commission appliquée.")
+          : t("Justificatif refusé — l'organisateur a été informé du motif."),
       );
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de traiter le justificatif.");
+      setError(err instanceof ApiError ? err.message : t("Impossible de traiter le justificatif."));
     } finally {
       setBusy(false);
     }
@@ -148,13 +150,13 @@ export default function AdminValidationDetailPage({
 
   function handleRejectNonProfit() {
     setDialog({
-      title: "Refuser le justificatif",
-      message: "Le motif sera communiqué à l'organisateur, qui pourra envoyer un nouveau justificatif.",
+      title: t("Refuser le justificatif"),
+      message: t("Le motif sera communiqué à l'organisateur, qui pourra envoyer un nouveau justificatif."),
       confirmLabel: "✕ Refuser",
       danger: true,
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Motif du refus (document illisible, association non reconnue…)",
+      reasonPlaceholder: t("Motif du refus (document illisible, association non reconnue…)"),
       onConfirm: (reason) => decideNonProfit(false, reason),
     });
   }
@@ -166,9 +168,9 @@ export default function AdminValidationDetailPage({
     try {
       await requestEventInfo(id, infoMessage.trim());
       setInfoMessage("");
-      setInfo("Demande de complément envoyée à l'organisateur — le délai de traitement est suspendu.");
+      setInfo(t("Demande de complément envoyée à l'organisateur — le délai de traitement est suspendu."));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible d'envoyer la demande.");
+      setError(err instanceof ApiError ? err.message : t("Impossible d'envoyer la demande."));
     } finally {
       setBusy(false);
     }
@@ -177,10 +179,8 @@ export default function AdminValidationDetailPage({
   if (event === null) {
     return (
       <AdminShell active="/admin/validation">
-        <MutedMessage>Cet événement n&apos;existe pas.</MutedMessage>
-        <Link href="/admin/validation" className="mt-4 block text-center text-sm font-medium text-link hover:text-link-hover">
-          ← Validation
-        </Link>
+        <MutedMessage>{t("Cet événement n'existe pas.")}</MutedMessage>
+        <Link href="/admin/validation" className="mt-4 block text-center text-sm font-medium text-link hover:text-link-hover">{t("← Validation")}</Link>
       </AdminShell>
     );
   }
@@ -194,17 +194,17 @@ export default function AdminValidationDetailPage({
 
   const documents: SubmittedDocument[] = event
     ? [
-        ...(event.poster_url ? [{ id: "poster", label: "Affiche de l'événement", url: event.poster_url }] : []),
-        ...(event.cover_url ? [{ id: "cover", label: "Image de couverture", url: event.cover_url }] : []),
+        ...(event.poster_url ? [{ id: "poster", label: t("Affiche de l'événement"), url: event.poster_url }] : []),
+        ...(event.cover_url ? [{ id: "cover", label: t("Image de couverture"), url: event.cover_url }] : []),
         ...(event.non_profit_document_url
-          ? [{ id: "justificatif", label: "Justificatif à but non lucratif", url: event.non_profit_document_url }]
+          ? [{ id: "justificatif", label: t("Justificatif à but non lucratif"), url: event.non_profit_document_url }]
           : []),
       ]
     : [];
 
   return (
     <AdminShell active="/admin/validation">
-      <BackLink href="/admin/validation">Validation</BackLink>
+      <BackLink href="/admin/validation">{t("Validation")}</BackLink>
 
       {event === undefined ? (
         <MutedMessage />
@@ -230,26 +230,22 @@ export default function AdminValidationDetailPage({
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl font-bold text-ink-1">{event.title}</h1>
                   {event.is_non_profit ? (
-                    <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30">
-                      Non lucratif
-                    </span>
+                    <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30">{t("Non lucratif")}</span>
                   ) : null}
                   {isOverdue ? (
-                    <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-300 ring-1 ring-inset ring-red-500/30">
-                      ⚠️ Délai dépassé
-                    </span>
+                    <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-300 ring-1 ring-inset ring-red-500/30">{t("⚠️ Délai dépassé")}</span>
                   ) : null}
                 </div>
                 <p className="text-sm text-ink-5">
-                  {organizerName ?? "Organisateur inconnu"}
+                  {organizerName ?? t("Organisateur inconnu")}
                   {organizerEmail ? ` (${organizerEmail})` : ""} · {dateTimeFormatter.format(new Date(event.start_date))}
                   {" · "}
                   {event.venue_name}, {event.venue_city}
                 </p>
                 <p className="mt-0.5 text-xs text-ink-6">
-                  Soumis le {dateFormatter.format(new Date(event.created_at))}
+                  {t("Soumis le {date}", { date: dateFormatter.format(new Date(event.created_at)) })}
                   {event && "validation_deadline" in event && isPending
-                    ? ` · à traiter avant le ${dateTimeFormatter.format(new Date(event.validation_deadline))}`
+                    ? ` · ${t("à traiter avant le {date}", { date: dateTimeFormatter.format(new Date(event.validation_deadline)) })}`
                     : ""}
                 </p>
               </div>
@@ -262,44 +258,34 @@ export default function AdminValidationDetailPage({
                   onClick={handleApprove}
                   disabled={busy}
                   className="rounded-full bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
-                >
-                  ✓ Valider
-                </button>
+                >{t("✓ Valider")}</button>
                 <button
                   type="button"
                   onClick={handleReject}
                   disabled={busy}
                   className="rounded-full bg-red-500/15 px-4 py-2 text-sm font-medium text-red-300 ring-1 ring-inset ring-red-500/30 transition-colors hover:bg-red-500/25 disabled:opacity-50"
-                >
-                  ✕ Rejeter
-                </button>
+                >{t("✕ Rejeter")}</button>
               </div>
             ) : (
-              <span className={`rounded-full px-4 py-2 text-sm font-medium ${statusBadgeStyles[event.status].className}`}>
-                Statut : {statusBadgeStyles[event.status].label}
-              </span>
+              <span className={`rounded-full px-4 py-2 text-sm font-medium ${statusBadgeStyles[event.status].className}`}>{t("Statut : {label}", { label: t(statusBadgeStyles[event.status].label) })}</span>
             )}
           </div>
 
           {event.is_non_profit ? (
             <div className={cardClass("mb-6 p-5")}>
-              <h2 className="mb-2 text-sm font-semibold text-ink-2">Vérification « à but non lucratif »</h2>
+              <h2 className="mb-2 text-sm font-semibold text-ink-2">{t("Vérification « à but non lucratif »")}</h2>
               {event.non_profit_verified ? (
-                <p className="mb-3 text-sm text-ink-4">✓ Justificatif vérifié — commission à 0 % appliquée.</p>
+                <p className="mb-3 text-sm text-ink-4">{t("✓ Justificatif vérifié — commission à 0 % appliquée.")}</p>
               ) : event.non_profit_rejected_at ? (
                 <div className="mb-3 rounded-xl bg-red-500/5 px-4 py-3 text-sm ring-1 ring-inset ring-red-500/25">
-                  <p className="font-medium text-ink-1">
-                    ✕ Justificatif refusé le {new Date(event.non_profit_rejected_at).toLocaleDateString("fr-FR")}
-                  </p>
+                  <p className="font-medium text-ink-1">{t("✕ Justificatif refusé le {value}", { value: dateFormat().format(new Date(event.non_profit_rejected_at)) })}</p>
                   {event.non_profit_rejection_reason ? (
-                    <p className="mt-1 text-ink-3">Motif : {event.non_profit_rejection_reason}</p>
+                    <p className="mt-1 text-ink-3">{t("Motif : {non_profit_rejection_reason}", { non_profit_rejection_reason: event.non_profit_rejection_reason })}</p>
                   ) : null}
-                  <p className="mt-1 text-ink-5">En attente d&apos;un nouveau justificatif de l&apos;organisateur.</p>
+                  <p className="mt-1 text-ink-5">{t("En attente d'un nouveau justificatif de l'organisateur.")}</p>
                 </div>
               ) : (
-                <p className="mb-3 text-sm text-ink-4">
-                  Justificatif à examiner — l&apos;exonération de commission ne s&apos;applique qu&apos;une fois validé.
-                </p>
+                <p className="mb-3 text-sm text-ink-4">{t("Justificatif à examiner — l'exonération de commission ne s'applique qu'une fois validé.")}</p>
               )}
               {!event.non_profit_verified && !event.non_profit_rejected_at && event.non_profit_document_url ? (
                 <div className="flex gap-2">
@@ -308,17 +294,13 @@ export default function AdminValidationDetailPage({
                     onClick={() => decideNonProfit(true)}
                     disabled={busy}
                     className="rounded-lg bg-emerald-500/15 px-3.5 py-2 text-sm font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
-                  >
-                    ✓ Approuver le justificatif
-                  </button>
+                  >{t("✓ Approuver le justificatif")}</button>
                   <button
                     type="button"
                     onClick={handleRejectNonProfit}
                     disabled={busy}
                     className="rounded-lg bg-red-500/15 px-3.5 py-2 text-sm font-medium text-red-300 ring-1 ring-inset ring-red-500/30 transition-colors hover:bg-red-500/25 disabled:opacity-50"
-                  >
-                    ✕ Rejeter le justificatif
-                  </button>
+                  >{t("✕ Rejeter le justificatif")}</button>
                 </div>
               ) : null}
             </div>
@@ -326,10 +308,10 @@ export default function AdminValidationDetailPage({
 
           {/* Toutes les informations utiles à la validation (catégorie, capacité, adresse, tarifs, ventes, remboursement). */}
           <div className={cardClass("mb-6 p-5")}>
-            <h2 className="mb-3 text-sm font-semibold text-ink-2">Informations de l&apos;événement</h2>
+            <h2 className="mb-3 text-sm font-semibold text-ink-2">{t("Informations de l'événement")}</h2>
             <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
               <div>
-                <dt className="text-ink-5">Catégorie</dt>
+                <dt className="text-ink-5">{t("Catégorie")}</dt>
                 <dd className="text-ink-2">{categoryByCode.get(event.category)?.label ?? event.category}</dd>
               </div>
               <EventVatRateControl
@@ -343,33 +325,35 @@ export default function AdminValidationDetailPage({
                 }}
               />
               <div>
-                <dt className="text-ink-5">Capacité totale</dt>
+                <dt className="text-ink-5">{t("Capacité totale")}</dt>
                 <dd className="text-ink-2">{event.total_capacity} places</dd>
               </div>
               <div>
-                <dt className="text-ink-5">Début</dt>
+                <dt className="text-ink-5">{t("Début")}</dt>
                 <dd className="text-ink-2">{dateTimeFormatter.format(new Date(event.start_date))}</dd>
               </div>
               <div>
-                <dt className="text-ink-5">Fin</dt>
+                <dt className="text-ink-5">{t("Fin")}</dt>
                 <dd className="text-ink-2">{dateTimeFormatter.format(new Date(event.end_date))}</dd>
               </div>
               <div>
-                <dt className="text-ink-5">Ventes ouvertes</dt>
+                <dt className="text-ink-5">{t("Ventes ouvertes")}</dt>
                 <dd className="text-ink-2">
                   {dateTimeFormatter.format(new Date(event.sales_start_date))} → {dateTimeFormatter.format(new Date(event.sales_end_date))}
                 </dd>
               </div>
               <div>
-                <dt className="text-ink-5">Politique de remboursement</dt>
+                <dt className="text-ink-5">{t("Politique de remboursement")}</dt>
                 <dd className="text-ink-2">
                   {event.refund_policy === "REFUNDABLE"
-                    ? `Remboursable${event.refund_deadline_days ? ` (jusqu'à J-${event.refund_deadline_days})` : ""}`
-                    : "Non remboursable"}
+                    ? event.refund_deadline_days
+                      ? t("Remboursable (jusqu'à J-{days})", { days: event.refund_deadline_days })
+                      : t("Remboursable")
+                    : t("Non remboursable")}
                 </dd>
               </div>
               <div className="sm:col-span-2">
-                <dt className="text-ink-5">Lieu</dt>
+                <dt className="text-ink-5">{t("Lieu")}</dt>
                 <dd className="text-ink-2">
                   {event.venue_name} — {event.venue_address_line1}
                   {event.venue_address_line2 ? `, ${event.venue_address_line2}` : ""}, {event.venue_postal_code}{" "}
@@ -378,7 +362,7 @@ export default function AdminValidationDetailPage({
               </div>
               {event.access_conditions ? (
                 <div className="sm:col-span-2">
-                  <dt className="text-ink-5">Conditions d&apos;accès</dt>
+                  <dt className="text-ink-5">{t("Conditions d'accès")}</dt>
                   <dd className="text-ink-2">{event.access_conditions}</dd>
                 </div>
               ) : null}
@@ -394,26 +378,22 @@ export default function AdminValidationDetailPage({
           </div>
 
           <div className={cardClass("mb-6 p-5")}>
-            <h2 className="mb-3 text-sm font-semibold text-ink-2">
-              Catégories de billets {ticketCategories.length > 0 ? `(${ticketCategories.length})` : ""}
-            </h2>
+            <h2 className="mb-3 text-sm font-semibold text-ink-2">{t("Catégories de billets {value}", { value: ticketCategories.length > 0 ? `(${ticketCategories.length})` : "" })}</h2>
             {ticketCategories.length === 0 ? (
-              <p className="text-sm text-ink-5">Aucune catégorie de billet créée.</p>
+              <p className="text-sm text-ink-5">{t("Aucune catégorie de billet créée.")}</p>
             ) : (
               <ul className="flex flex-col gap-2">
                 {ticketCategories.map((tc) => (
                   <li key={tc.id} className="flex items-center justify-between text-sm">
                     <span className="text-ink-2">
-                      {tc.name}
+                      {t(tc.name)}
                       {tc.visibility !== "PUBLIC" ? (
                         <span className="ml-2 rounded-full bg-hairline-2 px-2 py-0.5 text-[11px] text-ink-4">
-                          {ticketVisibilityLabels[tc.visibility]}
+                          {t(ticketVisibilityLabels[tc.visibility])}
                         </span>
                       ) : null}
                     </span>
-                    <span className="text-ink-4">
-                      {currency.format(Number(tc.price_ht))} HT · {currency.format(Number(tc.price_ttc))} TTC · {tc.quota} places · max {tc.max_per_order}/commande
-                    </span>
+                    <span className="text-ink-4">{t("{value} HT · {value2} TTC · {quota} places · max {max_per_order}/commande", { value: currency.format(Number(tc.price_ht)), value2: currency.format(Number(tc.price_ttc)), quota: tc.quota, max_per_order: tc.max_per_order })}</span>
                   </li>
                 ))}
               </ul>
@@ -421,30 +401,26 @@ export default function AdminValidationDetailPage({
           </div>
 
           <div className={cardClass("mb-6 p-5")}>
-            <h2 className="mb-2 text-sm font-semibold text-ink-2">Description</h2>
+            <h2 className="mb-2 text-sm font-semibold text-ink-2">{t("Description")}</h2>
             <p className="text-sm text-ink-4">{event.description}</p>
           </div>
 
           {documents.length > 0 ? (
             <>
-              <h2 className="mb-3 text-sm font-semibold text-ink-2">
-                Documents soumis ({documents.length})
-              </h2>
+              <h2 className="mb-3 text-sm font-semibold text-ink-2">{t("Documents soumis ({length})", { length: documents.length })}</h2>
               <DocumentGrid documents={documents} />
             </>
           ) : null}
 
           {isPending ? (
             <div className={cardClass("mt-6 p-5")}>
-              <h2 className="mb-2 text-sm font-semibold text-ink-2">Demander un complément d&apos;information</h2>
-              <p className="mb-3 text-xs text-ink-5">
-                Suspend le délai de traitement jusqu&apos;à la réponse de l&apos;organisateur.
-              </p>
+              <h2 className="mb-2 text-sm font-semibold text-ink-2">{t("Demander un complément d'information")}</h2>
+              <p className="mb-3 text-xs text-ink-5">{t("Suspend le délai de traitement jusqu'à la réponse de l'organisateur.")}</p>
               <textarea
                 rows={3}
                 value={infoMessage}
                 onChange={(evt) => setInfoMessage(evt.target.value)}
-                placeholder="Ex : Précisez l'adresse exacte du lieu."
+                placeholder={t("Ex : Précisez l'adresse exacte du lieu.")}
                 className={fieldClass("w-full resize-none px-3 py-2")}
               />
               <button
@@ -452,9 +428,7 @@ export default function AdminValidationDetailPage({
                 onClick={handleRequestInfo}
                 disabled={busy || !infoMessage.trim()}
                 className="mt-3 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                Envoyer la demande
-              </button>
+              >{t("Envoyer la demande")}</button>
             </div>
           ) : null}
         </>

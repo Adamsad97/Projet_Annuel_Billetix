@@ -15,31 +15,32 @@ import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
 import { filterSelectClass } from "@/components/ui/field";
 import { LoadMoreButton } from "@/components/ui/load-more-button";
+import { t, msg } from "@/lib/i18n/translate";
 
 const PAGE_SIZE = 50;
 
 const eventStatusFilters: { id: string; label: string }[] = [
-  { id: "all", label: "Tous" },
-  { id: "PUBLISHED", label: "Publiés" },
-  { id: "PENDING_VALIDATION", label: "En validation" },
-  { id: "DRAFT", label: "Brouillons" },
-  { id: "SUSPENDED", label: "Suspendus" },
-  { id: "POSTPONED", label: "Reportés" },
-  { id: "CANCELLED", label: "Annulés" },
-  { id: "TERMINATED", label: "Terminés" },
-  { id: "ARCHIVED", label: "Archivés" },
+  { id: "all", label: msg("Tous") },
+  { id: "PUBLISHED", label: msg("Publiés") },
+  { id: "PENDING_VALIDATION", label: msg("En validation") },
+  { id: "DRAFT", label: msg("Brouillons") },
+  { id: "SUSPENDED", label: msg("Suspendus") },
+  { id: "POSTPONED", label: msg("Reportés") },
+  { id: "CANCELLED", label: msg("Annulés") },
+  { id: "TERMINATED", label: msg("Terminés") },
+  { id: "ARCHIVED", label: msg("Archivés") },
 ];
 
 const whenOptions: { id: "" | "upcoming" | "past"; label: string }[] = [
-  { id: "", label: "Toutes les dates" },
-  { id: "upcoming", label: "À venir ou en cours" },
-  { id: "past", label: "Passés" },
+  { id: "", label: msg("Toutes les dates") },
+  { id: "upcoming", label: msg("À venir ou en cours") },
+  { id: "past", label: msg("Passés") },
 ];
 
 const sortOptions: { id: AdminEventSort; label: string }[] = [
-  { id: "created_desc", label: "Création la plus récente" },
-  { id: "start_asc", label: "Date la plus proche" },
-  { id: "start_desc", label: "Date la plus lointaine" },
+  { id: "created_desc", label: msg("Création la plus récente") },
+  { id: "start_asc", label: msg("Date la plus proche") },
+  { id: "start_desc", label: msg("Date la plus lointaine") },
   { id: "title", label: "Titre (A → Z)" },
 ];
 
@@ -82,7 +83,7 @@ export function EventsExplorer() {
           setTotal(result.total);
           setError(null);
         })
-        .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger les événements."));
+        .catch((err) => setError(err instanceof ApiError ? err.message : t("Impossible de charger les événements.")));
     }, 300);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,7 +97,7 @@ export function EventsExplorer() {
       setEvents([...events, ...result.data]);
       setTotal(result.total);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de charger la suite.");
+      setError(err instanceof ApiError ? err.message : t("Impossible de charger la suite."));
     } finally {
       setLoadingMore(false);
     }
@@ -118,31 +119,29 @@ export function EventsExplorer() {
         <SearchField
           value={search}
           onChange={setSearch}
-          placeholder="Titre, lieu, ville ou organisateur…"
+          placeholder={t("Titre, lieu, ville ou organisateur…")}
           className="w-full sm:max-w-sm"
         />
         <div className="flex flex-wrap items-center gap-2">
-          <FilterMenu label="Catégorie" value={categoryLabel} active={category !== ""} align="right">
+          <FilterMenu label={t("Catégorie")} value={categoryLabel} active={category !== ""} align="right">
             {(close) => (
               <div role="menu">
-                <FilterOption selected={category === ""} onSelect={() => { setCategory(""); close(); }}>
-                  Toutes les catégories
-                </FilterOption>
+                <FilterOption selected={category === ""} onSelect={() => { setCategory(""); close(); }}>{t("Toutes les catégories")}</FilterOption>
                 {categories.map((option) => (
                   <FilterOption
                     key={option.id}
                     selected={category === option.code}
                     onSelect={() => { setCategory(option.code); close(); }}
                   >
-                    {option.label}
-                    {option.is_active ? "" : " (désactivée)"}
+                    {t(option.label)}
+                    {option.is_active ? "" : t(" (désactivée)")}
                   </FilterOption>
                 ))}
               </div>
             )}
           </FilterMenu>
           <FilterMenu
-            label="Période"
+            label={t("Période")}
             value={whenOptions.find((option) => option.id === when)?.label}
             active={when !== ""}
             align="right"
@@ -151,14 +150,14 @@ export function EventsExplorer() {
               <div role="menu">
                 {whenOptions.map((option) => (
                   <FilterOption key={option.id} selected={when === option.id} onSelect={() => { setWhen(option.id); close(); }}>
-                    {option.label}
+                    {t(option.label)}
                   </FilterOption>
                 ))}
               </div>
             )}
           </FilterMenu>
           <label className="flex items-center gap-2 text-sm text-ink-5">
-            <span className="sr-only">Trier par</span>
+            <span className="sr-only">{t("Trier par")}</span>
             <select
               value={sort}
               onChange={(event) => setSort(event.target.value as AdminEventSort)}
@@ -166,7 +165,7 @@ export function EventsExplorer() {
             >
               {sortOptions.map((option) => (
                 <option key={option.id} value={option.id}>
-                  {option.label}
+                  {t(option.label)}
                 </option>
               ))}
             </select>
@@ -177,9 +176,7 @@ export function EventsExplorer() {
       <div className="flex flex-wrap items-center gap-3">
         <FilterPills options={eventStatusFilters} active={status} onChange={setStatus} />
         {hasFilters ? (
-          <button type="button" onClick={reset} className="text-sm font-medium text-link hover:text-link-hover">
-            Réinitialiser
-          </button>
+          <button type="button" onClick={reset} className="text-sm font-medium text-link hover:text-link-hover">{t("Réinitialiser")}</button>
         ) : null}
       </div>
 
@@ -188,9 +185,7 @@ export function EventsExplorer() {
       ) : null}
 
       {events ? (
-        <p className="text-sm text-ink-5" role="status">
-          {total} événement{total > 1 ? "s" : ""}
-        </p>
+        <p className="text-sm text-ink-5" role="status">{(total > 1 ? t("{total} événements", { total }) : t("{total} événement", { total }))}</p>
       ) : null}
 
       <div className={cardClass("overflow-hidden")}>
@@ -199,7 +194,7 @@ export function EventsExplorer() {
         ) : events.length > 0 ? (
           events.map((event) => <AdminEventRow key={event.id} event={event} />)
         ) : (
-          <MutedMessage variant="list">Aucun événement ne correspond à ces critères.</MutedMessage>
+          <MutedMessage variant="list">{t("Aucun événement ne correspond à ces critères.")}</MutedMessage>
         )}
       </div>
 

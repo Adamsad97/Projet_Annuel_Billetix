@@ -18,6 +18,7 @@ import {
   markActivity,
   type SessionEndReason,
 } from "@/lib/auth/session";
+import { t } from "@/lib/i18n/translate";
 
 // Valeur de repli uniquement (API injoignable) — identique au FALLBACK
 // d'auth-service ; la vraie valeur vient de platform_settings.
@@ -148,11 +149,8 @@ export function SessionManager() {
   return (
     <Modal open role="alertdialog" dismissible={false} onClose={() => undefined} labelledBy="session-warning-title" className="bg-black/50 px-6">
       <div className="w-full max-w-sm rounded-2xl border border-hairline-2 bg-card p-6 text-center shadow-2xl">
-        <h2 id="session-warning-title" className="text-lg font-bold text-ink-1">
-          Votre session va expirer
-        </h2>
-        <p className="mt-2 text-sm text-ink-4">
-          Par sécurité, vous serez déconnecté faute d&apos;activité dans{" "}
+        <h2 id="session-warning-title" className="text-lg font-bold text-ink-1">{t("Votre session va expirer")}</h2>
+        <p className="mt-2 text-sm text-ink-4">{t("Par sécurité, vous serez déconnecté faute d'activité dans")}{" "}
           <strong className="font-mono tabular-nums text-warning">{secondsLeft} s</strong>.
         </p>
         <div className="mt-5 flex flex-col gap-2 sm:flex-row">
@@ -162,9 +160,7 @@ export function SessionManager() {
               void logout("manuelle").then(() => router.push("/"));
             }}
             className="flex-1 rounded-xl border border-hairline-3 py-2.5 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5"
-          >
-            Se déconnecter
-          </button>
+          >{t("Se déconnecter")}</button>
           <button
             type="button"
             autoFocus
@@ -174,9 +170,7 @@ export function SessionManager() {
               void refreshAccessToken();
             }}
             className="flex-1 rounded-xl bg-brand py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          >
-            Rester connecté
-          </button>
+          >{t("Rester connecté")}</button>
         </div>
       </div>
     </Modal>

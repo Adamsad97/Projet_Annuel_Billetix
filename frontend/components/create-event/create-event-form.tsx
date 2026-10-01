@@ -32,6 +32,7 @@ import { DocumentDropzone } from "@/components/ui/document-dropzone";
 import { ApiError } from "@/lib/api/http-error";
 import { buttonClass } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 const fieldClassName = fieldClass("px-4 py-3");
 
@@ -136,31 +137,31 @@ export function CreateEventForm({
 
     // Mode « edit » non géré ici : la modification passe par EditEventForm.
     if (mode === "edit") {
-      setError("La modification d'un événement existant n'est pas encore reliée au serveur.");
+      setError(t("La modification d'un événement existant n'est pas encore reliée au serveur."));
       return;
     }
 
     if (!posterFile) {
-      setError("Choisissez une affiche pour votre événement.");
+      setError(t("Choisissez une affiche pour votre événement."));
       return;
     }
     if (isNonProfit && !nonProfitFile) {
-      setError("Joignez un justificatif pour la déclaration à but non lucratif.");
+      setError(t("Joignez un justificatif pour la déclaration à but non lucratif."));
       return;
     }
     const validTiers = tierRows.filter((row) => row.name.trim() && row.price && row.quota);
     if (validTiers.length === 0) {
       setError(
         isFree
-          ? "Ajoutez au moins une catégorie de billet complète (nom, quota)."
-          : "Ajoutez au moins une catégorie de billet complète (nom, prix, quota).",
+          ? t("Ajoutez au moins une catégorie de billet complète (nom, quota).")
+          : t("Ajoutez au moins une catégorie de billet complète (nom, prix, quota)."),
       );
       return;
     }
     const totalQuota = validTiers.reduce((sum, row) => sum + Number(row.quota), 0);
     if (totalQuota > Number(totalCapacity)) {
       setError(
-        `La somme des quotas (${totalQuota}) dépasse la capacité totale (${totalCapacity}) — ajustez les catégories de billets ou la capacité.`,
+        t("La somme des quotas ({totalQuota}) dépasse la capacité totale ({totalCapacity}) — ajustez les catégories de billets ou la capacité.", { totalQuota, totalCapacity }),
       );
       return;
     }
@@ -169,15 +170,15 @@ export function CreateEventForm({
     const salesStartIso = toIsoOrNull(salesStartAt) ?? new Date().toISOString();
     const salesEndIso = toIsoOrNull(salesEndAt) ?? startIso;
     if (!startIso || !endIso || !salesEndIso) {
-      setError("Vérifiez les dates de l'événement et de la période de vente.");
+      setError(t("Vérifiez les dates de l'événement et de la période de vente."));
       return;
     }
     if (new Date(startIso).getTime() < Date.now()) {
-      setError("La date de début ne peut pas être dans le passé.");
+      setError(t("La date de début ne peut pas être dans le passé."));
       return;
     }
     if (new Date(endIso).getTime() <= new Date(startIso).getTime()) {
-      setError("La date de fin doit être postérieure à la date de début.");
+      setError(t("La date de fin doit être postérieure à la date de début."));
       return;
     }
 
@@ -239,47 +240,41 @@ export function CreateEventForm({
         router.push("/dashboard");
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Une erreur est survenue, veuillez réessayer.");
+      setError(err instanceof ApiError ? err.message : t("Une erreur est survenue, veuillez réessayer."));
       setSubmitting(false);
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="mx-auto flex max-w-2xl flex-col gap-6">
-      <InfoCard icon="📋" title="Informations générales">
+      <InfoCard icon="📋" title={t("Informations générales")}>
         <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">
-              Titre *
-            </span>
+            <span className="text-sm font-medium text-accent/80">{t("Titre *")}</span>
             <input
               type="text"
               required
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="Ex : Nuit Électronique — La Défense Arena"
+              placeholder={t("Ex : Nuit Électronique — La Défense Arena")}
               className={fieldClassName}
             />
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">
-              Description *
-            </span>
+            <span className="text-sm font-medium text-accent/80">{t("Description *")}</span>
             <textarea
               required
               rows={3}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Décrivez votre événement en détail…"
+              placeholder={t("Décrivez votre événement en détail…")}
               className={`${fieldClassName} resize-none`}
             />
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">
-              Catégorie *
-            </span>
+            <span className="text-sm font-medium text-accent/80">{t("Catégorie *")}</span>
             <CategoryPicker categories={categories} value={category} onChange={setCategory} />
           </div>
 
@@ -287,13 +282,11 @@ export function CreateEventForm({
         </div>
       </InfoCard>
 
-      <InfoCard icon="📅" title="Date & lieu">
+      <InfoCard icon="📅" title={t("Date & lieu")}>
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-accent/80">
-                Date de début *
-              </span>
+              <span className="text-sm font-medium text-accent/80">{t("Date de début *")}</span>
               <input
                 type="datetime-local"
                 required
@@ -304,9 +297,7 @@ export function CreateEventForm({
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-accent/80">
-                Date de fin *
-              </span>
+              <span className="text-sm font-medium text-accent/80">{t("Date de fin *")}</span>
               <input
                 type="datetime-local"
                 required
@@ -319,23 +310,19 @@ export function CreateEventForm({
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">
-              Nom du lieu *
-            </span>
+            <span className="text-sm font-medium text-accent/80">{t("Nom du lieu *")}</span>
             <input
               type="text"
               required
               value={venueName}
               onChange={(event) => setVenueName(event.target.value)}
-              placeholder="La Défense Arena"
+              placeholder={t("La Défense Arena")}
               className={fieldClassName}
             />
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">
-              Adresse *
-            </span>
+            <span className="text-sm font-medium text-accent/80">{t("Adresse *")}</span>
             <AddressAutocomplete
               value={addressLine1}
               onChangeText={setAddressLine1}
@@ -348,24 +335,24 @@ export function CreateEventForm({
                 setLatitude(suggestion.lat);
                 setLongitude(suggestion.lng);
               }}
-              placeholder="2 Esplanade de la Défense"
+              placeholder={t("2 Esplanade de la Défense")}
             />
           </label>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_1fr_1fr]">
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-accent/80">Ville *</span>
+              <span className="text-sm font-medium text-accent/80">{t("Ville *")}</span>
               <input
                 type="text"
                 required
                 value={city}
                 onChange={(event) => setCity(event.target.value)}
-                placeholder="Puteaux"
+                placeholder={t("Puteaux")}
                 className={fieldClassName}
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-accent/80">Code postal *</span>
+              <span className="text-sm font-medium text-accent/80">{t("Code postal *")}</span>
               <input
                 type="text"
                 required
@@ -376,7 +363,7 @@ export function CreateEventForm({
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-accent/80">Pays *</span>
+              <span className="text-sm font-medium text-accent/80">{t("Pays *")}</span>
               <input
                 type="text"
                 required
@@ -398,17 +385,17 @@ export function CreateEventForm({
         </div>
       </InfoCard>
 
-      <InfoCard icon="🖼️" title="Affiche de l'événement">
+      <InfoCard icon="🖼️" title={t("Affiche de l'événement")}>
         <PosterDropzone onFileSelected={setPosterFile} />
       </InfoCard>
 
-      <InfoCard icon="🌄" title="Image de couverture (facultatif)">
+      <InfoCard icon="🌄" title={t("Image de couverture (facultatif)")}>
         <CoverDropzone onFileSelected={setCoverFile} onRemove={() => setCoverFile(null)} />
       </InfoCard>
 
       {/* Dépôt du justificatif réservé à l'organisateur lui-même, absent quand un admin crée pour lui. */}
       {!adminOrganizerId ? (
-        <InfoCard icon="🤝" title="Événement à but non lucratif">
+        <InfoCard icon="🤝" title={t("Événement à but non lucratif")}>
           <div className="flex flex-col gap-4">
             <label className="flex items-start gap-3">
               <input
@@ -423,36 +410,33 @@ export function CreateEventForm({
                 }}
                 className="mt-0.5 h-4 w-4 accent-blue-600"
               />
-              <span className="text-sm text-ink-3">
-                Cet événement est organisé à but non lucratif (association, action caritative…). Après vérification
-                du justificatif par un administrateur, la commission de la plateforme ne s&apos;applique pas.
-              </span>
+              <span className="text-sm text-ink-3">{t("Cet événement est organisé à but non lucratif (association, action caritative…). Après vérification du justificatif par un administrateur, la commission de la plateforme ne s'applique pas.")}</span>
             </label>
             {isNonProfit ? (
               <p className="text-xs text-ink-5">
                 {isFree
-                  ? "Billetterie passée en « Gratuit ». Si vous vendez des billets (gala caritatif…), cochez « Payant » dans la section Billetterie."
-                  : "Billetterie payante : la commission de la plateforme ne s'appliquera pas après vérification du justificatif."}
+                  ? t("Billetterie passée en « Gratuit ». Si vous vendez des billets (gala caritatif…), cochez « Payant » dans la section Billetterie.")
+                  : t("Billetterie payante : la commission de la plateforme ne s'appliquera pas après vérification du justificatif.")}
               </p>
             ) : null}
             {isNonProfit ? (
               <DocumentDropzone
                 onFileSelected={setNonProfitFile}
                 disabled={submitting}
-                hint="Glissez le justificatif (statuts, récépissé de déclaration…) ou cliquez"
+                hint={t("Glissez le justificatif (statuts, récépissé de déclaration…) ou cliquez")}
               />
             ) : null}
           </div>
         </InfoCard>
       ) : null}
 
-      <InfoCard icon="🎟️" title="Billetterie">
+      <InfoCard icon="🎟️" title={t("Billetterie")}>
         <div className="flex flex-col gap-4">
           <TicketingTypeToggle free={isFree} onChange={applyFree} />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-accent/80">Capacité totale *</span>
+              <span className="text-sm font-medium text-accent/80">{t("Capacité totale *")}</span>
               <input
                 type="number"
                 required
@@ -464,14 +448,14 @@ export function CreateEventForm({
             </label>
             {isFree ? null : (
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-accent/80">Politique de remboursement *</span>
+              <span className="text-sm font-medium text-accent/80">{t("Politique de remboursement *")}</span>
               <select
                 value={refundPolicy}
                 onChange={(event) => setRefundPolicy(event.target.value as "NON_REFUNDABLE" | "REFUNDABLE")}
                 className={fieldClassName}
               >
-                <option value="NON_REFUNDABLE" className="bg-card">Non remboursable</option>
-                <option value="REFUNDABLE" className="bg-card">Remboursable</option>
+                <option value="NON_REFUNDABLE" className="bg-card">{t("Non remboursable")}</option>
+                <option value="REFUNDABLE" className="bg-card">{t("Remboursable")}</option>
               </select>
             </label>
             )}
@@ -479,7 +463,7 @@ export function CreateEventForm({
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-accent/80">Ouverture des ventes</span>
+              <span className="text-sm font-medium text-accent/80">{t("Ouverture des ventes")}</span>
               <input
                 type="datetime-local"
                 min={minDatetimeLocal}
@@ -487,10 +471,10 @@ export function CreateEventForm({
                 onChange={(event) => setSalesStartAt(event.target.value)}
                 className={fieldClassName}
               />
-              <span className="text-xs text-ink-5">Laisser vide pour ouvrir dès la validation.</span>
+              <span className="text-xs text-ink-5">{t("Laisser vide pour ouvrir dès la validation.")}</span>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-accent/80">Fermeture des ventes</span>
+              <span className="text-sm font-medium text-accent/80">{t("Fermeture des ventes")}</span>
               <input
                 type="datetime-local"
                 min={salesStartAt || minDatetimeLocal}
@@ -498,13 +482,13 @@ export function CreateEventForm({
                 onChange={(event) => setSalesEndAt(event.target.value)}
                 className={fieldClassName}
               />
-              <span className="text-xs text-ink-5">Laisser vide pour fermer au début de l&apos;événement.</span>
+              <span className="text-xs text-ink-5">{t("Laisser vide pour fermer au début de l'événement.")}</span>
             </label>
           </div>
         </div>
       </InfoCard>
 
-      <InfoCard icon="✏️" title="Catégories de billets">
+      <InfoCard icon="✏️" title={t("Catégories de billets")}>
         <TicketTiersEditor
           rows={tierRows}
           onChange={setTierRows}
@@ -527,26 +511,20 @@ export function CreateEventForm({
         className={buttonClass("primary", "w-full rounded-full py-3.5 text-sm disabled:cursor-not-allowed disabled:opacity-50")}
       >
         {submitting
-          ? "Envoi en cours…"
+          ? t("Envoi en cours…")
           : mode === "edit"
-            ? "Enregistrer les modifications →"
+            ? t("Enregistrer les modifications →")
             : adminOrganizerId
-              ? "Créer pour cet organisateur →"
-              : "Soumettre à la validation →"}
+              ? t("Créer pour cet organisateur →")
+              : t("Soumettre à la validation →")}
       </button>
 
       {adminOrganizerId ? (
-        <p className="text-center text-xs text-ink-5">
-          L&apos;événement sera créé sous le compte de l&apos;organisateur puis soumis à validation — vous serez redirigé vers sa fiche pour la traiter.
-        </p>
+        <p className="text-center text-xs text-ink-5">{t("L'événement sera créé sous le compte de l'organisateur puis soumis à validation — vous serez redirigé vers sa fiche pour la traiter.")}</p>
       ) : mode === "create" ? (
-        <p className="text-center text-xs text-ink-5">
-          ⏱️ Délai de traitement : 48h ouvrées maximum
-        </p>
+        <p className="text-center text-xs text-ink-5">{t("⏱️ Délai de traitement : 48h ouvrées maximum")}</p>
       ) : (
-        <p className="text-center text-xs text-ink-5">
-          ⏱️ Toute modification substantielle repasse en validation (48h ouvrées).
-        </p>
+        <p className="text-center text-xs text-ink-5">{t("⏱️ Toute modification substantielle repasse en validation (48h ouvrées).")}</p>
       )}
     </form>
   );

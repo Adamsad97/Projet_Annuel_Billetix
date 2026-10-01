@@ -22,15 +22,16 @@ import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
 import { filterSelectClass } from "@/components/ui/field";
 import { LoadMoreButton } from "@/components/ui/load-more-button";
+import { t, msg } from "@/lib/i18n/translate";
 
 const statusFilters: { id: string; label: string }[] = [
-  { id: "all", label: "Tous" },
-  { id: "PENDING", label: "En attente" },
-  { id: "PROCESSING", label: "En cours" },
-  { id: "TO_TRANSFER", label: "À virer" },
-  { id: "COMPLETED", label: "Versés" },
-  { id: "BLOCKED", label: "Bloqués" },
-  { id: "FAILED", label: "Échoués" },
+  { id: "all", label: msg("Tous") },
+  { id: "PENDING", label: msg("En attente") },
+  { id: "PROCESSING", label: msg("En cours") },
+  { id: "TO_TRANSFER", label: msg("À virer") },
+  { id: "COMPLETED", label: msg("Versés") },
+  { id: "BLOCKED", label: msg("Bloqués") },
+  { id: "FAILED", label: msg("Échoués") },
 ];
 
 const PAGE_SIZE = 50;
@@ -38,17 +39,17 @@ const PAGE_SIZE = 50;
 type Period = "" | "upcoming" | "this_month" | "last_month" | "last_3_months";
 
 const periodOptions: { id: Period; label: string }[] = [
-  { id: "", label: "Toutes les échéances" },
-  { id: "upcoming", label: "À venir" },
-  { id: "this_month", label: "Ce mois-ci" },
-  { id: "last_month", label: "Le mois dernier" },
-  { id: "last_3_months", label: "Les 3 derniers mois" },
+  { id: "", label: msg("Toutes les échéances") },
+  { id: "upcoming", label: msg("À venir") },
+  { id: "this_month", label: msg("Ce mois-ci") },
+  { id: "last_month", label: msg("Le mois dernier") },
+  { id: "last_3_months", label: msg("Les 3 derniers mois") },
 ];
 
 const sortOptions: { id: AdminPayoutSort; label: string }[] = [
-  { id: "scheduled_desc", label: "Échéance la plus récente" },
-  { id: "scheduled_asc", label: "Échéance la plus ancienne" },
-  { id: "amount_desc", label: "Montant net le plus élevé" },
+  { id: "scheduled_desc", label: msg("Échéance la plus récente") },
+  { id: "scheduled_asc", label: msg("Échéance la plus ancienne") },
+  { id: "amount_desc", label: msg("Montant net le plus élevé") },
 ];
 
 /** Bornes de l'échéance pour une période (heure locale). */
@@ -98,7 +99,7 @@ export function PayoutsExplorer() {
         setTotal(result.total);
         setError(null);
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger les reversements."));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t("Impossible de charger les reversements.")));
   }
 
   // Après une action : recharge en gardant le nombre de lignes déjà affichées.
@@ -129,20 +130,20 @@ export function PayoutsExplorer() {
 
   function handleBlock(payout: ApiPayout) {
     setDialog({
-      title: `Bloquer le reversement de ${payout.organizer_name} ?`,
-      message: "Le versement ne sera pas déclenché tant que le blocage n'est pas levé.",
-      confirmLabel: "Bloquer",
+      title: t("Bloquer le reversement de {organizer_name} ?", { organizer_name: payout.organizer_name }),
+      message: t("Le versement ne sera pas déclenché tant que le blocage n'est pas levé."),
+      confirmLabel: t("Bloquer"),
       danger: true,
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Motif du blocage…",
+      reasonPlaceholder: t("Motif du blocage…"),
       onConfirm: async (reason) => {
         setBusyId(payout.id);
         try {
           await blockPayout(payout.id, reason!);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de bloquer ce reversement.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de bloquer ce reversement."));
         } finally {
           setBusyId(null);
         }
@@ -152,16 +153,16 @@ export function PayoutsExplorer() {
 
   function handleUnblock(payout: ApiPayout) {
     setDialog({
-      title: "Débloquer ce reversement ?",
-      message: "Il reprendra son cours normal (versé au prochain passage automatique).",
-      confirmLabel: "Débloquer",
+      title: t("Débloquer ce reversement ?"),
+      message: t("Il reprendra son cours normal (versé au prochain passage automatique)."),
+      confirmLabel: t("Débloquer"),
       onConfirm: async () => {
         setBusyId(payout.id);
         try {
           await unblockPayout(payout.id);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de débloquer ce reversement.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de débloquer ce reversement."));
         } finally {
           setBusyId(null);
         }
@@ -171,16 +172,16 @@ export function PayoutsExplorer() {
 
   function handleApproveEarly(payout: ApiPayout) {
     setDialog({
-      title: "Approuver la demande de reversement anticipé ?",
-      message: `${payout.organizer_name} sera versé sans attendre l'échéance normale.`,
-      confirmLabel: "Approuver",
+      title: t("Approuver la demande de reversement anticipé ?"),
+      message: t("{organizer_name} sera versé sans attendre l'échéance normale.", { organizer_name: payout.organizer_name }),
+      confirmLabel: t("Approuver"),
       onConfirm: async () => {
         setBusyId(payout.id);
         try {
           await approveEarlyPayout(payout.id);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible d'approuver cette demande.");
+          setError(err instanceof ApiError ? err.message : t("Impossible d'approuver cette demande."));
         } finally {
           setBusyId(null);
         }
@@ -194,12 +195,12 @@ export function PayoutsExplorer() {
         <SearchField
           value={search}
           onChange={setSearch}
-          placeholder="Organisateur ou événement…"
+          placeholder={t("Organisateur ou événement…")}
           className="w-full sm:max-w-sm"
         />
         <div className="flex flex-wrap items-center gap-2">
           <FilterMenu
-            label="Échéance"
+            label={t("Échéance")}
             value={periodOptions.find((option) => option.id === period)?.label}
             active={period !== ""}
             align="right"
@@ -215,14 +216,14 @@ export function PayoutsExplorer() {
                       close();
                     }}
                   >
-                    {option.label}
+                    {t(option.label)}
                   </FilterOption>
                 ))}
               </div>
             )}
           </FilterMenu>
           <label className="flex items-center gap-2 text-sm text-ink-5">
-            <span className="sr-only">Trier par</span>
+            <span className="sr-only">{t("Trier par")}</span>
             <select
               value={sort}
               onChange={(event) => setSort(event.target.value as AdminPayoutSort)}
@@ -230,7 +231,7 @@ export function PayoutsExplorer() {
             >
               {sortOptions.map((option) => (
                 <option key={option.id} value={option.id}>
-                  {option.label}
+                  {t(option.label)}
                 </option>
               ))}
             </select>
@@ -241,15 +242,13 @@ export function PayoutsExplorer() {
       <div className="flex flex-wrap items-center gap-3">
         <FilterPills options={statusFilters} active={status} onChange={setStatus} />
         {hasFilters ? (
-          <button type="button" onClick={reset} className="text-sm font-medium text-link hover:text-link-hover">
-            Réinitialiser
-          </button>
+          <button type="button" onClick={reset} className="text-sm font-medium text-link hover:text-link-hover">{t("Réinitialiser")}</button>
         ) : null}
       </div>
 
       {payouts ? (
         <p className="text-sm text-ink-5" role="status">
-          {total} reversement{total > 1 ? "s" : ""}
+          {total > 1 ? t("{count} reversements", { count: total }) : t("{count} reversement", { count: total })}
         </p>
       ) : null}
 
@@ -272,7 +271,7 @@ export function PayoutsExplorer() {
             />
           ))
         ) : (
-          <MutedMessage variant="list">Aucun reversement ne correspond à ces critères.</MutedMessage>
+          <MutedMessage variant="list">{t("Aucun reversement ne correspond à ces critères.")}</MutedMessage>
         )}
       </div>
 

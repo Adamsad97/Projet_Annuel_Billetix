@@ -6,6 +6,7 @@ import type { ProfileOrder, ProfileTicket, TicketStatus, OrderStatus } from "@/l
 import type { TicketDetail } from "@/lib/constants/ticket-detail";
 import { euros as currency } from "@/lib/format/money";
 import { longDate as dateFormatter, time as timeFormatter } from "@/lib/format/dates";
+import { t, msg } from "@/lib/i18n/translate";
 
 function ticketStatusFor(status: ApiTicketStatus): TicketStatus {
   switch (status) {
@@ -33,10 +34,10 @@ export function apiTicketToProfileTicket(ticket: ApiTicket): ProfileTicket {
     iconBg: "bg-blue-500/15",
     status: ticketStatusFor(ticket.status),
     receivedFromLabel: ticket.received_from
-      ? `Reçu de ${ticket.received_from.first_name} ${ticket.received_from.last_name.charAt(0)}.`
+      ? t("Reçu de {first_name} {value}.", { first_name: ticket.received_from.first_name, value: ticket.received_from.last_name.charAt(0) })
       : undefined,
     resalePurchaseLabel: ticket.resale_purchase
-      ? `Acheté en revente${ticket.resale_purchase.at ? ` le ${dateFormatter.format(new Date(ticket.resale_purchase.at))}` : ""}`
+      ? ticket.resale_purchase.at ? t("Acheté en revente le {date}", { date: dateFormatter.format(new Date(ticket.resale_purchase.at)) }) : t("Acheté en revente")
       : undefined,
   };
 }
@@ -69,7 +70,7 @@ export function apiTicketToDetail(ticket: ApiTicket): TicketDetail {
     timeLabel: timeFormatter.format(start),
     holderName: `${ticket.holder_first_name} ${ticket.holder_last_name}`,
     categoryName: ticket.ticket_category_name,
-    priceLabel: Number(ticket.unit_price_ttc) === 0 ? "Gratuit" : currency.format(Number(ticket.unit_price_ttc)),
+    priceLabel: Number(ticket.unit_price_ttc) === 0 ? t("Gratuit") : currency.format(Number(ticket.unit_price_ttc)),
     // Statut d'affichage complet : en revente, annulé ou remboursé, pas seulement utilisé ou valide.
     status: ticketStatusFor(ticket.status),
     emoji: "🎫",
@@ -98,15 +99,15 @@ export function apiOrderToProfileOrder(order: ApiOrder, ticketCount: number): Pr
     reference: order.reference,
     eventName: order.event_name ?? undefined,
     amountLabel: currency.format(Number(order.total_amount_ttc)),
-    dateLabel: `Passée le ${dateFormatter.format(new Date(order.created_at))}`,
-    ticketCountLabel: ticketCount > 1 ? `${ticketCount} billets` : `${ticketCount} billet`,
+    dateLabel: t("Passée le {value}", { value: dateFormatter.format(new Date(order.created_at)) }),
+    ticketCountLabel: ticketCount > 1 ? t("{count} billets", { count: ticketCount }) : t("{count} billet", { count: ticketCount }),
     status: orderStatusFor(order.status),
   };
 }
 
 const paymentMethodLabels: Record<ApiPaymentMethod, string> = {
-  STRIPE: "Carte bancaire",
-  FREE: "Gratuit",
+  STRIPE: msg("Carte bancaire"),
+  FREE: msg("Gratuit"),
 };
 
 export function apiOrderItemsToLines(items: ApiOrderItem[]): { label: string; amount: number }[] {
@@ -117,5 +118,5 @@ export function apiOrderItemsToLines(items: ApiOrderItem[]): { label: string; am
 }
 
 export function paymentMethodLabel(method: ApiPaymentMethod): string {
-  return paymentMethodLabels[method] ?? method;
+  return t(paymentMethodLabels[method] ?? method);
 }

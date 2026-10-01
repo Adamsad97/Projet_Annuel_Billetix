@@ -9,6 +9,7 @@ import { ApiError } from "@/lib/api/http-error";
 import type { TicketDetail } from "@/lib/constants/ticket-detail";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 interface Draft {
   recipientEmail: string;
@@ -71,7 +72,7 @@ export function GiftForm({ ticket }: { ticket: TicketDetail }) {
         window.location.assign(`/connexion?reauth=1&next=${encodeURIComponent(`/billets/${ticket.id}/offrir`)}`);
         return;
       }
-      setError(err instanceof ApiError ? err.message : "Le transfert a échoué, veuillez réessayer.");
+      setError(err instanceof ApiError ? err.message : t("Le transfert a échoué, veuillez réessayer."));
       setStep("form");
     } finally {
       setSubmitting(false);
@@ -82,17 +83,12 @@ export function GiftForm({ ticket }: { ticket: TicketDetail }) {
     return (
       <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
         <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">✓</div>
-        <h2 className="text-lg font-bold text-ink-1">Billet offert</h2>
-        <p className="mt-1 text-sm text-ink-4">
-          Il est maintenant dans l&apos;espace de {draft.recipientEmail}, au nom de {draft.holderFirstName}{" "}
-          {draft.holderLastName}. Vous avez reçu tous les deux un email de confirmation.
-        </p>
+        <h2 className="text-lg font-bold text-ink-1">{t("Billet offert")}</h2>
+        <p className="mt-1 text-sm text-ink-4">{t("Il est maintenant dans l'espace de {recipientEmail}, au nom de {holderFirstName} {holderLastName}. Vous avez reçu tous les deux un email de confirmation.", { recipientEmail: draft.recipientEmail, holderFirstName: draft.holderFirstName, holderLastName: draft.holderLastName })}</p>
         <Link
           href="/profil/billets"
           className="mt-4 inline-flex rounded-full bg-hairline-1 px-4 py-2 text-sm font-medium text-ink-2 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
-        >
-          Retour à mes billets
-        </Link>
+        >{t("Retour à mes billets")}</Link>
       </div>
     );
   }
@@ -100,20 +96,20 @@ export function GiftForm({ ticket }: { ticket: TicketDetail }) {
   if (step === "confirm") {
     return (
       <div className={cardClass("p-6")}>
-        <h2 className="text-base font-bold text-ink-1">Confirmer le transfert</h2>
+        <h2 className="text-base font-bold text-ink-1">{t("Confirmer le transfert")}</h2>
         <dl className="mt-4 flex flex-col gap-3 text-sm">
           <div>
-            <dt className="text-ink-5">Billet</dt>
+            <dt className="text-ink-5">{t("Billet")}</dt>
             <dd className="font-medium text-ink-1">
               {ticket.eventName} — {ticket.categoryName} · {ticket.reference}
             </dd>
           </div>
           <div>
-            <dt className="text-ink-5">Compte bénéficiaire</dt>
+            <dt className="text-ink-5">{t("Compte bénéficiaire")}</dt>
             <dd className="font-medium text-ink-1">{draft.recipientEmail}</dd>
           </div>
           <div>
-            <dt className="text-ink-5">Au nom de (personne qui assistera à l&apos;événement)</dt>
+            <dt className="text-ink-5">{t("Au nom de (personne qui assistera à l'événement)")}</dt>
             <dd className="font-medium text-ink-1">
               {draft.holderFirstName} {draft.holderLastName}
             </dd>
@@ -127,10 +123,7 @@ export function GiftForm({ ticket }: { ticket: TicketDetail }) {
             onChange={(event) => setUnderstood(event.target.checked)}
             className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600"
           />
-          <span>
-            Je comprends que le transfert est <strong>immédiat et définitif</strong> : le billet quittera mon
-            compte et son QR code actuel ne sera plus valable.
-          </span>
+          <span>{t("Je comprends que le transfert est")}{" "}<strong>{t("immédiat et définitif")}</strong>{" "}{t(": le billet quittera mon compte et son QR code actuel ne sera plus valable.")}</span>
         </label>
 
         <div className="mt-5 flex flex-col gap-2">
@@ -140,16 +133,14 @@ export function GiftForm({ ticket }: { ticket: TicketDetail }) {
             disabled={!understood || submitting}
             className="w-full rounded-full bg-blue-700 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {submitting ? "Transfert…" : "Offrir le billet"}
+            {submitting ? t("Transfert…") : t("Offrir le billet")}
           </button>
           <button
             type="button"
             onClick={() => setStep("form")}
             disabled={submitting}
             className="w-full rounded-full py-2.5 text-sm font-medium text-ink-4 transition-colors hover:text-ink-2"
-          >
-            Modifier
-          </button>
+          >{t("Modifier")}</button>
         </div>
       </div>
     );
@@ -157,13 +148,13 @@ export function GiftForm({ ticket }: { ticket: TicketDetail }) {
 
   return (
     <form onSubmit={review} className={cardClass("p-6")}>
-      <h2 className="text-base font-bold text-ink-1">Offrir ce billet</h2>
+      <h2 className="text-base font-bold text-ink-1">{t("Offrir ce billet")}</h2>
       <p className="mt-1 text-sm text-ink-5">
         {ticket.eventName} — {ticket.categoryName}
       </p>
 
       <label className="mt-5 flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-ink-2">Email du compte BilleTix bénéficiaire</span>
+        <span className="text-sm font-medium text-ink-2">{t("Email du compte BilleTix bénéficiaire")}</span>
         <input
           type="email"
           required
@@ -174,11 +165,9 @@ export function GiftForm({ ticket }: { ticket: TicketDetail }) {
           className={inputClass}
         />
       </label>
-      <p className="mt-1.5 text-xs text-ink-5">
-        La personne doit déjà avoir un compte BilleTix avec un email vérifié.
-      </p>
+      <p className="mt-1.5 text-xs text-ink-5">{t("La personne doit déjà avoir un compte BilleTix avec un email vérifié.")}</p>
 
-      <p className="mt-5 text-sm font-medium text-ink-2">Personne qui assistera à l&apos;événement</p>
+      <p className="mt-5 text-sm font-medium text-ink-2">{t("Personne qui assistera à l'événement")}</p>
       <div className="mt-1.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <input
           type="text"
@@ -187,8 +176,8 @@ export function GiftForm({ ticket }: { ticket: TicketDetail }) {
           autoComplete="off"
           value={draft.holderFirstName}
           onChange={(event) => update("holderFirstName", event.target.value)}
-          placeholder="Prénom"
-          aria-label="Prénom du titulaire"
+          placeholder={t("Prénom")}
+          aria-label={t("Prénom du titulaire")}
           className={inputClass}
         />
         <input
@@ -198,16 +187,13 @@ export function GiftForm({ ticket }: { ticket: TicketDetail }) {
           autoComplete="off"
           value={draft.holderLastName}
           onChange={(event) => update("holderLastName", event.target.value)}
-          placeholder="Nom"
-          aria-label="Nom du titulaire"
+          placeholder={t("Nom")}
+          aria-label={t("Nom du titulaire")}
           className={inputClass}
         />
       </div>
 
-      <p className="mt-4 text-xs text-ink-5">
-        🛡️ Le don est gratuit. Pour vendre un billet, utilisez la revente (prix plafonné à la valeur faciale).
-        Le transfert est tracé (date, compte, adresse IP) et visible par vous, le bénéficiaire et l&apos;équipe BilleTix.
-      </p>
+      <p className="mt-4 text-xs text-ink-5">{t("🛡️ Le don est gratuit. Pour vendre un billet, utilisez la revente (prix plafonné à la valeur faciale). Le transfert est tracé (date, compte, adresse IP) et visible par vous, le bénéficiaire et l'équipe BilleTix.")}</p>
 
       {error ? (
         <p className="mt-3 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
@@ -216,9 +202,7 @@ export function GiftForm({ ticket }: { ticket: TicketDetail }) {
       <button
         type="submit"
         className="mt-5 w-full rounded-full bg-blue-700 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-      >
-        Continuer
-      </button>
+      >{t("Continuer")}</button>
     </form>
   );
 }

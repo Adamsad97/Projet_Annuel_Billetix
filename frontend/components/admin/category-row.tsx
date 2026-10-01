@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ApiCategory } from "@/lib/api/categories";
+import { t } from "@/lib/i18n/translate";
 
 export function CategoryRow({
   category,
@@ -47,15 +48,15 @@ export function CategoryRow({
           <input
             value={label}
             onChange={(event) => setLabel(event.target.value)}
-            aria-label="Nom"
+            aria-label={t("Nom")}
             className="rounded-lg border border-hairline-2 bg-hairline-1 px-3 py-1.5 text-sm text-ink-1 focus:border-blue-500 focus:outline-none"
           />
           <input
             value={code}
             onChange={(event) => setCode(event.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ""))}
             maxLength={30}
-            aria-label="Code"
-            title="Code (majuscules, chiffres, underscore) — les événements de cette catégorie suivent automatiquement"
+            aria-label={t("Code")}
+            title={t("Code (majuscules, chiffres, underscore) — les événements de cette catégorie suivent automatiquement")}
             className="rounded-lg border border-hairline-2 bg-hairline-1 px-3 py-1 font-mono text-xs text-ink-3 focus:border-blue-500 focus:outline-none"
           />
         </div>
@@ -71,16 +72,12 @@ export function CategoryRow({
             disabled={busy}
             onClick={handleSave}
             className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            Enregistrer
-          </button>
+          >{t("Enregistrer")}</button>
           <button
             type="button"
             onClick={() => setEditing(false)}
             className="rounded-lg border border-hairline-2 px-3 py-1.5 text-xs font-medium text-ink-3 hover:border-hairline-4"
-          >
-            Annuler
-          </button>
+          >{t("Annuler")}</button>
         </div>
       </div>
     );
@@ -106,22 +103,18 @@ export function CategoryRow({
               : "rounded-full border border-hairline-2 bg-hairline-1 px-3 py-1 text-xs font-medium text-ink-4 transition-colors hover:border-hairline-4"
           }
         >
-          {category.is_active ? "Désactiver" : "Activer"}
+          {category.is_active ? t("Désactiver") : t("Activer")}
         </button>
         <button
           type="button"
           onClick={() => setEditing(true)}
           className="rounded-lg border border-hairline-2 px-2.5 py-1 text-xs font-medium text-ink-3 transition-colors hover:border-hairline-4"
-        >
-          Modifier
-        </button>
+        >{t("Modifier")}</button>
         <button
           type="button"
           onClick={() => onDelete(category.id)}
           className="rounded-lg border border-hairline-2 px-2.5 py-1 text-xs font-medium text-red-400 transition-colors hover:border-red-500/30 hover:bg-red-500/5"
-        >
-          Supprimer
-        </button>
+        >{t("Supprimer")}</button>
       </div>
     </div>
   );

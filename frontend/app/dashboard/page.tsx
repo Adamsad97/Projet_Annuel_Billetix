@@ -17,6 +17,7 @@ import { Alert } from "@/components/ui/alert";
 import { BackLink } from "@/components/ui/back-link";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { buttonClass } from "@/components/ui/button";
+import { t } from "@/lib/i18n/translate";
 
 export default function DashboardPage() {
   const [dashboard, setDashboard] = useState<ApiOrganizerDashboard | undefined>(undefined);
@@ -53,7 +54,7 @@ export default function DashboardPage() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof ApiError ? err.message : "Impossible de charger le tableau de bord.");
+        setError(err instanceof ApiError ? err.message : t("Impossible de charger le tableau de bord."));
       });
     return () => {
       cancelled = true;
@@ -62,53 +63,40 @@ export default function DashboardPage() {
 
   return (
     <PageShell width="7xl">
-      <BackLink href="/">Accueil</BackLink>
+      <BackLink href="/">{t("Accueil")}</BackLink>
 
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-1">Tableau de bord</h1>
-          <p className="mt-1 text-sm text-accent">
-            Bonjour {firstName || ""} 👋 — performances tous événements confondus
-          </p>
+          <h1 className="text-2xl font-bold text-ink-1">{t("Tableau de bord")}</h1>
+          <p className="mt-1 text-sm text-accent">{t("Bonjour {value} 👋 — performances tous événements confondus", { value: firstName || "" })}</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
           <Link
             href="/dashboard/profil"
             className={buttonClass("secondary", "rounded-full px-4 py-2.5 text-sm")}
-          >
-            🏷️ Mon profil
-          </Link>
+          >{t("🏷️ Mon profil")}</Link>
           <Link
             href="/dashboard/paiements"
             className={buttonClass("secondary", "rounded-full px-4 py-2.5 text-sm")}
-          >
-            💳 Paiements
-          </Link>
+          >{t("💳 Paiements")}</Link>
           <Link
             href="/creer-evenement"
             className={buttonClass("primary", "rounded-full px-5 py-2.5 text-sm")}
-          >
-            + Créer un événement
-          </Link>
+          >{t("+ Créer un événement")}</Link>
         </div>
       </div>
 
       {hasProfile === false ? (
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4">
           <div>
-            <p className="text-sm font-semibold text-ink-1">Complétez votre profil organisateur</p>
-            <p className="mt-0.5 text-sm text-ink-3">
-              Nom public et présentation de votre structure : nécessaires pour la vérification d&apos;identité et
-              les reversements.
-            </p>
+            <p className="text-sm font-semibold text-ink-1">{t("Complétez votre profil organisateur")}</p>
+            <p className="mt-0.5 text-sm text-ink-3">{t("Nom public et présentation de votre structure : nécessaires pour la vérification d'identité et les reversements.")}</p>
           </div>
           <Link
             href="/dashboard/profil"
             className="shrink-0 rounded-full bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          >
-            Compléter mon profil →
-          </Link>
+          >{t("Compléter mon profil →")}</Link>
         </div>
       ) : null}
 
@@ -127,13 +115,11 @@ export default function DashboardPage() {
           </div>
 
           <div className="mb-4 mt-10 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-ink-1">Mes événements</h2>
+            <h2 className="text-xl font-bold text-ink-1">{t("Mes événements")}</h2>
             <Link
               href="/dashboard/finances"
               className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
-            >
-              Finances →
-            </Link>
+            >{t("Finances →")}</Link>
           </div>
 
           <OrganizerEventsExplorer events={dashboard.events} categoriesByCode={categoriesByCode} />

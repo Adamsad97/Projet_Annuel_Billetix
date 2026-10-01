@@ -8,6 +8,7 @@ import { ActionDialog, type ActionDialogState } from "@/components/ui/action-dia
 import { ApiError } from "@/lib/api/http-error";
 import { euros as currency } from "@/lib/format/money";
 import { buttonClass } from "@/components/ui/button";
+import { t } from "@/lib/i18n/translate";
 
 export function ResaleManagePanel({
   ticketId,
@@ -38,9 +39,9 @@ export function ResaleManagePanel({
   function handleWithdraw() {
     if (!listing) return;
     setDialog({
-      title: "Retirer ce billet de la vente ?",
-      message: "L'annonce sera retirée du marketplace — le billet reste valable pour vous.",
-      confirmLabel: "Retirer",
+      title: t("Retirer ce billet de la vente ?"),
+      message: t("L'annonce sera retirée du marketplace — le billet reste valable pour vous."),
+      confirmLabel: t("Retirer"),
       onConfirm: async () => {
         setWithdrawing(true);
         setError(null);
@@ -48,7 +49,7 @@ export function ResaleManagePanel({
           await withdrawResale(listing.id);
           onWithdrawn();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de retirer cette annonce.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de retirer cette annonce."));
           setWithdrawing(false);
         }
       },
@@ -57,9 +58,7 @@ export function ResaleManagePanel({
 
   if (listing === undefined) {
     return (
-      <div className="w-full rounded-full border border-hairline-2 py-3 text-center text-sm text-ink-5">
-        Chargement de l&apos;annonce…
-      </div>
+      <div className="w-full rounded-full border border-hairline-2 py-3 text-center text-sm text-ink-5">{t("Chargement de l'annonce…")}</div>
     );
   }
 
@@ -71,7 +70,7 @@ export function ResaleManagePanel({
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
       <div className="flex items-center justify-between text-sm">
-        <span className="text-ink-4">Mis en vente à</span>
+        <span className="text-ink-4">{t("Mis en vente à")}</span>
         <span className="font-bold text-ink-1">{currency.format(Number(listing.resale_price))}</span>
       </div>
 
@@ -85,7 +84,7 @@ export function ResaleManagePanel({
         disabled={withdrawing}
         className={buttonClass("secondary", "w-full rounded-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50")}
       >
-        {withdrawing ? "Retrait…" : "↩️ Retirer de la vente"}
+        {withdrawing ? t("Retrait…") : t("↩️ Retirer de la vente")}
       </button>
 
       <ActionDialog state={dialog} onClose={() => setDialog(null)} />

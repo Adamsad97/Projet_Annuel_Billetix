@@ -16,6 +16,7 @@ import {
   updateVatRate,
   type ApiVatRate,
 } from "@/lib/api/vat-rates";
+import { t } from "@/lib/i18n/translate";
 
 /** « 5,5 » saisi en pourcentage → 0.055 ; null si invalide. */
 function percentToRate(value: string): number | null {
@@ -43,7 +44,7 @@ export function VatRatesSection() {
   function reload() {
     return listAllVatRates()
       .then(setVatRates)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger les taux de TVA."));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t("Impossible de charger les taux de TVA.")));
   }
 
   useEffect(() => {
@@ -58,7 +59,7 @@ export function VatRatesSection() {
       await reload();
       return true;
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "L'opération n'a pas pu être enregistrée.");
+      setError(err instanceof ApiError ? err.message : t("L'opération n'a pas pu être enregistrée."));
       return false;
     } finally {
       setBusy(false);
@@ -69,7 +70,7 @@ export function VatRatesSection() {
     event.preventDefault();
     const rate = percentToRate(newPercent);
     if (rate === null) {
-      setError("Saisissez un taux en pourcentage, entre 0 et 99,99 (ex. 5,5).");
+      setError(t("Saisissez un taux en pourcentage, entre 0 et 99,99 (ex. 5,5)."));
       return;
     }
     setCreating(true);
@@ -84,7 +85,7 @@ export function VatRatesSection() {
   async function handleSave(vatRate: ApiVatRate) {
     const rate = percentToRate(editPercent);
     if (rate === null) {
-      setError("Saisissez un taux en pourcentage, entre 0 et 99,99 (ex. 5,5).");
+      setError(t("Saisissez un taux en pourcentage, entre 0 et 99,99 (ex. 5,5)."));
       return;
     }
     if (await run(() => updateVatRate(vatRate.id, { label: editLabel.trim(), rate }))) setEditingId(null);
@@ -92,10 +93,10 @@ export function VatRatesSection() {
 
   function askDelete(vatRate: ApiVatRate) {
     setDialog({
-      title: `Supprimer le taux ${formatVatPercent(vatRate.rate)} ?`,
+      title: t("Supprimer le taux {vatPercent} ?", { vatPercent: formatVatPercent(vatRate.rate) }),
       message:
-        "Il ne sera plus proposé aux organisateurs. Les événements qui l'utilisent déjà gardent leur taux et leurs prix.",
-      confirmLabel: "Supprimer",
+        t("Il ne sera plus proposé aux organisateurs. Les événements qui l'utilisent déjà gardent leur taux et leurs prix."),
+      confirmLabel: t("Supprimer"),
       danger: true,
       onConfirm: () => void run(() => deleteVatRate(vatRate.id)),
     });
@@ -103,16 +104,12 @@ export function VatRatesSection() {
 
   return (
     <section className="mb-10">
-      <h2 className="mb-3 text-lg font-semibold text-ink-1">Taux de TVA</h2>
-      <p className="mb-3 text-sm text-ink-5">
-        Taux proposés à l&apos;organisateur dans une liste déroulante quand il crée un événement (ex. 5,5 % pour un
-        spectacle vivant, 20 % pour un salon). Vous pouvez corriger le taux d&apos;un événement à sa validation. Un
-        événement garde le taux choisi : modifier ou supprimer un taux ici ne change aucun prix existant.
-      </p>
+      <h2 className="mb-3 text-lg font-semibold text-ink-1">{t("Taux de TVA")}</h2>
+      <p className="mb-3 text-sm text-ink-5">{t("Taux proposés à l'organisateur dans une liste déroulante quand il crée un événement (ex. 5,5 % pour un spectacle vivant, 20 % pour un salon). Vous pouvez corriger le taux d'un événement à sa validation. Un événement garde le taux choisi : modifier ou supprimer un taux ici ne change aucun prix existant.")}</p>
 
       <form onSubmit={handleCreate} className={cardClass("mb-4 flex flex-wrap items-end gap-3 p-4")}>
         <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-accent/80">Taux (%) *</span>
+          <span className="text-xs font-medium text-accent/80">{t("Taux (%) *")}</span>
           <input
             required
             inputMode="decimal"
@@ -123,14 +120,14 @@ export function VatRatesSection() {
           />
         </label>
         <label className="flex min-w-48 flex-1 flex-col gap-1.5">
-          <span className="text-xs font-medium text-accent/80">Libellé *</span>
+          <span className="text-xs font-medium text-accent/80">{t("Libellé *")}</span>
           <input
             required
             minLength={2}
             maxLength={80}
             value={newLabel}
             onChange={(event) => setNewLabel(event.target.value)}
-            placeholder="Spectacles vivants, concerts"
+            placeholder={t("Spectacles vivants, concerts")}
             className={fieldClass("w-full px-3 py-2")}
           />
         </label>
@@ -139,7 +136,7 @@ export function VatRatesSection() {
           disabled={creating}
           className={buttonClass("primary", "rounded-full px-5 py-2.5 text-sm disabled:opacity-50")}
         >
-          {creating ? "Ajout…" : "+ Ajouter"}
+          {creating ? t("Ajout…") : "+ Ajouter"}
         </button>
       </form>
 
@@ -161,7 +158,7 @@ export function VatRatesSection() {
               {editingId === vatRate.id ? (
                 <div className="flex flex-1 flex-wrap items-center gap-2">
                   <input
-                    aria-label="Taux (%)"
+                    aria-label={t("Taux (%)")}
                     inputMode="decimal"
                     value={editPercent}
                     onChange={(event) => setEditPercent(event.target.value)}
@@ -169,7 +166,7 @@ export function VatRatesSection() {
                   />
                   <span className="text-sm text-ink-5">%</span>
                   <input
-                    aria-label="Libellé"
+                    aria-label={t("Libellé")}
                     value={editLabel}
                     maxLength={80}
                     onChange={(event) => setEditLabel(event.target.value)}
@@ -183,30 +180,24 @@ export function VatRatesSection() {
                   >
                     {formatVatPercent(vatRate.rate)}
                   </span>
-                  <span className={`truncate text-sm ${vatRate.is_active ? "text-ink-2" : "text-ink-5"}`}>{vatRate.label}</span>
+                  <span className={`truncate text-sm ${vatRate.is_active ? "text-ink-2" : "text-ink-5"}`}>{t(vatRate.label)}</span>
                   {vatRate.is_default ? (
-                    <Badge tone="bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30">Par défaut</Badge>
+                    <Badge tone="bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30">{t("Par défaut")}</Badge>
                   ) : null}
-                  {!vatRate.is_active ? <Badge tone="bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2">Désactivé</Badge> : null}
+                  {!vatRate.is_active ? <Badge tone="bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2">{t("Désactivé")}</Badge> : null}
                 </div>
               )}
 
               <div className="flex flex-wrap items-center gap-2">
                 {editingId === vatRate.id ? (
                   <>
-                    <button type="button" disabled={busy} onClick={() => handleSave(vatRate)} className={buttonClass("primary", "rounded-lg px-3 py-1.5 text-xs")}>
-                      Enregistrer
-                    </button>
-                    <button type="button" onClick={() => setEditingId(null)} className={smallButton}>
-                      Annuler
-                    </button>
+                    <button type="button" disabled={busy} onClick={() => handleSave(vatRate)} className={buttonClass("primary", "rounded-lg px-3 py-1.5 text-xs")}>{t("Enregistrer")}</button>
+                    <button type="button" onClick={() => setEditingId(null)} className={smallButton}>{t("Annuler")}</button>
                   </>
                 ) : (
                   <>
                     {!vatRate.is_default && vatRate.is_active ? (
-                      <button type="button" disabled={busy} onClick={() => void run(() => updateVatRate(vatRate.id, { is_default: true }))} className={smallButton}>
-                        Par défaut
-                      </button>
+                      <button type="button" disabled={busy} onClick={() => void run(() => updateVatRate(vatRate.id, { is_default: true }))} className={smallButton}>{t("Par défaut")}</button>
                     ) : null}
                     {!vatRate.is_default ? (
                       <button
@@ -215,7 +206,7 @@ export function VatRatesSection() {
                         onClick={() => void run(() => updateVatRate(vatRate.id, { is_active: !vatRate.is_active }))}
                         className={smallButton}
                       >
-                        {vatRate.is_active ? "Désactiver" : "Activer"}
+                        {vatRate.is_active ? t("Désactiver") : t("Activer")}
                       </button>
                     ) : null}
                     <button
@@ -226,18 +217,14 @@ export function VatRatesSection() {
                         setEditPercent(String(Math.round(Number(vatRate.rate) * 10000) / 100).replace(".", ","));
                       }}
                       className={smallButton}
-                    >
-                      Modifier
-                    </button>
+                    >{t("Modifier")}</button>
                     {!vatRate.is_default ? (
                       <button
                         type="button"
                         disabled={busy}
                         onClick={() => askDelete(vatRate)}
                         className="rounded-lg border border-hairline-2 px-2.5 py-1 text-xs font-medium text-danger transition-colors hover:border-red-500/30 hover:bg-red-500/5 disabled:opacity-50"
-                      >
-                        Supprimer
-                      </button>
+                      >{t("Supprimer")}</button>
                     ) : null}
                   </>
                 )}

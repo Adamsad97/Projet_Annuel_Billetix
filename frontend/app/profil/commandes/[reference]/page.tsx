@@ -25,6 +25,7 @@ import { MutedMessage } from "@/components/ui/muted-message";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { t } from "@/lib/i18n/translate";
 
 export default function OrderDetailPage({
   params,
@@ -79,7 +80,7 @@ export default function OrderDetailPage({
         if (err instanceof ApiError && err.status === 404) {
           setOrder(null);
         } else {
-          setError(err instanceof ApiError ? err.message : "Impossible de charger cette commande.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de charger cette commande."));
         }
       });
     return () => {
@@ -101,14 +102,14 @@ export default function OrderDetailPage({
       if (intent.client_secret) {
         setClientSecret(intent.client_secret);
       } else {
-        setResumeError("Ce moyen de paiement n'est pas encore disponible — seule la carte bancaire est câblée pour l'instant.");
+        setResumeError(t("Ce moyen de paiement n'est pas encore disponible — seule la carte bancaire est câblée pour l'instant."));
       }
     } catch (err) {
       // 409 « déjà payée » : on recharge l'état réel plutôt qu'afficher une erreur.
       if (err instanceof ApiError && err.status === 409) {
         getOrder(orderId).then((result) => setOrder(result.order));
       } else {
-        setResumeError(err instanceof ApiError ? err.message : "Impossible de reprendre le paiement, veuillez réessayer.");
+        setResumeError(err instanceof ApiError ? err.message : t("Impossible de reprendre le paiement, veuillez réessayer."));
       }
     } finally {
       setResumeLoading(false);
@@ -125,14 +126,14 @@ export default function OrderDetailPage({
     } catch (err) {
       setResendState("error");
       setResendError(
-        err instanceof ApiError ? err.message : "Impossible de renvoyer les billets, veuillez réessayer.",
+        err instanceof ApiError ? err.message : t("Impossible de renvoyer les billets, veuillez réessayer."),
       );
     }
   }
 
   return (
     <PageShell width="lg">
-      <BackLink href="/profil">Profil</BackLink>
+      <BackLink href="/profil">{t("Profil")}</BackLink>
 
       {order === undefined ? (
         <MutedMessage />
@@ -143,32 +144,25 @@ export default function OrderDetailPage({
       ) : order === null ? (
         <div className={cardClass("p-8 text-center")}>
           <div className="mb-3 text-4xl">📦</div>
-          <h1 className="text-lg font-bold text-ink-1">Page introuvable</h1>
-          <p className="mt-2 text-sm text-ink-5">
-            Cette commande n&apos;existe pas, ou a changé d&apos;adresse.
-          </p>
+          <h1 className="text-lg font-bold text-ink-1">{t("Page introuvable")}</h1>
+          <p className="mt-2 text-sm text-ink-5">{t("Cette commande n'existe pas, ou a changé d'adresse.")}</p>
         </div>
       ) : (
         <>
           <div className="mb-6 flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold text-ink-1">{order.reference}</h1>
-              <p className="text-sm text-ink-5">
-                Passée le {dateFormatter.format(new Date(order.created_at))}
-              </p>
+              <p className="text-sm text-ink-5">{t("Passée le {value}", { value: dateFormatter.format(new Date(order.created_at)) })}</p>
             </div>
             {badge ? (
               <Badge tone={badge.className} size="md">
-                {badge.label}
+                {t(badge.label)}
               </Badge>
             ) : null}
           </div>
 
           {postponementRefunded ? (
-            <Alert tone="success" className="mb-6">
-              Votre commande est remboursée : vos billets sont annulés. Le montant sera crédité sur votre moyen de paiement
-              d&apos;origine sous 5 à 10 jours ouvrés.
-            </Alert>
+            <Alert tone="success" className="mb-6">{t("Votre commande est remboursée : vos billets sont annulés. Le montant sera crédité sur votre moyen de paiement d'origine sous 5 à 10 jours ouvrés.")}</Alert>
           ) : order.status === "CONFIRMED" || order.status === "TICKETS_SENT" ? (
             <PostponementRefund
               orderId={order.id}
@@ -182,15 +176,15 @@ export default function OrderDetailPage({
           ) : null}
 
           <div className={cardClass("p-5")}>
-            <h2 className="mb-3 text-sm font-semibold text-ink-2">Récapitulatif</h2>
+            <h2 className="mb-3 text-sm font-semibold text-ink-2">{t("Récapitulatif")}</h2>
             {lines.map((line) => (
               <div key={line.label} className="flex items-center justify-between py-1.5 text-sm">
-                <span className="text-ink-4">{line.label}</span>
+                <span className="text-ink-4">{t(line.label)}</span>
                 <span className="text-ink-3">{currency.format(line.amount)}</span>
               </div>
             ))}
             <div className="mt-3 flex items-center justify-between border-t border-hairline-2 pt-3">
-              <span className="font-bold text-ink-1">Total</span>
+              <span className="font-bold text-ink-1">{t("Total")}</span>
               <span className="font-bold text-ink-1">
                 {currency.format(Number(order.total_amount_ttc))}
               </span>
@@ -211,11 +205,8 @@ export default function OrderDetailPage({
                 </Elements>
               ) : (
                 <>
-                  <h2 className="mb-1 text-sm font-semibold text-amber-200">Paiement non terminé</h2>
-                  <p className="mb-4 text-sm text-amber-200/70">
-                    Cette commande n&apos;a pas encore été réglée — vos places restent réservées le
-                    temps de finaliser le paiement.
-                  </p>
+                  <h2 className="mb-1 text-sm font-semibold text-amber-200">{t("Paiement non terminé")}</h2>
+                  <p className="mb-4 text-sm text-amber-200/70">{t("Cette commande n'a pas encore été réglée — vos places restent réservées le temps de finaliser le paiement.")}</p>
                   {resumeError ? (
                     <p className="mb-3 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-300 ring-1 ring-inset ring-red-500/30">
                       {resumeError}
@@ -227,7 +218,7 @@ export default function OrderDetailPage({
                     disabled={resumeLoading}
                     className={buttonClass("primary", "w-full rounded-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
                   >
-                    {resumeLoading ? "Préparation du paiement…" : "Reprendre le paiement →"}
+                    {resumeLoading ? t("Préparation du paiement…") : t("Reprendre le paiement →")}
                   </button>
                 </>
               )}
@@ -245,14 +236,14 @@ export default function OrderDetailPage({
                   try {
                     await downloadInvoice(order.id, order.reference);
                   } catch (err) {
-                    setInvoiceError(err instanceof ApiError ? err.message : "Téléchargement impossible, veuillez réessayer.");
+                    setInvoiceError(err instanceof ApiError ? err.message : t("Téléchargement impossible, veuillez réessayer."));
                   } finally {
                     setInvoiceDownloading(false);
                   }
                 }}
                 className={buttonClass("secondary", "w-full rounded-full py-3 text-sm disabled:opacity-60")}
               >
-                {invoiceDownloading ? "Téléchargement…" : "📄 Télécharger la facture (PDF)"}
+                {invoiceDownloading ? t("Téléchargement…") : t("📄 Télécharger la facture (PDF)")}
               </button>
               {invoiceError ? (
                 <p className="mt-2 text-center text-sm text-danger">{invoiceError}</p>
@@ -266,12 +257,12 @@ export default function OrderDetailPage({
             canReport={(order.status === "CONFIRMED" || order.status === "TICKETS_SENT") && Number(order.total_amount_ttc) > 0}
           />
 
-          <h2 className="mb-3 mt-6 text-sm font-semibold text-ink-2">Billets inclus</h2>
+          <h2 className="mb-3 mt-6 text-sm font-semibold text-ink-2">{t("Billets inclus")}</h2>
           <div className={cardClass("overflow-hidden")}>
             {tickets.length === 0 && ticketsLoading ? (
-              <p className="px-5 py-4 text-sm text-ink-5">Chargement des billets…</p>
+              <p className="px-5 py-4 text-sm text-ink-5">{t("Chargement des billets…")}</p>
             ) : tickets.length === 0 ? (
-              <p className="px-5 py-4 text-sm text-ink-5">Aucun billet pour cette commande.</p>
+              <p className="px-5 py-4 text-sm text-ink-5">{t("Aucun billet pour cette commande.")}</p>
             ) : (
               tickets.map((ticket) =>
                 ticket.resold ? (
@@ -284,13 +275,10 @@ export default function OrderDetailPage({
                       <span className="text-lg">🔄</span>
                       <div>
                         <p className="text-sm font-bold text-ink-1">{ticket.event_name}</p>
-                        <p className="text-xs text-ink-5">
-                          {ticket.reference} · revendu {currency.format(ticket.resale_price ?? 0)}
-                          {ticket.sold_at ? ` le ${dateFormatter.format(new Date(ticket.sold_at))}` : ""}
-                        </p>
+                        <p className="text-xs text-ink-5">{ticket.sold_at ? t("{reference} · revendu {price} le {date}", { reference: ticket.reference, price: currency.format(ticket.resale_price ?? 0), date: dateFormatter.format(new Date(ticket.sold_at)) }) : t("{reference} · revendu {price}", { reference: ticket.reference, price: currency.format(ticket.resale_price ?? 0) })}</p>
                       </div>
                     </div>
-                    <span className="text-xs font-medium text-ink-5">Revendu</span>
+                    <span className="text-xs font-medium text-ink-5">{t("Revendu")}</span>
                   </div>
                 ) : ticket.transferred ? (
                   // Offert à un autre compte : plus accessible depuis ce compte.
@@ -302,12 +290,10 @@ export default function OrderDetailPage({
                       <span className="text-lg">🎁</span>
                       <div>
                         <p className="text-sm font-bold text-ink-1">{ticket.event_name}</p>
-                        <p className="text-xs text-ink-5">
-                          {ticket.reference} · offert à {ticket.holder_first_name} {ticket.holder_last_name}
-                        </p>
+                        <p className="text-xs text-ink-5">{t("{reference} · offert à {holder_first_name} {holder_last_name}", { reference: ticket.reference, holder_first_name: ticket.holder_first_name, holder_last_name: ticket.holder_last_name })}</p>
                       </div>
                     </div>
-                    <span className="text-xs font-medium text-ink-5">Offert</span>
+                    <span className="text-xs font-medium text-ink-5">{t("Offert")}</span>
                   </div>
                 ) : (
                 <Link
@@ -322,7 +308,7 @@ export default function OrderDetailPage({
                       <p className="text-xs text-ink-5">{ticket.reference}</p>
                     </div>
                   </div>
-                  <span className="text-sm text-link">Voir →</span>
+                  <span className="text-sm text-link">{t("Voir →")}</span>
                 </Link>
                 ),
               )
@@ -338,10 +324,10 @@ export default function OrderDetailPage({
                 className={buttonClass("secondary", "rounded-full px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
               >
                 {resendState === "loading"
-                  ? "Envoi en cours…"
+                  ? t("Envoi en cours…")
                   : resendState === "sent"
-                    ? "✓ Billets renvoyés"
-                    : "📧 Renvoyer les billets par email"}
+                    ? t("✓ Billets renvoyés")
+                    : t("📧 Renvoyer les billets par email")}
               </button>
               {resendState === "error" ? (
                 <p className="text-xs text-red-300">{resendError}</p>

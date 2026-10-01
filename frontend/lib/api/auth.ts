@@ -3,6 +3,7 @@
 
 import { getApiBaseUrl } from "./base-url";
 import { ApiError, extractErrorCode, extractErrorMessage } from "./http-error";
+import { t } from "@/lib/i18n/translate";
 
 const API_URL = getApiBaseUrl();
 
@@ -61,7 +62,7 @@ async function getJson<T>(path: string): Promise<T> {
   } catch {
     throw new ApiError(
       0,
-      "Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard.",
+      t("Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard."),
     );
   }
 
@@ -75,7 +76,7 @@ async function getJson<T>(path: string): Promise<T> {
   if (!response.ok) {
     throw new ApiError(
       response.status,
-      extractErrorMessage(data, "Une erreur est survenue, veuillez réessayer."),
+      extractErrorMessage(data, t("Une erreur est survenue, veuillez réessayer.")),
       extractErrorCode(data),
     );
   }
@@ -94,7 +95,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   } catch {
     throw new ApiError(
       0,
-      "Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard.",
+      t("Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard."),
     );
   }
 
@@ -108,7 +109,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   if (!response.ok) {
     throw new ApiError(
       response.status,
-      extractErrorMessage(data, "Une erreur est survenue, veuillez réessayer."),
+      extractErrorMessage(data, t("Une erreur est survenue, veuillez réessayer.")),
       extractErrorCode(data),
     );
   }

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 export function ResaleStripePaymentForm({
   resaleId,
@@ -38,7 +39,7 @@ export function ResaleStripePaymentForm({
     });
 
     if (submitError) {
-      setError(submitError.message ?? "Le paiement a échoué, veuillez réessayer.");
+      setError(submitError.message ?? t("Le paiement a échoué, veuillez réessayer."));
       setLoading(false);
       return;
     }
@@ -54,9 +55,7 @@ export function ResaleStripePaymentForm({
   return (
     <form onSubmit={handleSubmit} className={cardClass("p-5")}>
       <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-ink-2">
-        <span>💳</span>
-        Paiement par carte
-      </h2>
+        <span>💳</span>{t("Paiement par carte")}</h2>
 
       <PaymentElement options={{ layout: "tabs" }} />
 
@@ -71,12 +70,10 @@ export function ResaleStripePaymentForm({
         disabled={!stripe || loading}
         className={buttonClass("primary", "mt-6 w-full rounded-full py-3.5 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
       >
-        {loading ? "Traitement…" : `Payer ${amountLabel} →`}
+        {loading ? t("Traitement…") : `Payer ${amountLabel} →`}
       </button>
 
-      <p className="mt-3 text-center text-xs text-ink-5">
-        🔒 Paiement sécurisé — Stripe TLS 1.3 — Conforme PCI-DSS
-      </p>
+      <p className="mt-3 text-center text-xs text-ink-5">{t("🔒 Paiement sécurisé — Stripe TLS 1.3 — Conforme PCI-DSS")}</p>
     </form>
   );
 }

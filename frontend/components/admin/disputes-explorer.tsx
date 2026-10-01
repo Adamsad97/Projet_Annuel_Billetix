@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api/http-error";
 import { disputeStatusFilters } from "@/lib/constants/admin-disputes";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 export function DisputesExplorer() {
   const [status, setStatus] = useState("all");
@@ -17,7 +18,7 @@ export function DisputesExplorer() {
   useEffect(() => {
     listDisputes()
       .then(setDisputes)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger les litiges."));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t("Impossible de charger les litiges.")));
   }, []);
 
   const filtered = useMemo(() => {
@@ -31,12 +32,12 @@ export function DisputesExplorer() {
 
       <div className={cardClass("overflow-hidden")}>
         {disputes === null ? (
-          <MutedMessage variant="list">{error ?? "Chargement…"}</MutedMessage>
+          <MutedMessage variant="list">{error ?? t("Chargement…")}</MutedMessage>
         ) : filtered.length > 0 ? (
           filtered.map((dispute) => <DisputeRow key={dispute.id} dispute={dispute} />)
         ) : (
           <MutedMessage variant="list">
-            {status === "all" ? "Aucun litige pour le moment." : "Aucun litige dans cette catégorie."}
+            {status === "all" ? t("Aucun litige pour le moment.") : t("Aucun litige dans cette catégorie.")}
           </MutedMessage>
         )}
       </div>

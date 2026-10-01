@@ -21,6 +21,7 @@ import { effectiveRole, isAdminRole } from "@/lib/auth/preview";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 // Nombre de commandes récentes prises en compte pour les deux panneaux
 // (au-delà, "Tout voir →" mènera aux listes complètes une fois câblées).
@@ -76,7 +77,7 @@ export default function ProfilPage() {
         setTickets(mine.tickets.map(apiTicketToProfileTicket).slice(0, 5));
       } catch {
         if (!cancelled) {
-          setError("Impossible de charger vos commandes et billets pour le moment.");
+          setError(t("Impossible de charger vos commandes et billets pour le moment."));
         }
       }
     }
@@ -93,7 +94,7 @@ export default function ProfilPage() {
         href={isAgent ? "/scan" : "/"}
         className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
       >
-        {isAgent ? "← Contrôle des billets" : "← Accueil"}
+        {isAgent ? t("← Contrôle des billets") : "← Accueil"}
       </Link>
 
       <ProfileHeader />
@@ -110,18 +111,14 @@ export default function ProfilPage() {
                 </svg>
               </span>
               <div>
-                <p className="text-base font-bold">Espace agent de contrôle</p>
-                <p className="text-sm text-white/70">
-                  Vous contrôlez les billets des événements auxquels un organisateur vous a affecté.
-                </p>
+                <p className="text-base font-bold">{t("Espace agent de contrôle")}</p>
+                <p className="text-sm text-white/70">{t("Vous contrôlez les billets des événements auxquels un organisateur vous a affecté.")}</p>
               </div>
             </div>
             <Link
               href="/scan"
               className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition-opacity hover:opacity-90"
-            >
-              Ouvrir le contrôle →
-            </Link>
+            >{t("Ouvrir le contrôle →")}</Link>
           </div>
         </div>
       ) : null}
@@ -129,17 +126,13 @@ export default function ProfilPage() {
       {isBuyer ? (
         <div className={cardClass("mb-8 flex flex-wrap items-center justify-between gap-4 px-5 py-4")}>
           <div>
-            <p className="text-sm font-semibold text-ink-1">Vous organisez des événements ?</p>
-            <p className="mt-0.5 text-sm text-ink-5">
-              Vendez vos billets sur BilleTix, en gardant votre compte actuel.
-            </p>
+            <p className="text-sm font-semibold text-ink-1">{t("Vous organisez des événements ?")}</p>
+            <p className="mt-0.5 text-sm text-ink-5">{t("Vendez vos billets sur BilleTix, en gardant votre compte actuel.")}</p>
           </div>
           <Link
             href="/devenir-organisateur"
             className={buttonClass("secondary", "shrink-0 rounded-full px-4 py-2 text-sm")}
-          >
-            Devenir organisateur →
-          </Link>
+          >{t("Devenir organisateur →")}</Link>
         </div>
       ) : null}
 
@@ -154,20 +147,18 @@ export default function ProfilPage() {
           <>
             <Panel
               icon="🎫"
-              title="Mes billets"
+              title={t("Mes billets")}
               action={
                 <Link
                   href="/profil/billets"
                   className="text-sm font-medium text-link transition-colors hover:text-link-hover"
-                >
-                  Tout voir →
-                </Link>
+                >{t("Tout voir →")}</Link>
               }
             >
               {tickets === null ? (
-                <p className="px-5 py-4 text-sm text-ink-5">Chargement…</p>
+                <p className="px-5 py-4 text-sm text-ink-5">{t("Chargement…")}</p>
               ) : tickets.length === 0 ? (
-                <p className="px-5 py-4 text-sm text-ink-5">Aucun billet pour l&apos;instant.</p>
+                <p className="px-5 py-4 text-sm text-ink-5">{t("Aucun billet pour l'instant.")}</p>
               ) : (
                 tickets.map((ticket) => <TicketRow key={ticket.id} ticket={ticket} />)
               )}
@@ -175,20 +166,18 @@ export default function ProfilPage() {
 
             <Panel
               icon="📦"
-              title="Mes commandes récentes"
+              title={t("Mes commandes récentes")}
               action={
                 <Link
                   href="/profil/commandes"
                   className="text-sm font-medium text-link transition-colors hover:text-link-hover"
-                >
-                  Tout voir →
-                </Link>
+                >{t("Tout voir →")}</Link>
               }
             >
               {orders === null ? (
-                <p className="px-5 py-4 text-sm text-ink-5">Chargement…</p>
+                <p className="px-5 py-4 text-sm text-ink-5">{t("Chargement…")}</p>
               ) : orders.length === 0 ? (
-                <p className="px-5 py-4 text-sm text-ink-5">Aucune commande pour l&apos;instant.</p>
+                <p className="px-5 py-4 text-sm text-ink-5">{t("Aucune commande pour l'instant.")}</p>
               ) : (
                 orders.map((order) => <OrderRow key={order.reference} order={order} />)
               )}
@@ -204,10 +193,8 @@ export default function ProfilPage() {
             href="/profil/notifications"
             className={cardClass("flex items-center justify-between px-5 py-4 transition-colors hover:bg-hairline-1")}
           >
-            <span className="flex items-center gap-2 text-sm font-semibold text-ink-2">
-              🔔 Préférences de notification
-            </span>
-            <span className="text-sm text-link">Gérer →</span>
+            <span className="flex items-center gap-2 text-sm font-semibold text-ink-2">{t("🔔 Préférences de notification")}</span>
+            <span className="text-sm text-link">{t("Gérer →")}</span>
           </Link>
         )}
       </div>

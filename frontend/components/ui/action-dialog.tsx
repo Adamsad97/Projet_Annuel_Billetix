@@ -4,6 +4,7 @@
 
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
+import { t } from "@/lib/i18n/translate";
 
 export interface ActionDialogState {
   title: string;
@@ -51,7 +52,7 @@ export function ActionDialog({
       <div
         className="w-full max-w-md cursor-auto rounded-2xl border border-hairline-2 bg-card p-6 shadow-2xl"
       >
-        <h2 id={titleId} className="text-lg font-bold text-ink-1">{state.title}</h2>
+        <h2 id={titleId} className="text-lg font-bold text-ink-1">{t(state.title)}</h2>
         <p className="mt-2 text-sm text-ink-4">{state.message}</p>
         {state.details ? <div className="mt-4">{state.details}</div> : null}
 
@@ -61,7 +62,7 @@ export function ActionDialog({
             rows={3}
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder={state.reasonPlaceholder ?? "Motif…"}
+            placeholder={state.reasonPlaceholder ?? t("Motif…")}
             className="mt-4 w-full resize-none rounded-xl border border-hairline-2 bg-hairline-1 px-3 py-2 text-sm text-ink-1 placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
           />
         ) : null}
@@ -72,7 +73,7 @@ export function ActionDialog({
             onClick={onClose}
             className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-3 transition-colors hover:border-hairline-5 hover:text-ink-1"
           >
-            {state.cancelLabel ?? "Annuler"}
+            {state.cancelLabel ?? t("Annuler")}
           </button>
           <button
             type="button"
@@ -84,7 +85,7 @@ export function ActionDialog({
                 : "rounded-full bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             }
           >
-            {state.confirmLabel ?? "Confirmer"}
+            {state.confirmLabel ?? t("Confirmer")}
           </button>
         </div>
       </div>

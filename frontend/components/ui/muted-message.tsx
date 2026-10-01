@@ -1,10 +1,13 @@
+"use client";
+
+import { t } from "@/lib/i18n/translate";
 // Message discret : chargement en cours ou liste vide.
 // « page » : seul contenu de la page ; « list » : à la place des lignes d'une liste.
 
 export function MutedMessage({
   variant = "page",
   className = "",
-  children = "Chargement…",
+  children = t("Chargement…"),
 }: {
   variant?: "page" | "list";
   className?: string;

@@ -18,6 +18,7 @@ import { auditLogToValidationHistoryEntry, type ValidationHistoryEntry } from "@
 import { ApiError } from "@/lib/api/http-error";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 async function loadHistory(
   action: "EVENT_APPROVED" | "EVENT_REJECTED",
@@ -50,7 +51,7 @@ export function ValidationTabs() {
   function loadPending() {
     getPendingEvents()
       .then(setPending)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger la file de validation."));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t("Impossible de charger la file de validation.")));
   }
 
   useEffect(() => {
@@ -76,8 +77,8 @@ export function ValidationTabs() {
 
   function handleApprove(id: string) {
     setDialog({
-      title: "Valider cet événement ?",
-      message: "Il sera publié immédiatement et visible par tous.",
+      title: t("Valider cet événement ?"),
+      message: t("Il sera publié immédiatement et visible par tous."),
       confirmLabel: "✓ Valider",
       onConfirm: async () => {
         setBusyId(id);
@@ -87,7 +88,7 @@ export function ValidationTabs() {
           setPending((prev) => prev?.filter((event) => event.id !== id));
           setApproved(undefined);
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de valider cet événement.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de valider cet événement."));
         } finally {
           setBusyId(null);
         }
@@ -97,13 +98,13 @@ export function ValidationTabs() {
 
   function handleReject(id: string) {
     setDialog({
-      title: "Rejeter cet événement",
-      message: "Le motif sera communiqué à l'organisateur.",
+      title: t("Rejeter cet événement"),
+      message: t("Le motif sera communiqué à l'organisateur."),
       confirmLabel: "✕ Rejeter",
       danger: true,
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Motif du rejet…",
+      reasonPlaceholder: t("Motif du rejet…"),
       onConfirm: async (reason) => {
         setBusyId(id);
         setError(null);
@@ -112,7 +113,7 @@ export function ValidationTabs() {
           setPending((prev) => prev?.filter((event) => event.id !== id));
           setRejected(undefined);
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de rejeter cet événement.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de rejeter cet événement."));
         } finally {
           setBusyId(null);
         }
@@ -121,9 +122,9 @@ export function ValidationTabs() {
   }
 
   const tabs = [
-    { id: "pending", label: "En attente", count: pending?.length },
-    { id: "approved", label: "Validés", count: approved?.length },
-    { id: "rejected", label: "Rejetés", count: rejected?.length },
+    { id: "pending", label: t("En attente"), count: pending?.length },
+    { id: "approved", label: t("Validés"), count: approved?.length },
+    { id: "rejected", label: t("Rejetés"), count: rejected?.length },
   ];
 
   return (
@@ -139,7 +140,7 @@ export function ValidationTabs() {
           pending === undefined ? (
             <MutedMessage variant="list" />
           ) : pending.length === 0 ? (
-            <MutedMessage variant="list">Aucun événement en attente.</MutedMessage>
+            <MutedMessage variant="list">{t("Aucun événement en attente.")}</MutedMessage>
           ) : (
             pending.map((event) => (
               <ValidationRow
@@ -159,7 +160,7 @@ export function ValidationTabs() {
           approved === undefined ? (
             <MutedMessage variant="list" />
           ) : approved.length === 0 ? (
-            <MutedMessage variant="list">Aucun événement validé récemment.</MutedMessage>
+            <MutedMessage variant="list">{t("Aucun événement validé récemment.")}</MutedMessage>
           ) : (
             approved.map((entry) => <ValidationHistoryRow key={entry.id} entry={entry} outcome="approved" />)
           )
@@ -169,7 +170,7 @@ export function ValidationTabs() {
           rejected === undefined ? (
             <MutedMessage variant="list" />
           ) : rejected.length === 0 ? (
-            <MutedMessage variant="list">Aucun événement rejeté récemment.</MutedMessage>
+            <MutedMessage variant="list">{t("Aucun événement rejeté récemment.")}</MutedMessage>
           ) : (
             rejected.map((entry) => <ValidationHistoryRow key={entry.id} entry={entry} outcome="rejected" />)
           )

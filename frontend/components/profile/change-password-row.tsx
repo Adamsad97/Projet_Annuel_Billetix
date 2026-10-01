@@ -15,6 +15,7 @@ import { getStoredUser } from "@/lib/auth/session";
 import { useRegistrationPolicy } from "@/lib/auth/use-registration-policy";
 import { buttonClass } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 export function ChangePasswordRow() {
   const [open, setOpen] = useState(false);
@@ -54,15 +55,15 @@ export function ChangePasswordRow() {
     setError(null);
 
     if (!passwordValid) {
-      setError("Le nouveau mot de passe ne respecte pas toutes les règles indiquées.");
+      setError(t("Le nouveau mot de passe ne respecte pas toutes les règles indiquées."));
       return;
     }
     if (containsPersonalInfo(newPassword, personalInfo)) {
-      setError(PERSONAL_INFO_ERROR);
+      setError(t(PERSONAL_INFO_ERROR));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("Les deux mots de passe ne correspondent pas.");
+      setError(t("Les deux mots de passe ne correspondent pas."));
       return;
     }
 
@@ -73,7 +74,7 @@ export function ChangePasswordRow() {
       reset();
       setOpen(false);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de modifier le mot de passe.");
+      setError(err instanceof ApiError ? err.message : t("Impossible de modifier le mot de passe."));
     } finally {
       setSubmitting(false);
     }
@@ -83,8 +84,8 @@ export function ChangePasswordRow() {
     return (
       <div className="flex items-center justify-between gap-4 px-5 py-4">
         <div>
-          <p className="text-sm font-bold text-ink-1">Mot de passe</p>
-          {success ? <p className="text-xs text-emerald-400">✓ Modifié avec succès</p> : null}
+          <p className="text-sm font-bold text-ink-1">{t("Mot de passe")}</p>
+          {success ? <p className="text-xs text-emerald-400">{t("✓ Modifié avec succès")}</p> : null}
         </div>
         <button
           type="button"
@@ -93,23 +94,21 @@ export function ChangePasswordRow() {
             setOpen(true);
           }}
           className={buttonClass("secondary", "shrink-0 rounded-full px-3.5 py-1.5 text-xs")}
-        >
-          Modifier
-        </button>
+        >{t("Modifier")}</button>
       </div>
     );
   }
 
   return (
     <div className="px-5 py-4">
-      <p className="mb-3 text-sm font-bold text-ink-1">Modifier le mot de passe</p>
+      <p className="mb-3 text-sm font-bold text-ink-1">{t("Modifier le mot de passe")}</p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
         <PasswordInput
           required
           autoComplete="current-password"
           value={currentPassword}
           onChange={(event) => setCurrentPassword(event.target.value)}
-          placeholder="Mot de passe actuel"
+          placeholder={t("Mot de passe actuel")}
           className={fieldClass("px-4 py-2.5")}
         />
         <PasswordInput
@@ -117,7 +116,7 @@ export function ChangePasswordRow() {
           autoComplete="new-password"
           value={newPassword}
           onChange={(event) => setNewPassword(event.target.value)}
-          placeholder={`Nouveau mot de passe (${minLength} caractères min.)`}
+          placeholder={t("Nouveau mot de passe ({minLength} caractères min.)", { minLength })}
           className={fieldClass("px-4 py-2.5")}
         />
         <PasswordInput
@@ -125,7 +124,7 @@ export function ChangePasswordRow() {
           autoComplete="new-password"
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
-          placeholder="Confirmer le nouveau mot de passe"
+          placeholder={t("Confirmer le nouveau mot de passe")}
           className={fieldClass("px-4 py-2.5")}
         />
         <PasswordRequirements
@@ -142,15 +141,13 @@ export function ChangePasswordRow() {
               setOpen(false);
             }}
             className="flex-1 rounded-full bg-hairline-1 py-2.5 text-xs font-medium text-ink-2 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
-          >
-            Annuler
-          </button>
+          >{t("Annuler")}</button>
           <button
             type="submit"
             disabled={submitting || !passwordValid || newPassword !== confirmPassword}
             className={buttonClass("primary", "flex-1 rounded-full py-2.5 text-xs disabled:cursor-not-allowed disabled:opacity-60")}
           >
-            {submitting ? "Modification…" : "Confirmer"}
+            {submitting ? t("Modification…") : t("Confirmer")}
           </button>
         </div>
       </form>

@@ -1,5 +1,7 @@
 "use client";
 
+import { t } from "@/lib/i18n/translate";
+
 export function FilterPills({
   options,
   active,
@@ -24,7 +26,7 @@ export function FilterPills({
                 : "rounded-full bg-hairline-1 px-3.5 py-1.5 text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2 hover:text-ink-1"
             }
           >
-            {option.label}
+            {t(option.label)}
             {option.count !== undefined ? (
               <span className="ml-1.5 opacity-70">{option.count}</span>
             ) : null}

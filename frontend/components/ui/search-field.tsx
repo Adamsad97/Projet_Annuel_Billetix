@@ -1,12 +1,13 @@
 "use client";
 
+import { t } from "@/lib/i18n/translate";
 // Champ de recherche commun aux listes : icône, bouton d'effacement.
 
 export function SearchField({
   value,
   onChange,
   placeholder,
-  label = "Rechercher",
+  label = t("Rechercher"),
   className = "",
 }: {
   value: string;
@@ -35,7 +36,7 @@ export function SearchField({
         <button
           type="button"
           onClick={() => onChange("")}
-          aria-label="Effacer la recherche"
+          aria-label={t("Effacer la recherche")}
           className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-5 transition-colors hover:bg-hairline-2 hover:text-ink-1"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">

@@ -9,6 +9,7 @@ import { cardClass } from "@/components/ui/card";
 import { getPostponementRefundStatus, requestPostponementRefund, type PostponementRefundStatus } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/http-error";
 import { longDate } from "@/lib/format/dates";
+import { t } from "@/lib/i18n/translate";
 
 export function PostponementRefund({ orderId, onRefunded }: { orderId: string; onRefunded: () => void }) {
   const [status, setStatus] = useState<PostponementRefundStatus | null>(null);
@@ -26,10 +27,10 @@ export function PostponementRefund({ orderId, onRefunded }: { orderId: string; o
 
   function askRefund() {
     setDialog({
-      title: "Demander le remboursement ?",
+      title: t("Demander le remboursement ?"),
       message:
-        "Vos billets de cette commande seront annulés et ne permettront plus d'entrer. Le montant payé vous est remboursé. Cette action est définitive.",
-      confirmLabel: "Me faire rembourser",
+        t("Vos billets de cette commande seront annulés et ne permettront plus d'entrer. Le montant payé vous est remboursé. Cette action est définitive."),
+      confirmLabel: t("Me faire rembourser"),
       danger: true,
       onConfirm: async () => {
         setError(null);
@@ -38,30 +39,29 @@ export function PostponementRefund({ orderId, onRefunded }: { orderId: string; o
           // Message de confirmation affiché par la page de la commande.
           onRefunded();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Le remboursement a échoué, veuillez réessayer.");
+          setError(err instanceof ApiError ? err.message : t("Le remboursement a échoué, veuillez réessayer."));
         }
       },
     });
   }
 
   return (
-    <section aria-label="Événement reporté" className={cardClass("mb-6 border-amber-500/40 p-5")}>
-      <p className="text-sm font-bold text-ink-1">Cet événement est reporté</p>
-      <p className="mt-1 text-sm text-ink-3">Vos billets restent valables pour la nouvelle date : vous n&apos;avez rien à faire.</p>
+    <section aria-label={t("Événement reporté")} className={cardClass("mb-6 border-amber-500/40 p-5")}>
+      <p className="text-sm font-bold text-ink-1">{t("Cet événement est reporté")}</p>
+      <p className="mt-1 text-sm text-ink-3">{t("Vos billets restent valables pour la nouvelle date : vous n'avez rien à faire.")}</p>
       {status.available ? (
         <>
           <p className="mt-2 text-sm text-ink-3">
-            Si la nouvelle date ne vous convient pas, vous pouvez demander le remboursement de cette commande
-            {status.deadline ? ` jusqu'au ${longDate.format(new Date(status.deadline))}` : " tant que la nouvelle date n'est pas fixée"}.
+            {status.deadline
+              ? t("Si la nouvelle date ne vous convient pas, vous pouvez demander le remboursement de cette commande jusqu'au {date}.", { date: longDate.format(new Date(status.deadline)) })
+              : t("Si la nouvelle date ne vous convient pas, vous pouvez demander le remboursement de cette commande tant que la nouvelle date n'est pas fixée.")}
           </p>
           {error ? <Alert className="mt-3">{error}</Alert> : null}
           <button
             type="button"
             onClick={askRefund}
             className="mt-4 rounded-full border border-red-500/40 px-4 py-2 text-sm font-semibold text-red-500 transition-colors hover:bg-red-500/5"
-          >
-            Demander le remboursement
-          </button>
+          >{t("Demander le remboursement")}</button>
         </>
       ) : status.message ? (
         <p className="mt-2 text-xs text-ink-5">{status.message}</p>

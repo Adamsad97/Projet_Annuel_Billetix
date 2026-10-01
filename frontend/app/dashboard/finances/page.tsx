@@ -19,6 +19,7 @@ import { euros as currency } from "@/lib/format/money";
 import { Alert } from "@/components/ui/alert";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { buttonClass } from "@/components/ui/button";
+import { t } from "@/lib/i18n/translate";
 
 export default function DashboardFinancesPage() {
   const [balance, setBalance] = useState<ApiOrganizerBalance | undefined>(undefined);
@@ -32,7 +33,7 @@ export default function DashboardFinancesPage() {
         setBalance(balanceResult);
         setPayouts(payoutsResult);
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger les finances."));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t("Impossible de charger les finances.")));
   }
 
   useEffect(load, []);
@@ -44,7 +45,7 @@ export default function DashboardFinancesPage() {
       await requestEarlyPayout(payoutId);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de demander ce versement anticipé.");
+      setError(err instanceof ApiError ? err.message : t("Impossible de demander ce versement anticipé."));
     } finally {
       setBusyId(null);
     }
@@ -57,17 +58,13 @@ export default function DashboardFinancesPage() {
     <PageShell width="5xl">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-ink-1">Finances</h1>
-          <p className="mt-1 text-sm text-ink-5">
-            Détail des reversements par événement.
-          </p>
+          <h1 className="text-2xl font-bold text-ink-1">{t("Finances")}</h1>
+          <p className="mt-1 text-sm text-ink-5">{t("Détail des reversements par événement.")}</p>
         </div>
         <Link
           href="/dashboard"
           className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
-        >
-          ← Tableau de bord
-        </Link>
+        >{t("← Tableau de bord")}</Link>
       </div>
 
       {error ? (
@@ -81,11 +78,11 @@ export default function DashboardFinancesPage() {
       ) : (
         <>
           <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-4">
-            <StatCard stat={{ id: "gross", label: "Total encaissé (brut)", value: currency.format(totalGross), accent: "bg-blue-500" }} />
+            <StatCard stat={{ id: "gross", label: t("Total encaissé (brut)"), value: currency.format(totalGross), accent: "bg-blue-500" }} />
             <StatCard
               stat={{
                 id: "commission",
-                label: "Commissions prélevées",
+                label: t("Commissions prélevées"),
                 value: currency.format(totalCommission),
                 accent: "bg-amber-500",
               }}
@@ -93,7 +90,7 @@ export default function DashboardFinancesPage() {
             <StatCard
               stat={{
                 id: "earned",
-                label: "Déjà versé",
+                label: t("Déjà versé"),
                 value: currency.format(balance.total_earned),
                 accent: "bg-emerald-500",
               }}
@@ -101,7 +98,7 @@ export default function DashboardFinancesPage() {
             <StatCard
               stat={{
                 id: "pending",
-                label: "En attente de versement",
+                label: t("En attente de versement"),
                 value: currency.format(balance.pending_balance),
                 accent: "bg-blue-500",
               }}

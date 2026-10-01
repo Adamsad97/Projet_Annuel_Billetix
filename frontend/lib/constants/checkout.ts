@@ -1,3 +1,4 @@
+import { msg } from "@/lib/i18n/translate";
 // Tunnel de commande : étapes et lignes du récapitulatif.
 
 export type CheckoutStepId =
@@ -12,10 +13,10 @@ export interface CheckoutStep {
 }
 
 export const checkoutSteps: CheckoutStep[] = [
-  { id: "selection", label: "Sélection" },
-  { id: "identification", label: "Identification" },
-  { id: "paiement", label: "Paiement" },
-  { id: "confirmation", label: "Confirmation" },
+  { id: "selection", label: msg("Sélection") },
+  { id: "identification", label: msg("Identification") },
+  { id: "paiement", label: msg("Paiement") },
+  { id: "confirmation", label: msg("Confirmation") },
 ];
 
 export interface OrderLine {

@@ -2,6 +2,7 @@
 // (liste gérée depuis l'espace Admin, cf. backend/event-service/src/vat-rate).
 
 import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
+import { numberFormat } from "@/lib/i18n/intl";
 
 export interface ApiVatRate {
   id: string;
@@ -40,7 +41,7 @@ export function deleteVatRate(id: string): Promise<{ success: true }> {
 
 /** « 5,5 % » à partir d'une fraction (0.055 ou « 0.0550 »). */
 export function formatVatPercent(rate: number | string): string {
-  return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(Number(rate) * 100)} %`;
+  return numberFormat({ style: "percent", maximumFractionDigits: 2 }).format(Number(rate));
 }
 
 /** « 5,5 % — Spectacles vivants » pour les listes déroulantes. */

@@ -37,6 +37,7 @@ import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/field";
+import { t, msg } from "@/lib/i18n/translate";
 
 const fieldClassName = fieldClass("px-4 py-3 disabled:cursor-not-allowed disabled:opacity-50");
 
@@ -63,11 +64,11 @@ function isCompleteRow(row: TicketTierRow): boolean {
 }
 
 const LOCKED_STATUS_MESSAGE: Partial<Record<ApiEvent["status"], string>> = {
-  SUSPENDED: "Cet événement est suspendu par l'administration — plus aucune modification n'est possible.",
-  POSTPONED: "Cet événement est reporté — fixez d'abord sa nouvelle date depuis sa page dans votre tableau de bord.",
-  CANCELLED: "Cet événement est annulé — plus aucune modification n'est possible.",
-  TERMINATED: "Cet événement est terminé — plus aucune modification n'est possible.",
-  ARCHIVED: "Cet événement est archivé — plus aucune modification n'est possible.",
+  SUSPENDED: msg("Cet événement est suspendu par l'administration — plus aucune modification n'est possible."),
+  POSTPONED: msg("Cet événement est reporté — fixez d'abord sa nouvelle date depuis sa page dans votre tableau de bord."),
+  CANCELLED: msg("Cet événement est annulé — plus aucune modification n'est possible."),
+  TERMINATED: msg("Cet événement est terminé — plus aucune modification n'est possible."),
+  ARCHIVED: msg("Cet événement est archivé — plus aucune modification n'est possible."),
 };
 
 export function EditEventForm({
@@ -186,28 +187,28 @@ export function EditEventForm({
       const nextStart = toIsoOrNull(startAt) ?? event.start_date;
       const nextEnd = toIsoOrNull(endAt) ?? event.end_date;
       if (isInPast(nextStart)) {
-        setError("La date de début ne peut pas être dans le passé.");
+        setError(t("La date de début ne peut pas être dans le passé."));
         return;
       }
       if (new Date(nextEnd).getTime() <= new Date(nextStart).getTime()) {
-        setError("La date de fin doit être postérieure à la date de début.");
+        setError(t("La date de fin doit être postérieure à la date de début."));
         return;
       }
       if (tierRows.filter(isCompleteRow).length === 0) {
         setError(
           isFree
-            ? "Ajoutez au moins une catégorie de billet complète (nom, quota)."
-            : "Ajoutez au moins une catégorie de billet complète (nom, prix, quota).",
+            ? t("Ajoutez au moins une catégorie de billet complète (nom, quota).")
+            : t("Ajoutez au moins une catégorie de billet complète (nom, prix, quota)."),
         );
         return;
       }
       const totalQuota = tierRows.filter(isCompleteRow).reduce((sum, row) => sum + Number(row.quota), 0);
       if (totalQuota > Number(totalCapacity)) {
-        setError(`La somme des quotas (${totalQuota}) dépasse la capacité totale (${totalCapacity}).`);
+        setError(t("La somme des quotas ({totalQuota}) dépasse la capacité totale ({totalCapacity}).", { totalQuota, totalCapacity }));
         return;
       }
       if (isNonProfit && !nonProfitFile && !event.non_profit_document_url) {
-        setError("Joignez un justificatif pour la déclaration à but non lucratif.");
+        setError(t("Joignez un justificatif pour la déclaration à but non lucratif."));
         return;
       }
     }
@@ -272,7 +273,7 @@ export function EditEventForm({
       // Garde une trace exploitable dans la console même si la bannière
       // d'erreur passe inaperçue (ex: hors du viewport au moment du clic).
       console.error("[EditEventForm] échec de l'enregistrement :", err);
-      setError(err instanceof ApiError ? err.message : "Impossible d'enregistrer les modifications.");
+      setError(err instanceof ApiError ? err.message : t("Impossible d'enregistrer les modifications."));
       window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setSubmitting(false);
@@ -311,7 +312,7 @@ export function EditEventForm({
 
   if (isFullyLocked) {
     return (
-      <InfoCard icon="🔒" title="Modification impossible">
+      <InfoCard icon="🔒" title={t("Modification impossible")}>
         <p className="text-sm text-ink-4">{LOCKED_STATUS_MESSAGE[event.status]}</p>
       </InfoCard>
     );
@@ -321,9 +322,9 @@ export function EditEventForm({
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       {!isDraft ? (
         <Alert tone="warning">
-          Cet événement est {event.status === "PUBLISHED" ? "publié" : "en attente de validation"} — seuls
-          la description, l&apos;affiche et les conditions d&apos;accès restent modifiables (ainsi qu&apos;un
-          justificatif refusé), pour ne pas changer les informations sur lesquelles les acheteurs se sont déjà engagés.
+          {event.status === "PUBLISHED"
+            ? t("Cet événement est publié — seuls la description, l'affiche et les conditions d'accès restent modifiables (ainsi qu'un justificatif refusé), pour ne pas changer les informations sur lesquelles les acheteurs se sont déjà engagés.")
+            : t("Cet événement est en attente de validation — seuls la description, l'affiche et les conditions d'accès restent modifiables (ainsi qu'un justificatif refusé), pour ne pas changer les informations sur lesquelles les acheteurs se sont déjà engagés.")}
         </Alert>
       ) : null}
 
@@ -331,15 +332,13 @@ export function EditEventForm({
         <Alert>{error}</Alert>
       ) : null}
       {saved ? (
-        <Alert tone="success">
-          ✓ Modifications enregistrées.
-        </Alert>
+        <Alert tone="success">{t("✓ Modifications enregistrées.")}</Alert>
       ) : null}
 
-      <InfoCard icon="📝" title="Informations générales">
+      <InfoCard icon="📝" title={t("Informations générales")}>
         <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">Titre</span>
+            <span className="text-sm font-medium text-accent/80">{t("Titre")}</span>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -348,7 +347,7 @@ export function EditEventForm({
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">Description</span>
+            <span className="text-sm font-medium text-accent/80">{t("Description")}</span>
             <textarea
               rows={4}
               value={description}
@@ -357,7 +356,7 @@ export function EditEventForm({
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">Catégorie</span>
+            <span className="text-sm font-medium text-accent/80">{t("Catégorie")}</span>
             {isDraft ? (
               <CategoryPicker categories={categories} value={category} onChange={setCategory} />
             ) : (
@@ -374,11 +373,11 @@ export function EditEventForm({
         </div>
       </InfoCard>
 
-      <InfoCard icon="🖼️" title="Affiche">
+      <InfoCard icon="🖼️" title={t("Affiche")}>
         <PosterDropzone onFileSelected={setPosterFile} initialPreviewUrl={event.poster_url} />
       </InfoCard>
 
-      <InfoCard icon="🌄" title="Image de couverture (facultatif)">
+      <InfoCard icon="🌄" title={t("Image de couverture (facultatif)")}>
         <CoverDropzone
           onFileSelected={(file) => {
             setCoverFile(file);
@@ -392,30 +391,30 @@ export function EditEventForm({
         />
       </InfoCard>
 
-      <InfoCard icon="📅" title="Dates">
+      <InfoCard icon="📅" title={t("Dates")}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">Début</span>
+            <span className="text-sm font-medium text-accent/80">{t("Début")}</span>
             <input type="datetime-local" min={minDatetimeLocal} value={startAt} onChange={(e) => setStartAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">Fin</span>
+            <span className="text-sm font-medium text-accent/80">{t("Fin")}</span>
             <input type="datetime-local" min={startAt || minDatetimeLocal} value={endAt} onChange={(e) => setEndAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">Début des ventes</span>
+            <span className="text-sm font-medium text-accent/80">{t("Début des ventes")}</span>
             <input type="datetime-local" min={minDatetimeLocal} value={salesStartAt} onChange={(e) => setSalesStartAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">Fin des ventes</span>
+            <span className="text-sm font-medium text-accent/80">{t("Fin des ventes")}</span>
             <input type="datetime-local" min={salesStartAt || minDatetimeLocal} value={salesEndAt} onChange={(e) => setSalesEndAt(e.target.value)} disabled={!isDraft} className={fieldClassName} />
           </label>
         </div>
       </InfoCard>
 
-      <InfoCard icon={<LocationPinIcon />} title="Lieu">
+      <InfoCard icon={<LocationPinIcon />} title={t("Lieu")}>
         <div className="flex flex-col gap-4">
-          <input value={venueName} onChange={(e) => setVenueName(e.target.value)} disabled={!isDraft} placeholder="Nom du lieu" className={fieldClassName} />
+          <input value={venueName} onChange={(e) => setVenueName(e.target.value)} disabled={!isDraft} placeholder={t("Nom du lieu")} className={fieldClassName} />
           <AddressAutocomplete
             value={addressLine1}
             onChangeText={setAddressLine1}
@@ -429,12 +428,12 @@ export function EditEventForm({
               setLongitude(suggestion.lng);
             }}
             disabled={!isDraft}
-            placeholder="Adresse"
+            placeholder={t("Adresse")}
           />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <input value={city} onChange={(e) => setCity(e.target.value)} disabled={!isDraft} placeholder="Ville" className={fieldClassName} />
-            <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} disabled={!isDraft} placeholder="Code postal" className={fieldClassName} />
-            <input value={country} onChange={(e) => setCountry(e.target.value)} disabled={!isDraft} placeholder="Pays" className={fieldClassName} />
+            <input value={city} onChange={(e) => setCity(e.target.value)} disabled={!isDraft} placeholder={t("Ville")} className={fieldClassName} />
+            <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} disabled={!isDraft} placeholder={t("Code postal")} className={fieldClassName} />
+            <input value={country} onChange={(e) => setCountry(e.target.value)} disabled={!isDraft} placeholder={t("Pays")} className={fieldClassName} />
           </div>
 
           <LocationPicker
@@ -449,10 +448,10 @@ export function EditEventForm({
         </div>
       </InfoCard>
 
-      <InfoCard icon="🎟️" title="Capacité, remboursement et accès">
+      <InfoCard icon="🎟️" title={t("Capacité, remboursement et accès")}>
         <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">Capacité totale</span>
+            <span className="text-sm font-medium text-accent/80">{t("Capacité totale")}</span>
             <input
               type="number"
               min="1"
@@ -464,34 +463,34 @@ export function EditEventForm({
           </label>
           {isFree ? null : (
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">Politique de remboursement</span>
+            <span className="text-sm font-medium text-accent/80">{t("Politique de remboursement")}</span>
             <select
               value={refundPolicy}
               onChange={(e) => setRefundPolicy(e.target.value as "NON_REFUNDABLE" | "REFUNDABLE")}
               disabled={!isDraft}
               className={fieldClassName}
             >
-              <option value="NON_REFUNDABLE" className="bg-card">Non remboursable</option>
-              <option value="REFUNDABLE" className="bg-card">Remboursable</option>
+              <option value="NON_REFUNDABLE" className="bg-card">{t("Non remboursable")}</option>
+              <option value="REFUNDABLE" className="bg-card">{t("Remboursable")}</option>
             </select>
           </label>
           )}
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">Conditions d&apos;accès</span>
+            <span className="text-sm font-medium text-accent/80">{t("Conditions d'accès")}</span>
             <textarea
               rows={3}
               value={accessConditions}
               onChange={(e) => setAccessConditions(e.target.value)}
-              placeholder="Ex : pièce d'identité obligatoire, interdit aux moins de 16 ans…"
+              placeholder={t("Ex : pièce d'identité obligatoire, interdit aux moins de 16 ans…")}
               className={`${fieldClassName} resize-none`}
             />
           </label>
         </div>
       </InfoCard>
 
-      <InfoCard icon="✏️" title="Billetterie">
+      <InfoCard icon="✏️" title={t("Billetterie")}>
         {ticketCategories === null ? (
-          <p className="text-sm text-ink-5">Chargement des billets…</p>
+          <p className="text-sm text-ink-5">{t("Chargement des billets…")}</p>
         ) : isDraft ? (
           <div className="flex flex-col gap-4">
             <TicketingTypeToggle free={isFree} onChange={applyFree} />
@@ -506,26 +505,24 @@ export function EditEventForm({
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            <p className="text-sm font-semibold text-ink-1">{isFree ? "Entrée gratuite, sur réservation" : "Billetterie payante"}</p>
+            <p className="text-sm font-semibold text-ink-1">{isFree ? t("Entrée gratuite, sur réservation") : t("Billetterie payante")}</p>
             <ul className="divide-y divide-hairline-1 rounded-xl border border-hairline-1">
               {ticketCategories.map((category) => (
                 <li key={category.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
                   <span className="text-ink-1">{category.name}</span>
                   <span className="text-ink-4">
-                    {Number(category.price_ht) === 0 ? "Gratuit" : `${euros.format(category.price_ttc)} TTC`} · {category.quota} places ·{" "}
-                    {category.quota - category.remaining_quota} vendues
+                    {Number(category.price_ht) === 0 ? t("Gratuit") : t("{price} TTC", { price: euros.format(category.price_ttc) })} · {t("{count} places", { count: category.quota })} ·{" "}
+                    {t("{count} vendues", { count: category.quota - category.remaining_quota })}
                   </span>
                 </li>
               ))}
             </ul>
-            <p className="text-xs text-ink-5">
-              Les billets ne changent plus une fois l&apos;événement soumis : les acheteurs gardent le prix qu&apos;ils ont payé.
-            </p>
+            <p className="text-xs text-ink-5">{t("Les billets ne changent plus une fois l'événement soumis : les acheteurs gardent le prix qu'ils ont payé.")}</p>
           </div>
         )}
       </InfoCard>
 
-      <InfoCard icon="🤝" title="Événement à but non lucratif">
+      <InfoCard icon="🤝" title={t("Événement à but non lucratif")}>
         {isDraft ? (
           <div className="flex flex-col gap-4">
             <label className="flex items-start gap-3">
@@ -540,32 +537,29 @@ export function EditEventForm({
                 }}
                 className="mt-0.5 h-4 w-4 accent-blue-600"
               />
-              <span className="text-sm text-ink-3">
-                Cet événement est organisé à but non lucratif (association, action caritative…). Après vérification du
-                justificatif par un administrateur, la commission de la plateforme ne s&apos;applique pas.
-              </span>
+              <span className="text-sm text-ink-3">{t("Cet événement est organisé à but non lucratif (association, action caritative…). Après vérification du justificatif par un administrateur, la commission de la plateforme ne s'applique pas.")}</span>
             </label>
             {isNonProfit ? (
               <>
                 {event.non_profit_document_url && !nonProfitFile ? (
-                  <p className="text-xs text-ink-5">Justificatif déjà fourni. Déposez-en un autre pour le remplacer.</p>
+                  <p className="text-xs text-ink-5">{t("Justificatif déjà fourni. Déposez-en un autre pour le remplacer.")}</p>
                 ) : null}
                 <DocumentDropzone
                   onFileSelected={setNonProfitFile}
                   disabled={submitting}
-                  hint="Glissez le justificatif (statuts, récépissé de déclaration…) ou cliquez"
+                  hint={t("Glissez le justificatif (statuts, récépissé de déclaration…) ou cliquez")}
                 />
               </>
             ) : null}
           </div>
         ) : !event.is_non_profit ? (
-          <p className="text-sm text-ink-4">Événement non déclaré à but non lucratif.</p>
+          <p className="text-sm text-ink-4">{t("Événement non déclaré à but non lucratif.")}</p>
         ) : event.non_profit_verified ? (
-          <p className="text-sm text-emerald-600">Justificatif vérifié : la commission de la plateforme ne s&apos;applique pas.</p>
+          <p className="text-sm text-emerald-600">{t("Justificatif vérifié : la commission de la plateforme ne s'applique pas.")}</p>
         ) : event.non_profit_rejected_at ? (
           <NonProfitResubmit event={event} onSubmitted={() => router.refresh()} />
         ) : (
-          <p className="text-sm text-ink-4">Justificatif en cours de vérification par l&apos;administration.</p>
+          <p className="text-sm text-ink-4">{t("Justificatif en cours de vérification par l'administration.")}</p>
         )}
       </InfoCard>
 
@@ -574,16 +568,14 @@ export function EditEventForm({
           type="button"
           onClick={() => router.push(`/dashboard/evenements/${event.id}`)}
           className={buttonClass("secondary", "rounded-full px-5 py-2.5 text-sm")}
-        >
-          ← Retour
-        </button>
+        >{t("← Retour")}</button>
         <button
           type="button"
           onClick={handleSubmit}
           disabled={submitting}
           className={buttonClass("primary", "rounded-full px-6 py-2.5 text-sm disabled:opacity-50")}
         >
-          {submitting ? "Enregistrement…" : "Enregistrer les modifications"}
+          {submitting ? t("Enregistrement…") : t("Enregistrer les modifications")}
         </button>
       </div>
     </div>

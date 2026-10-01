@@ -1,15 +1,12 @@
+"use client";
+
 import { EventDistanceLine } from "@/components/events/event-distance";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import { PosterViewer } from "@/components/event-detail/poster-viewer";
 import { EventStartCountdown } from "@/components/event-detail/event-start-countdown";
 import type { EventDetail } from "@/lib/constants/event-details";
-import { euros as priceFormatter } from "@/lib/format/money";
-
-/** Libellé du prix d'appel : « Entrée gratuite », « 25,00 € », ou rien. */
-export function fromPriceLabel(price: number | null | undefined): string | null {
-  if (price === null || price === undefined) return null;
-  return price === 0 ? "Entrée gratuite" : priceFormatter.format(price);
-}
+import { fromPriceLabel } from "@/lib/format/price-label";
+import { t as tr } from "@/lib/i18n/translate";
 
 /** En-tête immersif toujours sombre : affiche floutée en fond, affiche, titre, date, lieu et billetterie. */
 export function EventHeader({ event, purchasable }: { event: EventDetail; purchasable: boolean }) {
@@ -54,9 +51,7 @@ export function EventHeader({ event, purchasable }: { event: EventDetail; purcha
               {event.categoryLabel}
             </span>
             {soldOut ? (
-              <span className="rounded-full bg-red-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-red-200 ring-1 ring-inset ring-red-400/40">
-                Complet
-              </span>
+              <span className="rounded-full bg-red-500/20 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-red-200 ring-1 ring-inset ring-red-400/40">{tr("Complet")}</span>
             ) : null}
           </div>
 
@@ -78,7 +73,7 @@ export function EventHeader({ event, purchasable }: { event: EventDetail; purcha
                   </span>
                 </div>
                 <div>
-                  <dt className="sr-only">Date</dt>
+                  <dt className="sr-only">{tr("Date")}</dt>
                   <dd className="text-lg font-semibold first-letter:uppercase">{event.longDateLabel}</dd>
                   <dd className="text-sm text-white/70">
                     {event.dateRangeLabel && event.dateRangeLabel.includes("→") ? `${event.dateRangeLabel}, ` : ""}
@@ -93,7 +88,7 @@ export function EventHeader({ event, purchasable }: { event: EventDetail; purcha
                 <LocationPinIcon size={26} />
               </div>
               <div className="min-w-0">
-                <dt className="sr-only">Lieu</dt>
+                <dt className="sr-only">{tr("Lieu")}</dt>
                 <dd className="text-lg font-semibold">{event.venueName}</dd>
                 <dd className="truncate text-sm text-white/70">{event.address}</dd>
                 <EventDistanceLine latitude={event.latitude} longitude={event.longitude} />
@@ -110,7 +105,7 @@ export function EventHeader({ event, purchasable }: { event: EventDetail; purcha
               {price ? (
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wider text-white/60">
-                    {event.fromPrice === 0 ? "Tarif" : "À partir de"}
+                    {event.fromPrice === 0 ? tr("Tarif") : tr("À partir de")}
                   </p>
                   <p className="text-3xl font-extrabold tracking-tight">{price}</p>
                 </div>
@@ -118,9 +113,7 @@ export function EventHeader({ event, purchasable }: { event: EventDetail; purcha
               <a
                 href="#billets"
                 className="inline-flex items-center gap-2 rounded-full bg-brand px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-brand/30 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-brand/40"
-              >
-                Réserver mes billets
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              >{tr("Réserver mes billets")}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M12 5v14M19 12l-7 7-7-7" />
                 </svg>
               </a>

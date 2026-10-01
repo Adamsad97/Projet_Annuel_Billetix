@@ -1,4 +1,7 @@
+"use client";
+
 import { checkoutSteps, type CheckoutStepId } from "@/lib/constants/checkout";
+import { t } from "@/lib/i18n/translate";
 
 export function CheckoutStepper({
   current,
@@ -42,7 +45,7 @@ export function CheckoutStepper({
                       : "text-xs font-medium text-ink-5"
                 }
               >
-                {step.label}
+                {t(step.label)}
               </span>
             </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type InputHTMLAttributes } from "react";
+import { t } from "@/lib/i18n/translate";
 
 type PasswordInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type">;
 
@@ -14,9 +15,9 @@ export function PasswordInput({ className = "", ...props }: PasswordInputProps) 
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+        aria-label={visible ? t("Masquer le mot de passe") : t("Afficher le mot de passe")}
         aria-pressed={visible}
-        title={visible ? "Masquer" : "Afficher"}
+        title={visible ? t("Masquer") : t("Afficher")}
         className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-ink-5 transition-colors hover:text-ink-1"
       >
         {visible ? <EyeOffIcon /> : <EyeIcon />}

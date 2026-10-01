@@ -3,7 +3,8 @@ import { SHARED_OPEN_GRAPH } from "@/lib/site-url";
 import { notFound, permanentRedirect } from "next/navigation";
 import { cache, type ReactNode } from "react";
 import { Navbar } from "@/components/layout/navbar";
-import { EventHeader, fromPriceLabel } from "@/components/event-detail/event-header";
+import { EventHeader } from "@/components/event-detail/event-header";
+import { fromPriceLabel } from "@/lib/format/price-label";
 import { TicketSelector } from "@/components/event-detail/ticket-selector";
 import { FeaturedEventCard } from "@/components/home/featured-event-card";
 import { EventLocationMap } from "@/components/map/event-location-map";
@@ -15,9 +16,14 @@ import {
   type FeaturedEvent,
 } from "@/lib/mappers/event-mappers";
 import { ApiError } from "@/lib/api/http-error";
+import type { Locale } from "@/lib/i18n/config";
+import { dateFormat } from "@/lib/i18n/intl";
+import { getLocale } from "@/lib/i18n/server";
+import { translatorFor, type Translate } from "@/lib/i18n/translate";
 
 /** Bandeau affiché quand l'événement n'est pas achetable (désactivé, annulé, terminé, non publié). */
 function unavailability(
+  tr: Translate,
   status: string,
   suspensionReason: string | null,
   cancellationReason: string | null,
@@ -28,21 +34,21 @@ function unavailability(
       return null;
     case "POSTPONED":
       return {
-        title: "Cet événement est reporté : la nouvelle date sera annoncée prochainement. Les billets déjà achetés restent valables.",
+        title: tr("Cet événement est reporté : la nouvelle date sera annoncée prochainement. Les billets déjà achetés restent valables."),
         message: postponementReason,
       };
     case "SUSPENDED":
-      return { title: "Les ventes de cet événement sont momentanément suspendues.", message: suspensionReason };
+      return { title: tr("Les ventes de cet événement sont momentanément suspendues."), message: suspensionReason };
     case "CANCELLED":
       return {
-        title: "Cet événement est annulé. Les acheteurs sont remboursés automatiquement.",
+        title: tr("Cet événement est annulé. Les acheteurs sont remboursés automatiquement."),
         message: cancellationReason,
       };
     case "TERMINATED":
     case "ARCHIVED":
-      return { title: "Cet événement est terminé.", message: null };
+      return { title: tr("Cet événement est terminé."), message: null };
     default:
-      return { title: "Cet événement n'est pas encore en vente.", message: null };
+      return { title: tr("Cet événement n'est pas encore en vente."), message: null };
   }
 }
 
@@ -62,7 +68,8 @@ const loadEvent = cache(async (param: string): Promise<ApiEvent | null> => {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   const event = await loadEvent(id).catch(() => null);
-  if (!event) return { title: "Événement introuvable — BilleTix" };
+  const tr = translatorFor(await getLocale());
+  if (!event) return { title: tr("Événement introuvable — BilleTix") };
   const description = event.description.replace(/\s+/g, " ").trim().slice(0, 160);
   // Adresse de référence : le lien lisible (slug), quel que soit le lien utilisé.
   const path = `/evenements/${event.slug ?? event.id}`;
@@ -84,14 +91,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 const SUGGESTIONS_LIMIT = 3;
 
 /** Autres événements publiés (jamais celui affiché) — la fiche reste utilisable si ça échoue. */
-async function loadSuggestions(currentId: string): Promise<FeaturedEvent[]> {
+async function loadSuggestions(currentId: string, locale: Locale): Promise<FeaturedEvent[]> {
   try {
     const [{ data }, referential] = await Promise.all([listPublishedEvents({}), listCategories().catch(() => [])]);
     return await Promise.all(
       data
         .filter((e) => e.id !== currentId)
         .slice(0, SUGGESTIONS_LIMIT)
-        .map(async (e) => apiEventToFeatured(e, await getEventCategories(e.id).catch(() => []), referential)),
+        .map(async (e) => apiEventToFeatured(e, await getEventCategories(e.id).catch(() => []), referential, locale)),
     );
   } catch {
     return [];
@@ -104,6 +111,8 @@ export default async function EventDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: param } = await params;
+  const locale = await getLocale();
+  const tr = translatorFor(locale);
 
   const apiEvent = await loadEvent(param);
   if (!apiEvent) notFound();
@@ -123,24 +132,25 @@ export default async function EventDetailPage({
       // Libellé de la catégorie tel que défini par l'administration.
       listCategories().catch(() => []),
     ]);
-    event = apiEventToDetail(apiEvent, categories, referential);
+    event = apiEventToDetail(apiEvent, categories, referential, locale);
     organizerId = apiEvent.organizer_id;
     availability = unavailability(
+      tr,
       apiEvent.status,
       apiEvent.suspension_reason,
       apiEvent.cancellation_reason,
       apiEvent.postponement_reason ?? null,
     );
     if (apiEvent.postponed_at && apiEvent.original_start_date) {
-      const originally = new Intl.DateTimeFormat("fr-FR", {
-        dateStyle: "full",
-        timeZone: apiEvent.timezone || "Europe/Paris",
-      }).format(new Date(apiEvent.original_start_date));
+      const originally = dateFormat(
+        { dateStyle: "full", timeZone: apiEvent.timezone || "Europe/Paris" },
+        locale,
+      ).format(new Date(apiEvent.original_start_date));
       if (apiEvent.status === "POSTPONED") {
         // Date d'origine caduque : pas de calendrier tant que la nouvelle n'est pas fixée.
-        event = { ...event, calendar: undefined, dateRangeLabel: "Nouvelle date à venir", timeRangeLabel: `Initialement prévu le ${originally}` };
+        event = { ...event, calendar: undefined, dateRangeLabel: tr("Nouvelle date à venir"), timeRangeLabel: tr("Initialement prévu le {originally}", { originally }) };
       } else {
-        postponedNote = `Événement reporté : initialement prévu le ${originally}. Les billets déjà achetés restent valables pour la nouvelle date.`;
+        postponedNote = tr("Événement reporté : initialement prévu le {originally}. Les billets déjà achetés restent valables pour la nouvelle date.", { originally });
       }
     }
   } catch (err) {
@@ -150,9 +160,9 @@ export default async function EventDetailPage({
     throw err;
   }
 
-  const suggestions = await loadSuggestions(id);
+  const suggestions = await loadSuggestions(id, locale);
   const purchasable = availability === null;
-  const price = fromPriceLabel(event.fromPrice);
+  const price = fromPriceLabel(event.fromPrice, locale);
   const showMobileBar = purchasable && event.tickets.some((t) => t.remaining !== 0);
 
   return (
@@ -183,17 +193,15 @@ export default async function EventDetailPage({
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-6 px-6 py-8 md:grid-cols-3">
           <section className="rounded-2xl border border-hairline-2 bg-card p-6 shadow-sm md:col-span-2 md:p-8">
             <h2 className="flex items-center gap-3 text-xl font-bold text-ink-1">
-              <span aria-hidden="true" className="h-6 w-1 rounded-full bg-brand" />
-              À propos de l&apos;événement
-            </h2>
+              <span aria-hidden="true" className="h-6 w-1 rounded-full bg-brand" />{tr("À propos de l'événement")}</h2>
             <p className="mt-5 whitespace-pre-line text-[15px] leading-7 text-ink-3">
               {event.description}
             </p>
             {event.lineup ? (
-              <p className="mt-3 text-sm text-ink-3">Line-up : {event.lineup}</p>
+              <p className="mt-3 text-sm text-ink-3">{tr("Line-up : {lineup}", { lineup: event.lineup })}</p>
             ) : null}
 
-            <SubSection title="Lieu & accès">
+            <SubSection title={tr("Lieu & accès")}>
               <p className="mb-3 text-sm text-ink-4">{event.address}</p>
               <EventLocationMap
                 latitude={event.latitude}
@@ -202,7 +210,7 @@ export default async function EventDetailPage({
               />
             </SubSection>
 
-            <SubSection title="Conditions d'accès">
+            <SubSection title={tr("Conditions d'accès")}>
               <p className="text-sm text-ink-4">{event.accessConditions}</p>
             </SubSection>
           </section>
@@ -212,7 +220,7 @@ export default async function EventDetailPage({
               <div className="rounded-2xl border border-hairline-2 bg-card p-5 text-sm text-ink-4">
                 <p className="font-semibold text-ink-2">{event.dateRangeLabel}</p>
                 <p className="mt-1">{event.timeRangeLabel}</p>
-                <p className="mt-4">La billetterie n&apos;est pas disponible pour le moment.</p>
+                <p className="mt-4">{tr("La billetterie n'est pas disponible pour le moment.")}</p>
               </div>
             ) : (
               <TicketSelector
@@ -239,23 +247,21 @@ export default async function EventDetailPage({
                 <p className="truncate text-sm font-semibold text-ink-1">{event.title}</p>
                 {price ? (
                   <p className="text-xs text-ink-4">
-                    {event.fromPrice === 0 ? price : `À partir de ${price}`}
+                    {event.fromPrice === 0 ? price : tr("À partir de {price}", { price })}
                   </p>
                 ) : null}
               </div>
               <a
                 href="#billets"
                 className="shrink-0 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand/30"
-              >
-                Réserver
-              </a>
+              >{tr("Réserver")}</a>
             </div>
           </div>
         ) : null}
 
         {suggestions.length > 0 ? (
           <section className="mx-auto max-w-6xl px-6 pb-16 pt-4">
-            <h2 className="mb-5 text-2xl font-bold text-ink-1">Découvrez plus d&apos;événements</h2>
+            <h2 className="mb-5 text-2xl font-bold text-ink-1">{tr("Découvrez plus d'événements")}</h2>
             <ul className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {suggestions.map((suggestion) => (
                 <li key={suggestion.id}>

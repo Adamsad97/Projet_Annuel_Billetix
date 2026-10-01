@@ -3,14 +3,12 @@ import type { ApiEvent, ApiTicketCategory } from "@/lib/api/events";
 import { apiCategoryMeta } from "@/lib/constants/events";
 import type { EventDetail, TicketOption } from "@/lib/constants/event-details";
 import { euros as currency } from "@/lib/format/money";
-import { time as timeFormatter } from "@/lib/format/dates";
+import type { Locale } from "@/lib/i18n/config";
+import { dateFormat } from "@/lib/i18n/intl";
+import { activeLocale, translate, type TranslateVars } from "@/lib/i18n/translate";
 
-const fullDateFormatter = new Intl.DateTimeFormat("fr-FR", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
+// Les pages serveur passent leur langue ; dans le navigateur, celle du site.
+const FULL_DATE: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long", year: "numeric" };
 
 function lowestPrice(categories: ApiTicketCategory[]): number | null {
   const activePrices = categories
@@ -28,21 +26,25 @@ function categoryDisplay(code: string, referential: ApiCategory[]): { label: str
 }
 
 /** Mention sur le visuel : ventes suspendues, complet ou dernières places. */
-function availabilityBadge(event: ApiEvent, categories: ApiTicketCategory[]): string | null {
-  if (event.status === "SUSPENDED") return "Ventes suspendues";
+function availabilityBadge(event: ApiEvent, categories: ApiTicketCategory[], locale: Locale): string | null {
+  if (event.status === "SUSPENDED") return translate(locale, "Ventes suspendues");
   const totalRemaining = categories.reduce((sum, c) => sum + c.remaining_quota, 0);
   const totalQuota = categories.reduce((sum, c) => sum + c.quota, 0);
-  if (totalQuota > 0 && totalRemaining === 0) return "Complet";
-  if (totalQuota > 0 && totalRemaining / totalQuota < 0.1) return `${totalRemaining} places restantes`;
+  if (totalQuota > 0 && totalRemaining === 0) return translate(locale, "Complet");
+  if (totalQuota > 0 && totalRemaining / totalQuota < 0.1) return remainingPlaces(totalRemaining, locale);
   return null;
 }
 
+function remainingPlaces(count: number, locale: Locale): string {
+  return count === 1 ? translate(locale, "1 place restante") : translate(locale, "{count} places restantes", { count });
+}
+
 // Heure dans le fuseau du lieu de l'événement, pas celui du serveur.
-function formatInZone(isoDate: string, timeZone: string, options: Intl.DateTimeFormatOptions): string {
+function formatInZone(isoDate: string, timeZone: string, options: Intl.DateTimeFormatOptions, locale: Locale): string {
   try {
-    return new Intl.DateTimeFormat("fr-FR", { ...options, timeZone }).format(new Date(isoDate));
+    return dateFormat({ ...options, timeZone }, locale).format(new Date(isoDate));
   } catch {
-    return new Intl.DateTimeFormat("fr-FR", options).format(new Date(isoDate)); // fuseau inconnu
+    return dateFormat(options, locale).format(new Date(isoDate)); // fuseau inconnu
   }
 }
 
@@ -59,20 +61,21 @@ function dayKey(date: Date, timeZone: string): string {
 }
 
 /** « Aujourd'hui », « Demain », « Ce week-end » ou date complète, dans le fuseau de l'événement. */
-function formatFeaturedDate(isoDate: string, timeZone: string, now = new Date()): string {
+function formatFeaturedDate(isoDate: string, timeZone: string, locale: Locale, now = new Date()): string {
+  const tr = (text: string, vars?: TranslateVars) => translate(locale, text, vars);
   const start = new Date(isoDate);
-  const hour = formatInZone(isoDate, timeZone, TIME);
+  const hour = formatInZone(isoDate, timeZone, TIME, locale);
   const toUtcDay = (key: string) => Date.parse(`${key}T00:00:00Z`) / 86_400_000;
   const days = toUtcDay(dayKey(start, timeZone)) - toUtcDay(dayKey(now, timeZone));
-  if (days === 0) return `Aujourd'hui · ${hour}`;
-  if (days === 1) return `Demain · ${hour}`;
+  if (days === 0) return tr("Aujourd'hui · {hour}", { hour });
+  if (days === 1) return tr("Demain · {hour}", { hour });
   const weekday = new Date(`${dayKey(start, timeZone)}T00:00:00Z`).getUTCDay();
   const todayWeekday = new Date(`${dayKey(now, timeZone)}T00:00:00Z`).getUTCDay();
   const daysToSunday = (7 - todayWeekday) % 7;
   if (days > 1 && days <= daysToSunday && (weekday === 6 || weekday === 0)) {
-    return `Ce week-end · ${formatInZone(isoDate, timeZone, { weekday: "short" })} ${hour}`;
+    return tr("Ce week-end · {day} {hour}", { day: formatInZone(isoDate, timeZone, { weekday: "short" }, locale), hour });
   }
-  return formatInZone(isoDate, timeZone, { ...SHORT_DATE, ...TIME });
+  return formatInZone(isoDate, timeZone, { ...SHORT_DATE, ...TIME }, locale);
 }
 
 /** Carte du carrousel « À la une » (affiche en grand + pastilles d'infos). */
@@ -110,7 +113,9 @@ export function apiEventToFeatured(
   event: ApiEvent,
   categories: ApiTicketCategory[],
   referential: ApiCategory[] = [],
+  locale: Locale = activeLocale(),
 ): FeaturedEvent {
+  const tr = (text: string, vars?: TranslateVars) => translate(locale, text, vars);
   const meta = apiCategoryMeta[event.category] ?? apiCategoryMeta.AUTRE;
   const display = categoryDisplay(event.category, referential);
   const min = lowestPrice(categories);
@@ -123,12 +128,12 @@ export function apiEventToFeatured(
     country: event.venue_country,
     posterUrl: event.poster_url,
     coverUrl: event.cover_url ?? null,
-    dateLabel: formatFeaturedDate(event.start_date, event.timezone),
+    dateLabel: formatFeaturedDate(event.start_date, event.timezone, locale),
     isFree: min === null ? null : min === 0,
-    priceLabel: min === null ? null : min === 0 ? "Gratuit" : `Dès ${currency.format(min)}`,
-    badge: availabilityBadge(event, categories),
+    priceLabel: min === null ? null : min === 0 ? tr("Gratuit") : tr("Dès {value}", { value: currency.format(min, locale) }),
+    badge: availabilityBadge(event, categories, locale),
     categoryCode: event.category,
-    categoryLabel: display.label,
+    categoryLabel: tr(display.label),
     categoryEmoji: display.emoji,
     band: meta.band,
     suspendedNotice: event.status === "SUSPENDED" ? event.suspension_reason ?? "" : null,
@@ -142,7 +147,10 @@ export function apiEventToDetail(
   event: ApiEvent,
   categories: ApiTicketCategory[],
   referential: ApiCategory[] = [],
+  locale: Locale = activeLocale(),
 ): EventDetail {
+  const tr = (text: string, vars?: TranslateVars) => translate(locale, text, vars);
+  const inZone = (iso: string, options: Intl.DateTimeFormatOptions) => formatInZone(iso, event.timezone, options, locale);
   const meta = apiCategoryMeta[event.category] ?? apiCategoryMeta.AUTRE;
   const display = categoryDisplay(event.category, referential);
   const start = new Date(event.start_date);
@@ -164,37 +172,37 @@ export function apiEventToDetail(
 
   return {
     id: event.id,
-    categoryLabel: display.label,
+    categoryLabel: tr(display.label),
     categoryEmoji: display.emoji,
     title: event.title,
     venueName: event.venue_name,
-    dateLabel: `${fullDateFormatter.format(start)} — ${timeFormatter.format(start)}`,
+    dateLabel: `${dateFormat(FULL_DATE, locale).format(start)} — ${dateFormat(TIME, locale).format(start)}`,
     address: `${addressParts.join(", ")}, ${event.venue_postal_code} ${event.venue_city}`,
     latitude: event.venue_latitude !== null ? Number(event.venue_latitude) : null,
     longitude: event.venue_longitude !== null ? Number(event.venue_longitude) : null,
     city: `${event.venue_name}, ${event.venue_city}`,
     salesStartAt: event.sales_start_date,
     salesEndAt: event.sales_end_date,
-    remainingLabel: `${totalRemaining} places restantes`,
-    statusLabel: "Validé",
+    remainingLabel: remainingPlaces(totalRemaining, locale),
+    statusLabel: tr("Validé"),
     heroEmoji: display.emoji,
     band: meta.band,
     description: event.description,
-    accessConditions: event.access_conditions ?? "Aucune condition d'accès particulière.",
+    accessConditions: event.access_conditions ?? tr("Aucune condition d'accès particulière."),
     tickets,
     posterUrl: event.poster_url,
     dateRangeLabel: (() => {
-      const from = formatInZone(event.start_date, event.timezone, SHORT_DATE);
-      const to = formatInZone(event.end_date, event.timezone, SHORT_DATE);
+      const from = inZone(event.start_date, SHORT_DATE);
+      const to = inZone(event.end_date, SHORT_DATE);
       return from === to ? from : `${from} → ${to}`;
     })(),
-    timeRangeLabel: `de ${formatInZone(event.start_date, event.timezone, TIME)} à ${formatInZone(event.end_date, event.timezone, TIME)}`,
+    timeRangeLabel: tr("de {start} à {end}", { start: inZone(event.start_date, TIME), end: inZone(event.end_date, TIME) }),
     calendar: {
-      weekday: formatInZone(event.start_date, event.timezone, { weekday: "short" }),
-      day: formatInZone(event.start_date, event.timezone, { day: "numeric" }),
-      month: formatInZone(event.start_date, event.timezone, { month: "short" }),
+      weekday: inZone(event.start_date, { weekday: "short" }),
+      day: inZone(event.start_date, { day: "numeric" }),
+      month: inZone(event.start_date, { month: "short" }),
     },
-    longDateLabel: formatInZone(event.start_date, event.timezone, {
+    longDateLabel: inZone(event.start_date, {
       weekday: "long",
       day: "numeric",
       month: "long",

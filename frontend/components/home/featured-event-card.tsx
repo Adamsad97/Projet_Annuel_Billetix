@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { EventDistanceChip } from "@/components/events/event-distance";
@@ -5,6 +7,7 @@ import { CountryFlag } from "@/components/home/country-flag";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import type { FeaturedEvent } from "@/lib/mappers/event-mappers";
 import { eventPath } from "@/lib/format/event-path";
+import { t } from "@/lib/i18n/translate";
 
 /** Carte « À la une » : affiche sur fond flouté, pastilles date, pays, distance, tarif et catégorie. */
 export function FeaturedEventCard({ event }: { event: FeaturedEvent }) {
@@ -18,7 +21,7 @@ export function FeaturedEventCard({ event }: { event: FeaturedEvent }) {
           // eslint-disable-next-line @next/next/no-img-element -- couverture hébergée sur MinIO, hors domaines gérés par next/image
           <img
             src={event.coverUrl}
-            alt={`Couverture : ${event.title}`}
+            alt={t("Couverture : {title}", { title: event.title })}
             loading="lazy"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           />
@@ -34,7 +37,7 @@ export function FeaturedEventCard({ event }: { event: FeaturedEvent }) {
             {/* eslint-disable-next-line @next/next/no-img-element -- affiche hébergée sur MinIO, hors domaines gérés par next/image */}
             <img
               src={event.posterUrl}
-              alt={`Affiche : ${event.title}`}
+              alt={t("Affiche : {title}", { title: event.title })}
               loading="lazy"
               className="relative h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.02]"
             />
@@ -49,18 +52,18 @@ export function FeaturedEventCard({ event }: { event: FeaturedEvent }) {
 
         {/* Seuls les événements validés par l'équipe sont publiés. */}
         <span
-          title="Événement vérifié par BilleTix"
+          title={t("Événement vérifié par BilleTix")}
           className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md ring-2 ring-white/80"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M20 6 9 17l-5-5" />
           </svg>
-          <span className="sr-only">Événement vérifié</span>
+          <span className="sr-only">{t("Événement vérifié")}</span>
         </span>
 
         {event.badge ? (
           <span className="absolute right-4 top-4 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
-            {event.badge}
+            {t(event.badge)}
           </span>
         ) : null}
       </div>
@@ -77,7 +80,7 @@ export function FeaturedEventCard({ event }: { event: FeaturedEvent }) {
 
         {event.suspendedNotice !== null ? (
           <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-ink-2">
-            <span className="font-semibold">Ventes momentanément suspendues.</span>
+            <span className="font-semibold">{t("Ventes momentanément suspendues.")}</span>
             {event.suspendedNotice ? <span className="mt-0.5 block line-clamp-2 text-ink-3">{event.suspendedNotice}</span> : null}
           </p>
         ) : null}

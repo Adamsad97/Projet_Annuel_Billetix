@@ -25,6 +25,7 @@ import {
 import { ApiError } from "@/lib/api/http-error";
 import { Alert } from "@/components/ui/alert";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 const buttonClass =
   "rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1 disabled:opacity-50";
@@ -68,71 +69,71 @@ export function EventAdminControls({ event, onChanged }: { event: ApiAdminEvent;
 
   function askSuspend() {
     setDialog({
-      title: "Désactiver l'événement",
+      title: t("Désactiver l'événement"),
       message:
-        "Les ventes sont bloquées immédiatement. La page publique reste visible et affiche votre message. L'organisateur est prévenu par email.",
-      confirmLabel: "Désactiver",
+        t("Les ventes sont bloquées immédiatement. La page publique reste visible et affiche votre message. L'organisateur est prévenu par email."),
+      confirmLabel: t("Désactiver"),
       danger: true,
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Message affiché au public (ex. « Ventes suspendues le temps d'une vérification »)",
-      onConfirm: (reason) => run(() => suspendEvent(event.id, reason!), "Impossible de désactiver l'événement."),
+      reasonPlaceholder: t("Message affiché au public (ex. « Ventes suspendues le temps d'une vérification »)"),
+      onConfirm: (reason) => run(() => suspendEvent(event.id, reason!), t("Impossible de désactiver l'événement.")),
     });
   }
 
   function askHide() {
     setDialog({
-      title: "Masquer l'événement au public",
+      title: t("Masquer l'événement au public"),
       message:
-        "L'événement disparaît de la liste des événements, sa page publique devient indisponible et les ventes sont bloquées. Les billets déjà vendus restent valables.",
-      confirmLabel: "Masquer",
+        t("L'événement disparaît de la liste des événements, sa page publique devient indisponible et les ventes sont bloquées. Les billets déjà vendus restent valables."),
+      confirmLabel: t("Masquer"),
       danger: true,
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Motif (visible par l'organisateur)",
-      onConfirm: (reason) => run(() => hideEvent(event.id, reason!), "Impossible de masquer l'événement."),
+      reasonPlaceholder: t("Motif (visible par l'organisateur)"),
+      onConfirm: (reason) => run(() => hideEvent(event.id, reason!), t("Impossible de masquer l'événement.")),
     });
   }
 
   function askCancel() {
     setDialog({
-      title: "Annuler définitivement l'événement",
-      message: "Tous les billets sont annulés et les acheteurs remboursés automatiquement. Cette action est irréversible.",
-      confirmLabel: "Annuler l'événement",
+      title: t("Annuler définitivement l'événement"),
+      message: t("Tous les billets sont annulés et les acheteurs remboursés automatiquement. Cette action est irréversible."),
+      confirmLabel: t("Annuler l'événement"),
       danger: true,
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Motif communiqué aux acheteurs",
-      onConfirm: (reason) => run(() => cancelEventAsAdmin(event.id, reason!), "Impossible d'annuler l'événement."),
+      reasonPlaceholder: t("Motif communiqué aux acheteurs"),
+      onConfirm: (reason) => run(() => cancelEventAsAdmin(event.id, reason!), t("Impossible d'annuler l'événement.")),
     });
   }
 
   function askApprove(request: ApiCancellationRequest) {
     const postponement = request.kind === "POSTPONEMENT";
     setDialog({
-      title: postponement ? "Accepter la demande de report" : "Accepter la demande d'annulation",
+      title: postponement ? t("Accepter la demande de report") : t("Accepter la demande d'annulation"),
       message: postponement
         ? request.new_start_date
-          ? "L'événement passe à la nouvelle date proposée. Les acheteurs sont prévenus par email : leur billet reste valable, et ils peuvent demander le remboursement pendant le délai prévu."
-          : "L'événement passe « Reporté » : ventes et contrôle suspendus jusqu'à ce que l'organisateur fixe la nouvelle date. Les acheteurs sont prévenus et peuvent demander le remboursement."
-        : "L'événement est annulé et les acheteurs remboursés automatiquement, avec le motif de l'organisateur. Cette action est irréversible.",
-      confirmLabel: postponement ? "Accepter le report" : "Accepter et annuler",
+          ? t("L'événement passe à la nouvelle date proposée. Les acheteurs sont prévenus par email : leur billet reste valable, et ils peuvent demander le remboursement pendant le délai prévu.")
+          : t("L'événement passe « Reporté » : ventes et contrôle suspendus jusqu'à ce que l'organisateur fixe la nouvelle date. Les acheteurs sont prévenus et peuvent demander le remboursement.")
+        : t("L'événement est annulé et les acheteurs remboursés automatiquement, avec le motif de l'organisateur. Cette action est irréversible."),
+      confirmLabel: postponement ? t("Accepter le report") : t("Accepter et annuler"),
       danger: !postponement,
       showReason: true,
-      reasonPlaceholder: "Message à l'organisateur (facultatif)",
-      onConfirm: (message) => run(() => approveCancellation(request.id, message), "Impossible d'accepter la demande."),
+      reasonPlaceholder: t("Message à l'organisateur (facultatif)"),
+      onConfirm: (message) => run(() => approveCancellation(request.id, message), t("Impossible d'accepter la demande.")),
     });
   }
 
   function askReject(request: ApiCancellationRequest) {
     setDialog({
-      title: request.kind === "POSTPONEMENT" ? "Refuser la demande de report" : "Refuser la demande d'annulation",
-      message: "L'événement continue normalement. Expliquez votre décision à l'organisateur : il pourra faire une nouvelle demande.",
-      confirmLabel: "Refuser",
+      title: request.kind === "POSTPONEMENT" ? t("Refuser la demande de report") : t("Refuser la demande d'annulation"),
+      message: t("L'événement continue normalement. Expliquez votre décision à l'organisateur : il pourra faire une nouvelle demande."),
+      confirmLabel: t("Refuser"),
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Message à l'organisateur",
-      onConfirm: (message) => run(() => rejectCancellation(request.id, message!), "Impossible de refuser la demande."),
+      reasonPlaceholder: t("Message à l'organisateur"),
+      onConfirm: (message) => run(() => rejectCancellation(request.id, message!), t("Impossible de refuser la demande.")),
     });
   }
 
@@ -141,7 +142,7 @@ export function EventAdminControls({ event, onChanged }: { event: ApiAdminEvent;
       const updated = await adminReplyToCancellation(requestId, message);
       setRequests((current) => current.map((item) => (item.id === updated.id ? updated : item)));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible d'envoyer le message.");
+      setError(err instanceof ApiError ? err.message : t("Impossible d'envoyer le message."));
       throw err;
     }
   }
@@ -154,90 +155,76 @@ export function EventAdminControls({ event, onChanged }: { event: ApiAdminEvent;
 
       {event.status === "SUSPENDED" ? (
         <div className="mb-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-ink-2">
-          <p className="font-semibold text-ink-1">Désactivé : les ventes sont bloquées</p>
-          {event.suspension_reason ? <p className="mt-1">Message public : « {event.suspension_reason} »</p> : null}
+          <p className="font-semibold text-ink-1">{t("Désactivé : les ventes sont bloquées")}</p>
+          {event.suspension_reason ? <p className="mt-1">{t("Message public : « {suspension_reason} »", { suspension_reason: event.suspension_reason })}</p> : null}
         </div>
       ) : null}
       {event.featured_at ? (
         <div className="mb-4 rounded-2xl border border-blue-500/30 bg-blue-500/10 px-5 py-4 text-sm text-ink-2">
-          <p className="font-semibold text-ink-1">★ À la une de l&apos;accueil</p>
-          <p className="mt-1">Cet événement fait partie de la sélection « À la une » montrée aux visiteurs.</p>
+          <p className="font-semibold text-ink-1">{t("★ À la une de l'accueil")}</p>
+          <p className="mt-1">{t("Cet événement fait partie de la sélection « À la une » montrée aux visiteurs.")}</p>
         </div>
       ) : null}
       {event.is_hidden ? (
         <div className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-5 py-4 text-sm text-ink-2">
-          <p className="font-semibold text-ink-1">Masqué au public</p>
-          {event.hidden_reason ? <p className="mt-1">Motif : « {event.hidden_reason} »</p> : null}
+          <p className="font-semibold text-ink-1">{t("Masqué au public")}</p>
+          {event.hidden_reason ? <p className="mt-1">{t("Motif : « {hidden_reason} »", { hidden_reason: event.hidden_reason })}</p> : null}
         </div>
       ) : null}
 
       <section className={cardClass("mb-6 p-5")}>
-        <h2 className="mb-1 text-sm font-semibold text-ink-2">Gestion de l&apos;événement</h2>
+        <h2 className="mb-1 text-sm font-semibold text-ink-2">{t("Gestion de l'événement")}</h2>
         <p className="mb-4 text-xs text-ink-5">
-          {isClosed ? "Cet événement est clos : aucune action n'est possible." : "Chaque action est enregistrée dans le journal d'audit."}
+          {isClosed ? t("Cet événement est clos : aucune action n'est possible.") : t("Chaque action est enregistrée dans le journal d'audit.")}
         </p>
         {!isClosed ? (
           <div className="flex flex-wrap gap-2">
             {event.status === "PUBLISHED" ? (
-              <button type="button" onClick={askSuspend} disabled={busy} className={dangerClass}>
-                Désactiver (message public)
-              </button>
+              <button type="button" onClick={askSuspend} disabled={busy} className={dangerClass}>{t("Désactiver (message public)")}</button>
             ) : null}
             {event.status === "SUSPENDED" ? (
               <button
                 type="button"
-                onClick={() => run(() => unsuspendEvent(event.id), "Impossible de réactiver l'événement.")}
+                onClick={() => run(() => unsuspendEvent(event.id), t("Impossible de réactiver l'événement."))}
                 disabled={busy}
                 className={positiveClass}
-              >
-                Réactiver les ventes
-              </button>
+              >{t("Réactiver les ventes")}</button>
             ) : null}
             {event.featured_at ? (
               <button
                 type="button"
-                onClick={() => run(() => unfeatureEvent(event.id), "Impossible de retirer l'événement de la une.")}
+                onClick={() => run(() => unfeatureEvent(event.id), t("Impossible de retirer l'événement de la une."))}
                 disabled={busy}
                 className={buttonClass}
-              >
-                ★ Retirer de la une
-              </button>
+              >{t("★ Retirer de la une")}</button>
             ) : (event.status === "PUBLISHED" || event.status === "SUSPENDED") && !event.is_hidden ? (
               <button
                 type="button"
-                onClick={() => run(() => featureEvent(event.id), "Impossible de mettre l'événement à la une.")}
+                onClick={() => run(() => featureEvent(event.id), t("Impossible de mettre l'événement à la une."))}
                 disabled={busy}
                 className={positiveClass}
-              >
-                ☆ Mettre à la une
-              </button>
+              >{t("☆ Mettre à la une")}</button>
             ) : null}
             {event.is_hidden ? (
               <button
                 type="button"
-                onClick={() => run(() => unhideEvent(event.id), "Impossible de rendre l'événement visible.")}
+                onClick={() => run(() => unhideEvent(event.id), t("Impossible de rendre l'événement visible."))}
                 disabled={busy}
                 className={buttonClass}
-              >
-                Rendre visible au public
-              </button>
+              >{t("Rendre visible au public")}</button>
             ) : (
-              <button type="button" onClick={askHide} disabled={busy} className={buttonClass}>
-                Masquer au public
-              </button>
+              <button type="button" onClick={askHide} disabled={busy} className={buttonClass}>{t("Masquer au public")}</button>
             )}
-            <button type="button" onClick={askCancel} disabled={busy} className={dangerClass}>
-              Annuler l&apos;événement
-            </button>
+            <button type="button" onClick={askCancel} disabled={busy} className={dangerClass}>{t("Annuler l'événement")}</button>
           </div>
         ) : null}
       </section>
 
       {requests.length > 0 ? (
         <section className="mb-6">
-          <h2 className="mb-1 text-sm font-semibold text-ink-2">Demandes d&apos;annulation ou de report de l&apos;organisateur</h2>
+          <h2 className="mb-1 text-sm font-semibold text-ink-2">{t("Demandes d'annulation ou de report de l'organisateur")}</h2>
           <p className="mb-3 text-xs text-ink-5">
-            {pending ? "Une demande attend votre décision. Échangez avec l'organisateur jusqu'à trouver un accord." : "Historique des demandes."}
+            {pending ? t("Une demande attend votre décision. Échangez avec l'organisateur jusqu'à trouver un accord.") : t("Historique des demandes.")}
           </p>
           <div className="flex flex-col gap-3">
             {requests.map((request) => (
@@ -248,12 +235,8 @@ export function EventAdminControls({ event, onChanged }: { event: ApiAdminEvent;
                 onReply={(message) => reply(request.id, message)}
                 actions={
                   <>
-                    <button type="button" onClick={() => askReject(request)} disabled={busy} className={buttonClass}>
-                      Refuser
-                    </button>
-                    <button type="button" onClick={() => askApprove(request)} disabled={busy} className={dangerClass}>
-                      Accepter et annuler
-                    </button>
+                    <button type="button" onClick={() => askReject(request)} disabled={busy} className={buttonClass}>{t("Refuser")}</button>
+                    <button type="button" onClick={() => askApprove(request)} disabled={busy} className={dangerClass}>{t("Accepter et annuler")}</button>
                   </>
                 }
               />

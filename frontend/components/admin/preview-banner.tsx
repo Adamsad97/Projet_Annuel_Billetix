@@ -13,6 +13,7 @@ import {
   type PreviewRole,
 } from "@/lib/auth/preview";
 import { SESSION_ENDED_EVENT } from "@/lib/auth/session";
+import { t } from "@/lib/i18n/translate";
 
 export function PreviewBanner() {
   const router = useRouter();
@@ -39,12 +40,9 @@ export function PreviewBanner() {
     >
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
         <p>
-          <span className="font-semibold">👁 Mode aperçu : {previewLabel(role)}</span>
+          <span className="font-semibold">{t("👁 Mode aperçu : {previewLabel}", { previewLabel: previewLabel(role) })}</span>
           <span className="text-ink-3">
-            {" "}
-            — lecture seule : les actions sont désactivées, et les espaces personnels sont vides (votre compte
-            administrateur n&apos;a pas de données de ce rôle).
-          </span>
+            {" "}{t("— lecture seule : les actions sont désactivées, et les espaces personnels sont vides (votre compte administrateur n'a pas de données de ce rôle).")}</span>
         </p>
         <div className="flex items-center gap-2">
           <PreviewSwitcher current={role} compact />
@@ -55,9 +53,7 @@ export function PreviewBanner() {
               router.push("/admin");
             }}
             className="rounded-full bg-ink-1 px-4 py-2 text-sm font-semibold text-page transition-opacity hover:opacity-90"
-          >
-            Quitter l&apos;aperçu
-          </button>
+          >{t("Quitter l'aperçu")}</button>
         </div>
       </div>
     </div>

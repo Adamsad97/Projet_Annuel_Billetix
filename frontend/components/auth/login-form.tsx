@@ -12,6 +12,7 @@ import { FormError } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 // Lien OAuth avec NEXT_PUBLIC_API_URL, identique côté serveur et navigateur (évite un hydration mismatch).
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
@@ -62,7 +63,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
           setUnverifiedEmail(email);
         }
       } else {
-        setError("Connexion impossible, veuillez réessayer.");
+        setError(t("Connexion impossible, veuillez réessayer."));
       }
     } finally {
       setLoading(false);
@@ -101,7 +102,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
       }
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Vérification impossible, veuillez réessayer.",
+        err instanceof ApiError ? err.message : t("Vérification impossible, veuillez réessayer."),
       );
     } finally {
       setLoading(false);
@@ -112,11 +113,8 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
     return (
       <div className={cardClass("w-full max-w-md p-8")}>
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-ink-1">Code de vérification</h1>
-          <p className="mt-1 text-sm text-accent/70">
-            Entrez le code affiché dans votre application d&apos;authentification
-            ({pendingCredentials.method}).
-          </p>
+          <h1 className="text-2xl font-bold text-ink-1">{t("Code de vérification")}</h1>
+          <p className="mt-1 text-sm text-accent/70">{t("Entrez le code affiché dans votre application d'authentification ({method}).", { method: pendingCredentials.method })}</p>
         </div>
 
         {error ? (
@@ -133,7 +131,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
             autoFocus
             value={twoFactorCode}
             onChange={(event) => setTwoFactorCode(event.target.value)}
-            placeholder="Code à 6 chiffres"
+            placeholder={t("Code à 6 chiffres")}
             className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-center text-lg tracking-[0.3em] text-ink-1 placeholder:tracking-normal placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
           />
           <button
@@ -141,7 +139,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
             disabled={loading}
             className={buttonClass("primary", "w-full rounded-xl py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
           >
-            {loading ? "Vérification…" : "Confirmer"}
+            {loading ? t("Vérification…") : t("Confirmer")}
           </button>
           <button
             type="button"
@@ -151,9 +149,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
               setError(null);
             }}
             className="text-sm text-ink-5 hover:text-ink-3"
-          >
-            ← Revenir à la connexion
-          </button>
+          >{t("← Revenir à la connexion")}</button>
         </form>
       </div>
     );
@@ -162,12 +158,9 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
   return (
     <div className={cardClass("w-full max-w-md p-8")}>
       <div className="mb-6 text-center">
-        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">
-          Bienvenue <span>👋</span>
+        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">{t("Bienvenue")}{" "}<span>👋</span>
         </h1>
-        <p className="mt-1 text-sm text-accent/70">
-          Connectez-vous à votre compte BilleTix
-        </p>
+        <p className="mt-1 text-sm text-accent/70">{t("Connectez-vous à votre compte BilleTix")}</p>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -177,22 +170,18 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
           onClick={() => rememberOAuthNext(next)}
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-hairline-2 bg-hairline-1 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
         >
-          <span className="font-bold">G</span>
-          Continuer avec Google
-        </a>
+          <span className="font-bold">G</span>{t("Continuer avec Google")}</a>
         <a
           href={`${API_URL}/auth/facebook`}
           onClick={() => rememberOAuthNext(next)}
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-hairline-2 bg-hairline-1 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
         >
-          <span className="font-bold">f</span>
-          Continuer avec Facebook
-        </a>
+          <span className="font-bold">f</span>{t("Continuer avec Facebook")}</a>
       </div>
 
       <div className="my-6 flex items-center gap-3">
         <div className="h-px flex-1 bg-hairline-2" />
-        <span className="text-xs text-ink-5">ou avec votre email</span>
+        <span className="text-xs text-ink-5">{t("ou avec votre email")}</span>
         <div className="h-px flex-1 bg-hairline-2" />
       </div>
 
@@ -208,9 +197,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
           {unverifiedEmail ? (
             <div className="mt-2">
               {resendStatus === "sent" ? (
-                <span className="text-emerald-300">
-                  ✓ Email de vérification renvoyé — vérifiez votre boîte mail.
-                </span>
+                <span className="text-emerald-300">{t("✓ Email de vérification renvoyé — vérifiez votre boîte mail.")}</span>
               ) : (
                 <button
                   type="button"
@@ -218,7 +205,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
                   disabled={resendStatus === "sending"}
                   className="font-medium text-accent underline transition-colors hover:text-accent disabled:opacity-60"
                 >
-                  {resendStatus === "sending" ? "Envoi en cours…" : "Renvoyer l'email de vérification"}
+                  {resendStatus === "sending" ? t("Envoi en cours…") : t("Renvoyer l'email de vérification")}
                 </button>
               )}
             </div>
@@ -228,9 +215,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-accent/80">
-            Adresse email
-          </span>
+          <span className="text-sm font-medium text-accent/80">{t("Adresse email")}</span>
           <input
             type="email"
             name="email"
@@ -241,9 +226,7 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-accent/80">
-            Mot de passe
-          </span>
+          <span className="text-sm font-medium text-accent/80">{t("Mot de passe")}</span>
           <PasswordInput
             name="password"
             required
@@ -260,15 +243,11 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
               checked={rememberMe}
               onChange={(event) => setRememberMe(event.target.checked)}
               className="h-4 w-4 rounded border-hairline-4 bg-hairline-1 accent-blue-600"
-            />
-            Se souvenir de moi
-          </label>
+            />{t("Se souvenir de moi")}</label>
           <Link
             href="/mot-de-passe-oublie"
             className="font-medium text-link transition-colors hover:text-link-hover"
-          >
-            Mot de passe oublié ?
-          </Link>
+          >{t("Mot de passe oublié ?")}</Link>
         </div>
 
         <button
@@ -276,18 +255,15 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
           disabled={loading}
           className={buttonClass("primary", "mt-1 w-full rounded-xl py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
         >
-          {loading ? "Connexion…" : "Se connecter →"}
+          {loading ? t("Connexion…") : t("Se connecter →")}
         </button>
       </form>
 
-      <p className="mt-5 text-center text-sm text-ink-5">
-        Pas encore de compte ?{" "}
+      <p className="mt-5 text-center text-sm text-ink-5">{t("Pas encore de compte ?")}{" "}
         <Link
           href="/inscription"
           className="font-medium text-link transition-colors hover:text-link-hover"
-        >
-          S&apos;inscrire gratuitement
-        </Link>
+        >{t("S'inscrire gratuitement")}</Link>
       </p>
     </div>
   );

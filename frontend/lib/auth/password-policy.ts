@@ -1,3 +1,4 @@
+import { t, msg } from "@/lib/i18n/translate";
 // Miroir de la politique de mot de passe d'auth-service pour l'affichage en direct ; le serveur fait foi.
 
 export interface PasswordPersonalInfo {
@@ -45,11 +46,11 @@ function personalFragments(info: PasswordPersonalInfo): string[] {
 /** État des règles affichées en direct ; la règle prénom/nom n'est vérifiée qu'à l'envoi. */
 export function evaluatePassword(password: string, minLength: number): PasswordRuleStatus[] {
   const rules: PasswordRuleStatus[] = [
-    { id: "length", label: `${minLength} caractères min.`, ok: password.length >= minLength },
-    { id: "upper", label: "Majuscule", ok: /\p{Lu}/u.test(password) },
-    { id: "lower", label: "Minuscule", ok: /\p{Ll}/u.test(password) },
-    { id: "digit", label: "Chiffre", ok: /\d/.test(password) },
-    { id: "special", label: "Caractère spécial", hint: "Par exemple ! @ # ? - _", ok: /[^\p{L}\d]/u.test(password) },
+    { id: "length", label: t("{minLength} caractères min.", { minLength }), ok: password.length >= minLength },
+    { id: "upper", label: t("Majuscule"), ok: /\p{Lu}/u.test(password) },
+    { id: "lower", label: t("Minuscule"), ok: /\p{Ll}/u.test(password) },
+    { id: "digit", label: t("Chiffre"), ok: /\d/.test(password) },
+    { id: "special", label: t("Caractère spécial"), hint: t("Par exemple ! @ # ? - _"), ok: /[^\p{L}\d]/u.test(password) },
   ];
 
   return rules;
@@ -75,4 +76,4 @@ function birthDateFragments(birthDate?: string | null): string[] {
 }
 
 export const PERSONAL_INFO_ERROR =
-  "Le mot de passe ne doit contenir ni votre prénom, ni votre nom, ni votre date de naissance.";
+  msg("Le mot de passe ne doit contenir ni votre prénom, ni votre nom, ni votre date de naissance.");

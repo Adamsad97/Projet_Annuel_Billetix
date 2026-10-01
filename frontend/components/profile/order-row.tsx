@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { orderStatusBadge, type ProfileOrder } from "@/lib/constants/profile";
+import { t } from "@/lib/i18n/translate";
 
 export function OrderRow({ order }: { order: ProfileOrder }) {
   const badge = orderStatusBadge[order.status];
@@ -21,7 +24,7 @@ export function OrderRow({ order }: { order: ProfileOrder }) {
       <span
         className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${badge.className}`}
       >
-        {badge.label}
+        {t(badge.label)}
       </span>
     </Link>
   );

@@ -3,6 +3,7 @@
 // Zone de dépôt : clic ou glisser-déposer, format et taille contrôlés avant envoi.
 
 import { useRef, useState, type ReactNode } from "react";
+import { t } from "@/lib/i18n/translate";
 
 export function FileDropzone({
   accept,
@@ -33,7 +34,7 @@ export function FileDropzone({
     const picked = files?.[0];
     if (!picked) return;
     if (!accept.includes(picked.type)) {
-      setError(`Format non supporté — ${formatsLabel} uniquement.`);
+      setError(t("Format non supporté — {formatsLabel} uniquement.", { formatsLabel }));
       onFileSelected(null);
       return;
     }

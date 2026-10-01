@@ -18,6 +18,7 @@ import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
 import { Modal } from "@/components/ui/modal";
+import { t } from "@/lib/i18n/translate";
 
 function download(filename: string, content: string) {
   const url = URL.createObjectURL(new Blob([content], { type: "application/xml" }));
@@ -48,7 +49,7 @@ export function BankTransfersPanel({ onChange }: { onChange?: () => void }) {
       setAccountReady(result.platform_account_ready);
       setSelected(new Set(result.data.filter((row) => !row.iban_held_until).map((row) => row.id)));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de charger les virements à effectuer.");
+      setError(err instanceof ApiError ? err.message : t("Impossible de charger les virements à effectuer."));
       setRows([]);
     }
   }, []);
@@ -85,11 +86,11 @@ export function BankTransfersPanel({ onChange }: { onChange?: () => void }) {
       setReference(result.message_id);
       setNotice(
         `Fichier ${result.filename} : ${result.count} virement${result.count > 1 ? "s" : ""}, ${euros.format(result.total)}.` +
-          (result.skipped.length ? ` ${result.skipped.length} reversement(s) écarté(s) : ${result.skipped.map((s) => s.reason).join(", ")}.` : "") +
-          " Importez-le dans votre banque, puis marquez les virements comme versés.",
+          (result.skipped.length ? t(" {length} reversement(s) écarté(s) : {value}.", { length: result.skipped.length, value: result.skipped.map((s) => s.reason).join(", ") }) : "") +
+          t(" Importez-le dans votre banque, puis marquez les virements comme versés."),
       );
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Le fichier n'a pas pu être généré.");
+      setError(err instanceof ApiError ? err.message : t("Le fichier n'a pas pu être généré."));
     } finally {
       setBusy(false);
     }
@@ -103,14 +104,14 @@ export function BankTransfersPanel({ onChange }: { onChange?: () => void }) {
       const result = await confirmBankTransfers(chosen.map((row) => row.id), reference.trim());
       setConfirmOpen(false);
       setNotice(
-        `${result.confirmed.length} virement${result.confirmed.length > 1 ? "s" : ""} marqué${result.confirmed.length > 1 ? "s" : ""} comme versé${result.confirmed.length > 1 ? "s" : ""}. Les organisateurs ont été prévenus par email.` +
-          (result.failed.length ? ` ${result.failed.length} n'ont pas pu l'être.` : ""),
+        (result.confirmed.length > 1 ? t("{length} virements marqués comme versés. Les organisateurs ont été prévenus par email.", { length: result.confirmed.length }) : t("{length} virement marqué comme versé. Les organisateurs ont été prévenus par email.", { length: result.confirmed.length })) +
+          (result.failed.length ? t(" {length} n'ont pas pu l'être.", { length: result.failed.length }) : ""),
       );
       setReference("");
       await load();
       onChange?.();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Confirmation impossible, veuillez réessayer.");
+      setError(err instanceof ApiError ? err.message : t("Confirmation impossible, veuillez réessayer."));
     } finally {
       setBusy(false);
     }
@@ -118,19 +119,19 @@ export function BankTransfersPanel({ onChange }: { onChange?: () => void }) {
 
   function askCancel(row: ApiBankTransfer) {
     setDialog({
-      title: "Annuler ce virement ?",
-      message: `Le reversement de ${euros.format(row.amount)} à ${row.organizer_name} redevient « En attente » et sera préparé de nouveau au prochain cycle. À utiliser si la banque a rejeté le virement.`,
-      confirmLabel: "Annuler le virement",
+      title: t("Annuler ce virement ?"),
+      message: t("Le reversement de {value} à {organizer_name} redevient « En attente » et sera préparé de nouveau au prochain cycle. À utiliser si la banque a rejeté le virement.", { value: euros.format(row.amount), organizer_name: row.organizer_name }),
+      confirmLabel: t("Annuler le virement"),
       danger: true,
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Motif (ex. IBAN rejeté par la banque)",
+      reasonPlaceholder: t("Motif (ex. IBAN rejeté par la banque)"),
       onConfirm: async (reason) => {
         setBusy(true);
         setError(null);
         try {
           await cancelBankTransfer(row.id, reason ?? "");
-          setNotice("Virement annulé : le reversement est de nouveau en attente.");
+          setNotice(t("Virement annulé : le reversement est de nouveau en attente."));
           await load();
           onChange?.();
         } catch (err) {
@@ -146,8 +147,8 @@ export function BankTransfersPanel({ onChange }: { onChange?: () => void }) {
     <section className={cardClass("mb-8 p-5")}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-ink-1">Virements à effectuer</h2>
-          <p className="text-sm text-ink-5">Organisateurs payés par virement sur leur IBAN.</p>
+          <h2 className="text-lg font-bold text-ink-1">{t("Virements à effectuer")}</h2>
+          <p className="text-sm text-ink-5">{t("Organisateurs payés par virement sur leur IBAN.")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -155,28 +156,19 @@ export function BankTransfersPanel({ onChange }: { onChange?: () => void }) {
             disabled={busy || chosen.length === 0 || !accountReady}
             onClick={handleExport}
             className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm disabled:opacity-50")}
-          >
-            Télécharger le fichier SEPA
-          </button>
+          >{t("Télécharger le fichier SEPA")}</button>
           <button
             type="button"
             disabled={busy || chosen.length === 0}
             onClick={() => setConfirmOpen(true)}
             className={buttonClass("primary", "rounded-full px-4 py-2 text-sm disabled:opacity-50")}
-          >
-            Marquer comme versé{chosen.length > 1 ? `s (${chosen.length})` : ""}
-          </button>
+          >{chosen.length > 1 ? t("Marquer comme versés ({count})", { count: chosen.length }) : t("Marquer comme versé")}</button>
         </div>
       </div>
 
       {!accountReady ? (
-        <Alert tone="warning" className="mb-4">
-          Renseignez l&apos;IBAN de la plateforme dans les{" "}
-          <Link href="/admin/parametres" className="underline">
-            paramètres
-          </Link>{" "}
-          (Informations légales) pour générer le fichier SEPA.
-        </Alert>
+        <Alert tone="warning" className="mb-4">{t("Renseignez l'IBAN de la plateforme dans les")}{" "}
+          <Link href="/admin/parametres" className="underline">{t("paramètres")}</Link>{" "}{t("(Informations légales) pour générer le fichier SEPA.")}</Alert>
       ) : null}
       {notice ? <Alert tone="success" className="mb-4">{notice}</Alert> : null}
       {error ? <FormError>{error}</FormError> : null}
@@ -197,18 +189,13 @@ export function BankTransfersPanel({ onChange }: { onChange?: () => void }) {
                   {row.organizer_name} — {row.event_name}
                 </span>
                 <span className="block font-mono text-xs text-ink-5">
-                  {row.bank_owner_name ?? "Titulaire inconnu"} · {row.iban_masked ?? "Aucun IBAN"}
+                  {row.bank_owner_name ?? t("Titulaire inconnu")} · {row.iban_masked ?? t("Aucun IBAN")}
                 </span>
                 {row.offset_amount > 0 ? (
-                  <span className="block text-xs text-ink-4">
-                    {euros.format(row.net_amount)} moins {euros.format(row.offset_amount)} de montants dus
-                  </span>
+                  <span className="block text-xs text-ink-4">{t("{value} moins {value2} de montants dus", { value: euros.format(row.net_amount), value2: euros.format(row.offset_amount) })}</span>
                 ) : null}
                 {row.iban_held_until ? (
-                  <span className="block text-xs text-warning">
-                    IBAN modifié récemment : virement possible à partir du{" "}
-                    {longDateTime.format(new Date(row.iban_held_until))}
-                  </span>
+                  <span className="block text-xs text-warning">{t("IBAN modifié récemment : virement possible à partir du {value}", { value: longDateTime.format(new Date(row.iban_held_until)) })}</span>
                 ) : null}
               </span>
             </label>
@@ -219,33 +206,24 @@ export function BankTransfersPanel({ onChange }: { onChange?: () => void }) {
                 disabled={busy}
                 onClick={() => askCancel(row)}
                 className="rounded-lg px-3 py-1.5 text-xs font-medium text-ink-4 ring-1 ring-inset ring-hairline-2 hover:bg-hairline-1 disabled:opacity-50"
-              >
-                Annuler
-              </button>
+              >{t("Annuler")}</button>
             </div>
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-right text-sm text-ink-4">
-        Sélection : {chosen.length} virement{chosen.length > 1 ? "s" : ""} · {euros.format(chosenTotal)}
-      </p>
+      <p className="mt-3 text-right text-sm text-ink-4">{(chosen.length > 1 ? t("Sélection : {length} virements · {value2}", { length: chosen.length, value2: euros.format(chosenTotal) }) : t("Sélection : {length} virement · {value2}", { length: chosen.length, value2: euros.format(chosenTotal) }))}</p>
 
       <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} labelledBy={titleId} dismissible={!busy}>
         <div className="w-full max-w-md rounded-2xl border border-hairline-2 bg-card p-6 shadow-2xl">
           <h2 id={titleId} className="text-lg font-bold text-ink-1">
-            Marquer {chosen.length > 1 ? `${chosen.length} virements` : "le virement"} comme versé
+            {chosen.length > 1 ? t("Marquer {count} virements comme versés", { count: chosen.length }) : t("Marquer le virement comme versé")}
           </h2>
-          <p className="mt-2 text-sm text-ink-4">
-            À faire une fois le virement de {euros.format(chosenTotal)} émis par votre banque. Chaque organisateur
-            reçoit un email avec la référence.
-          </p>
-          <label className="mt-4 flex flex-col gap-1.5 text-sm font-medium text-ink-2">
-            Référence du virement
-            <input
+          <p className="mt-2 text-sm text-ink-4">{t("À faire une fois le virement de {value} émis par votre banque. Chaque organisateur reçoit un email avec la référence.", { value: euros.format(chosenTotal) })}</p>
+          <label className="mt-4 flex flex-col gap-1.5 text-sm font-medium text-ink-2">{t("Référence du virement")}<input
               value={reference}
               onChange={(event) => setReference(event.target.value)}
               maxLength={140}
-              placeholder="Référence donnée par la banque"
+              placeholder={t("Référence donnée par la banque")}
               className={fieldClass("px-4 py-3")}
             />
           </label>
@@ -255,16 +233,14 @@ export function BankTransfersPanel({ onChange }: { onChange?: () => void }) {
               disabled={busy}
               onClick={() => setConfirmOpen(false)}
               className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
-            >
-              Retour
-            </button>
+            >{t("Retour")}</button>
             <button
               type="button"
               disabled={busy || reference.trim().length < 3}
               onClick={handleConfirm}
               className={buttonClass("primary", "rounded-full px-4 py-2 text-sm disabled:opacity-50")}
             >
-              {busy ? "Enregistrement…" : "Confirmer"}
+              {busy ? t("Enregistrement…") : t("Confirmer")}
             </button>
           </div>
         </div>

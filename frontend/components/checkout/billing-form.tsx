@@ -13,6 +13,7 @@ import { FormError } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 const fieldClassName = fieldClass("px-4 py-3");
 
@@ -75,7 +76,7 @@ export function BillingForm({
         return;
       }
       setError(
-        err instanceof ApiError ? err.message : "Impossible de créer la commande, veuillez réessayer.",
+        err instanceof ApiError ? err.message : t("Impossible de créer la commande, veuillez réessayer."),
       );
     } finally {
       setLoading(false);
@@ -86,18 +87,18 @@ export function BillingForm({
     <div className={cardClass("p-5")}>
       <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-ink-2">
         <span>👤</span>
-        {isFree ? "Vos coordonnées" : "Coordonnées de facturation"}
+        {isFree ? t("Vos coordonnées") : t("Coordonnées de facturation")}
       </h2>
 
       <div className="mb-4 rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3">
         <div className="flex items-center justify-between text-sm">
           <span className="text-ink-4">{cart.eventTitle}</span>
           <span className={`font-bold ${isFree ? "text-emerald-600" : "text-ink-1"}`}>
-            {isFree ? "Gratuit" : currency.format(cartTotal(cart))}
+            {isFree ? t("Gratuit") : currency.format(cartTotal(cart))}
           </span>
         </div>
         {cartTotal(cart) > 0 && cartVat(cart) !== null ? (
-          <p className="mt-1 text-right text-xs text-ink-5">TTC, dont TVA {currency.format(cartVat(cart) ?? 0)}</p>
+          <p className="mt-1 text-right text-xs text-ink-5">{t("TTC, dont TVA {value}", { value: currency.format(cartVat(cart) ?? 0) })}</p>
         ) : null}
       </div>
 
@@ -114,7 +115,7 @@ export function BillingForm({
       >
         <div className="grid grid-cols-2 gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">Prénom</span>
+            <span className="text-sm font-medium text-accent/80">{t("Prénom")}</span>
             <input
               type="text"
               name="firstName"
@@ -124,7 +125,7 @@ export function BillingForm({
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">Nom</span>
+            <span className="text-sm font-medium text-accent/80">{t("Nom")}</span>
             <input
               type="text"
               name="lastName"
@@ -136,7 +137,7 @@ export function BillingForm({
         </div>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-accent/80">Email</span>
+          <span className="text-sm font-medium text-accent/80">{t("Email")}</span>
           <input
             type="email"
             name="email"
@@ -147,10 +148,7 @@ export function BillingForm({
         </label>
 
         {isFree ? (
-          <p className="text-xs text-ink-5">
-            Entrée gratuite : aucun paiement ni adresse de facturation. Vos billets vous sont envoyés par email et
-            restent disponibles dans votre espace.
-          </p>
+          <p className="text-xs text-ink-5">{t("Entrée gratuite : aucun paiement ni adresse de facturation. Vos billets vous sont envoyés par email et restent disponibles dans votre espace.")}</p>
         ) : (
           <BillingAddressFields fieldClassName={fieldClassName} />
         )}
@@ -162,11 +160,11 @@ export function BillingForm({
         >
           {loading
             ? isFree
-              ? "Réservation…"
-              : "Création de la commande…"
+              ? t("Réservation…")
+              : t("Création de la commande…")
             : isFree
-              ? "Confirmer ma réservation"
-              : "Continuer vers le paiement →"}
+              ? t("Confirmer ma réservation")
+              : t("Continuer vers le paiement →")}
         </button>
       </form>
     </div>

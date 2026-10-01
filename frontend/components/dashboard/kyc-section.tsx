@@ -8,16 +8,18 @@ import { uploadDocument } from "@/lib/api/upload";
 import { ApiError } from "@/lib/api/http-error";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
+import { t, msg } from "@/lib/i18n/translate";
+import { dateFormat } from "@/lib/i18n/intl";
 
 const STATUS_DISPLAY: Record<KycStatus, { label: string; className: string }> = {
-  PENDING: { label: "À fournir", className: "bg-hairline-2 text-ink-3" },
-  SUBMITTED: { label: "En cours d'examen", className: "bg-amber-500/15 text-amber-500" },
-  VERIFIED: { label: "Vérifiée", className: "bg-emerald-500/15 text-emerald-500" },
-  REJECTED: { label: "Refusée", className: "bg-red-500/15 text-red-400" },
+  PENDING: { label: msg("À fournir"), className: "bg-hairline-2 text-ink-3" },
+  SUBMITTED: { label: msg("En cours d'examen"), className: "bg-amber-500/15 text-amber-500" },
+  VERIFIED: { label: msg("Vérifiée"), className: "bg-emerald-500/15 text-emerald-500" },
+  REJECTED: { label: msg("Refusée"), className: "bg-red-500/15 text-red-400" },
 };
 
 function formatDay(value: string | null): string {
-  return value ? new Date(value).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "";
+  return value ? dateFormat({ day: "numeric", month: "long", year: "numeric" }).format(new Date(value)) : "";
 }
 
 /** Vérification d'identité : dépôt de la pièce (privée), puis examen par un admin. */
@@ -37,7 +39,7 @@ export function KycSection() {
       .catch((err) => {
         if (cancelled) return;
         if (err instanceof ApiError && err.status === 404) setKyc(null);
-        else setLoadError(err instanceof ApiError ? err.message : "Impossible de charger votre vérification d'identité.");
+        else setLoadError(err instanceof ApiError ? err.message : t("Impossible de charger votre vérification d'identité."));
       });
     return () => {
       cancelled = true;
@@ -54,7 +56,7 @@ export function KycSection() {
       setKyc(await getKycStatus());
       setFile(null);
     } catch (err) {
-      setSendError(err instanceof ApiError ? err.message : "L'envoi a échoué, veuillez réessayer.");
+      setSendError(err instanceof ApiError ? err.message : t("L'envoi a échoué, veuillez réessayer."));
     } finally {
       setSending(false);
     }
@@ -66,57 +68,43 @@ export function KycSection() {
   return (
     <section className={cardClass("p-6")}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-bold text-ink-1">Vérification d&apos;identité</h2>
+        <h2 className="text-lg font-bold text-ink-1">{t("Vérification d'identité")}</h2>
         {status ? (
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}>{status.label}</span>
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}>{t(status.label)}</span>
         ) : null}
       </div>
 
       {loadError ? (
         <p className="text-sm text-danger">{loadError}</p>
       ) : kyc === undefined ? (
-        <p className="text-sm text-ink-5">Chargement…</p>
+        <p className="text-sm text-ink-5">{t("Chargement…")}</p>
       ) : kyc === null ? (
         <div className="flex flex-col items-start gap-3">
-          <p className="text-sm text-ink-5">
-            Créez d&apos;abord votre profil organisateur ; vous pourrez ensuite fournir votre pièce d&apos;identité.
-          </p>
+          <p className="text-sm text-ink-5">{t("Créez d'abord votre profil organisateur ; vous pourrez ensuite fournir votre pièce d'identité.")}</p>
           <Link
             href="/dashboard/profil"
             className="rounded-full bg-blue-700 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          >
-            Créer mon profil organisateur →
-          </Link>
+          >{t("Créer mon profil organisateur →")}</Link>
         </div>
       ) : (
         <div className="flex flex-col gap-4">
           {kyc.kyc_status === "SUBMITTED" ? (
-            <p className="text-sm text-ink-4">
-              Votre pièce a été transmise le {formatDay(kyc.kyc_submitted_at)}. Un administrateur l&apos;examine ; vous
-              serez informé de sa décision.
-            </p>
+            <p className="text-sm text-ink-4">{t("Votre pièce a été transmise le {day}. Un administrateur l'examine ; vous serez informé de sa décision.", { day: formatDay(kyc.kyc_submitted_at) })}</p>
           ) : null}
           {kyc.kyc_status === "VERIFIED" ? (
-            <p className="text-sm text-ink-4">Votre identité a été vérifiée le {formatDay(kyc.kyc_verified_at)}.</p>
+            <p className="text-sm text-ink-4">{t("Votre identité a été vérifiée le {day}.", { day: formatDay(kyc.kyc_verified_at) })}</p>
           ) : null}
           {kyc.kyc_status === "REJECTED" ? (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
-              Votre pièce a été refusée
-              {kyc.kyc_rejected_reason ? ` : ${kyc.kyc_rejected_reason}` : "."} Veuillez en fournir une nouvelle.
-            </div>
+            <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">{kyc.kyc_rejected_reason ? t("Votre pièce a été refusée : {reason} Veuillez en fournir une nouvelle.", { reason: kyc.kyc_rejected_reason }) : t("Votre pièce a été refusée. Veuillez en fournir une nouvelle.")}</div>
           ) : null}
 
           {canSubmit ? (
             <>
-              <p className="text-sm text-ink-5">
-                Fournissez une pièce d&apos;identité en cours de validité (carte d&apos;identité, passeport) ou, pour
-                une structure, un extrait Kbis ou les statuts de l&apos;association. Le document reste privé : seuls
-                vous et les administrateurs de la plateforme peuvent le consulter.
-              </p>
+              <p className="text-sm text-ink-5">{t("Fournissez une pièce d'identité en cours de validité (carte d'identité, passeport) ou, pour une structure, un extrait Kbis ou les statuts de l'association. Le document reste privé : seuls vous et les administrateurs de la plateforme peuvent le consulter.")}</p>
               <DocumentDropzone
                 onFileSelected={setFile}
                 disabled={sending}
-                hint="Glissez votre pièce justificative ou cliquez pour la choisir"
+                hint={t("Glissez votre pièce justificative ou cliquez pour la choisir")}
               />
               {sendError ? (
                 <p className="text-sm text-danger" role="alert">
@@ -129,7 +117,7 @@ export function KycSection() {
                 onClick={handleSubmit}
                 className={buttonClass("primary", "self-end rounded-full px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-40")}
               >
-                {sending ? "Envoi…" : "Envoyer pour vérification"}
+                {sending ? t("Envoi…") : t("Envoyer pour vérification")}
               </button>
             </>
           ) : null}

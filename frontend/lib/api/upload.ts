@@ -5,13 +5,14 @@ import { isPreviewActive, PREVIEW_READ_ONLY_MESSAGE } from "@/lib/auth/preview";
 import { getAccessToken } from "@/lib/auth/session";
 import { ApiError, extractErrorMessage } from "./http-error";
 import { refreshAccessToken } from "./client";
+import { t } from "@/lib/i18n/translate";
 
 const API_URL = getApiBaseUrl();
 
 // Jeton expiré : rafraîchit la session en silence avant d'abandonner l'upload.
 async function uploadFile(path: string, file: File, isRetry = false): Promise<{ url: string }> {
   const token = getAccessToken();
-  if (isPreviewActive()) throw new ApiError(403, PREVIEW_READ_ONLY_MESSAGE, "PREVIEW_READ_ONLY");
+  if (isPreviewActive()) throw new ApiError(403, t(PREVIEW_READ_ONLY_MESSAGE), "PREVIEW_READ_ONLY");
   const formData = new FormData();
   formData.append("file", file);
 
@@ -23,7 +24,7 @@ async function uploadFile(path: string, file: File, isRetry = false): Promise<{ 
       body: formData,
     });
   } catch {
-    throw new ApiError(0, "Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard.");
+    throw new ApiError(0, t("Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard."));
   }
 
   if (response.status === 401 && !isRetry && token) {
@@ -42,8 +43,8 @@ async function uploadFile(path: string, file: File, isRetry = false): Promise<{ 
     throw new ApiError(
       response.status,
       response.status === 401
-        ? "Votre session a expiré — veuillez vous reconnecter pour continuer."
-        : extractErrorMessage(data, "Le téléversement a échoué, veuillez réessayer."),
+        ? t("Votre session a expiré — veuillez vous reconnecter pour continuer.")
+        : extractErrorMessage(data, t("Le téléversement a échoué, veuillez réessayer.")),
     );
   }
 

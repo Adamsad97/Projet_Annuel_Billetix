@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { apiFetchBlob } from "@/lib/api/client";
 import { buttonClass } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { t } from "@/lib/i18n/translate";
 
 export interface SubmittedDocument {
   id: string;
@@ -59,9 +60,7 @@ function DocumentThumb({ doc, src, large = false }: { doc: SubmittedDocument; sr
         className={`flex items-center justify-center bg-hairline-2 text-xs text-ink-3 ${
           large ? "aspect-[3/4] w-full max-w-sm rounded-2xl" : "h-40 w-full rounded-xl"
         }`}
-      >
-        Chargement…
-      </div>
+      >{t("Chargement…")}</div>
     );
   }
 
@@ -74,7 +73,7 @@ function DocumentThumb({ doc, src, large = false }: { doc: SubmittedDocument; sr
       >
         {/* Texte de couleur fixe : le fond de l'icône PDF est toujours sombre. */}
         <span className={large ? "text-6xl opacity-90" : "text-3xl opacity-90"}>📄</span>
-        <span className="text-xs text-gray-400">Document PDF</span>
+        <span className="text-xs text-gray-400">{t("Document PDF")}</span>
       </div>
     );
   }
@@ -83,7 +82,7 @@ function DocumentThumb({ doc, src, large = false }: { doc: SubmittedDocument; sr
     // eslint-disable-next-line @next/next/no-img-element -- fichier hébergé sur MinIO, hors domaines gérés par next/image
     <img
       src={src}
-      alt={doc.label}
+      alt={t(doc.label)}
       className={
         large
           ? "aspect-[3/4] w-full max-w-sm rounded-2xl object-cover"
@@ -115,11 +114,11 @@ function DocumentCard({ doc, onEnlarge }: { doc: SubmittedDocument; onEnlarge: (
         <DocumentThumb doc={doc} src={src} />
       )}
       <div>
-        <p className="text-sm font-medium text-ink-1">{doc.label}</p>
+        <p className="text-sm font-medium text-ink-1">{t(doc.label)}</p>
       </div>
       {src ? (
         <span className="text-xs font-medium text-link group-hover:text-link-hover">
-          {isPdf(doc.url) ? "📥 Ouvrir le PDF" : "🔍 Voir en grand"}
+          {isPdf(doc.url) ? t("📥 Ouvrir le PDF") : t("🔍 Voir en grand")}
         </span>
       ) : null}
     </button>
@@ -138,19 +137,17 @@ export function DocumentGrid({ documents }: { documents: SubmittedDocument[] }) 
       </div>
 
       {open ? (
-        <Modal open onClose={() => setOpen(null)} label={open.doc.label} className="cursor-pointer bg-black/80 p-6">
+        <Modal open onClose={() => setOpen(null)} label={t(open.doc.label)} className="cursor-pointer bg-black/80 p-6">
           <div
             className="flex w-full max-w-md cursor-auto flex-col items-center gap-4 rounded-2xl border border-hairline-2 bg-card p-6"
           >
             <DocumentThumb doc={open.doc} src={open.src} large />
-            <p className="text-center font-medium text-ink-1">{open.doc.label}</p>
+            <p className="text-center font-medium text-ink-1">{t(open.doc.label)}</p>
             <button
               type="button"
               onClick={() => setOpen(null)}
               className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
-            >
-              Fermer
-            </button>
+            >{t("Fermer")}</button>
           </div>
         </Modal>
       ) : null}

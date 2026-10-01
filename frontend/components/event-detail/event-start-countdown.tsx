@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CountdownDigits, LiveDot } from "@/components/event-detail/sales-countdown";
+import { t } from "@/lib/i18n/translate";
 
 const MAX_TIMEOUT_MS = 2 ** 31 - 1;
 
@@ -31,8 +32,7 @@ export function EventStartCountdown({ salesStartIso, startIso }: { salesStartIso
   return (
     <div className="mt-8">
       <p className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/70">
-        <LiveDot /> L&apos;événement commence dans
-      </p>
+        <LiveDot />{" "}{t("L'événement commence dans")}</p>
       <CountdownDigits targetIso={startIso} onZero={() => setVisible(false)} variant="hero" />
     </div>
   );

@@ -17,13 +17,14 @@ import { MutedMessage } from "@/components/ui/muted-message";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
+import { t, msg } from "@/lib/i18n/translate";
 
 const roleLabel: Record<ApiAdminUser["role"], string> = {
-  BUYER: "Acheteur",
-  ORGANIZER: "Organisateur",
-  ADMIN: "Admin",
-  AGENT: "Agent",
-  SUPER_ADMIN: "Super-admin",
+  BUYER: msg("Acheteur"),
+  ORGANIZER: msg("Organisateur"),
+  ADMIN: msg("Admin"),
+  AGENT: msg("Agent"),
+  SUPER_ADMIN: msg("Super-admin"),
 };
 
 function isValidEmail(value: string): boolean {
@@ -98,7 +99,7 @@ export default function AdminCreateEventForOrganizerPage() {
       const updated = await changeUserRole(candidate.id, "ORGANIZER");
       setSelected(updated);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de passer ce compte organisateur.");
+      setError(err instanceof ApiError ? err.message : t("Impossible de passer ce compte organisateur."));
     } finally {
       setBusyId(null);
     }
@@ -138,7 +139,7 @@ export default function AdminCreateEventForOrganizerPage() {
         created_at: new Date().toISOString(),
       });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de créer ce compte.");
+      setError(err instanceof ApiError ? err.message : t("Impossible de créer ce compte."));
     } finally {
       setCreatingAccount(false);
     }
@@ -146,24 +147,22 @@ export default function AdminCreateEventForOrganizerPage() {
 
   return (
     <AdminShell active="/admin/evenements">
-      <BackLink href="/admin/evenements">Événements</BackLink>
+      <BackLink href="/admin/evenements">{t("Événements")}</BackLink>
 
       <div className="mb-8 text-center">
-        <h1 className="text-2xl font-bold text-ink-1">Créer un événement pour un organisateur</h1>
-        <p className="mt-1 text-sm text-ink-5">
-          Pour un organisateur venu directement au bureau — l&apos;événement sera créé sous son compte.
-        </p>
+        <h1 className="text-2xl font-bold text-ink-1">{t("Créer un événement pour un organisateur")}</h1>
+        <p className="mt-1 text-sm text-ink-5">{t("Pour un organisateur venu directement au bureau — l'événement sera créé sous son compte.")}</p>
       </div>
 
       {!selected ? (
         <div className="mx-auto flex max-w-md flex-col gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-accent/80">Organisateur (nom ou email) *</span>
+            <span className="text-sm font-medium text-accent/80">{t("Organisateur (nom ou email) *")}</span>
             <input
               type="text"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="ex: marie.kone@email.com"
+              placeholder={t("ex: marie.kone@email.com")}
               autoFocus
               className={fieldClass("px-4 py-3")}
             />
@@ -172,7 +171,7 @@ export default function AdminCreateEventForOrganizerPage() {
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
           {searching ? (
-            <MutedMessage>Recherche…</MutedMessage>
+            <MutedMessage>{t("Recherche…")}</MutedMessage>
           ) : results !== undefined ? (
             <>
               {results.length > 0 ? (
@@ -196,25 +195,23 @@ export default function AdminCreateEventForOrganizerPage() {
                           <span className="block text-sm font-medium text-ink-1">
                             {account.first_name} {account.last_name}
                           </span>
-                          <span className="block text-xs text-ink-5">{account.email} · {roleLabel[account.role]}</span>
+                          <span className="block text-xs text-ink-5">{account.email} · {t(roleLabel[account.role])}</span>
                         </span>
                         {account.is_suspended ? (
-                          <span className="shrink-0 rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-300">
-                            Suspendu
-                          </span>
+                          <span className="shrink-0 rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-medium text-red-300">{t("Suspendu")}</span>
                         ) : busyId === account.id ? (
                           <span className="shrink-0 text-xs text-ink-5">…</span>
                         ) : needsPromotion ? (
-                          <span className="shrink-0 text-xs font-medium text-link">Passer organisateur →</span>
+                          <span className="shrink-0 text-xs font-medium text-link">{t("Passer organisateur →")}</span>
                         ) : selectable ? (
-                          <span className="shrink-0 text-sm text-link">Choisir →</span>
+                          <span className="shrink-0 text-sm text-link">{t("Choisir →")}</span>
                         ) : null}
                       </button>
                     );
                   })}
                 </div>
               ) : (
-                <MutedMessage>Aucun compte trouvé pour cette recherche.</MutedMessage>
+                <MutedMessage>{t("Aucun compte trouvé pour cette recherche.")}</MutedMessage>
               )}
 
               {isValidEmail(query.trim()) ? (
@@ -223,28 +220,24 @@ export default function AdminCreateEventForOrganizerPage() {
                     onSubmit={handleCreateAccount}
                     className={cardClass("flex flex-col gap-3 p-4")}
                   >
-                    <p className="text-sm font-medium text-ink-1">
-                      Nouveau compte organisateur — {query.trim()}
-                    </p>
+                    <p className="text-sm font-medium text-ink-1">{t("Nouveau compte organisateur — {value}", { value: query.trim() })}</p>
                     <div className="grid grid-cols-2 gap-3">
                       <input
                         required
                         value={newFirstName}
                         onChange={(event) => setNewFirstName(event.target.value)}
-                        placeholder="Prénom"
+                        placeholder={t("Prénom")}
                         className={fieldClass("px-3 py-2")}
                       />
                       <input
                         required
                         value={newLastName}
                         onChange={(event) => setNewLastName(event.target.value)}
-                        placeholder="Nom"
+                        placeholder={t("Nom")}
                         className={fieldClass("px-3 py-2")}
                       />
                     </div>
-                    <label className="flex flex-col gap-1 text-xs text-ink-4">
-                      Date de naissance
-                      <input
+                    <label className="flex flex-col gap-1 text-xs text-ink-4">{t("Date de naissance")}<input
                         type="date"
                         required
                         max={new Date().toISOString().slice(0, 10)}
@@ -262,18 +255,16 @@ export default function AdminCreateEventForOrganizerPage() {
                     <input
                       value={newPhone}
                       onChange={(event) => setNewPhone(event.target.value)}
-                      placeholder="Téléphone (optionnel)"
+                      placeholder={t("Téléphone (optionnel)")}
                       className={fieldClass("px-3 py-2")}
                     />
-                    <p className="text-xs text-ink-5">
-                      Un email lui sera envoyé pour qu&apos;il définisse son mot de passe.
-                    </p>
+                    <p className="text-xs text-ink-5">{t("Un email lui sera envoyé pour qu'il définisse son mot de passe.")}</p>
                     <button
                       type="submit"
                       disabled={creatingAccount || newAccountUnderage}
                       className={buttonClass("primary", "rounded-full px-4 py-2.5 text-sm disabled:opacity-50")}
                     >
-                      {creatingAccount ? "Création…" : "Créer le compte et continuer →"}
+                      {creatingAccount ? t("Création…") : t("Créer le compte et continuer →")}
                     </button>
                   </form>
                 ) : (
@@ -281,9 +272,7 @@ export default function AdminCreateEventForOrganizerPage() {
                     type="button"
                     onClick={() => setShowCreateAccount(true)}
                     className="rounded-xl border border-dashed border-hairline-2 py-2.5 text-sm font-medium text-link transition-colors hover:border-hairline-4 hover:text-link-hover"
-                  >
-                    + Nouveau compte organisateur pour « {query.trim()} »
-                  </button>
+                  >{t("+ Nouveau compte organisateur pour « {value} »", { value: query.trim() })}</button>
                 )
               ) : null}
             </>
@@ -292,16 +281,13 @@ export default function AdminCreateEventForOrganizerPage() {
       ) : (
         <>
           <div className="mx-auto mb-6 flex max-w-2xl items-center justify-between rounded-2xl border border-blue-500/20 bg-blue-500/5 px-5 py-3">
-            <p className="text-sm text-accent">
-              Pour <span className="font-semibold">{selected.first_name} {selected.last_name}</span> ({selected.email})
+            <p className="text-sm text-accent">{t("Pour")}{" "}<span className="font-semibold">{selected.first_name} {selected.last_name}</span> ({selected.email})
             </p>
             <button
               type="button"
               onClick={() => setSelected(null)}
               className="text-sm font-medium text-ink-4 hover:text-ink-1"
-            >
-              Changer
-            </button>
+            >{t("Changer")}</button>
           </div>
 
           <CreateEventForm categories={categories} tierTypes={tierTypes} adminOrganizerId={selected.id} />

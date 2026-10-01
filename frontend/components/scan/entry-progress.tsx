@@ -1,5 +1,8 @@
+"use client";
+
 import { cardClass } from "@/components/ui/card";
 import { time } from "@/lib/format/dates";
+import { t } from "@/lib/i18n/translate";
 
 // Entrées de l'événement : chiffres du serveur en ligne, du téléphone hors ligne.
 
@@ -19,16 +22,16 @@ export function EntryProgress({
   const waiting = Math.max(0, expected - admitted);
 
   return (
-    <section aria-label="Entrées de l'événement" className={cardClass("p-4")}>
+    <section aria-label={t("Entrées de l'événement")} className={cardClass("p-4")}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-5">Entrées de l&apos;événement</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-5">{t("Entrées de l'événement")}</p>
         <p className="text-[11px] text-ink-5">
-          {live ? `Tous les agents · ${time.format(updatedAt)}` : `Sans réseau · liste de ${time.format(updatedAt)}`}
+          {live ? t("Tous les agents · {value}", { value: time.format(updatedAt) }) : t("Sans réseau · liste de {value}", { value: time.format(updatedAt) })}
         </p>
       </div>
 
       {expected === 0 ? (
-        <p className="mt-2 text-sm text-ink-4">Aucun billet vendu pour cet événement.</p>
+        <p className="mt-2 text-sm text-ink-4">{t("Aucun billet vendu pour cet événement.")}</p>
       ) : (
         <>
           <p className="mt-1 flex items-baseline gap-1.5">
@@ -41,14 +44,14 @@ export function EntryProgress({
             aria-valuemin={0}
             aria-valuemax={expected}
             aria-valuenow={admitted}
-            aria-label="Participants entrés"
+            aria-label={t("Participants entrés")}
             className="mt-2.5 h-2 overflow-hidden rounded-full bg-hairline-2"
           >
             <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-500" style={{ width: `${percent}%` }} />
           </div>
           <p className="mt-2 text-xs text-ink-5">
             {waiting === 0
-              ? "Tous les participants sont entrés."
+              ? t("Tous les participants sont entrés.")
               : `${waiting} participant${waiting > 1 ? "s" : ""} encore attendu${waiting > 1 ? "s" : ""}`}
           </p>
         </>

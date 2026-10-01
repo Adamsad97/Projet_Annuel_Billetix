@@ -19,6 +19,7 @@ import {
 } from "@/lib/catalogue/filters";
 import { requestUserPosition } from "@/lib/geo/user-position";
 import { apiEventToFeatured, type FeaturedEvent } from "@/lib/mappers/event-mappers";
+import { t } from "@/lib/i18n/translate";
 
 export interface EventSearchOptions {
   /** Filtres lus dans l'adresse et recopiés dedans (lien partageable). */
@@ -127,7 +128,7 @@ export function useEventSearch({ syncUrl = false, initialEvents, unfilteredParam
         setPage(1);
       } catch (err) {
         if (id !== requestId.current) return;
-        setError(err instanceof ApiError ? err.message : "Impossible de charger les événements pour le moment.");
+        setError(err instanceof ApiError ? err.message : t("Impossible de charger les événements pour le moment."));
         setEvents([]);
         setTotal(0);
       } finally {
@@ -170,7 +171,7 @@ export function useEventSearch({ syncUrl = false, initialEvents, unfilteredParam
       setEvents((current) => [...current, ...cards]);
       setPage((current) => current + 1);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de charger la suite des événements.");
+      setError(err instanceof ApiError ? err.message : t("Impossible de charger la suite des événements."));
     } finally {
       setLoadingMore(false);
     }

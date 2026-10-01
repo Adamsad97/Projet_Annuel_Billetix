@@ -8,6 +8,7 @@ import type { Marker as LeafletMarker, LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./leaflet-icon-fix";
 import { FRANCE_CENTER } from "@/lib/geo/france";
+import { t } from "@/lib/i18n/translate";
 
 const DEFAULT_CENTER = FRANCE_CENTER;
 const DEFAULT_ZOOM = 5;
@@ -58,7 +59,7 @@ export default function LocationPickerInner({
         style={{ height: 280, width: "100%" }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          attribution={t("&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a>")}
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <ClickHandler onPick={onChange} />

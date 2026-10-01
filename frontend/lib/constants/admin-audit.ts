@@ -1,3 +1,4 @@
+import { msg } from "@/lib/i18n/translate";
 // Filtres et styles de l'audit trail — les entrées viennent de
 // GET /admin/audit-logs (cf. components/admin/audit-explorer.tsx).
 
@@ -23,16 +24,16 @@ export interface AuditEntry {
 }
 
 export const entityTypeFilters: { id: string; label: string }[] = [
-  { id: "all", label: "Tous" },
-  { id: "EVENT", label: "Événements" },
-  { id: "USER", label: "Utilisateurs" },
-  { id: "ORDER", label: "Commandes" },
-  { id: "TICKET", label: "Billets" },
-  { id: "PAYMENT", label: "Paiements" },
-  { id: "PAYOUT", label: "Reversements" },
-  { id: "DISPUTE", label: "Litiges" },
-  { id: "SETTING", label: "Paramètres" },
-  { id: "CATEGORY", label: "Catégories" },
+  { id: "all", label: msg("Tous") },
+  { id: "EVENT", label: msg("Événements") },
+  { id: "USER", label: msg("Utilisateurs") },
+  { id: "ORDER", label: msg("Commandes") },
+  { id: "TICKET", label: msg("Billets") },
+  { id: "PAYMENT", label: msg("Paiements") },
+  { id: "PAYOUT", label: msg("Reversements") },
+  { id: "DISPUTE", label: msg("Litiges") },
+  { id: "SETTING", label: msg("Paramètres") },
+  { id: "CATEGORY", label: msg("Catégories") },
 ];
 
 export const entityTypeBadgeStyles: Record<AuditEntityType, string> = {

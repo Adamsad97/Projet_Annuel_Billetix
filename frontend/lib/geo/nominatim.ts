@@ -1,5 +1,6 @@
 // Géocodage ponctuel via Nominatim (gratuit, 1 req/s), jamais à chaque frappe.
 import { ApiError } from "@/lib/api/http-error";
+import { t } from "@/lib/i18n/translate";
 
 export interface GeocodeResult {
   lat: number;
@@ -23,11 +24,11 @@ export async function geocodeAddress(query: string): Promise<GeocodeResult | nul
       headers: { Accept: "application/json" },
     });
   } catch {
-    throw new ApiError(0, "Impossible de contacter le service de géolocalisation.");
+    throw new ApiError(0, t("Impossible de contacter le service de géolocalisation."));
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, "Le service de géolocalisation est indisponible, réessayez plus tard.");
+    throw new ApiError(response.status, t("Le service de géolocalisation est indisponible, réessayez plus tard."));
   }
 
   const results = (await response.json()) as Array<{ lat: string; lon: string; display_name: string }>;

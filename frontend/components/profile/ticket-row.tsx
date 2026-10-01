@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { ticketStatusBadge, type ProfileTicket } from "@/lib/constants/profile";
+import { t } from "@/lib/i18n/translate";
 
 export function TicketRow({ ticket }: { ticket: ProfileTicket }) {
   const badge = ticketStatusBadge[ticket.status];
@@ -32,7 +35,7 @@ export function TicketRow({ ticket }: { ticket: ProfileTicket }) {
       <span
         className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${badge.className}`}
       >
-        {badge.label}
+        {t(badge.label)}
       </span>
     </Link>
   );

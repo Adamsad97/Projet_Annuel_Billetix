@@ -4,7 +4,8 @@
 
 import { useState } from "react";
 import { AddressAutocomplete } from "@/components/create-event/address-autocomplete";
-import { COUNTRY_OPTIONS, countryName, isKnownCountryCode } from "@/lib/geo/countries";
+import { countryOptions, countryName, isKnownCountryCode } from "@/lib/geo/countries";
+import { t } from "@/lib/i18n/translate";
 
 export function BillingAddressFields({ fieldClassName }: { fieldClassName: string }) {
   const [address1, setAddress1] = useState("");
@@ -15,13 +16,13 @@ export function BillingAddressFields({ fieldClassName }: { fieldClassName: strin
   return (
     <>
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-accent/80">Adresse</span>
+        <span className="text-sm font-medium text-accent/80">{t("Adresse")}</span>
         <AddressAutocomplete
           name="address1"
           value={address1}
           onChangeText={setAddress1}
           country={countryName(country)}
-          placeholder="Commencez à taper votre adresse…"
+          placeholder={t("Commencez à taper votre adresse…")}
           onSelect={(suggestion) => {
             setAddress1(suggestion.addressLine1);
             setCity(suggestion.city);
@@ -32,15 +33,13 @@ export function BillingAddressFields({ fieldClassName }: { fieldClassName: strin
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-accent/80">
-          Complément d&apos;adresse (facultatif)
-        </span>
+        <span className="text-sm font-medium text-accent/80">{t("Complément d'adresse (facultatif)")}</span>
         <input type="text" name="address2" autoComplete="address-line2" className={fieldClassName} />
       </label>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_160px]">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-accent/80">Ville</span>
+          <span className="text-sm font-medium text-accent/80">{t("Ville")}</span>
           <input
             type="text"
             name="city"
@@ -51,8 +50,7 @@ export function BillingAddressFields({ fieldClassName }: { fieldClassName: strin
           />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-accent/80">
-            Code postal <span className="font-normal text-ink-5">(si applicable)</span>
+          <span className="text-sm font-medium text-accent/80">{t("Code postal")}{" "}<span className="font-normal text-ink-5">{t("(si applicable)")}</span>
           </span>
           <input
             type="text"
@@ -65,16 +63,16 @@ export function BillingAddressFields({ fieldClassName }: { fieldClassName: strin
       </div>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-accent/80">Pays</span>
+        <span className="text-sm font-medium text-accent/80">{t("Pays")}</span>
         <select
           name="country"
           value={country}
           onChange={(event) => setCountry(event.target.value)}
           className={fieldClassName}
         >
-          {COUNTRY_OPTIONS.map((option) => (
+          {countryOptions().map((option) => (
             <option key={option.code} value={option.code}>
-              {option.name}
+              {t(option.name)}
             </option>
           ))}
         </select>

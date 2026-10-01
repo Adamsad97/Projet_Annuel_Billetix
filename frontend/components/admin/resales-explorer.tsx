@@ -14,15 +14,16 @@ import { dateTime as dateTimeFormatter } from "@/lib/format/dates";
 import { cardClass } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
+import { t, msg } from "@/lib/i18n/translate";
 
 const PAGE_SIZE = 20;
 const statusFilters = [
-  { id: "all", label: "Toutes" },
-  { id: "LISTED", label: "En vente" },
-  { id: "RESERVED", label: "Paiement en cours" },
-  { id: "SOLD", label: "Vendues" },
-  { id: "WITHDRAWN", label: "Retirées" },
-  { id: "EXPIRED", label: "Expirées" },
+  { id: "all", label: msg("Toutes") },
+  { id: "LISTED", label: msg("En vente") },
+  { id: "RESERVED", label: msg("Paiement en cours") },
+  { id: "SOLD", label: msg("Vendues") },
+  { id: "WITHDRAWN", label: msg("Retirées") },
+  { id: "EXPIRED", label: msg("Expirées") },
 ];
 
 function Account({ account }: { account: ApiAdminResale["seller"] }) {
@@ -55,7 +56,7 @@ export function ResalesExplorer() {
           setTotal(result.total);
           setError(null);
         })
-        .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger les reventes."));
+        .catch((err) => setError(err instanceof ApiError ? err.message : t("Impossible de charger les reventes.")));
     }, 300);
     return () => clearTimeout(timeout);
   }, [status, search, page]);
@@ -79,26 +80,26 @@ export function ResalesExplorer() {
             setSearch(value);
             setPage(1);
           }}
-          placeholder="Référence, événement ou email d'un compte…"
+          placeholder={t("Référence, événement ou email d'un compte…")}
         />
       </div>
       <p className="text-sm text-ink-5">
-        {total} annonce{total > 1 ? "s" : ""}
+        {total > 1 ? t("{count} annonces", { count: total }) : t("{count} annonce", { count: total })}
       </p>
 
       <div className={cardClass("overflow-x-auto")}>
         {resales === null ? (
-          <p className="px-5 py-4 text-sm text-ink-5">{error ?? "Chargement…"}</p>
+          <p className="px-5 py-4 text-sm text-ink-5">{error ?? t("Chargement…")}</p>
         ) : resales.length === 0 ? (
-          <p className="px-5 py-4 text-sm text-ink-5">Aucune revente.</p>
+          <p className="px-5 py-4 text-sm text-ink-5">{t("Aucune revente.")}</p>
         ) : (
           <table className="w-full text-left text-sm">
             <thead className="border-b border-hairline-1 text-xs uppercase tracking-wide text-ink-5">
               <tr>
-                <th className="px-5 py-3 font-semibold">Mise en vente</th>
-                <th className="px-5 py-3 font-semibold">Billet</th>
-                <th className="px-5 py-3 font-semibold">Événement</th>
-                <th className="px-5 py-3 font-semibold">Statut</th>
+                <th className="px-5 py-3 font-semibold">{t("Mise en vente")}</th>
+                <th className="px-5 py-3 font-semibold">{t("Billet")}</th>
+                <th className="px-5 py-3 font-semibold">{t("Événement")}</th>
+                <th className="px-5 py-3 font-semibold">{t("Statut")}</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
@@ -112,7 +113,7 @@ export function ResalesExplorer() {
                     <td className="px-5 py-3 text-ink-3">{resale.event_name ?? "—"}</td>
                     <td className="px-5 py-3">
                       <Badge tone={badge.className} size="md" className="whitespace-nowrap ring-1 ring-inset">
-                        {badge.label}
+                        {t(badge.label)}
                       </Badge>
                     </td>
                     <td className="px-5 py-3 text-right">
@@ -120,9 +121,7 @@ export function ResalesExplorer() {
                         type="button"
                         onClick={() => setSelected(resale)}
                         className="whitespace-nowrap rounded-lg bg-hairline-1 px-3 py-1.5 text-xs font-medium text-ink-2 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
-                      >
-                        Consulter
-                      </button>
+                      >{t("Consulter")}</button>
                     </td>
                   </tr>
                 );
@@ -136,34 +135,32 @@ export function ResalesExplorer() {
 
       <DetailDialog
         open={selected !== null}
-        title={selected ? `Revente du billet ${selected.ticket_reference ?? ""}` : ""}
+        title={selected ? t("Revente du billet {value}", { value: selected.ticket_reference ?? "" }) : ""}
         subtitle={selected ? [selected.event_name, selected.ticket_category_name].filter(Boolean).join(" · ") : undefined}
         onClose={() => setSelected(null)}
       >
         {selected ? (
           <>
-            <DetailSection title="Statut">
+            <DetailSection title={t("Statut")}>
               <span
                 className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${resaleStatusBadge[selected.status].className}`}
               >
-                {resaleStatusBadge[selected.status].label}
+                {t(resaleStatusBadge[selected.status].label)}
               </span>
-              <p className="mt-2 text-ink-4">Mis en vente le {dateTimeFormatter.format(new Date(selected.listed_at))}</p>
-              {selected.sold_at ? <p className="text-ink-4">Vendu le {dateTimeFormatter.format(new Date(selected.sold_at))}</p> : null}
+              <p className="mt-2 text-ink-4">{t("Mis en vente le {value}", { value: dateTimeFormatter.format(new Date(selected.listed_at)) })}</p>
+              {selected.sold_at ? <p className="text-ink-4">{t("Vendu le {value}", { value: dateTimeFormatter.format(new Date(selected.sold_at)) })}</p> : null}
               {selected.status === "RESERVED" && selected.reservation_expires_at ? (
-                <p className="text-ink-4">
-                  Paiement en cours, réservation jusqu&apos;au {dateTimeFormatter.format(new Date(selected.reservation_expires_at))}
-                </p>
+                <p className="text-ink-4">{t("Paiement en cours, réservation jusqu'au {value}", { value: dateTimeFormatter.format(new Date(selected.reservation_expires_at)) })}</p>
               ) : null}
             </DetailSection>
-            <DetailSection title="Prix">
+            <DetailSection title={t("Prix")}>
               <p className="font-medium text-ink-1">{currency.format(Number(selected.resale_price))}</p>
-              {selected.face_value !== null ? <p className="text-ink-4">Valeur faciale : {currency.format(selected.face_value)}</p> : null}
+              {selected.face_value !== null ? <p className="text-ink-4">{t("Valeur faciale : {value}", { value: currency.format(selected.face_value) })}</p> : null}
             </DetailSection>
-            <DetailSection title="Vendeur">
+            <DetailSection title={t("Vendeur")}>
               <Account account={selected.seller} />
             </DetailSection>
-            <DetailSection title="Acheteur">
+            <DetailSection title={t("Acheteur")}>
               <Account account={selected.buyer} />
             </DetailSection>
           </>

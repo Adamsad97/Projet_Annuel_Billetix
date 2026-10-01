@@ -2,17 +2,18 @@
 
 import type { AuthUser, UserRole } from "@/lib/api/auth";
 import { getStoredUser, PREVIEW_ROLE_KEY } from "@/lib/auth/session";
+import { msg, t } from "@/lib/i18n/translate";
 
 export type PreviewRole = "BUYER" | "ORGANIZER" | "AGENT";
 
 export const PREVIEW_ROLES: Array<{ role: PreviewRole; label: string; home: string }> = [
-  { role: "BUYER", label: "Acheteur", home: "/" },
-  { role: "ORGANIZER", label: "Organisateur", home: "/dashboard" },
-  { role: "AGENT", label: "Agent de contrôle", home: "/scan" },
+  { role: "BUYER", label: msg("Acheteur"), home: "/" },
+  { role: "ORGANIZER", label: msg("Organisateur"), home: "/dashboard" },
+  { role: "AGENT", label: msg("Agent de contrôle"), home: "/scan" },
 ];
 
 export const PREVIEW_CHANGED_EVENT = "billetix:preview-changed";
-export const PREVIEW_READ_ONLY_MESSAGE = "Mode aperçu : cette action est désactivée.";
+export const PREVIEW_READ_ONLY_MESSAGE = msg("Mode aperçu : cette action est désactivée.");
 
 export function isAdminRole(role: UserRole | undefined): boolean {
   return role === "ADMIN" || role === "SUPER_ADMIN";
@@ -31,7 +32,7 @@ export function isPreviewActive(): boolean {
 }
 
 export function previewLabel(role: PreviewRole): string {
-  return PREVIEW_ROLES.find((option) => option.role === role)?.label ?? role;
+  return t(PREVIEW_ROLES.find((option) => option.role === role)?.label ?? role);
 }
 
 export function previewHome(role: PreviewRole): string {

@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { listCategories } from "@/lib/api/categories";
 import { getEventCategories, listPublishedEvents } from "@/lib/api/events";
 import { apiEventToFeatured, type FeaturedEvent } from "@/lib/mappers/event-mappers";
+import { getLocale } from "@/lib/i18n/server";
 
 // Rendu à chaque requête, sinon next build figerait une liste vide.
 export const dynamic = "force-dynamic";
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 const FEATURED_LIMIT = 10;
 
 export default async function Home() {
+  const locale = await getLocale();
   let featured: FeaturedEvent[] = [];
   // Sélection « À la une » de l'admin ; s'il n'en a fait aucune, les
   // prochains événements (l'accueil n'est jamais vide).
@@ -28,7 +30,7 @@ export default async function Home() {
     const withCategories = await Promise.all(
       data.slice(0, FEATURED_LIMIT).map(async (event) => {
         const categories = await getEventCategories(event.id).catch(() => []);
-        return apiEventToFeatured(event, categories, referential);
+        return apiEventToFeatured(event, categories, referential, locale);
       }),
     );
     featured = withCategories;

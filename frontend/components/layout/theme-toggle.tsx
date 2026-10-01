@@ -3,6 +3,7 @@
 // Bascule clair/sombre avec icônes au trait qui permutent en fondu.
 
 import { useTheme } from "@/lib/theme/theme-provider";
+import { t } from "@/lib/i18n/translate";
 
 const iconClass =
   "absolute h-[18px] w-[18px] transition-all duration-300 ease-out motion-reduce:transition-none";
@@ -15,8 +16,8 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label={isLight ? "Passer en mode sombre" : "Passer en mode clair"}
-      title={isLight ? "Mode sombre" : "Mode clair"}
+      aria-label={isLight ? t("Passer en mode sombre") : t("Passer en mode clair")}
+      title={isLight ? t("Mode sombre") : t("Mode clair")}
       className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-hairline-2 text-ink-3 transition-colors hover:border-hairline-4 hover:bg-hairline-1 hover:text-ink-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
     >
       {/* Lune : proposée en mode clair */}

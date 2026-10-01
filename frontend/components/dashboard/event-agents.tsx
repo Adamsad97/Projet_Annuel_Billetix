@@ -16,6 +16,7 @@ import { ApiError } from "@/lib/api/http-error";
 import { dateTime } from "@/lib/format/dates";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 // Plafond d'un envoi — même valeur que AGENTS_BULK_MAX côté passerelle.
 const MAX_ROWS = 20;
@@ -115,12 +116,12 @@ function AssignAgentsDialog({
         setPartial(succeeded.length > 0);
         setError(
           succeeded.length > 0
-            ? `${succeeded.length} invitation${succeeded.length > 1 ? "s" : ""} envoyée${succeeded.length > 1 ? "s" : ""}. Corrigez les lignes restantes.`
-            : "Aucune invitation n'a pu être envoyée : corrigez les lignes ci-dessous.",
+            ? (succeeded.length > 1 ? t("{length} invitations envoyées. Corrigez les lignes restantes.", { length: succeeded.length }) : t("{length} invitation envoyée. Corrigez les lignes restantes.", { length: succeeded.length }))
+            : t("Aucune invitation n'a pu être envoyée : corrigez les lignes ci-dessous."),
         );
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "L'envoi a échoué, veuillez réessayer.");
+      setError(err instanceof ApiError ? err.message : t("L'envoi a échoué, veuillez réessayer."));
     } finally {
       setSending(false);
     }
@@ -144,13 +145,13 @@ function AssignAgentsDialog({
               <UsersIcon className="h-6 w-6" />
             </span>
             <div className="min-w-0">
-              <h2 id={`${idPrefix}-title`} className="text-xl font-bold">Assigner des agents</h2>
+              <h2 id={`${idPrefix}-title`} className="text-xl font-bold">{t("Assigner des agents")}</h2>
               <p className="mt-0.5 truncate text-sm text-white/80">{eventTitle}</p>
             </div>
           </div>
           <button
             type="button"
-            aria-label="Fermer"
+            aria-label={t("Fermer")}
             disabled={sending}
             onClick={onClose}
             className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20"
@@ -167,13 +168,11 @@ function AssignAgentsDialog({
               <ShieldIcon className="h-8 w-8" />
             </span>
             <div>
-              <p className="text-lg font-bold text-ink-1">
-                {done.length} agent{done.length > 1 ? "s" : ""} assigné{done.length > 1 ? "s" : ""}
-              </p>
+              <p className="text-lg font-bold text-ink-1">{(done.length > 1 ? t("{length} agents assignés", { length: done.length }) : t("{length} agent assigné", { length: done.length }))}</p>
               <p className="mt-1 text-sm text-ink-5">
                 {done.filter((r) => r.status === "invited").length > 0
-                  ? "Les nouveaux agents reçoivent un email pour choisir leur mot de passe."
-                  : "Les agents sont prévenus par email."}
+                  ? t("Les nouveaux agents reçoivent un email pour choisir leur mot de passe.")
+                  : t("Les agents sont prévenus par email.")}
               </p>
             </div>
             <ul className="w-full max-w-sm divide-y divide-hairline-1 rounded-2xl border border-hairline-1 text-left">
@@ -181,7 +180,7 @@ function AssignAgentsDialog({
                 <li key={result.email} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
                   <span className="truncate text-ink-2">{result.email}</span>
                   <span className="shrink-0 text-xs font-medium text-emerald-600">
-                    {result.status === "invited" ? "Invitation envoyée" : "Affecté"}
+                    {result.status === "invited" ? t("Invitation envoyée") : t("Affecté")}
                   </span>
                 </li>
               ))}
@@ -190,23 +189,17 @@ function AssignAgentsDialog({
               type="button"
               onClick={onClose}
               className="rounded-full bg-blue-700 px-6 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            >
-              Terminer
-            </button>
+            >{t("Terminer")}</button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-              <p className="mb-4 text-sm text-ink-4">
-                Chaque agent reçoit un email : les nouveaux choisissent leur mot de passe, puis contrôlent les billets
-                depuis la page « Scan » de leur téléphone. Une adresse dédiée est nécessaire (pas celle d&apos;un compte
-                acheteur ou organisateur).
-              </p>
+              <p className="mb-4 text-sm text-ink-4">{t("Chaque agent reçoit un email : les nouveaux choisissent leur mot de passe, puis contrôlent les billets depuis la page « Scan » de leur téléphone. Une adresse dédiée est nécessaire (pas celle d'un compte acheteur ou organisateur).")}</p>
 
               <div className="hidden grid-cols-[1fr_1fr_1.4fr_36px] gap-2 px-1 pb-1.5 text-xs font-medium uppercase tracking-wide text-ink-5 sm:grid">
-                <span>Prénom</span>
-                <span>Nom</span>
-                <span>Email</span>
+                <span>{t("Prénom")}</span>
+                <span>{t("Nom")}</span>
+                <span>{t("Email")}</span>
                 <span />
               </div>
 
@@ -219,8 +212,8 @@ function AssignAgentsDialog({
                         maxLength={100}
                         value={row.first_name}
                         onChange={(e) => update(row.key, "first_name", e.target.value)}
-                        placeholder="Prénom"
-                        aria-label={`Prénom de l'agent ${index + 1}`}
+                        placeholder={t("Prénom")}
+                        aria-label={t("Prénom de l'agent {value}", { value: index + 1 })}
                         className={fieldClassName}
                       />
                       <input
@@ -228,8 +221,8 @@ function AssignAgentsDialog({
                         maxLength={100}
                         value={row.last_name}
                         onChange={(e) => update(row.key, "last_name", e.target.value)}
-                        placeholder="Nom"
-                        aria-label={`Nom de l'agent ${index + 1}`}
+                        placeholder={t("Nom")}
+                        aria-label={t("Nom de l'agent {value}", { value: index + 1 })}
                         className={fieldClassName}
                       />
                       <input
@@ -239,12 +232,12 @@ function AssignAgentsDialog({
                         value={row.email}
                         onChange={(e) => update(row.key, "email", e.target.value)}
                         placeholder="agent@exemple.fr"
-                        aria-label={`Email de l'agent ${index + 1}`}
+                        aria-label={t("Email de l'agent {value}", { value: index + 1 })}
                         className={`${fieldClassName} col-span-2 sm:col-span-1 ${row.result?.status === "error" ? "border-red-500/60" : ""}`}
                       />
                       <button
                         type="button"
-                        aria-label={`Retirer la ligne ${index + 1}`}
+                        aria-label={t("Retirer la ligne {value}", { value: index + 1 })}
                         disabled={rows.length === 1 || sending}
                         onClick={() => setRows((current) => current.filter((r) => r.key !== row.key))}
                         className="col-span-2 flex h-9 items-center justify-center rounded-xl text-ink-5 transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:opacity-30 sm:col-span-1 sm:w-9"
@@ -267,9 +260,7 @@ function AssignAgentsDialog({
                 onClick={addRow}
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-hairline-3 py-3 text-sm font-medium text-link transition-colors hover:border-blue-500 hover:bg-blue-500/5 disabled:opacity-40"
               >
-                <span aria-hidden="true" className="text-lg leading-none">+</span>
-                Ajouter un agent
-                <span className="text-xs text-ink-5">({rows.length}/{MAX_ROWS})</span>
+                <span aria-hidden="true" className="text-lg leading-none">+</span>{t("Ajouter un agent")}<span className="text-xs text-ink-5">({rows.length}/{MAX_ROWS})</span>
               </button>
 
               {error ? (
@@ -290,17 +281,15 @@ function AssignAgentsDialog({
                 disabled={sending}
                 onClick={onClose}
                 className="rounded-full px-5 py-2.5 text-sm font-medium text-ink-3 transition-colors hover:text-ink-1"
-              >
-                Annuler
-              </button>
+              >{t("Annuler")}</button>
               <button
                 type="submit"
                 disabled={sending}
                 className="rounded-full bg-blue-700 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/30 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {sending
-                  ? "Envoi…"
-                  : `Envoyer ${rows.length > 1 ? `les ${rows.length} invitations` : "l'invitation"}`}
+                  ? t("Envoi…")
+                  : `Envoyer ${rows.length > 1 ? t("les {length} invitations", { length: rows.length }) : "l'invitation"}`}
               </button>
             </div>
           </form>
@@ -335,7 +324,7 @@ export function EventAgents({
         setAgents(list);
         setLoadError(null);
       })
-      .catch((err) => setLoadError(err instanceof ApiError ? err.message : "Impossible de charger les agents."));
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : t("Impossible de charger les agents.")));
   }, [eventId]);
 
   useEffect(() => {
@@ -345,30 +334,30 @@ export function EventAgents({
   function askRemove(agent: ApiEventAgent) {
     const name = [agent.first_name, agent.last_name].filter(Boolean).join(" ") || agent.email || "cet agent";
     setDialog({
-      title: "Retirer l'agent",
-      message: `${name} ne pourra plus contrôler les billets de cet événement, ni utiliser la liste des billets enregistrée sur son téléphone.`,
-      confirmLabel: "Retirer",
+      title: t("Retirer l'agent"),
+      message: t("{name} ne pourra plus contrôler les billets de cet événement, ni utiliser la liste des billets enregistrée sur son téléphone.", { name }),
+      confirmLabel: t("Retirer"),
       danger: true,
       onConfirm: async () => {
         try {
           await removeEventAgent(eventId, agent.user_id);
-          setInfo(`${name} a été retiré de l'événement.`);
+          setInfo(t("{name} a été retiré de l'événement.", { name }));
           load();
         } catch (err) {
-          setInfo(err instanceof ApiError ? err.message : "Le retrait a échoué, veuillez réessayer.");
+          setInfo(err instanceof ApiError ? err.message : t("Le retrait a échoué, veuillez réessayer."));
         }
       },
     });
   }
 
   async function resend(agent: ApiEventAgent) {
-    const name = [agent.first_name, agent.last_name].filter(Boolean).join(" ") || agent.email || "L'agent";
+    const name = [agent.first_name, agent.last_name].filter(Boolean).join(" ") || agent.email || t("L'agent");
     setResending(agent.user_id);
     try {
       await resendAgentInvitation(eventId, agent.user_id);
-      setInfo(`Nouvelle invitation envoyée à ${agent.email ?? name}.`);
+      setInfo(t("Nouvelle invitation envoyée à {value}.", { value: agent.email ?? name }));
     } catch (err) {
-      setInfo(err instanceof ApiError ? err.message : "L'envoi a échoué, veuillez réessayer.");
+      setInfo(err instanceof ApiError ? err.message : t("L'envoi a échoué, veuillez réessayer."));
       load();
     } finally {
       setResending(null);
@@ -385,11 +374,11 @@ export function EventAgents({
             <ShieldIcon className="h-6 w-6" />
           </span>
           <div>
-            <h2 className="text-lg font-bold text-ink-1">Agents de contrôle</h2>
+            <h2 className="text-lg font-bold text-ink-1">{t("Agents de contrôle")}</h2>
             <p className="text-sm text-ink-5">
               {agents === null
-                ? "Contrôle des billets à l'entrée"
-                : `${count} agent${count > 1 ? "s" : ""} · scannent les billets à l'entrée depuis la page « Scan »`}
+                ? t("Contrôle des billets à l'entrée")
+                : (count > 1 ? t("{count} agents · scannent les billets à l'entrée depuis la page « Scan »", { count }) : t("{count} agent · scannent les billets à l'entrée depuis la page « Scan »", { count }))}
             </p>
           </div>
         </div>
@@ -398,9 +387,7 @@ export function EventAgents({
           onClick={() => onInviteOpenChange(true)}
           className="inline-flex items-center gap-2 rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/30 transition-all hover:-translate-y-0.5 hover:opacity-95"
         >
-          <span aria-hidden="true" className="text-base leading-none">+</span>
-          Assigner des agents
-        </button>
+          <span aria-hidden="true" className="text-base leading-none">+</span>{t("Assigner des agents")}</button>
       </div>
 
       <div className="p-5">
@@ -424,19 +411,14 @@ export function EventAgents({
               <UsersIcon className="h-7 w-7" />
             </span>
             <div>
-              <p className="font-semibold text-ink-1">Aucun agent pour l&apos;instant</p>
-              <p className="mt-1 max-w-md text-sm text-ink-5">
-                Invitez les personnes qui contrôleront les billets à l&apos;entrée. Vous pouvez aussi scanner vous-même
-                depuis la page « Scan ».
-              </p>
+              <p className="font-semibold text-ink-1">{t("Aucun agent pour l'instant")}</p>
+              <p className="mt-1 max-w-md text-sm text-ink-5">{t("Invitez les personnes qui contrôleront les billets à l'entrée. Vous pouvez aussi scanner vous-même depuis la page « Scan ».")}</p>
             </div>
             <button
               type="button"
               onClick={() => onInviteOpenChange(true)}
               className="mt-1 rounded-full border border-blue-600/40 px-5 py-2 text-sm font-semibold text-link transition-colors hover:bg-blue-600/10"
-            >
-              Assigner des agents
-            </button>
+            >{t("Assigner des agents")}</button>
           </div>
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2">
@@ -452,19 +434,17 @@ export function EventAgents({
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-ink-1">
-                    {[agent.first_name, agent.last_name].filter(Boolean).join(" ") || "Compte introuvable"}
+                    {[agent.first_name, agent.last_name].filter(Boolean).join(" ") || t("Compte introuvable")}
                   </p>
                   <p className="truncate text-xs text-ink-5">{agent.email ?? "—"}</p>
                   <p className="mt-1">
                     {agent.invitation_pending ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-600">
-                        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                        Invitation envoyée
-                      </span>
+                        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-amber-500" />{t("Invitation envoyée")}</span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-600">
                         <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        {agent.last_activity_at ? `Dernier scan · ${dateTime.format(new Date(agent.last_activity_at))}` : "Compte actif · aucun scan"}
+                        {agent.last_activity_at ? `Dernier scan · ${dateTime.format(new Date(agent.last_activity_at))}` : t("Compte actif · aucun scan")}
                       </span>
                     )}
                   </p>
@@ -475,7 +455,7 @@ export function EventAgents({
                       onClick={() => resend(agent)}
                       className="mt-1.5 text-xs font-medium text-link transition-colors hover:text-link-hover disabled:opacity-50"
                     >
-                      {resending === agent.user_id ? "Envoi…" : "Renvoyer l'invitation"}
+                      {resending === agent.user_id ? t("Envoi…") : t("Renvoyer l'invitation")}
                     </button>
                   ) : null}
                 </div>
@@ -484,9 +464,7 @@ export function EventAgents({
                   onClick={() => askRemove(agent)}
                   aria-label={`Retirer ${agent.first_name ?? agent.email ?? "l'agent"}`}
                   className="shrink-0 rounded-full px-3 py-1.5 text-xs font-medium text-ink-4 transition-colors hover:bg-red-500/10 hover:text-red-500"
-                >
-                  Retirer
-                </button>
+                >{t("Retirer")}</button>
               </li>
             ))}
           </ul>

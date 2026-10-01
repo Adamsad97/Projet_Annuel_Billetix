@@ -12,6 +12,7 @@ import { Alert } from "@/components/ui/alert";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 export default function ResaleConfirmationPage({
   params,
@@ -36,7 +37,7 @@ export default function ResaleConfirmationPage({
       .then(() => setStatus("success"))
       .catch((err) => {
         setStatus("error");
-        setError(err instanceof ApiError ? err.message : "Impossible de finaliser l'achat.");
+        setError(err instanceof ApiError ? err.message : t("Impossible de finaliser l'achat."));
       });
   }, [resaleId, orderId]);
 
@@ -46,7 +47,7 @@ export default function ResaleConfirmationPage({
 
       <main className="flex-1 px-6 py-10">
         {status === "loading" ? (
-          <MutedMessage>Finalisation de votre achat…</MutedMessage>
+          <MutedMessage>{t("Finalisation de votre achat…")}</MutedMessage>
         ) : status === "error" ? (
           <Alert centered className="mx-auto max-w-lg">
             {error}
@@ -57,25 +58,19 @@ export default function ResaleConfirmationPage({
               ✓
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-ink-1">Achat confirmé !</h1>
-              <p className="mt-1 text-sm text-ink-5">Le billet vous a été transféré.</p>
+              <h1 className="text-2xl font-bold text-ink-1">{t("Achat confirmé !")}</h1>
+              <p className="mt-1 text-sm text-ink-5">{t("Le billet vous a été transféré.")}</p>
             </div>
-            <p className="text-sm text-accent">
-              🎫 Votre billet est disponible dans « Mes billets ». Votre facture vous est envoyée par email.
-            </p>
+            <p className="text-sm text-accent">{t("🎫 Votre billet est disponible dans « Mes billets ». Votre facture vous est envoyée par email.")}</p>
             <div className="flex w-full flex-col gap-3 sm:flex-row">
               <Link
                 href="/profil/billets"
                 className={buttonClass("primary", "flex-1 rounded-full py-3 text-sm")}
-              >
-                Voir mes billets
-              </Link>
+              >{t("Voir mes billets")}</Link>
               <Link
                 href="/revente"
                 className={buttonClass("secondary", "flex-1 rounded-full py-3 text-sm")}
-              >
-                Retour à la marketplace
-              </Link>
+              >{t("Retour à la marketplace")}</Link>
             </div>
           </div>
         )}

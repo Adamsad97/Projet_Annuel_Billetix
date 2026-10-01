@@ -2,6 +2,7 @@
 
 import type { ApiCategory } from "@/lib/api/categories";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 // Liste réelle gérée depuis l'espace Admin (GET /events/categories) — plus
 // de liste figée côté frontend, cf. lib/api/categories.ts.
@@ -16,9 +17,7 @@ export function CategoryPicker({
 }) {
   if (categories.length === 0) {
     return (
-      <p className="text-sm text-ink-5">
-        Aucune catégorie disponible pour le moment — contactez l&apos;équipe BilleTix.
-      </p>
+      <p className="text-sm text-ink-5">{t("Aucune catégorie disponible pour le moment — contactez l'équipe BilleTix.")}</p>
     );
   }
 

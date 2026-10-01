@@ -1,28 +1,32 @@
+"use client";
+
 import Link from "next/link";
 import type { ApiAdminEvent } from "@/lib/api/admin";
 import { shortDate as dateFormatter } from "@/lib/format/dates";
 import { Badge } from "@/components/ui/badge";
+import { t, msg } from "@/lib/i18n/translate";
+import { numberFormat } from "@/lib/i18n/intl";
 
 // Catégorie et statut tirés du vrai événement (event-service).
 const statusBadge: Record<string, { label: string; className: string }> = {
   PUBLISHED: {
-    label: "● Publié",
+    label: msg("● Publié"),
     className: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30",
   },
   PENDING_VALIDATION: {
-    label: "⏳ En validation",
+    label: msg("⏳ En validation"),
     className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
   },
   DRAFT: {
-    label: "Brouillon",
+    label: msg("Brouillon"),
     className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",
   },
   ARCHIVED: {
-    label: "Archivé",
+    label: msg("Archivé"),
     className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",
   },
   CANCELLED: {
-    label: "✕ Annulé",
+    label: msg("✕ Annulé"),
     className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
   },
   SUSPENDED: {
@@ -30,11 +34,11 @@ const statusBadge: Record<string, { label: string; className: string }> = {
     className: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
   },
   POSTPONED: {
-    label: "↻ Reporté",
+    label: msg("↻ Reporté"),
     className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
   },
   TERMINATED: {
-    label: "Terminé",
+    label: msg("Terminé"),
     className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",
   },
 };
@@ -44,7 +48,7 @@ export function AdminEventRow({ event }: { event: ApiAdminEvent }) {
   const ticketsLabel =
     event.status === "DRAFT" || event.status === "PENDING_VALIDATION"
       ? "—"
-      : `${new Intl.NumberFormat("fr-FR").format(event.sold)} / ${new Intl.NumberFormat("fr-FR").format(event.total_quota)}`;
+      : `${numberFormat().format(event.sold)} / ${numberFormat().format(event.total_quota)}`;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 last:border-b-0">
@@ -62,13 +66,11 @@ export function AdminEventRow({ event }: { event: ApiAdminEvent }) {
 
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm text-ink-4">{ticketsLabel}</span>
-        <Badge tone={badge.className} size="md">{badge.label}</Badge>
+        <Badge tone={badge.className} size="md">{t(badge.label)}</Badge>
         <Link
           href={`/admin/evenements/${event.id}`}
           className="rounded-lg bg-hairline-1 px-3 py-1.5 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
-        >
-          ● Détails
-        </Link>
+        >{t("● Détails")}</Link>
       </div>
     </div>
   );

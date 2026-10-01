@@ -5,6 +5,7 @@ import { DocumentDropzone } from "@/components/ui/document-dropzone";
 import { updateEvent, type ApiEvent } from "@/lib/api/events";
 import { uploadDocument } from "@/lib/api/upload";
 import { ApiError } from "@/lib/api/http-error";
+import { t } from "@/lib/i18n/translate";
 
 /** Justificatif refusé : motif, puis nouvel envoi qui repasse en examen. */
 export function NonProfitResubmit({ event, onSubmitted }: { event: ApiEvent; onSubmitted: () => void }) {
@@ -22,7 +23,7 @@ export function NonProfitResubmit({ event, onSubmitted }: { event: ApiEvent; onS
       setFile(null);
       onSubmitted();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "L'envoi a échoué, veuillez réessayer.");
+      setError(err instanceof ApiError ? err.message : t("L'envoi a échoué, veuillez réessayer."));
     } finally {
       setSending(false);
     }
@@ -30,22 +31,19 @@ export function NonProfitResubmit({ event, onSubmitted }: { event: ApiEvent; onS
 
   return (
     <section className="mb-8 rounded-2xl border border-red-500/30 bg-red-500/5 p-5">
-      <h2 className="text-base font-semibold text-ink-1">Justificatif « à but non lucratif » refusé</h2>
+      <h2 className="text-base font-semibold text-ink-1">{t("Justificatif « à but non lucratif » refusé")}</h2>
       {event.non_profit_rejection_reason ? (
         <p className="mt-2 text-sm text-ink-3">
-          <span className="font-medium text-ink-2">Motif : </span>
+          <span className="font-medium text-ink-2">{t("Motif :")}{" "}</span>
           {event.non_profit_rejection_reason}
         </p>
       ) : null}
-      <p className="mt-2 text-sm text-ink-4">
-        La commission standard s&apos;applique. Envoyez un nouveau justificatif : il sera examiné à nouveau par notre
-        équipe.
-      </p>
+      <p className="mt-2 text-sm text-ink-4">{t("La commission standard s'applique. Envoyez un nouveau justificatif : il sera examiné à nouveau par notre équipe.")}</p>
       <div className="mt-4">
         <DocumentDropzone
           onFileSelected={setFile}
           disabled={sending}
-          hint="Glissez le nouveau justificatif (statuts, récépissé de déclaration…) ou cliquez"
+          hint={t("Glissez le nouveau justificatif (statuts, récépissé de déclaration…) ou cliquez")}
         />
       </div>
       {error ? (
@@ -60,7 +58,7 @@ export function NonProfitResubmit({ event, onSubmitted }: { event: ApiEvent; onS
           onClick={handleSubmit}
           className="rounded-full bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {sending ? "Envoi…" : "Envoyer le nouveau justificatif"}
+          {sending ? t("Envoi…") : t("Envoyer le nouveau justificatif")}
         </button>
       </div>
     </section>

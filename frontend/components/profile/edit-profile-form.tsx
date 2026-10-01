@@ -13,16 +13,17 @@ import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { fieldClass } from "@/components/ui/field";
+import { t, msg } from "@/lib/i18n/translate";
 
 const fieldClassName = fieldClass("px-4 py-3");
 const readOnlyClassName = "rounded-xl border border-hairline-1 px-4 py-3 text-sm text-ink-4";
 
 const ADDRESS_FIELDS: Array<{ key: keyof BillingAddress; label: string; placeholder?: string; wide?: boolean }> = [
-  { key: "billing_address_line1", label: "Adresse", placeholder: "12 rue de la Paix", wide: true },
-  { key: "billing_address_line2", label: "Complément d'adresse", placeholder: "Bâtiment, étage…", wide: true },
-  { key: "billing_postal_code", label: "Code postal", placeholder: "75001" },
-  { key: "billing_city", label: "Ville", placeholder: "Paris" },
-  { key: "billing_country", label: "Pays", placeholder: "FR" },
+  { key: "billing_address_line1", label: msg("Adresse"), placeholder: msg("12 rue de la Paix"), wide: true },
+  { key: "billing_address_line2", label: msg("Complément d'adresse"), placeholder: msg("Bâtiment, étage…"), wide: true },
+  { key: "billing_postal_code", label: msg("Code postal"), placeholder: "75001" },
+  { key: "billing_city", label: msg("Ville"), placeholder: msg("Paris") },
+  { key: "billing_country", label: msg("Pays"), placeholder: "FR" },
 ];
 
 export function EditProfileForm() {
@@ -40,7 +41,7 @@ export function EditProfileForm() {
         setAddress(Object.fromEntries(ADDRESS_FIELDS.map(({ key }) => [key, profile[key] ?? ""]))),
       )
       .catch((err) =>
-        setMessage({ kind: "error", text: err instanceof ApiError ? err.message : "Impossible de charger votre profil." }),
+        setMessage({ kind: "error", text: err instanceof ApiError ? err.message : t("Impossible de charger votre profil.") }),
       );
   }, []);
 
@@ -51,9 +52,9 @@ export function EditProfileForm() {
     setMessage(null);
     try {
       await updateBuyerProfile(Object.fromEntries(ADDRESS_FIELDS.map(({ key }) => [key, address[key].trim()])));
-      setMessage({ kind: "success", text: "Votre adresse de facturation a été enregistrée." });
+      setMessage({ kind: "success", text: t("Votre adresse de facturation a été enregistrée.") });
     } catch (err) {
-      setMessage({ kind: "error", text: err instanceof ApiError ? err.message : "L'enregistrement a échoué." });
+      setMessage({ kind: "error", text: err instanceof ApiError ? err.message : t("L'enregistrement a échoué.") });
     } finally {
       setSaving(false);
     }
@@ -71,19 +72,17 @@ export function EditProfileForm() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-accent/80">Prénom</span>
+          <span className="text-sm font-medium text-accent/80">{t("Prénom")}</span>
           <span className={readOnlyClassName}>{user?.first_name ?? "—"}</span>
         </div>
         <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-accent/80">Nom</span>
+          <span className="text-sm font-medium text-accent/80">{t("Nom")}</span>
           <span className={readOnlyClassName}>{user?.last_name ?? "—"}</span>
         </div>
       </div>
-      <p className="mt-2 text-xs text-ink-5">
-        Votre nom et votre email identifient vos billets : pour les modifier, contactez le support.
-      </p>
+      <p className="mt-2 text-xs text-ink-5">{t("Votre nom et votre email identifient vos billets : pour les modifier, contactez le support.")}</p>
 
-      <h2 className="mb-3 mt-6 text-sm font-semibold text-ink-2">Adresse de facturation</h2>
+      <h2 className="mb-3 mt-6 text-sm font-semibold text-ink-2">{t("Adresse de facturation")}</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {ADDRESS_FIELDS.map(({ key, label, placeholder, wide }) => (
           <label key={key} className={`flex flex-col gap-1.5 ${wide ? "sm:col-span-2" : ""}`}>
@@ -91,7 +90,7 @@ export function EditProfileForm() {
             <input
               type="text"
               value={address?.[key] ?? ""}
-              placeholder={placeholder}
+              placeholder={placeholder ? t(placeholder) : undefined}
               disabled={address === null}
               onChange={(event) => setAddress((current) => (current ? { ...current, [key]: event.target.value } : current))}
               className={fieldClassName}
@@ -102,7 +101,7 @@ export function EditProfileForm() {
 
       {message ? (
         <p className={`mt-4 text-sm ${message.kind === "error" ? "text-danger" : "text-success"}`} role="status">
-          {message.text}
+          {t(message.text)}
         </p>
       ) : null}
 
@@ -112,15 +111,13 @@ export function EditProfileForm() {
           disabled={saving || address === null}
           className={buttonClass("primary", "flex-1 rounded-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-40")}
         >
-          {saving ? "Enregistrement…" : "Enregistrer"}
+          {saving ? t("Enregistrement…") : t("Enregistrer")}
         </button>
         <button
           type="button"
           onClick={() => router.push("/profil")}
           className={buttonClass("secondary", "flex-1 rounded-full py-3 text-sm")}
-        >
-          Retour
-        </button>
+        >{t("Retour")}</button>
       </div>
     </form>
   );

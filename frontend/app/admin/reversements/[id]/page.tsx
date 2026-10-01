@@ -22,6 +22,7 @@ import { BackLink } from "@/components/ui/back-link";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { t } from "@/lib/i18n/translate";
 
 export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -37,7 +38,7 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
         if (err instanceof ApiError && err.status === 404) {
           setPayout(null);
         } else {
-          setError(err instanceof ApiError ? err.message : "Impossible de charger ce reversement.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de charger ce reversement."));
         }
       });
   }
@@ -47,20 +48,20 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
   function handleBlock() {
     if (!payout) return;
     setDialog({
-      title: "Bloquer ce reversement ?",
-      message: "Le versement ne sera pas déclenché tant que le blocage n'est pas levé.",
-      confirmLabel: "Bloquer",
+      title: t("Bloquer ce reversement ?"),
+      message: t("Le versement ne sera pas déclenché tant que le blocage n'est pas levé."),
+      confirmLabel: t("Bloquer"),
       danger: true,
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Motif du blocage…",
+      reasonPlaceholder: t("Motif du blocage…"),
       onConfirm: async (reason) => {
         setBusy(true);
         try {
           await blockPayout(payout.id, reason!);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de bloquer ce reversement.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de bloquer ce reversement."));
         } finally {
           setBusy(false);
         }
@@ -71,16 +72,16 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
   function handleUnblock() {
     if (!payout) return;
     setDialog({
-      title: "Débloquer ce reversement ?",
-      message: "Il reprendra son cours normal.",
-      confirmLabel: "Débloquer",
+      title: t("Débloquer ce reversement ?"),
+      message: t("Il reprendra son cours normal."),
+      confirmLabel: t("Débloquer"),
       onConfirm: async () => {
         setBusy(true);
         try {
           await unblockPayout(payout.id);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de débloquer ce reversement.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de débloquer ce reversement."));
         } finally {
           setBusy(false);
         }
@@ -91,19 +92,19 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
   function handleProcess() {
     if (!payout) return;
     setDialog({
-      title: "Déclencher le virement maintenant ?",
+      title: t("Déclencher le virement maintenant ?"),
       message:
         payout.payout_method === "BANK_TRANSFER"
-          ? "Le reversement passe « À virer » immédiatement, sans attendre le passage automatique quotidien. Il reste à émettre le virement depuis la liste des reversements."
-          : "Le versement Stripe est initié immédiatement, sans attendre le passage automatique quotidien.",
-      confirmLabel: "Déclencher",
+          ? t("Le reversement passe « À virer » immédiatement, sans attendre le passage automatique quotidien. Il reste à émettre le virement depuis la liste des reversements.")
+          : t("Le versement Stripe est initié immédiatement, sans attendre le passage automatique quotidien."),
+      confirmLabel: t("Déclencher"),
       onConfirm: async () => {
         setBusy(true);
         try {
           await processPayout(payout.id);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de déclencher ce virement.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de déclencher ce virement."));
         } finally {
           setBusy(false);
         }
@@ -114,16 +115,16 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
   function handleApproveEarly() {
     if (!payout) return;
     setDialog({
-      title: "Approuver la demande de reversement anticipé ?",
-      message: `${payout.organizer_name} sera versé sans attendre l'échéance normale.`,
-      confirmLabel: "Approuver",
+      title: t("Approuver la demande de reversement anticipé ?"),
+      message: t("{organizer_name} sera versé sans attendre l'échéance normale.", { organizer_name: payout.organizer_name }),
+      confirmLabel: t("Approuver"),
       onConfirm: async () => {
         setBusy(true);
         try {
           await approveEarlyPayout(payout.id);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible d'approuver cette demande.");
+          setError(err instanceof ApiError ? err.message : t("Impossible d'approuver cette demande."));
         } finally {
           setBusy(false);
         }
@@ -133,7 +134,7 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
 
   return (
     <AdminShell active="/admin/reversements">
-      <BackLink href="/admin/reversements">Reversements</BackLink>
+      <BackLink href="/admin/reversements">{t("Reversements")}</BackLink>
 
       {error ? (
         <Alert className="mb-6">{error}</Alert>
@@ -144,7 +145,7 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
       ) : payout === null ? (
         <div className={cardClass("p-8 text-center")}>
           <div className="mb-3 text-4xl">💸</div>
-          <h1 className="text-lg font-bold text-ink-1">Reversement introuvable</h1>
+          <h1 className="text-lg font-bold text-ink-1">{t("Reversement introuvable")}</h1>
         </div>
       ) : (
         <>
@@ -153,46 +154,42 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
               <h1 className="text-xl font-bold text-ink-1">
                 {payout.event_name} — {payout.organizer_name}
               </h1>
-              <p className="text-sm text-ink-5">
-                {payout.organizer_email} · Prévu le {dateFormatter.format(new Date(payout.scheduled_at))}
-              </p>
+              <p className="text-sm text-ink-5">{t("{organizer_email} · Prévu le {value}", { organizer_email: payout.organizer_email, value: dateFormatter.format(new Date(payout.scheduled_at)) })}</p>
               <Badge tone={payoutStatusBadge[payout.status].className} className="mt-2 inline-block">
-                {payoutStatusBadge[payout.status].label}
+                {t(payoutStatusBadge[payout.status].label)}
               </Badge>
               {payout.requested_early_at && !payout.early_request_approved_by ? (
-                <span className="ml-2 inline-block rounded-full bg-blue-500/15 px-2.5 py-0.5 text-xs font-medium text-accent ring-1 ring-inset ring-blue-500/30">
-                  Demande de reversement anticipé en attente
-                </span>
+                <span className="ml-2 inline-block rounded-full bg-blue-500/15 px-2.5 py-0.5 text-xs font-medium text-accent ring-1 ring-inset ring-blue-500/30">{t("Demande de reversement anticipé en attente")}</span>
               ) : null}
             </div>
             <span className="text-2xl font-bold text-ink-1">{currency.format(payout.net_amount)}</span>
           </div>
 
           <div className={cardClass("p-5")}>
-            <h2 className="mb-3 text-sm font-semibold text-ink-2">Détail du calcul</h2>
+            <h2 className="mb-3 text-sm font-semibold text-ink-2">{t("Détail du calcul")}</h2>
             <div className="flex flex-col gap-2 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-ink-4">Montant brut</span>
+                <span className="text-ink-4">{t("Montant brut")}</span>
                 <span className="text-ink-3">{currency.format(payout.gross_amount)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-ink-4">Commission plateforme</span>
+                <span className="text-ink-4">{t("Commission plateforme")}</span>
                 <span className="text-amber-400">− {currency.format(payout.commission_amount)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-ink-4">Frais de paiement</span>
+                <span className="text-ink-4">{t("Frais de paiement")}</span>
                 <span className="text-amber-400">− {currency.format(payout.payment_fees_amount)}</span>
               </div>
               <div className="flex items-center justify-between border-t border-hairline-2 pt-2">
-                <span className="font-bold text-ink-1">Net à verser</span>
+                <span className="font-bold text-ink-1">{t("Net à verser")}</span>
                 <span className="font-bold text-ink-1">{currency.format(payout.net_amount)}</span>
               </div>
             </div>
 
             <div className="mt-4 border-t border-hairline-2 pt-4">
-              <p className="text-xs uppercase tracking-wide text-ink-5">Moyen de reversement</p>
+              <p className="text-xs uppercase tracking-wide text-ink-5">{t("Moyen de reversement")}</p>
               <p className="text-sm text-ink-3">
-                {payout.payout_method === "STRIPE" ? "Stripe Connect" : "Virement sur l'IBAN de l'organisateur"}
+                {payout.payout_method === "STRIPE" ? "Stripe Connect" : t("Virement sur l'IBAN de l'organisateur")}
               </p>
               {payout.bank_owner_name ? (
                 <p className="mt-1 font-mono text-xs text-ink-5">
@@ -204,22 +201,20 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
 
             {payout.bank_transfer_reference ? (
               <div className="mt-4 border-t border-hairline-2 pt-4">
-                <p className="text-xs uppercase tracking-wide text-ink-5">Référence du virement bancaire</p>
+                <p className="text-xs uppercase tracking-wide text-ink-5">{t("Référence du virement bancaire")}</p>
                 <p className="font-mono text-sm text-ink-3">{payout.bank_transfer_reference}</p>
               </div>
             ) : null}
 
             {payout.stripe_transfer_id ? (
               <div className="mt-4 border-t border-hairline-2 pt-4">
-                <p className="text-xs uppercase tracking-wide text-ink-5">Référence virement Stripe</p>
+                <p className="text-xs uppercase tracking-wide text-ink-5">{t("Référence virement Stripe")}</p>
                 <p className="font-mono text-sm text-ink-3">{payout.stripe_transfer_id}</p>
               </div>
             ) : null}
 
             {payout.blocked_reason ? (
-              <p className="mt-4 border-t border-hairline-2 pt-4 text-sm text-red-300">
-                Motif du blocage : {payout.blocked_reason}
-              </p>
+              <p className="mt-4 border-t border-hairline-2 pt-4 text-sm text-red-300">{t("Motif du blocage : {blocked_reason}", { blocked_reason: payout.blocked_reason })}</p>
             ) : null}
           </div>
 
@@ -230,9 +225,7 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
                 disabled={busy}
                 onClick={handleApproveEarly}
                 className="rounded-full bg-emerald-500/15 px-5 py-2.5 text-sm font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
-              >
-                ✓ Approuver l&apos;anticipation
-              </button>
+              >{t("✓ Approuver l'anticipation")}</button>
             ) : null}
             {payout.status === "PENDING" ? (
               <>
@@ -242,16 +235,14 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
                   onClick={handleProcess}
                   className="rounded-full bg-hairline-1 px-5 py-2.5 text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2 disabled:opacity-50"
                 >
-                  {payout.payout_method === "BANK_TRANSFER" ? "Préparer le virement maintenant" : "Déclencher le virement maintenant"}
+                  {payout.payout_method === "BANK_TRANSFER" ? t("Préparer le virement maintenant") : t("Déclencher le virement maintenant")}
                 </button>
                 <button
                   type="button"
                   disabled={busy}
                   onClick={handleBlock}
                   className="rounded-full bg-red-500/15 px-5 py-2.5 text-sm font-medium text-red-300 ring-1 ring-inset ring-red-500/30 transition-colors hover:bg-red-500/25 disabled:opacity-50"
-                >
-                  Bloquer
-                </button>
+                >{t("Bloquer")}</button>
               </>
             ) : payout.status === "BLOCKED" ? (
               <button
@@ -259,9 +250,7 @@ export default function AdminPayoutDetailPage({ params }: { params: Promise<{ id
                 disabled={busy}
                 onClick={handleUnblock}
                 className="rounded-full bg-emerald-500/15 px-5 py-2.5 text-sm font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
-              >
-                Débloquer
-              </button>
+              >{t("Débloquer")}</button>
             ) : null}
           </div>
         </>

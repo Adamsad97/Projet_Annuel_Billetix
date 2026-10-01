@@ -5,6 +5,7 @@ import { getApiBaseUrl } from "./base-url";
 import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
 import { ApiError, extractErrorMessage } from "./http-error";
 import type { ApiTicket } from "./tickets";
+import { t, msg } from "@/lib/i18n/translate";
 
 const API_URL = getApiBaseUrl();
 
@@ -85,9 +86,9 @@ export type TicketCategoryVisibility = "PUBLIC" | "PROMO_CODE" | "HIDDEN";
 
 /** Libellés lisibles de la visibilité d'une catégorie de billet. */
 export const ticketVisibilityLabels: Record<TicketCategoryVisibility, string> = {
-  PUBLIC: "Publique",
-  PROMO_CODE: "Avec code promo",
-  HIDDEN: "Masquée",
+  PUBLIC: msg("Publique"),
+  PROMO_CODE: msg("Avec code promo"),
+  HIDDEN: msg("Masquée"),
 };
 
 export interface ApiTicketCategory {
@@ -140,7 +141,7 @@ async function getJson<T>(path: string): Promise<T> {
   } catch {
     throw new ApiError(
       0,
-      "Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard.",
+      t("Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard."),
     );
   }
 
@@ -154,7 +155,7 @@ async function getJson<T>(path: string): Promise<T> {
   if (!response.ok) {
     throw new ApiError(
       response.status,
-      extractErrorMessage(data, "Une erreur est survenue, veuillez réessayer."),
+      extractErrorMessage(data, t("Une erreur est survenue, veuillez réessayer.")),
     );
   }
 

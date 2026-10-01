@@ -8,6 +8,7 @@ import { FormError } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 export function ForgotPasswordForm() {
   const [sent, setSent] = useState(false);
@@ -26,7 +27,7 @@ export function ForgotPasswordForm() {
       setSent(true);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Impossible d'envoyer l'email, veuillez réessayer.",
+        err instanceof ApiError ? err.message : t("Impossible d'envoyer l'email, veuillez réessayer."),
       );
     } finally {
       setLoading(false);
@@ -39,28 +40,20 @@ export function ForgotPasswordForm() {
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-2xl">
           ✓
         </div>
-        <h1 className="text-2xl font-bold text-ink-1">Email envoyé</h1>
-        <p className="mt-2 text-sm text-accent/70">
-          Si un compte existe pour <span className="text-ink-1">{email}</span>
-          , un lien de réinitialisation vient de lui être envoyé.
-        </p>
+        <h1 className="text-2xl font-bold text-ink-1">{t("Email envoyé")}</h1>
+        <p className="mt-2 text-sm text-accent/70">{t("Si un compte existe pour")}{" "}<span className="text-ink-1">{email}</span>{t(", un lien de réinitialisation vient de lui être envoyé.")}</p>
 
         <Link
           href="/connexion"
           className={buttonClass("primary", "mt-6 inline-flex w-full items-center justify-center rounded-xl py-3 text-sm")}
-        >
-          Retour à la connexion
-        </Link>
+        >{t("Retour à la connexion")}</Link>
 
-        <p className="mt-4 text-sm text-ink-5">
-          Rien reçu ?{" "}
+        <p className="mt-4 text-sm text-ink-5">{t("Rien reçu ?")}{" "}
           <button
             type="button"
             onClick={() => setSent(false)}
             className="font-medium text-link transition-colors hover:text-link-hover"
-          >
-            Renvoyer le lien
-          </button>
+          >{t("Renvoyer le lien")}</button>
         </p>
       </div>
     );
@@ -69,12 +62,9 @@ export function ForgotPasswordForm() {
   return (
     <div className={cardClass("w-full max-w-md p-8")}>
       <div className="mb-6 text-center">
-        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">
-          Mot de passe oublié <span>🔑</span>
+        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">{t("Mot de passe oublié")}{" "}<span>🔑</span>
         </h1>
-        <p className="mt-1 text-sm text-accent/70">
-          Entrez votre email pour recevoir un lien de réinitialisation
-        </p>
+        <p className="mt-1 text-sm text-accent/70">{t("Entrez votre email pour recevoir un lien de réinitialisation")}</p>
       </div>
 
       {error ? (
@@ -85,9 +75,7 @@ export function ForgotPasswordForm() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-accent/80">
-            Adresse email
-          </span>
+          <span className="text-sm font-medium text-accent/80">{t("Adresse email")}</span>
           <input
             type="email"
             required
@@ -103,7 +91,7 @@ export function ForgotPasswordForm() {
           disabled={loading}
           className={buttonClass("primary", "mt-1 w-full rounded-xl py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
         >
-          {loading ? "Envoi…" : "Envoyer le lien →"}
+          {loading ? t("Envoi…") : t("Envoyer le lien →")}
         </button>
       </form>
 
@@ -111,9 +99,7 @@ export function ForgotPasswordForm() {
         <Link
           href="/connexion"
           className="font-medium text-link transition-colors hover:text-link-hover"
-        >
-          ← Retour à la connexion
-        </Link>
+        >{t("← Retour à la connexion")}</Link>
       </p>
     </div>
   );

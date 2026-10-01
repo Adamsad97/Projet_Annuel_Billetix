@@ -6,6 +6,7 @@ import { ApiError, extractErrorCode, extractErrorMessage } from "./http-error";
 import { isPreviewActive, PREVIEW_READ_ONLY_MESSAGE } from "@/lib/auth/preview";
 import { endSession, getAccessToken, getRefreshToken, updateTokens } from "@/lib/auth/session";
 import { refreshTokens } from "./auth";
+import { t } from "@/lib/i18n/translate";
 
 const API_URL = getApiBaseUrl();
 
@@ -50,7 +51,7 @@ async function request<T>(
   // Mode aperçu du back-office : consultation uniquement, aucune
   // modification ne part vers le serveur.
   if ((options.method ?? "GET") !== "GET" && isPreviewActive()) {
-    throw new ApiError(403, PREVIEW_READ_ONLY_MESSAGE, "PREVIEW_READ_ONLY");
+    throw new ApiError(403, t(PREVIEW_READ_ONLY_MESSAGE), "PREVIEW_READ_ONLY");
   }
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = getAccessToken();
@@ -66,7 +67,7 @@ async function request<T>(
   } catch {
     throw new ApiError(
       0,
-      "Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard.",
+      t("Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard."),
     );
   }
 
@@ -89,13 +90,13 @@ async function request<T>(
       response.status,
       response.status === 401
         ? !token
-          ? "Vous devez être connecté pour accéder à cette page."
+          ? t("Vous devez être connecté pour accéder à cette page.")
           : getAccessToken()
             // Session toujours là : le renouvellement n'a pas pu joindre le
             // serveur (redémarrage, réseau) — ce n'est pas une expiration.
-            ? "Le serveur est momentanément indisponible, veuillez réessayer."
-            : "Votre session a expiré — veuillez vous reconnecter pour continuer."
-        : extractErrorMessage(data, "Une erreur est survenue, veuillez réessayer."),
+            ? t("Le serveur est momentanément indisponible, veuillez réessayer.")
+            : t("Votre session a expiré — veuillez vous reconnecter pour continuer.")
+        : extractErrorMessage(data, t("Une erreur est survenue, veuillez réessayer.")),
       extractErrorCode(data),
     );
   }
@@ -120,7 +121,7 @@ export async function apiFetchBlob(path: string, isRetry = false): Promise<Blob>
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
   } catch {
-    throw new ApiError(0, "Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard.");
+    throw new ApiError(0, t("Impossible de contacter le serveur — vérifiez votre connexion ou réessayez plus tard."));
   }
 
   if (response.status === 401 && !isRetry && token) {
@@ -134,7 +135,7 @@ export async function apiFetchBlob(path: string, isRetry = false): Promise<Blob>
     } catch {
       // Réponse sans corps JSON.
     }
-    throw new ApiError(response.status, extractErrorMessage(data, "Fichier inaccessible, veuillez réessayer."));
+    throw new ApiError(response.status, extractErrorMessage(data, t("Fichier inaccessible, veuillez réessayer.")));
   }
   return response.blob();
 }

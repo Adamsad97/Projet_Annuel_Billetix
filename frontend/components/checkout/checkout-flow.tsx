@@ -17,6 +17,7 @@ import { Alert } from "@/components/ui/alert";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 type Step = "billing" | "payment";
 
@@ -62,14 +63,14 @@ export function CheckoutFlow() {
         setStep("payment");
       } else {
         setIntentError(
-          "Ce moyen de paiement n'est pas encore disponible — seule la carte bancaire est câblée pour l'instant.",
+          t("Ce moyen de paiement n'est pas encore disponible — seule la carte bancaire est câblée pour l'instant."),
         );
       }
     } catch (err) {
       setIntentError(
         err instanceof ApiError
           ? err.message
-          : "Impossible d'initialiser le paiement, veuillez réessayer.",
+          : t("Impossible d'initialiser le paiement, veuillez réessayer."),
       );
     } finally {
       setIntentLoading(false);
@@ -83,18 +84,12 @@ export function CheckoutFlow() {
   if (reservationExpired && cart) {
     return (
       <div className="mx-auto max-w-md rounded-2xl border border-hairline-2 bg-card p-8 text-center">
-        <h2 className="text-lg font-bold text-ink-1">Votre réservation a expiré</h2>
-        <p className="mt-2 text-sm text-ink-4">
-          Les places sont bloquées pendant une durée limitée pour laisser leur chance aux autres
-          acheteurs. Elles ont été remises en vente — vous pouvez les réserver à nouveau si elles
-          sont encore disponibles.
-        </p>
+        <h2 className="text-lg font-bold text-ink-1">{t("Votre réservation a expiré")}</h2>
+        <p className="mt-2 text-sm text-ink-4">{t("Les places sont bloquées pendant une durée limitée pour laisser leur chance aux autres acheteurs. Elles ont été remises en vente — vous pouvez les réserver à nouveau si elles sont encore disponibles.")}</p>
         <Link
           href={cart.eventPath ?? `/evenements/${cart.eventId}`}
           className="mt-5 inline-flex rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-        >
-          Réserver à nouveau
-        </Link>
+        >{t("Réserver à nouveau")}</Link>
       </div>
     );
   }
@@ -102,15 +97,11 @@ export function CheckoutFlow() {
   if (!cart) {
     return (
       <div className={cardClass("mx-auto max-w-md p-8 text-center")}>
-        <p className="text-sm text-ink-4">
-          Votre panier est vide ou votre réservation a expiré.
-        </p>
+        <p className="text-sm text-ink-4">{t("Votre panier est vide ou votre réservation a expiré.")}</p>
         <Link
           href="/evenements"
           className={buttonClass("primary", "mt-4 inline-flex rounded-full px-5 py-2.5 text-sm")}
-        >
-          Voir les événements
-        </Link>
+        >{t("Voir les événements")}</Link>
       </div>
     );
   }
@@ -132,7 +123,7 @@ export function CheckoutFlow() {
         ) : null}
 
         {intentLoading ? (
-          <MutedMessage>Initialisation du paiement…</MutedMessage>
+          <MutedMessage>{t("Initialisation du paiement…")}</MutedMessage>
         ) : null}
 
         {intentError ? (

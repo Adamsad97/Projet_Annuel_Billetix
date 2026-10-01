@@ -5,6 +5,7 @@ import type { ApiAdminDashboard, ApiAuditLogEntry } from "@/lib/api/admin";
 import type { ApiEvent } from "@/lib/api/events";
 import { euros as currency } from "@/lib/format/money";
 import { longDate as dateTimeFormatter } from "@/lib/format/dates";
+import { t } from "@/lib/i18n/translate";
 
 export interface AdminStat {
   id: string;
@@ -19,25 +20,25 @@ export function apiDashboardToAdminStats(dashboard: ApiAdminDashboard): AdminSta
   return [
     {
       id: "active-events",
-      label: "Événements publiés",
+      label: t("Événements publiés"),
       value: String(publishedEvents),
       valueClassName: "text-ink-1",
     },
     {
       id: "sales",
-      label: "Ventes totales (TTC)",
+      label: t("Ventes totales (TTC)"),
       value: currency.format(dashboard.kpis.revenue_ttc),
       valueClassName: "text-emerald-400",
     },
     {
       id: "commissions",
-      label: "Commissions",
+      label: t("Commissions"),
       value: currency.format(dashboard.kpis.total_commission),
       valueClassName: "text-ink-1",
     },
     {
       id: "open-disputes",
-      label: "Litiges ouverts",
+      label: t("Litiges ouverts"),
       value: String(dashboard.kpis.open_disputes),
       valueClassName: dashboard.kpis.open_disputes > 0 ? "text-red-400" : "text-ink-1",
     },
@@ -66,11 +67,11 @@ export function auditLogToValidationHistoryEntry(
   return {
     id: log.id,
     eventId: log.entity_id,
-    title: event?.title ?? "Événement supprimé",
+    title: event?.title ?? t("Événement supprimé"),
     emoji: categoryEmoji,
     iconBg: "bg-hairline-1",
     performedBy: log.performed_by_email,
-    decidedLabel: `${log.action === "EVENT_APPROVED" ? "Validé" : "Rejeté"} le ${dateTimeFormatter.format(new Date(log.created_at))}`,
+    decidedLabel: log.action === "EVENT_APPROVED" ? t("Validé le {date}", { date: dateTimeFormatter.format(new Date(log.created_at)) }) : t("Rejeté le {date}", { date: dateTimeFormatter.format(new Date(log.created_at)) }),
     reason: log.reason ?? undefined,
   };
 }

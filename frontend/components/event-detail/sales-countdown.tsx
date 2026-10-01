@@ -3,6 +3,7 @@
 // Avant l'ouverture des ventes, un compte à rebours remplace le formulaire d'achat et bascule à zéro.
 
 import { useEffect, useState } from "react";
+import { t } from "@/lib/i18n/translate";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -78,7 +79,7 @@ export function CountdownDigits({
     <div
       role="timer"
       aria-live="off"
-      aria-label={ready ? `${days} jours ${hours} heures ${minutes} minutes ${seconds} secondes` : "Chargement du compte à rebours"}
+      aria-label={ready ? t("{days} jours {hours} heures {minutes} minutes {seconds} secondes", { days, hours, minutes, seconds }) : t("Chargement du compte à rebours")}
       className={`inline-flex items-start rounded-2xl px-4 py-2.5 ring-1 ring-inset ${style.box}`}
     >
       {units.map((unit, index) => (
@@ -92,7 +93,7 @@ export function CountdownDigits({
             <span className={`text-2xl font-semibold leading-8 tabular-nums tracking-tight ${style.digit}`}>
               {ready ? pad(unit.value) : "--"}
             </span>
-            <span className={`text-[10px] font-medium uppercase tracking-wider ${style.label}`}>{unit.label}</span>
+            <span className={`text-[10px] font-medium uppercase tracking-wider ${style.label}`}>{t(unit.label)}</span>
           </div>
         </div>
       ))}

@@ -1,3 +1,7 @@
+"use client";
+
+import { t } from "@/lib/i18n/translate";
+
 // Pastille de statut. La couleur (tone) vient des constantes de statut
 // (lib/constants/*), la forme est la même partout.
 
@@ -15,7 +19,7 @@ export function Badge({
 }) {
   return (
     <span className={`rounded-full px-2.5 text-xs font-medium ${size === "sm" ? "py-0.5" : "py-1"} ${tone} ${className}`.trim()}>
-      {children}
+      {typeof children === "string" ? t(children) : children}
     </span>
   );
 }

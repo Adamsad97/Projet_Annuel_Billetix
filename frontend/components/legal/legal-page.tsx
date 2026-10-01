@@ -1,5 +1,8 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { Navbar } from "@/components/layout/navbar";
+import { t } from "@/lib/i18n/translate";
 
 export function LegalPage({
   title,
@@ -16,7 +19,7 @@ export function LegalPage({
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12">
         <h1 className="text-2xl font-bold text-ink-1">{title}</h1>
-        <p className="mt-1 text-sm text-ink-5">Dernière mise à jour : {updatedLabel}</p>
+        <p className="mt-1 text-sm text-ink-5">{t("Dernière mise à jour : {updatedLabel}", { updatedLabel })}</p>
 
         <div className="prose-legal mt-8 flex flex-col gap-6 text-sm leading-relaxed text-ink-4">
           {children}

@@ -28,10 +28,11 @@ import { fieldClass } from "@/components/ui/field";
 
 const COUNTRIES = ibanCountries();
 import { PasswordInput } from "@/components/ui/password-input";
+import { t, msg } from "@/lib/i18n/translate";
 
 const METHODS: Array<{ value: PayoutMethod; label: string; hint: string }> = [
-  { value: "BANK_TRANSFER", label: "Virement sur mon IBAN", hint: "Viré par BilleTix après la date prévue de chaque événement." },
-  { value: "STRIPE", label: "Stripe Connect", hint: "Versé automatiquement par Stripe sur le compte configuré chez Stripe." },
+  { value: "BANK_TRANSFER", label: msg("Virement sur mon IBAN"), hint: msg("Viré par BilleTix après la date prévue de chaque événement.") },
+  { value: "STRIPE", label: "Stripe Connect", hint: msg("Versé automatiquement par Stripe sur le compte configuré chez Stripe.") },
 ];
 
 /** Compte de reversement : IBAN protégé par mot de passe ; un changement alerte par email et suspend les reversements. */
@@ -67,10 +68,10 @@ export function PayoutAccountSection() {
         if (cancelled) return;
         setLoadError(
           err instanceof ApiError && err.status === 404
-            ? "Créez d'abord votre profil organisateur pour configurer vos reversements."
+            ? t("Créez d'abord votre profil organisateur pour configurer vos reversements.")
             : err instanceof ApiError
               ? err.message
-              : "Impossible de charger votre compte de reversement.",
+              : t("Impossible de charger votre compte de reversement."),
         );
       });
     return () => {
@@ -100,8 +101,8 @@ export function PayoutAccountSection() {
       });
       setNotice(
         result.changed
-          ? "IBAN enregistré. Un email de confirmation vous a été envoyé."
-          : "Titulaire du compte mis à jour.",
+          ? t("IBAN enregistré. Un email de confirmation vous a été envoyé.")
+          : t("Titulaire du compte mis à jour."),
       );
       setEditing(false);
       setIban("");
@@ -110,7 +111,7 @@ export function PayoutAccountSection() {
       if (err instanceof ApiError && err.code === "REAUTH_REQUIRED") {
         setReauthRequired(true);
       } else {
-        setFormError(err instanceof ApiError ? err.message : "Enregistrement impossible, veuillez réessayer.");
+        setFormError(err instanceof ApiError ? err.message : t("Enregistrement impossible, veuillez réessayer."));
       }
     } finally {
       setSaving(false);
@@ -151,7 +152,7 @@ export function PayoutAccountSection() {
       const updated = await setPayoutMethod(method);
       setAccount({ ...account, payout_method: updated.payout_method });
     } catch (err) {
-      setMethodError(err instanceof ApiError ? err.message : "Changement impossible, veuillez réessayer.");
+      setMethodError(err instanceof ApiError ? err.message : t("Changement impossible, veuillez réessayer."));
     } finally {
       setSwitching(false);
     }
@@ -161,43 +162,30 @@ export function PayoutAccountSection() {
 
   return (
     <section className={cardClass("p-6")}>
-      <h2 className="mb-4 text-lg font-bold text-ink-1">Compte de reversement</h2>
+      <h2 className="mb-4 text-lg font-bold text-ink-1">{t("Compte de reversement")}</h2>
 
       {loadError ? (
         <p className="text-sm text-ink-5">{loadError}</p>
       ) : account === null ? (
-        <p className="text-sm text-ink-5">Chargement…</p>
+        <p className="text-sm text-ink-5">{t("Chargement…")}</p>
       ) : (
         <div className="flex flex-col gap-5">
           {heldUntil ? (
-            <Alert tone="warning">
-              Votre IBAN vient d&apos;être modifié : par sécurité, vos reversements sont suspendus jusqu&apos;au{" "}
-              {longDateTime.format(heldUntil)}.
-            </Alert>
+            <Alert tone="warning">{t("Votre IBAN vient d'être modifié : par sécurité, vos reversements sont suspendus jusqu'au {value}.", { value: longDateTime.format(heldUntil) })}</Alert>
           ) : null}
           {notice ? <Alert tone="success">{notice}</Alert> : null}
 
           {editing ? (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <p className="text-sm text-ink-4">
-                Le produit de vos ventes vous est viré sur ce compte. Votre IBAN est chiffré et n&apos;est jamais
-                affiché en entier.
-              </p>
+              <p className="text-sm text-ink-4">{t("Le produit de vos ventes vous est viré sur ce compte. Votre IBAN est chiffré et n'est jamais affiché en entier.")}</p>
               {formError ? <FormError className="">{formError}</FormError> : null}
               {reauthRequired ? (
                 <Alert tone="warning">
-                  <p>
-                    Votre connexion date de plus de {account.sensitive_action_reauth_minutes} minutes. Reconnectez-vous
-                    avec Google ou Facebook : vous reviendrez ici pour enregistrer votre IBAN.
-                  </p>
-                  <a href={reauthUrl("/dashboard/paiements")} className={buttonClass("primary", "mt-3 inline-flex rounded-full px-4 py-2 text-sm")}>
-                    Me reconnecter
-                  </a>
+                  <p>{t("Votre connexion date de plus de {sensitive_action_reauth_minutes} minutes. Reconnectez-vous avec Google ou Facebook : vous reviendrez ici pour enregistrer votre IBAN.", { sensitive_action_reauth_minutes: account.sensitive_action_reauth_minutes })}</p>
+                  <a href={reauthUrl("/dashboard/paiements")} className={buttonClass("primary", "mt-3 inline-flex rounded-full px-4 py-2 text-sm")}>{t("Me reconnecter")}</a>
                 </Alert>
               ) : null}
-              <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">
-                Titulaire du compte
-                <input
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">{t("Titulaire du compte")}<input
                   required
                   minLength={2}
                   maxLength={140}
@@ -207,9 +195,7 @@ export function PayoutAccountSection() {
                   className={fieldClass("px-4 py-3")}
                 />
               </label>
-              <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">
-                Pays du compte
-                <select
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">{t("Pays du compte")}<select
                   value={country}
                   onChange={(event) => {
                     const code = event.target.value;
@@ -220,7 +206,7 @@ export function PayoutAccountSection() {
                 >
                   {COUNTRIES.map((option) => (
                     <option key={option.code} value={option.code}>
-                      {option.name}
+                      {t(option.name)}
                     </option>
                   ))}
                 </select>
@@ -242,9 +228,7 @@ export function PayoutAccountSection() {
                 <IbanLengthHint value={iban} country={country} />
               </label>
               {account.has_password ? (
-                <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">
-                  Mot de passe de votre compte
-                  <PasswordInput
+                <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">{t("Mot de passe de votre compte")}<PasswordInput
                     required
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
@@ -253,19 +237,12 @@ export function PayoutAccountSection() {
                   />
                 </label>
               ) : (
-                <p className="text-xs text-ink-5">
-                  Votre compte utilise une connexion Google ou Facebook : l&apos;IBAN ne peut être enregistré que
-                  dans les {account.sensitive_action_reauth_minutes} minutes suivant votre connexion.{" "}
-                  <a href={reauthUrl("/dashboard/paiements")} className="font-medium text-link hover:text-link-hover">
-                    Me reconnecter maintenant
-                  </a>
+                <p className="text-xs text-ink-5">{t("Votre compte utilise une connexion Google ou Facebook : l'IBAN ne peut être enregistré que dans les")}{" "}{account.sensitive_action_reauth_minutes}{" "}{t("minutes suivant votre connexion.")}{" "}
+                  <a href={reauthUrl("/dashboard/paiements")} className="font-medium text-link hover:text-link-hover">{t("Me reconnecter maintenant")}</a>
                 </p>
               )}
               {account.has_iban ? (
-                <p className="text-xs text-ink-5">
-                  Après un changement d&apos;IBAN, vos reversements sont suspendus pendant{" "}
-                  {account.iban_change_payout_hold_hours} heures et un email d&apos;alerte vous est envoyé.
-                </p>
+                <p className="text-xs text-ink-5">{t("Après un changement d'IBAN, vos reversements sont suspendus pendant {iban_change_payout_hold_hours} heures et un email d'alerte vous est envoyé.", { iban_change_payout_hold_hours: account.iban_change_payout_hold_hours })}</p>
               ) : null}
               <div className="flex flex-wrap justify-end gap-2">
                 {account.has_iban ? (
@@ -278,16 +255,14 @@ export function PayoutAccountSection() {
                       setPassword("");
                     }}
                     className={buttonClass("secondary", "rounded-full px-5 py-2.5 text-sm")}
-                  >
-                    Annuler
-                  </button>
+                  >{t("Annuler")}</button>
                 ) : null}
                 <button
                   type="submit"
                   disabled={saving}
                   className={buttonClass("primary", "rounded-full px-5 py-2.5 text-sm disabled:opacity-50")}
                 >
-                  {saving ? "Enregistrement…" : "Enregistrer mon IBAN"}
+                  {saving ? t("Enregistrement…") : t("Enregistrer mon IBAN")}
                 </button>
               </div>
             </form>
@@ -307,15 +282,13 @@ export function PayoutAccountSection() {
                   setEditing(true);
                 }}
                 className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
-              >
-                Modifier
-              </button>
+              >{t("Modifier")}</button>
             </div>
           )}
 
           {account.has_iban ? (
             <fieldset className="flex flex-col gap-2" disabled={switching}>
-              <legend className="mb-2 text-sm font-semibold text-ink-2">Moyen de reversement</legend>
+              <legend className="mb-2 text-sm font-semibold text-ink-2">{t("Moyen de reversement")}</legend>
               {METHODS.map((method) => {
                 const unavailable = method.value === "STRIPE" && !account.stripe_connect_onboarded;
                 return (
@@ -334,9 +307,9 @@ export function PayoutAccountSection() {
                       onChange={() => chooseMethod(method.value)}
                     />
                     <span>
-                      <span className="block text-sm font-medium text-ink-1">{method.label}</span>
+                      <span className="block text-sm font-medium text-ink-1">{t(method.label)}</span>
                       <span className="block text-xs text-ink-5">
-                        {unavailable ? "Configurez d'abord votre compte Stripe ci-dessous." : method.hint}
+                        {unavailable ? t("Configurez d'abord votre compte Stripe ci-dessous.") : method.hint}
                       </span>
                     </span>
                   </label>
@@ -359,14 +332,10 @@ function IbanLengthHint({ value, country }: { value: string; country: string }) 
   const typed = ibanLength(value);
   if (!expected) {
     return (
-      <span id="iban-length" className="text-xs font-normal text-ink-5">
-        Code pays « {code} » inconnu : vérifiez les 2 premières lettres de votre IBAN.
-      </span>
+      <span id="iban-length" className="text-xs font-normal text-ink-5">{t("Code pays « {code} » inconnu : vérifiez les 2 premières lettres de votre IBAN.", { code })}</span>
     );
   }
   return (
-    <span id="iban-length" className={`text-xs font-normal ${typed === expected ? "text-success" : "text-ink-5"}`}>
-      IBAN {countryName(code)} : {expected} caractères — {typed} / {expected}
-    </span>
+    <span id="iban-length" className={`text-xs font-normal ${typed === expected ? "text-success" : "text-ink-5"}`}>{t("IBAN {countryName} : {expected} caractères — {typed} / {expected2}", { countryName: countryName(code), expected, typed, expected2: expected })}</span>
   );
 }

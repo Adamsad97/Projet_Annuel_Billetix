@@ -16,6 +16,7 @@ import { ApiError } from "@/lib/api/http-error";
 import { Alert } from "@/components/ui/alert";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 export default function AdminDashboardPage() {
   const [dashboard, setDashboard] = useState<ApiAdminDashboard | undefined>(undefined);
@@ -28,21 +29,21 @@ export default function AdminDashboardPage() {
   function loadPending() {
     getPendingEvents()
       .then(setPending)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger la file de validation."));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t("Impossible de charger la file de validation.")));
   }
 
   useEffect(() => {
     getAdminDashboard()
       .then(setDashboard)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger le dashboard."));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t("Impossible de charger le dashboard.")));
     listCategories().then(setCategories).catch(() => setCategories([]));
     loadPending();
   }, []);
 
   function handleApprove(id: string) {
     setDialog({
-      title: "Valider cet événement ?",
-      message: "Il sera publié immédiatement et visible par tous.",
+      title: t("Valider cet événement ?"),
+      message: t("Il sera publié immédiatement et visible par tous."),
       confirmLabel: "✓ Valider",
       onConfirm: async () => {
         setBusyId(id);
@@ -50,7 +51,7 @@ export default function AdminDashboardPage() {
           await approveEvent(id);
           setPending((prev) => prev?.filter((event) => event.id !== id));
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de valider cet événement.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de valider cet événement."));
         } finally {
           setBusyId(null);
         }
@@ -60,20 +61,20 @@ export default function AdminDashboardPage() {
 
   function handleReject(id: string) {
     setDialog({
-      title: "Rejeter cet événement",
-      message: "Le motif sera communiqué à l'organisateur.",
+      title: t("Rejeter cet événement"),
+      message: t("Le motif sera communiqué à l'organisateur."),
       confirmLabel: "✕ Rejeter",
       danger: true,
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Motif du rejet…",
+      reasonPlaceholder: t("Motif du rejet…"),
       onConfirm: async (reason) => {
         setBusyId(id);
         try {
           await rejectEvent(id, reason!);
           setPending((prev) => prev?.filter((event) => event.id !== id));
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de rejeter cet événement.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de rejeter cet événement."));
         } finally {
           setBusyId(null);
         }
@@ -86,7 +87,7 @@ export default function AdminDashboardPage() {
   return (
     <AdminShell active="/admin">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-ink-1">Dashboard administrateur</h1>
+        <h1 className="text-2xl font-bold text-ink-1">{t("Dashboard administrateur")}</h1>
       </div>
 
       {error ? (
@@ -122,25 +123,23 @@ export default function AdminDashboardPage() {
             ))}
           </div>
 
-          <h2 className="mb-3 mt-10 text-lg font-bold text-ink-1">Ventes</h2>
+          <h2 className="mb-3 mt-10 text-lg font-bold text-ink-1">{t("Ventes")}</h2>
           <RevenueTrendChart />
         </>
       )}
 
       <div className="mb-4 mt-10 flex items-center justify-between">
         <h2 className="text-lg font-bold text-ink-1">
-          File de validation {pending !== undefined ? `— ${pending.length} événement(s) en attente` : ""}
+          {t("File de validation")}{" "}{pending !== undefined ? t("— {length} événement(s) en attente", { length: pending.length }) : ""}
         </h2>
-        <Link href="/admin/validation" className="text-sm font-medium text-link hover:text-link-hover">
-          Tout voir →
-        </Link>
+        <Link href="/admin/validation" className="text-sm font-medium text-link hover:text-link-hover">{t("Tout voir →")}</Link>
       </div>
 
       <div className={cardClass("overflow-hidden")}>
         {pending === undefined ? (
           <MutedMessage variant="list" />
         ) : pending.length === 0 ? (
-          <MutedMessage variant="list">Aucun événement en attente.</MutedMessage>
+          <MutedMessage variant="list">{t("Aucun événement en attente.")}</MutedMessage>
         ) : (
           pending
             .slice(0, 5)

@@ -1,4 +1,7 @@
-// Pays ISO 3166-1 alpha-2 avec leur nom français via Intl.DisplayNames.
+import type { Locale } from "@/lib/i18n/config";
+import { activeLocale } from "@/lib/i18n/translate";
+
+// Pays ISO 3166-1 alpha-2 avec leur nom dans la langue du site via Intl.DisplayNames.
 const ISO_CODES =
   "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ " +
   "CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR " +
@@ -13,17 +16,25 @@ export interface CountryOption {
   name: string;
 }
 
-const displayNames = new Intl.DisplayNames(["fr"], { type: "region" });
+const byLocale = new Map<Locale, CountryOption[]>();
 
-/** Tous les pays, triés par nom français (accents compris). */
-export const COUNTRY_OPTIONS: CountryOption[] = ISO_CODES.split(" ")
-  .map((code) => ({ code, name: displayNames.of(code) ?? code }))
-  .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+/** Tous les pays, triés par nom dans la langue du site (accents compris). */
+export function countryOptions(locale: Locale = activeLocale()): CountryOption[] {
+  let options = byLocale.get(locale);
+  if (!options) {
+    const names = new Intl.DisplayNames([locale], { type: "region" });
+    options = ISO_CODES.split(" ")
+      .map((code) => ({ code, name: names.of(code) ?? code }))
+      .sort((a, b) => a.name.localeCompare(b.name, locale));
+    byLocale.set(locale, options);
+  }
+  return options;
+}
 
 export function countryName(code: string): string {
-  return COUNTRY_OPTIONS.find((c) => c.code === code)?.name ?? code;
+  return countryOptions().find((c) => c.code === code)?.name ?? code;
 }
 
 export function isKnownCountryCode(code: string): boolean {
-  return COUNTRY_OPTIONS.some((c) => c.code === code);
+  return countryOptions().some((c) => c.code === code);
 }

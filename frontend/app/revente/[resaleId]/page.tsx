@@ -9,6 +9,7 @@ import { ResaleCheckoutFlow } from "@/components/resale/resale-checkout-flow";
 import { getResaleListing, type ApiResaleListing } from "@/lib/api/resale";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 export default function ResaleCheckoutPage({
   params,
@@ -42,28 +43,22 @@ export default function ResaleCheckoutPage({
           <Link
             href="/revente"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
-          >
-            ← Marketplace revente
-          </Link>
+          >{t("← Marketplace revente")}</Link>
         </div>
 
         {listing === undefined ? (
-          <MutedMessage>Chargement de l&apos;annonce…</MutedMessage>
+          <MutedMessage>{t("Chargement de l'annonce…")}</MutedMessage>
         ) : !listing ? (
           <div className={cardClass("mx-auto max-w-md p-8 text-center")}>
             <div className="mb-3 text-4xl">🎫</div>
-            <h1 className="text-lg font-bold text-ink-1">Annonce introuvable</h1>
-            <p className="mt-2 text-sm text-ink-5">
-              Cette offre n&apos;existe plus, ou vient d&apos;être vendue.
-            </p>
+            <h1 className="text-lg font-bold text-ink-1">{t("Annonce introuvable")}</h1>
+            <p className="mt-2 text-sm text-ink-5">{t("Cette offre n'existe plus, ou vient d'être vendue.")}</p>
           </div>
         ) : listing.status !== "LISTED" ? (
           <div className={cardClass("mx-auto max-w-md p-8 text-center")}>
             <div className="mb-3 text-4xl">🎫</div>
-            <h1 className="text-lg font-bold text-ink-1">Cette annonce n&apos;est plus disponible</h1>
-            <p className="mt-2 text-sm text-ink-5">
-              Elle vient d&apos;être vendue, ou est en cours d&apos;achat par quelqu&apos;un d&apos;autre.
-            </p>
+            <h1 className="text-lg font-bold text-ink-1">{t("Cette annonce n'est plus disponible")}</h1>
+            <p className="mt-2 text-sm text-ink-5">{t("Elle vient d'être vendue, ou est en cours d'achat par quelqu'un d'autre.")}</p>
           </div>
         ) : (
           <ResaleCheckoutFlow listing={listing} />

@@ -48,6 +48,7 @@ import { MutedMessage } from "@/components/ui/muted-message";
 import { buttonClass } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 export default function DashboardEventDetailPage({
   params,
@@ -99,7 +100,7 @@ export default function DashboardEventDetailPage({
           setNotFoundError(true);
           return;
         }
-        setError(err instanceof ApiError ? err.message : "Impossible de charger cet événement.");
+        setError(err instanceof ApiError ? err.message : t("Impossible de charger cet événement."));
       });
   }
 
@@ -107,8 +108,8 @@ export default function DashboardEventDetailPage({
 
   function handleSubmit() {
     setDialog({
-      title: "Soumettre à la validation ?",
-      message: "L'admin examinera votre événement avant publication (sous 48h ouvrées).",
+      title: t("Soumettre à la validation ?"),
+      message: t("L'admin examinera votre événement avant publication (sous 48h ouvrées)."),
       confirmLabel: "Soumettre →",
       onConfirm: async () => {
         setActionBusy(true);
@@ -117,7 +118,7 @@ export default function DashboardEventDetailPage({
           await submitEventForValidation(id);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de soumettre l'événement.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de soumettre l'événement."));
         } finally {
           setActionBusy(false);
         }
@@ -129,14 +130,14 @@ export default function DashboardEventDetailPage({
   // admin, après échange si besoin. L'événement continue en attendant.
   function handleRequestCancellation() {
     setDialog({
-      title: "Demander l'annulation de l'événement",
+      title: t("Demander l'annulation de l'événement"),
       message:
-        "Votre demande sera examinée par l'administration. L'événement reste en vente en attendant. Si elle est acceptée, les acheteurs sont remboursés et reçoivent votre motif.",
-      confirmLabel: "Envoyer la demande",
+        t("Votre demande sera examinée par l'administration. L'événement reste en vente en attendant. Si elle est acceptée, les acheteurs sont remboursés et reçoivent votre motif."),
+      confirmLabel: t("Envoyer la demande"),
       danger: true,
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Expliquez la raison de l'annulation…",
+      reasonPlaceholder: t("Expliquez la raison de l'annulation…"),
       onConfirm: async (reason) => {
         setActionBusy(true);
         setError(null);
@@ -144,7 +145,7 @@ export default function DashboardEventDetailPage({
           await requestEventCancellation(id, reason!);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible d'envoyer la demande d'annulation.");
+          setError(err instanceof ApiError ? err.message : t("Impossible d'envoyer la demande d'annulation."));
         } finally {
           setActionBusy(false);
         }
@@ -164,15 +165,15 @@ export default function DashboardEventDetailPage({
 
   function handleWithdraw(requestId: string) {
     setDialog({
-      title: "Retirer votre demande ?",
-      message: "L'événement continue normalement. Vous pourrez faire une nouvelle demande plus tard.",
-      confirmLabel: "Retirer la demande",
+      title: t("Retirer votre demande ?"),
+      message: t("L'événement continue normalement. Vous pourrez faire une nouvelle demande plus tard."),
+      confirmLabel: t("Retirer la demande"),
       onConfirm: async () => {
         try {
           await withdrawCancellation(requestId);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de retirer la demande.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de retirer la demande."));
         }
       },
     });
@@ -183,7 +184,7 @@ export default function DashboardEventDetailPage({
       const updated = await replyToCancellation(requestId, message);
       setCancellations((current) => current.map((item) => (item.id === updated.id ? updated : item)));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible d'envoyer le message.");
+      setError(err instanceof ApiError ? err.message : t("Impossible d'envoyer le message."));
       throw err;
     }
   }
@@ -196,7 +197,7 @@ export default function DashboardEventDetailPage({
       // Duplication : redirige vers la modification pour changer d'abord les dates.
       router.push(`/evenements/${clone.id}/modifier`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de dupliquer l'événement.");
+      setError(err instanceof ApiError ? err.message : t("Impossible de dupliquer l'événement."));
       setActionBusy(false);
     }
   }
@@ -209,7 +210,7 @@ export default function DashboardEventDetailPage({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setError("Impossible de copier le lien : copiez-le depuis la page publique.");
+      setError(t("Impossible de copier le lien : copiez-le depuis la page publique."));
     }
   }
 
@@ -223,7 +224,7 @@ export default function DashboardEventDetailPage({
       setResponseDrafts((prev) => ({ ...prev, [requestId]: "" }));
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible d'envoyer la réponse.");
+      setError(err instanceof ApiError ? err.message : t("Impossible d'envoyer la réponse."));
     } finally {
       setActionBusy(false);
     }
@@ -234,12 +235,8 @@ export default function DashboardEventDetailPage({
       <div className="flex flex-1 flex-col bg-page">
         <AuthHeader />
         <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10 text-center">
-          <p className="text-sm text-ink-5">
-            Cet événement n&apos;existe pas ou n&apos;appartient pas à votre compte.
-          </p>
-          <Link href="/dashboard" className="mt-4 inline-block text-sm font-medium text-link hover:text-link-hover">
-            ← Retour au dashboard
-          </Link>
+          <p className="text-sm text-ink-5">{t("Cet événement n'existe pas ou n'appartient pas à votre compte.")}</p>
+          <Link href="/dashboard" className="mt-4 inline-block text-sm font-medium text-link hover:text-link-hover">{t("← Retour au dashboard")}</Link>
         </main>
       </div>
     );
@@ -250,7 +247,7 @@ export default function DashboardEventDetailPage({
       <AuthHeader />
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
-        <BackLink href="/dashboard">Dashboard</BackLink>
+        <BackLink href="/dashboard">{t("Dashboard")}</BackLink>
 
         {error ? (
           <Alert className="mb-6">
@@ -287,7 +284,7 @@ export default function DashboardEventDetailPage({
                       <div className="flex flex-wrap items-center gap-2">
                         <h1 className="text-2xl font-bold text-ink-1">{event.title}</h1>
                         <Badge tone={badge.className} size="md">
-                          {badge.label}
+                          {t(badge.label)}
                         </Badge>
                         {event.status !== "POSTPONED" ? (
                           <span className="rounded-full bg-hairline-1 px-2.5 py-1 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2">
@@ -295,13 +292,11 @@ export default function DashboardEventDetailPage({
                           </span>
                         ) : null}
                         {event.is_hidden ? (
-                          <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
-                            Masqué au public
-                          </span>
+                          <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">{t("Masqué au public")}</span>
                         ) : null}
                       </div>
                       <p className="mt-1 text-sm text-ink-5">
-                        {event.status === "POSTPONED" ? "Initialement prévu le " : ""}
+                        {event.status === "POSTPONED" ? t("Initialement prévu le ") : ""}
                         {dateFormatter.format(new Date(event.start_date))} · {event.venue_name}, {event.venue_city}
                       </p>
                     </div>
@@ -315,24 +310,18 @@ export default function DashboardEventDetailPage({
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <circle cx="9" cy="8" r="3.5" />
                             <path d="M2.5 20c.6-3.6 3.3-6 6.5-6s5.9 2.4 6.5 6M19 8v6M16 11h6" />
-                          </svg>
-                          Assigner des agents
-                        </button>
+                          </svg>{t("Assigner des agents")}</button>
                       ) : null}
                       {event.is_hidden ? (
                         <span
-                          title="La page publique est indisponible tant que l'événement est masqué."
+                          title={t("La page publique est indisponible tant que l'événement est masqué.")}
                           className="rounded-full border border-hairline-2 px-4 py-2 text-sm font-medium text-ink-5"
-                        >
-                          Page publique indisponible
-                        </span>
+                        >{t("Page publique indisponible")}</span>
                       ) : (
                         <Link
                           href={eventPath({ id, slug: detail?.event.slug })}
                           className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
-                        >
-                          Voir la page publique →
-                        </Link>
+                        >{t("Voir la page publique →")}</Link>
                       )}
                       {event.status === "PUBLISHED" && !event.is_hidden ? (
                         <button
@@ -340,7 +329,7 @@ export default function DashboardEventDetailPage({
                           onClick={copyPublicLink}
                           className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
                         >
-                          {copied ? "Lien copié ✓" : "Copier le lien"}
+                          {copied ? t("Lien copié ✓") : t("Copier le lien")}
                         </button>
                       ) : null}
                       {event.status === "POSTPONED" ? (
@@ -348,9 +337,7 @@ export default function DashboardEventDetailPage({
                           type="button"
                           onClick={() => setPostponeMode("reschedule")}
                           className={buttonClass("primary", "rounded-full px-4 py-2 text-sm")}
-                        >
-                          Fixer la nouvelle date
-                        </button>
+                        >{t("Fixer la nouvelle date")}</button>
                       ) : null}
                       {event.status !== "SUSPENDED" &&
                       event.status !== "POSTPONED" &&
@@ -360,9 +347,7 @@ export default function DashboardEventDetailPage({
                         <Link
                           href={`/evenements/${id}/modifier`}
                           className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
-                        >
-                          ✎ Modifier
-                        </Link>
+                        >{t("✎ Modifier")}</Link>
                       ) : null}
                       {/* Duplication proposée seulement une fois l'événement complet. */}
                       {fill_stats.total_quota > 0 && fill_stats.remaining === 0 ? (
@@ -370,11 +355,9 @@ export default function DashboardEventDetailPage({
                           type="button"
                           onClick={handleDuplicate}
                           disabled={actionBusy}
-                          title="Programmer une nouvelle date pour ce même événement, maintenant complet"
+                          title={t("Programmer une nouvelle date pour ce même événement, maintenant complet")}
                           className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm disabled:opacity-50")}
-                        >
-                          ⎘ Programmer une nouvelle date
-                        </button>
+                        >{t("⎘ Programmer une nouvelle date")}</button>
                       ) : null}
                       {event.status === "DRAFT" ? (
                         <button
@@ -382,9 +365,7 @@ export default function DashboardEventDetailPage({
                           onClick={handleSubmit}
                           disabled={actionBusy}
                           className={buttonClass("primary", "rounded-full px-4 py-2 text-sm disabled:opacity-50")}
-                        >
-                          Soumettre à la validation →
-                        </button>
+                        >{t("Soumettre à la validation →")}</button>
                       ) : null}
                       {canRequestPostponement ? (
                         <button
@@ -392,9 +373,7 @@ export default function DashboardEventDetailPage({
                           onClick={() => setPostponeMode("request")}
                           disabled={actionBusy}
                           className="rounded-full border border-amber-500/40 px-4 py-2 text-sm font-medium text-amber-600 transition-colors hover:bg-amber-500/5 disabled:opacity-50"
-                        >
-                          Demander un report
-                        </button>
+                        >{t("Demander un report")}</button>
                       ) : null}
                       {canRequestCancellation ? (
                         <button
@@ -402,9 +381,7 @@ export default function DashboardEventDetailPage({
                           onClick={handleRequestCancellation}
                           disabled={actionBusy}
                           className="rounded-full border border-red-500/30 px-4 py-2 text-sm font-medium text-red-300 transition-colors hover:bg-red-500/5 disabled:opacity-50"
-                        >
-                          Demander l&apos;annulation
-                        </button>
+                        >{t("Demander l'annulation")}</button>
                       ) : null}
                     </div>
                   </div>
@@ -420,49 +397,38 @@ export default function DashboardEventDetailPage({
 
                   {event.status === "DRAFT" && event.rejection_reason ? (
                     <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-5 py-4 text-sm text-amber-200">
-                      <p className="font-semibold">Rejeté par l&apos;admin</p>
+                      <p className="font-semibold">{t("Rejeté par l'admin")}</p>
                       <p className="mt-1 text-amber-200/80">{event.rejection_reason}</p>
-                      <p className="mt-1 text-xs text-amber-200/60">
-                        Corrigez votre demande puis soumettez-la à nouveau.
-                      </p>
+                      <p className="mt-1 text-xs text-amber-200/60">{t("Corrigez votre demande puis soumettez-la à nouveau.")}</p>
                     </div>
                   ) : null}
 
                   {event.status === "SUSPENDED" ? (
                     <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-ink-2">
-                      <p className="font-semibold text-ink-1">Événement désactivé par l&apos;administration : les ventes sont suspendues</p>
+                      <p className="font-semibold text-ink-1">{t("Événement désactivé par l'administration : les ventes sont suspendues")}</p>
                       {event.suspension_reason ? <p className="mt-1">« {event.suspension_reason} »</p> : null}
-                      <p className="mt-1 text-xs text-ink-4">Ce message est affiché sur la page publique de l&apos;événement.</p>
+                      <p className="mt-1 text-xs text-ink-4">{t("Ce message est affiché sur la page publique de l'événement.")}</p>
                     </div>
                   ) : null}
 
                   {event.status === "POSTPONED" ? (
                     <div className="mb-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-5 py-4 text-sm text-ink-2">
-                      <p className="font-semibold text-ink-1">Événement reporté : nouvelle date à venir</p>
+                      <p className="font-semibold text-ink-1">{t("Événement reporté : nouvelle date à venir")}</p>
                       {event.postponement_reason ? <p className="mt-1">« {event.postponement_reason} »</p> : null}
-                      <p className="mt-1 text-xs text-ink-4">
-                        Les ventes et le contrôle des billets sont suspendus. Dès que vous connaissez la nouvelle date,
-                        indiquez-la avec « Fixer la nouvelle date » : les acheteurs seront prévenus par email.
-                      </p>
+                      <p className="mt-1 text-xs text-ink-4">{t("Les ventes et le contrôle des billets sont suspendus. Dès que vous connaissez la nouvelle date, indiquez-la avec « Fixer la nouvelle date » : les acheteurs seront prévenus par email.")}</p>
                     </div>
                   ) : event.postponed_at && event.original_start_date ? (
                     <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/5 px-5 py-4 text-sm text-ink-2">
-                      <p className="font-semibold text-ink-1">Événement reporté</p>
-                      <p className="mt-1">
-                        Initialement prévu le {dateFormatter.format(new Date(event.original_start_date))}
-                        {event.postponement_reason ? ` · « ${event.postponement_reason} »` : ""}
-                      </p>
+                      <p className="font-semibold text-ink-1">{t("Événement reporté")}</p>
+                      <p className="mt-1">{t("Initialement prévu le {value}{value2}", { value: dateFormatter.format(new Date(event.original_start_date)), value2: event.postponement_reason ? ` · « ${event.postponement_reason} »` : "" })}</p>
                     </div>
                   ) : null}
 
                   {event.is_hidden ? (
                     <div className="mb-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-5 py-4 text-sm text-ink-2">
-                      <p className="font-semibold text-ink-1">Événement masqué au public par l&apos;administration</p>
+                      <p className="font-semibold text-ink-1">{t("Événement masqué au public par l'administration")}</p>
                       {event.hidden_reason ? <p className="mt-1">« {event.hidden_reason} »</p> : null}
-                      <p className="mt-1 text-xs text-ink-4">
-                        Il n&apos;apparaît plus dans la liste des événements, sa page publique est indisponible et les ventes sont bloquées.
-                        Les billets déjà vendus restent valables.
-                      </p>
+                      <p className="mt-1 text-xs text-ink-4">{t("Il n'apparaît plus dans la liste des événements, sa page publique est indisponible et les ventes sont bloquées. Les billets déjà vendus restent valables.")}</p>
                     </div>
                   ) : null}
 
@@ -471,8 +437,8 @@ export default function DashboardEventDetailPage({
                       <h2 className="mb-1 text-lg font-bold text-ink-1">{requestTitle}</h2>
                       <p className="mb-3 text-sm text-ink-5">
                         {pendingCancellation
-                          ? "En cours d'examen par l'administration. Vous pouvez échanger ici jusqu'à trouver un accord."
-                          : "Historique de votre dernière demande."}
+                          ? t("En cours d'examen par l'administration. Vous pouvez échanger ici jusqu'à trouver un accord.")
+                          : t("Historique de votre dernière demande.")}
                       </p>
                       <div className="flex flex-col gap-3">
                         {shownCancellations.map((request) => (
@@ -486,9 +452,7 @@ export default function DashboardEventDetailPage({
                                 type="button"
                                 onClick={() => handleWithdraw(request.id)}
                                 className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}
-                              >
-                                Retirer ma demande
-                              </button>
+                              >{t("Retirer ma demande")}</button>
                             }
                           />
                         ))}
@@ -498,7 +462,7 @@ export default function DashboardEventDetailPage({
 
                   {event.status === "CANCELLED" && event.cancellation_reason ? (
                     <div className="mb-6 rounded-2xl border border-hairline-2 bg-hairline-1 px-5 py-4 text-sm text-ink-3">
-                      <p className="font-semibold">Événement annulé</p>
+                      <p className="font-semibold">{t("Événement annulé")}</p>
                       <p className="mt-1 text-ink-4">{event.cancellation_reason}</p>
                     </div>
                   ) : null}
@@ -507,9 +471,7 @@ export default function DashboardEventDetailPage({
                     <div className="mb-6 flex flex-col gap-3">
                       {pendingRequests.map((request) => (
                         <div key={request.id} className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-5 py-4">
-                          <p className="text-sm font-semibold text-amber-200">
-                            💬 L&apos;admin demande un complément d&apos;information
-                          </p>
+                          <p className="text-sm font-semibold text-amber-200">{t("💬 L'admin demande un complément d'information")}</p>
                           <p className="mt-1 text-sm text-amber-200/80">{request.message}</p>
                           <textarea
                             rows={2}
@@ -517,7 +479,7 @@ export default function DashboardEventDetailPage({
                             onChange={(evt) =>
                               setResponseDrafts((prev) => ({ ...prev, [request.id]: evt.target.value }))
                             }
-                            placeholder="Votre réponse…"
+                            placeholder={t("Votre réponse…")}
                             className={fieldClass("mt-3 w-full resize-none px-3 py-2")}
                           />
                           <button
@@ -525,9 +487,7 @@ export default function DashboardEventDetailPage({
                             onClick={() => handleRespond(request.id)}
                             disabled={actionBusy || !responseDrafts[request.id]?.trim()}
                             className="mt-2 rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                          >
-                            Envoyer la réponse
-                          </button>
+                          >{t("Envoyer la réponse")}</button>
                         </div>
                       ))}
                     </div>
@@ -544,7 +504,7 @@ export default function DashboardEventDetailPage({
                     payout={payout}
                   />
 
-                  <h2 className="mb-4 text-lg font-bold text-ink-1">Participants</h2>
+                  <h2 className="mb-4 text-lg font-bold text-ink-1">{t("Participants")}</h2>
                   <AttendeesExplorer
                     tickets={attendees}
                     exportName={`participants-${event.title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}`}

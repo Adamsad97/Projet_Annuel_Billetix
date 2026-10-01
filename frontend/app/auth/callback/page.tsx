@@ -23,6 +23,7 @@ import { MutedMessage } from "@/components/ui/muted-message";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 // Après connexion Google/Facebook : la page demandée avant de partir chez
 // Google (mémorisée par login-form.tsx), sinon l'accueil.
@@ -81,7 +82,7 @@ function OAuthCallbackContent() {
     if (!code) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatus("error");
-      setError("Lien de connexion invalide — le code est manquant.");
+      setError(t("Lien de connexion invalide — le code est manquant."));
       return;
     }
 
@@ -92,7 +93,7 @@ function OAuthCallbackContent() {
         setError(
           err instanceof ApiError
             ? err.message
-            : "Impossible de finaliser la connexion, veuillez réessayer.",
+            : t("Impossible de finaliser la connexion, veuillez réessayer."),
         );
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -109,7 +110,7 @@ function OAuthCallbackContent() {
       handleResult(result);
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Impossible de finaliser la connexion, veuillez réessayer.",
+        err instanceof ApiError ? err.message : t("Impossible de finaliser la connexion, veuillez réessayer."),
       );
       setVerifying(false);
     }
@@ -126,7 +127,7 @@ function OAuthCallbackContent() {
       router.push(consumeOAuthNext());
     } catch (err) {
       setError(
-        err instanceof ApiError ? err.message : "Code invalide, veuillez réessayer.",
+        err instanceof ApiError ? err.message : t("Code invalide, veuillez réessayer."),
       );
       setVerifying(false);
     }
@@ -136,11 +137,11 @@ function OAuthCallbackContent() {
     <div className="flex flex-1 items-center justify-center bg-page px-6 py-10">
       <div className={cardClass("w-full max-w-md p-8")}>
         {status === "loading" ? (
-          <MutedMessage>Connexion en cours…</MutedMessage>
+          <MutedMessage>{t("Connexion en cours…")}</MutedMessage>
         ) : status === "error" ? (
           <>
             <div className="mb-6 text-center">
-              <h1 className="text-xl font-bold text-ink-1">Connexion impossible</h1>
+              <h1 className="text-xl font-bold text-ink-1">{t("Connexion impossible")}</h1>
             </div>
             <p className="rounded-xl bg-red-500/10 px-4 py-3 text-center text-sm text-red-300 ring-1 ring-inset ring-red-500/30">
               {error}
@@ -148,9 +149,7 @@ function OAuthCallbackContent() {
             <Link
               href="/connexion"
               className={buttonClass("primary", "mt-6 block rounded-full py-3 text-center text-sm")}
-            >
-              Retour à la connexion
-            </Link>
+            >{t("Retour à la connexion")}</Link>
           </>
         ) : status === "needs_birth_date" ? (
           <>
@@ -158,10 +157,7 @@ function OAuthCallbackContent() {
               <h1 className="text-xl font-bold text-ink-1">
                 {firstName ? `Bienvenue ${firstName} !` : "Bienvenue !"}
               </h1>
-              <p className="mt-1 text-sm text-accent/70">
-                Une dernière étape : indiquez votre date de naissance. BilleTix est
-                réservé aux personnes d&apos;au moins {minimumAge} ans.
-              </p>
+              <p className="mt-1 text-sm text-accent/70">{t("Une dernière étape : indiquez votre date de naissance. BilleTix est réservé aux personnes d'au moins {minimumAge} ans.", { minimumAge })}</p>
             </div>
 
             {error ? (
@@ -172,7 +168,7 @@ function OAuthCallbackContent() {
 
             <form onSubmit={handleBirthDate} className="flex flex-col gap-4">
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium text-accent/80">Date de naissance</span>
+                <span className="text-sm font-medium text-accent/80">{t("Date de naissance")}</span>
                 <input
                   type="date"
                   required
@@ -200,24 +196,19 @@ function OAuthCallbackContent() {
                 disabled={verifying || underage || birthDate === ""}
                 className={buttonClass("primary", "w-full rounded-xl py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
               >
-                {verifying ? "Vérification…" : "Continuer →"}
+                {verifying ? t("Vérification…") : "Continuer →"}
               </button>
             </form>
             <Link
               href="/connexion"
               className="mt-4 block text-center text-sm text-ink-5 transition-colors hover:text-ink-2"
-            >
-              Annuler
-            </Link>
+            >{t("Annuler")}</Link>
           </>
         ) : (
           <>
             <div className="mb-6 text-center">
-              <h1 className="text-xl font-bold text-ink-1">Code de vérification</h1>
-              <p className="mt-1 text-sm text-accent/70">
-                Entrez le code affiché dans votre application d&apos;authentification
-                ({twoFactorMethod}).
-              </p>
+              <h1 className="text-xl font-bold text-ink-1">{t("Code de vérification")}</h1>
+              <p className="mt-1 text-sm text-accent/70">{t("Entrez le code affiché dans votre application d'authentification ({twoFactorMethod}).", { twoFactorMethod })}</p>
             </div>
 
             {error ? (
@@ -234,7 +225,7 @@ function OAuthCallbackContent() {
                 autoFocus
                 value={twoFactorCode}
                 onChange={(event) => setTwoFactorCode(event.target.value)}
-                placeholder="Code à 6 chiffres"
+                placeholder={t("Code à 6 chiffres")}
                 className="rounded-xl border border-hairline-2 bg-hairline-1 px-4 py-3 text-center text-lg tracking-[0.3em] text-ink-1 placeholder:tracking-normal placeholder:text-ink-6 focus:border-blue-500 focus:outline-none"
               />
               <button
@@ -242,7 +233,7 @@ function OAuthCallbackContent() {
                 disabled={verifying}
                 className={buttonClass("primary", "w-full rounded-xl py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
               >
-                {verifying ? "Vérification…" : "Confirmer"}
+                {verifying ? t("Vérification…") : t("Confirmer")}
               </button>
             </form>
           </>

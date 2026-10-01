@@ -18,6 +18,7 @@ import { BackLink } from "@/components/ui/back-link";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 export default function TicketDetailPage({
   params,
@@ -43,7 +44,7 @@ export default function TicketDetailPage({
             setTicket(null);
           } else {
             setError(
-              err instanceof ApiError ? err.message : "Impossible de charger ce billet.",
+              err instanceof ApiError ? err.message : t("Impossible de charger ce billet."),
             );
           }
         });
@@ -59,12 +60,12 @@ export default function TicketDetailPage({
     setTicket(undefined);
     getTicket(id)
       .then((apiTicket) => setTicket(apiTicketToDetail(apiTicket)))
-      .catch(() => setError("Impossible de recharger ce billet."));
+      .catch(() => setError(t("Impossible de recharger ce billet.")));
   }
 
   return (
     <PageShell width="md">
-      <BackLink href="/profil/billets">Mes billets</BackLink>
+      <BackLink href="/profil/billets">{t("Mes billets")}</BackLink>
 
       {ticket === undefined ? (
         <MutedMessage />
@@ -75,33 +76,26 @@ export default function TicketDetailPage({
       ) : ticket === null ? (
         <div className={cardClass("p-8 text-center")}>
           <div className="mb-3 text-4xl">🎫</div>
-          <h1 className="text-lg font-bold text-ink-1">Page introuvable</h1>
-          <p className="mt-2 text-sm text-ink-5">
-            Ce billet n&apos;existe pas, ou la page que vous cherchez a changé d&apos;adresse.
-          </p>
+          <h1 className="text-lg font-bold text-ink-1">{t("Page introuvable")}</h1>
+          <p className="mt-2 text-sm text-ink-5">{t("Ce billet n'existe pas, ou la page que vous cherchez a changé d'adresse.")}</p>
         </div>
       ) : (
         <>
           <TwoFactorPromo className="mb-6" />
           {ticket.receivedFrom ? (
-            <p className="mb-4 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm text-ink-2">
-              🎁 Billet offert par <strong>{ticket.receivedFrom.name}</strong> ({ticket.receivedFrom.email}) le{" "}
+            <p className="mb-4 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm text-ink-2">{t("🎁 Billet offert par")}{" "}<strong>{ticket.receivedFrom.name}</strong> ({ticket.receivedFrom.email}{t(") le")}{" "}
               {ticket.receivedFrom.dateLabel}.
             </p>
           ) : null}
           {ticket.resalePurchase ? (
-            <p className="mb-4 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm text-ink-2">
-              🔄 Billet acheté en revente le {ticket.resalePurchase.dateLabel} pour {ticket.resalePurchase.priceLabel}.
-            </p>
+            <p className="mb-4 rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 text-sm text-ink-2">{t("🔄 Billet acheté en revente le {dateLabel} pour {priceLabel}.", { dateLabel: ticket.resalePurchase.dateLabel, priceLabel: ticket.resalePurchase.priceLabel })}</p>
           ) : null}
           <TicketVisual ticket={ticket} />
 
           <div className="mt-6 flex flex-col gap-3">
             {/* Pas de billet PDF : la facture sert de preuve d'achat ; pour un billet offert, elle appartient à l'acheteur d'origine. */}
             {ticket.unitPriceTtc === 0 ? null : ticket.receivedFrom ? (
-              <p className="rounded-xl bg-hairline-1 px-4 py-3 text-center text-sm text-ink-4">
-                Billet reçu en cadeau : la facture reste celle de la personne qui l&apos;a acheté.
-              </p>
+              <p className="rounded-xl bg-hairline-1 px-4 py-3 text-center text-sm text-ink-4">{t("Billet reçu en cadeau : la facture reste celle de la personne qui l'a acheté.")}</p>
             ) : (
               <button
                 type="button"
@@ -113,14 +107,14 @@ export default function TicketDetailPage({
                     const { order } = await getOrder(ticket.orderId);
                     await downloadInvoice(order.id, order.reference);
                   } catch (err) {
-                    setDownloadError(err instanceof ApiError ? err.message : "Téléchargement impossible, veuillez réessayer.");
+                    setDownloadError(err instanceof ApiError ? err.message : t("Téléchargement impossible, veuillez réessayer."));
                   } finally {
                     setDownloading(false);
                   }
                 }}
                 className={buttonClass("secondary", "w-full rounded-full py-3 text-center text-sm disabled:opacity-60")}
               >
-                {downloading ? "Téléchargement…" : "⬇️ Télécharger la facture"}
+                {downloading ? t("Téléchargement…") : t("⬇️ Télécharger la facture")}
               </button>
             )}
             {downloadError ? (
@@ -134,15 +128,11 @@ export default function TicketDetailPage({
                 <Link
                   href={`/billets/${id}/offrir`}
                   className="w-full rounded-full bg-hairline-1 py-3 text-center text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
-                >
-                  🎁 Offrir ce billet
-                </Link>
+                >{t("🎁 Offrir ce billet")}</Link>
                 <Link
                   href={`/billets/${id}/revendre`}
                   className="w-full rounded-full bg-hairline-1 py-3 text-center text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
-                >
-                  🔄 Revendre ce billet
-                </Link>
+                >{t("🔄 Revendre ce billet")}</Link>
               </>
             ) : ticket.status === "for_resale" ? (
               <ResaleManagePanel ticketId={id} onWithdrawn={reloadTicket} />
@@ -153,9 +143,7 @@ export default function TicketDetailPage({
               <Link
                 href={`/profil/commandes/${ticket.orderId}`}
                 className="w-full rounded-full py-3 text-center text-sm font-medium text-ink-4 transition-colors hover:text-ink-2"
-              >
-                📦 Voir la commande associée
-              </Link>
+              >{t("📦 Voir la commande associée")}</Link>
             )}
           </div>
         </>

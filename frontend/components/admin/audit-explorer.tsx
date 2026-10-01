@@ -16,9 +16,11 @@ import { entityTypeFilters } from "@/lib/constants/admin-audit";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
 import { Pagination } from "@/components/ui/pagination";
+import { t } from "@/lib/i18n/translate";
+import { localizedDate } from "@/lib/i18n/intl";
 
 const PAGE_SIZE = 30;
-const dateTimeFull = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeStyle: "medium" });
+const dateTimeFull = localizedDate({ dateStyle: "long", timeStyle: "medium" });
 
 export function AuditExplorer() {
   const [search, setSearch] = useState("");
@@ -51,7 +53,7 @@ export function AuditExplorer() {
           setTotal(result.total);
           setError(null);
         })
-        .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger le journal."));
+        .catch((err) => setError(err instanceof ApiError ? err.message : t("Impossible de charger le journal.")));
     }, 300);
     return () => clearTimeout(timeout);
   }, [search, entityType, action, page]);
@@ -69,55 +71,53 @@ export function AuditExplorer() {
         <SearchInput
           value={search}
           onChange={resetPage(setSearch)}
-          placeholder={isSuperAdmin ? "Email, référence de billet, IP…" : "Email, référence de billet…"}
+          placeholder={isSuperAdmin ? t("Email, référence de billet, IP…") : t("Email, référence de billet…")}
         />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <FilterPills options={auditActionFilters} active={action} onChange={resetPage(setAction)} />
-        <p className="text-sm text-ink-5">
-          {total} entrée{total > 1 ? "s" : ""}
-        </p>
+        <p className="text-sm text-ink-5">{(total > 1 ? t("{total} entrées", { total }) : t("{total} entrée", { total }))}</p>
       </div>
 
       <div className={cardClass("overflow-hidden")}>
         {logs === null ? (
-          <MutedMessage variant="list">{error ?? "Chargement…"}</MutedMessage>
+          <MutedMessage variant="list">{error ?? t("Chargement…")}</MutedMessage>
         ) : logs.length > 0 ? (
           logs.map((log) => <AuditRow key={log.id} log={log} onOpen={() => setSelected(log)} />)
         ) : (
-          <MutedMessage variant="list">Aucune entrée ne correspond à cette recherche.</MutedMessage>
+          <MutedMessage variant="list">{t("Aucune entrée ne correspond à cette recherche.")}</MutedMessage>
         )}
       </div>
 
       <Pagination page={page + 1} pageCount={pageCount} onChange={(next) => setPage(next - 1)} />
       <DetailDialog
         open={selected !== null}
-        title={selected ? auditActionLabels[selected.action] ?? selected.action : ""}
+        title={selected ? t(auditActionLabels[selected.action] ?? selected.action) : ""}
         subtitle={selected ? dateTimeFull.format(new Date(selected.created_at)) : undefined}
         onClose={() => setSelected(null)}
       >
         {selected ? (
           <>
-            <DetailSection title="Détails">
+            <DetailSection title={t("Détails")}>
               <p className="break-words">{describeAuditLog(selected)}</p>
             </DetailSection>
             {selected.reason ? (
-              <DetailSection title="Motif">
+              <DetailSection title={t("Motif")}>
                 <p className="break-words">« {selected.reason} »</p>
               </DetailSection>
             ) : null}
-            <DetailSection title="Effectuée par">
+            <DetailSection title={t("Effectuée par")}>
               <p>{selected.performed_by_email ?? selected.performed_by}</p>
             </DetailSection>
-            <DetailSection title="Élément concerné">
+            <DetailSection title={t("Élément concerné")}>
               <p>
                 {selected.entity_type}
                 {selected.entity_id ? ` · ${selected.entity_id}` : ""}
               </p>
             </DetailSection>
-            <DetailSection title="Contexte">
-              <p>Appareil : {describeDevice(typeof selected.metadata?.user_agent === "string" ? selected.metadata.user_agent : null)}</p>
-              {selected.ip_address !== undefined ? <p>Adresse IP : {formatIp(selected.ip_address)}</p> : null}
+            <DetailSection title={t("Contexte")}>
+              <p>{t("Appareil : {describeDevice}", { describeDevice: describeDevice(typeof selected.metadata?.user_agent === "string" ? selected.metadata.user_agent : null) })}</p>
+              {selected.ip_address !== undefined ? <p>{t("Adresse IP : {ip}", { ip: formatIp(selected.ip_address) })}</p> : null}
             </DetailSection>
           </>
         ) : null}

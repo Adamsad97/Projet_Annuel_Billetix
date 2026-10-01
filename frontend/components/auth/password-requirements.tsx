@@ -1,6 +1,7 @@
 "use client";
 
 import type { PasswordRuleStatus } from "@/lib/auth/password-policy";
+import { t } from "@/lib/i18n/translate";
 
 interface PasswordRequirementsProps {
   rules: PasswordRuleStatus[];
@@ -25,13 +26,13 @@ export function PasswordRequirements({ rules, password, confirmPassword }: Passw
   return (
     <div className="rounded-xl border border-hairline-2 bg-hairline-1 p-3">
       <div className="mb-2 flex items-center justify-between gap-3 text-xs">
-        <span className="font-medium text-ink-3">Sécurité du mot de passe</span>
+        <span className="font-medium text-ink-3">{t("Sécurité du mot de passe")}</span>
         <span aria-live="polite" className={remaining === 0 ? "font-semibold text-success" : "text-ink-5"}>
           {!started
-            ? `${rules.length} règles à respecter`
+            ? t("{length} règles à respecter", { length: rules.length })
             : remaining === 0
-              ? "Mot de passe valide"
-              : `${remaining} règle${remaining > 1 ? "s" : ""} restante${remaining > 1 ? "s" : ""}`}
+              ? t("Mot de passe valide")
+              : (remaining > 1 ? t("{remaining} règles restantes", { remaining }) : t("{remaining} règle restante", { remaining }))}
         </span>
       </div>
 
@@ -48,7 +49,7 @@ export function PasswordRequirements({ rules, password, confirmPassword }: Passw
 
       <ul className="flex flex-wrap gap-1.5">
         {rules.map((rule) => (
-          <Pill key={rule.id} ok={rule.ok} label={rule.label} hint={rule.hint} />
+          <Pill key={rule.id} ok={rule.ok} label={t(rule.label)} hint={rule.hint} />
         ))}
       </ul>
 
@@ -58,7 +59,7 @@ export function PasswordRequirements({ rules, password, confirmPassword }: Passw
           className={`mt-2.5 flex items-center gap-1.5 text-xs font-medium ${matches ? "text-success" : "text-danger"}`}
         >
           {matches ? <CheckIcon /> : <CrossIcon />}
-          {matches ? "Les deux mots de passe sont identiques" : "Les deux mots de passe ne correspondent pas"}
+          {matches ? t("Les deux mots de passe sont identiques") : t("Les deux mots de passe ne correspondent pas")}
         </p>
       ) : null}
     </div>
@@ -77,7 +78,7 @@ function Pill({ ok, label, hint }: { ok: boolean; label: string; hint?: string }
       {label}
       <span className="sr-only">
         {hint ? ` (${hint})` : ""}
-        {ok ? " : respecté" : " : manquant"}
+        {ok ? t(" : respecté") : " : manquant"}
       </span>
     </li>
   );

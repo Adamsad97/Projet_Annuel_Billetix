@@ -9,6 +9,7 @@ import { getStoredUser } from "@/lib/auth/session";
 import { euros as currency } from "@/lib/format/money";
 import { shortDate as dateFormatter } from "@/lib/format/dates";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 // Initiales seulement (comme la maquette d'origine : "L. T.") — le nom
 // complet du vendeur n'a pas à être exposé publiquement sur la marketplace.
@@ -44,7 +45,7 @@ export function ResaleCard({ listing }: { listing: ApiResaleListing }) {
         <div className="flex items-center justify-between border-t border-hairline-1 pt-3">
           <div>
             <p className="text-xs text-ink-5">
-              {isOwnListing ? "Votre annonce" : `Vendu par ${sellerInitials(listing.holder_first_name, listing.holder_last_name)}`}
+              {isOwnListing ? t("Votre annonce") : t("Vendu par {sellerInitials}", { sellerInitials: sellerInitials(listing.holder_first_name, listing.holder_last_name) })}
             </p>
             <p className="font-bold text-ink-1">{currency.format(Number(listing.resale_price))}</p>
           </div>
@@ -52,16 +53,12 @@ export function ResaleCard({ listing }: { listing: ApiResaleListing }) {
             <Link
               href={`/billets/${listing.ticket_id}`}
               className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-3 transition-colors hover:border-hairline-5 hover:text-ink-1"
-            >
-              Gérer
-            </Link>
+            >{t("Gérer")}</Link>
           ) : (
             <Link
               href={`/revente/${listing.id}`}
               className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            >
-              Acheter
-            </Link>
+            >{t("Acheter")}</Link>
           )}
         </div>
       </div>

@@ -14,20 +14,21 @@ import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { filterSelectClass } from "@/components/ui/field";
 import { LoadMoreButton } from "@/components/ui/load-more-button";
+import { t, msg } from "@/lib/i18n/translate";
 
 const PAGE_SIZE = 50;
 
 const STATUS_LABELS: Record<Attendee["status"], string> = {
-  pending: "À scanner",
-  used: "Entré",
-  cancelled: "Annulé",
+  pending: msg("À scanner"),
+  used: msg("Entré"),
+  cancelled: msg("Annulé"),
 };
 
 /** Liste d'émargement au format CSV (séparateur « ; », lisible par Excel en français). */
 function downloadCsv(rows: Attendee[], fileName: string) {
   const escape = (value: string) => `"${value.replace(/"/g, '""')}"`;
   const lines = [
-    ["Nom", "Email", "Billet", "Référence", "Statut", "Date d'achat"],
+    [t("Nom"), t("Email"), t("Billet"), t("Référence"), t("Statut"), t("Date d'achat")],
     ...rows.map((row) => [row.name, row.email, row.category, row.reference, STATUS_LABELS[row.status], row.purchasedLabel]),
   ].map((cells) => cells.map(escape).join(";"));
   // BOM UTF-8 : accents corrects à l'ouverture dans Excel.
@@ -45,8 +46,8 @@ type SortOrder = "name" | "recent" | "oldest";
 
 const SORT_OPTIONS: { id: SortOrder; label: string }[] = [
   { id: "name", label: "Nom (A → Z)" },
-  { id: "recent", label: "Achat le plus récent" },
-  { id: "oldest", label: "Achat le plus ancien" },
+  { id: "recent", label: msg("Achat le plus récent") },
+  { id: "oldest", label: msg("Achat le plus ancien") },
 ];
 
 export function AttendeesExplorer({ tickets, exportName }: { tickets: ApiTicket[]; exportName: string }) {
@@ -83,10 +84,10 @@ export function AttendeesExplorer({ tickets, exportName }: { tickets: ApiTicket[
 
   const count = (value: Attendee["status"]) => beforeStatus.filter((attendee) => attendee.status === value).length;
   const statusOptions = [
-    { id: "all", label: "Tous", count: beforeStatus.length },
-    { id: "pending", label: "À scanner", count: count("pending") },
-    { id: "used", label: "Entrés", count: count("used") },
-    { id: "cancelled", label: "Annulés", count: count("cancelled") },
+    { id: "all", label: t("Tous"), count: beforeStatus.length },
+    { id: "pending", label: t("À scanner"), count: count("pending") },
+    { id: "used", label: t("Entrés"), count: count("used") },
+    { id: "cancelled", label: t("Annulés"), count: count("cancelled") },
   ];
 
   const hasFilters = search.trim() !== "" || status !== "all" || category !== "";
@@ -100,9 +101,7 @@ export function AttendeesExplorer({ tickets, exportName }: { tickets: ApiTicket[
 
   if (attendees.length === 0) {
     return (
-      <p className={cardClass("px-5 py-8 text-center text-sm text-ink-5")}>
-        Aucun participant pour cet événement.
-      </p>
+      <p className={cardClass("px-5 py-8 text-center text-sm text-ink-5")}>{t("Aucun participant pour cet événement.")}</p>
     );
   }
 
@@ -115,17 +114,15 @@ export function AttendeesExplorer({ tickets, exportName }: { tickets: ApiTicket[
             setSearch(value);
             setVisible(PAGE_SIZE);
           }}
-          placeholder="Nom, email ou référence du billet…"
+          placeholder={t("Nom, email ou référence du billet…")}
           className="w-full sm:max-w-sm"
         />
         <div className="flex flex-wrap items-center gap-2">
           {categories.length > 1 ? (
-            <FilterMenu label="Type de billet" value={category} active={category !== ""} align="right">
+            <FilterMenu label={t("Type de billet")} value={category} active={category !== ""} align="right">
               {(close) => (
                 <div role="menu">
-                  <FilterOption selected={category === ""} onSelect={() => { setCategory(""); close(); }}>
-                    Tous les billets
-                  </FilterOption>
+                  <FilterOption selected={category === ""} onSelect={() => { setCategory(""); close(); }}>{t("Tous les billets")}</FilterOption>
                   {categories.map((name) => (
                     <FilterOption key={name} selected={category === name} onSelect={() => { setCategory(name); close(); }}>
                       {name}
@@ -136,7 +133,7 @@ export function AttendeesExplorer({ tickets, exportName }: { tickets: ApiTicket[
             </FilterMenu>
           ) : null}
           <label className="flex items-center gap-2 text-sm text-ink-5">
-            <span className="sr-only">Trier par</span>
+            <span className="sr-only">{t("Trier par")}</span>
             <select
               value={sort}
               onChange={(event) => setSort(event.target.value as SortOrder)}
@@ -144,7 +141,7 @@ export function AttendeesExplorer({ tickets, exportName }: { tickets: ApiTicket[
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.id} value={option.id}>
-                  {option.label}
+                  {t(option.label)}
                 </option>
               ))}
             </select>
@@ -162,25 +159,24 @@ export function AttendeesExplorer({ tickets, exportName }: { tickets: ApiTicket[
           }}
         />
         {hasFilters ? (
-          <button type="button" onClick={reset} className="text-sm font-medium text-link hover:text-link-hover">
-            Réinitialiser
-          </button>
+          <button type="button" onClick={reset} className="text-sm font-medium text-link hover:text-link-hover">{t("Réinitialiser")}</button>
         ) : null}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-ink-5" role="status">
-          {filtered.length} participant{filtered.length > 1 ? "s" : ""}
-          {filtered.length !== attendees.length ? ` sur ${attendees.length}` : ""}
+          {filtered.length !== attendees.length
+            ? t("{count} sur {total}", { count: filtered.length, total: attendees.length })
+            : filtered.length > 1
+              ? t("{count} participants", { count: filtered.length })
+              : t("{count} participant", { count: filtered.length })}
         </p>
         <button
           type="button"
           onClick={() => downloadCsv(filtered, `${exportName}.csv`)}
           disabled={filtered.length === 0}
           className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm disabled:opacity-40")}
-        >
-          Exporter la liste (CSV)
-        </button>
+        >{t("Exporter la liste (CSV)")}</button>
       </div>
 
       <div className={cardClass("overflow-hidden")}>
@@ -188,10 +184,8 @@ export function AttendeesExplorer({ tickets, exportName }: { tickets: ApiTicket[
           filtered.slice(0, visible).map((attendee) => <AttendeeRow key={attendee.id} attendee={attendee} />)
         ) : (
           <div className="flex flex-col items-center gap-2 px-5 py-8 text-center">
-            <p className="text-sm text-ink-5">Aucun participant ne correspond à ces critères.</p>
-            <button type="button" onClick={reset} className="text-sm font-medium text-link hover:text-link-hover">
-              Réinitialiser
-            </button>
+            <p className="text-sm text-ink-5">{t("Aucun participant ne correspond à ces critères.")}</p>
+            <button type="button" onClick={reset} className="text-sm font-medium text-link hover:text-link-hover">{t("Réinitialiser")}</button>
           </div>
         )}
       </div>

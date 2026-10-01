@@ -3,6 +3,7 @@
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import "./leaflet-icon-fix";
+import { t } from "@/lib/i18n/translate";
 
 export default function EventLocationMapInner({
   latitude,
@@ -22,7 +23,7 @@ export default function EventLocationMapInner({
         style={{ height: 280, width: "100%" }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          attribution={t("&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a>")}
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <Marker position={[latitude, longitude]}>

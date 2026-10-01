@@ -1,6 +1,7 @@
 "use client";
 
 import { FileDropzone } from "@/components/ui/file-dropzone";
+import { t } from "@/lib/i18n/translate";
 
 const ACCEPTED = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 10 * 1024 * 1024; // aligné sur la passerelle (POST /upload/document)
@@ -19,7 +20,7 @@ export function DocumentDropzone({
     <FileDropzone
       accept={ACCEPTED}
       maxBytes={MAX_SIZE}
-      formatsLabel="PDF, JPEG, PNG ou WebP"
+      formatsLabel={t("PDF, JPEG, PNG ou WebP")}
       onFileSelected={onFileSelected}
       disabled={disabled}
     >
@@ -31,7 +32,7 @@ export function DocumentDropzone({
           ) : (
             <span className="px-4 text-sm text-ink-5">{hint}</span>
           )}
-          <span className="text-xs text-ink-6">PDF, JPEG, PNG ou WebP — 10 Mo max</span>
+          <span className="text-xs text-ink-6">{t("PDF, JPEG, PNG ou WebP — 10 Mo max")}</span>
         </>
       )}
     </FileDropzone>

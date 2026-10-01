@@ -25,6 +25,7 @@ import { MutedMessage } from "@/components/ui/muted-message";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<ApiCategory[] | undefined>(undefined);
@@ -45,10 +46,10 @@ export default function AdminCategoriesPage() {
   useEffect(() => {
     listAllCategories()
       .then(setCategories)
-      .catch((err) => setCategoriesError(err instanceof ApiError ? err.message : "Impossible de charger les catégories."));
+      .catch((err) => setCategoriesError(err instanceof ApiError ? err.message : t("Impossible de charger les catégories.")));
     listAllTicketTierTypes()
       .then(setTierTypes)
-      .catch((err) => setTierTypesError(err instanceof ApiError ? err.message : "Impossible de charger les noms de catégorie de billet."));
+      .catch((err) => setTierTypesError(err instanceof ApiError ? err.message : t("Impossible de charger les noms de catégorie de billet.")));
   }, []);
 
   async function handleCreateCategory(event: FormEvent<HTMLFormElement>) {
@@ -67,7 +68,7 @@ export default function AdminCategoriesPage() {
       setNewLabel("");
       setNewEmoji("");
     } catch (err) {
-      setCategoriesError(err instanceof ApiError ? err.message : "Impossible de créer la catégorie.");
+      setCategoriesError(err instanceof ApiError ? err.message : t("Impossible de créer la catégorie."));
     } finally {
       setCreatingCategory(false);
     }
@@ -84,7 +85,7 @@ export default function AdminCategoriesPage() {
       });
       setCategories((prev) => prev?.map((category) => (category.id === id ? updated : category)));
     } catch (err) {
-      setCategoriesError(err instanceof ApiError ? err.message : "Impossible de modifier la catégorie.");
+      setCategoriesError(err instanceof ApiError ? err.message : t("Impossible de modifier la catégorie."));
       throw err;
     }
   }
@@ -95,15 +96,15 @@ export default function AdminCategoriesPage() {
       const updated = await updateCategory(id, { is_active: isActive });
       setCategories((prev) => prev?.map((category) => (category.id === id ? updated : category)));
     } catch (err) {
-      setCategoriesError(err instanceof ApiError ? err.message : "Impossible de modifier la catégorie.");
+      setCategoriesError(err instanceof ApiError ? err.message : t("Impossible de modifier la catégorie."));
     }
   }
 
   function handleDeleteCategory(id: string) {
     setDialog({
-      title: "Supprimer cette catégorie ?",
-      message: "Définitif — impossible si elle est déjà utilisée par un événement (désactive-la plutôt dans ce cas).",
-      confirmLabel: "Supprimer",
+      title: t("Supprimer cette catégorie ?"),
+      message: t("Définitif — impossible si elle est déjà utilisée par un événement (désactivez-la plutôt dans ce cas)."),
+      confirmLabel: t("Supprimer"),
       danger: true,
       onConfirm: async () => {
         setCategoriesError(null);
@@ -111,7 +112,7 @@ export default function AdminCategoriesPage() {
           await deleteCategory(id);
           setCategories((prev) => prev?.filter((category) => category.id !== id));
         } catch (err) {
-          setCategoriesError(err instanceof ApiError ? err.message : "Impossible de supprimer la catégorie.");
+          setCategoriesError(err instanceof ApiError ? err.message : t("Impossible de supprimer la catégorie."));
         }
       },
     });
@@ -131,7 +132,7 @@ export default function AdminCategoriesPage() {
       setNewTierLabel("");
       setNewTierEmoji("");
     } catch (err) {
-      setTierTypesError(err instanceof ApiError ? err.message : "Impossible de créer ce nom de catégorie de billet.");
+      setTierTypesError(err instanceof ApiError ? err.message : t("Impossible de créer ce nom de catégorie de billet."));
     } finally {
       setCreatingTierType(false);
     }
@@ -143,7 +144,7 @@ export default function AdminCategoriesPage() {
       const updated = await updateTicketTierType(id, { label: dto.label, emoji: dto.emoji || undefined, display_order: dto.display_order });
       setTierTypes((prev) => prev?.map((type) => (type.id === id ? updated : type)));
     } catch (err) {
-      setTierTypesError(err instanceof ApiError ? err.message : "Impossible de modifier ce nom de catégorie de billet.");
+      setTierTypesError(err instanceof ApiError ? err.message : t("Impossible de modifier ce nom de catégorie de billet."));
     }
   }
 
@@ -153,15 +154,15 @@ export default function AdminCategoriesPage() {
       const updated = await updateTicketTierType(id, { is_active: isActive });
       setTierTypes((prev) => prev?.map((type) => (type.id === id ? updated : type)));
     } catch (err) {
-      setTierTypesError(err instanceof ApiError ? err.message : "Impossible de modifier ce nom de catégorie de billet.");
+      setTierTypesError(err instanceof ApiError ? err.message : t("Impossible de modifier ce nom de catégorie de billet."));
     }
   }
 
   function handleDeleteTierType(id: string) {
     setDialog({
-      title: "Supprimer ce nom de catégorie de billet ?",
-      message: "Définitif — impossible s'il est déjà utilisé par une catégorie de billet (désactive-le plutôt dans ce cas).",
-      confirmLabel: "Supprimer",
+      title: t("Supprimer ce nom de catégorie de billet ?"),
+      message: t("Définitif — impossible s'il est déjà utilisé par une catégorie de billet (désactivez-le plutôt dans ce cas)."),
+      confirmLabel: t("Supprimer"),
       danger: true,
       onConfirm: async () => {
         setTierTypesError(null);
@@ -169,7 +170,7 @@ export default function AdminCategoriesPage() {
           await deleteTicketTierType(id);
           setTierTypes((prev) => prev?.filter((type) => type.id !== id));
         } catch (err) {
-          setTierTypesError(err instanceof ApiError ? err.message : "Impossible de supprimer ce nom de catégorie de billet.");
+          setTierTypesError(err instanceof ApiError ? err.message : t("Impossible de supprimer ce nom de catégorie de billet."));
         }
       },
     });
@@ -178,24 +179,19 @@ export default function AdminCategoriesPage() {
   return (
     <AdminShell active="/admin/categories">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-ink-1">Catégories</h1>
-        <p className="mt-1 text-sm text-ink-5">
-          Ces listes alimentent les listes déroulantes du formulaire de
-          création d&apos;événement côté organisateur : catégories, noms de
-          billets et taux de TVA. Désactivez une entrée plutôt que de la
-          supprimer si elle est déjà utilisée.
-        </p>
+        <h1 className="text-2xl font-bold text-ink-1">{t("Catégories")}</h1>
+        <p className="mt-1 text-sm text-ink-5">{t("Ces listes alimentent les listes déroulantes du formulaire de création d'événement côté organisateur : catégories, noms de billets et taux de TVA. Désactivez une entrée plutôt que de la supprimer si elle est déjà utilisée.")}</p>
       </div>
 
       <section className="mb-10">
-        <h2 className="mb-3 text-lg font-semibold text-ink-1">Catégories d&apos;événement</h2>
+        <h2 className="mb-3 text-lg font-semibold text-ink-1">{t("Catégories d'événement")}</h2>
 
         <form
           onSubmit={handleCreateCategory}
           className={cardClass("mb-4 flex flex-wrap items-end gap-3 p-4")}
         >
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-accent/80">Emoji</span>
+            <span className="text-xs font-medium text-accent/80">{t("Emoji")}</span>
             <input
               value={newEmoji}
               onChange={(event) => setNewEmoji(event.target.value)}
@@ -205,24 +201,24 @@ export default function AdminCategoriesPage() {
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-accent/80">Code *</span>
+            <span className="text-xs font-medium text-accent/80">{t("Code *")}</span>
             <input
               required
               value={newCode}
               onChange={(event) => setNewCode(event.target.value.toUpperCase())}
               placeholder="EXPOSITION"
               pattern="[A-Z][A-Z0-9_]*"
-              title="Majuscules, chiffres et underscore uniquement"
+              title={t("Majuscules, chiffres et underscore uniquement")}
               className={fieldClass("w-40 px-3 py-2")}
             />
           </label>
           <label className="flex flex-1 flex-col gap-1.5">
-            <span className="text-xs font-medium text-accent/80">Libellé *</span>
+            <span className="text-xs font-medium text-accent/80">{t("Libellé *")}</span>
             <input
               required
               value={newLabel}
               onChange={(event) => setNewLabel(event.target.value)}
-              placeholder="Exposition"
+              placeholder={t("Exposition")}
               className={fieldClass("w-full px-3 py-2")}
             />
           </label>
@@ -231,7 +227,7 @@ export default function AdminCategoriesPage() {
             disabled={creatingCategory}
             className={buttonClass("primary", "rounded-full px-5 py-2.5 text-sm disabled:opacity-50")}
           >
-            {creatingCategory ? "Ajout…" : "+ Ajouter"}
+            {creatingCategory ? t("Ajout…") : "+ Ajouter"}
           </button>
         </form>
 
@@ -244,15 +240,13 @@ export default function AdminCategoriesPage() {
         {categories === undefined ? (
           <MutedMessage />
         ) : categories.length === 0 ? (
-          <div className={cardClass("px-5 py-10 text-center text-sm text-ink-5")}>
-            Aucune catégorie — ajoutez la première ci-dessus.
-          </div>
+          <div className={cardClass("px-5 py-10 text-center text-sm text-ink-5")}>{t("Aucune catégorie — ajoutez la première ci-dessus.")}</div>
         ) : (
           <div className={cardClass("overflow-hidden")}>
             <div className="grid grid-cols-[60px_1fr_90px_auto] gap-3 border-b border-hairline-1 px-4 py-2 text-xs font-medium uppercase tracking-wide text-ink-5">
               <span />
-              <span>Catégorie</span>
-              <span className="text-center">Ordre</span>
+              <span>{t("Catégorie")}</span>
+              <span className="text-center">{t("Ordre")}</span>
               <span />
             </div>
             {categories.map((category) => (
@@ -269,18 +263,15 @@ export default function AdminCategoriesPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-ink-1">Catégories de billets</h2>
-        <p className="mb-3 text-sm text-ink-5">
-          Noms disponibles quand un organisateur ajoute une catégorie de
-          billet à son événement (ex: Standard, VIP) — plus de saisie libre.
-        </p>
+        <h2 className="mb-3 text-lg font-semibold text-ink-1">{t("Catégories de billets")}</h2>
+        <p className="mb-3 text-sm text-ink-5">{t("Noms disponibles quand un organisateur ajoute une catégorie de billet à son événement (ex: Standard, VIP) — plus de saisie libre.")}</p>
 
         <form
           onSubmit={handleCreateTierType}
           className={cardClass("mb-4 flex flex-wrap items-end gap-3 p-4")}
         >
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-accent/80">Emoji</span>
+            <span className="text-xs font-medium text-accent/80">{t("Emoji")}</span>
             <input
               value={newTierEmoji}
               onChange={(event) => setNewTierEmoji(event.target.value)}
@@ -290,12 +281,12 @@ export default function AdminCategoriesPage() {
             />
           </label>
           <label className="flex flex-1 flex-col gap-1.5">
-            <span className="text-xs font-medium text-accent/80">Nom *</span>
+            <span className="text-xs font-medium text-accent/80">{t("Nom *")}</span>
             <input
               required
               value={newTierLabel}
               onChange={(event) => setNewTierLabel(event.target.value)}
-              placeholder="Early Bird"
+              placeholder={t("Early Bird")}
               className={fieldClass("w-full px-3 py-2")}
             />
           </label>
@@ -304,7 +295,7 @@ export default function AdminCategoriesPage() {
             disabled={creatingTierType}
             className={buttonClass("primary", "rounded-full px-5 py-2.5 text-sm disabled:opacity-50")}
           >
-            {creatingTierType ? "Ajout…" : "+ Ajouter"}
+            {creatingTierType ? t("Ajout…") : "+ Ajouter"}
           </button>
         </form>
 
@@ -317,15 +308,13 @@ export default function AdminCategoriesPage() {
         {tierTypes === undefined ? (
           <MutedMessage />
         ) : tierTypes.length === 0 ? (
-          <div className={cardClass("px-5 py-10 text-center text-sm text-ink-5")}>
-            Aucun nom — ajoutez le premier ci-dessus.
-          </div>
+          <div className={cardClass("px-5 py-10 text-center text-sm text-ink-5")}>{t("Aucun nom — ajoutez le premier ci-dessus.")}</div>
         ) : (
           <div className={cardClass("overflow-hidden")}>
             <div className="grid grid-cols-[60px_1fr_90px_auto] gap-3 border-b border-hairline-1 px-4 py-2 text-xs font-medium uppercase tracking-wide text-ink-5">
               <span />
-              <span>Nom</span>
-              <span className="text-center">Ordre</span>
+              <span>{t("Nom")}</span>
+              <span className="text-center">{t("Ordre")}</span>
               <span />
             </div>
             {tierTypes.map((type) => (

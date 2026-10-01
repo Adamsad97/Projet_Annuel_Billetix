@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LocationPinIcon } from "@/components/ui/location-pin-icon";
 import { distanceKm, formatDistance, requestUserPosition, useUserPosition } from "@/lib/geo/user-position";
+import { t } from "@/lib/i18n/translate";
 
 interface Coordinates {
   latitude: number | null;
@@ -15,7 +16,7 @@ export function EventDistanceChip({ latitude, longitude }: Coordinates) {
   if (!position || latitude === null || longitude === null) return null;
   return (
     <li
-      title="Distance à vol d'oiseau depuis votre position"
+      title={t("Distance à vol d'oiseau depuis votre position")}
       className="inline-flex items-center gap-2 rounded-full border border-hairline-3 px-3 py-1.5 text-sm text-ink-3"
     >
       <span className="flex shrink-0 text-ink-4">
@@ -36,9 +37,7 @@ export function EventDistanceLine({ latitude, longitude }: Coordinates) {
 
   if (position) {
     return (
-      <dd className="text-sm text-white/70" title="Distance à vol d'oiseau depuis votre position">
-        {formatDistance(distanceKm(position, { lat: latitude, lng: longitude }))} de vous
-      </dd>
+      <dd className="text-sm text-white/70" title={t("Distance à vol d'oiseau depuis votre position")}>{t("{distance} de vous", { distance: formatDistance(distanceKm(position, { lat: latitude, lng: longitude })) })}</dd>
     );
   }
 
@@ -62,7 +61,7 @@ export function EventDistanceLine({ latitude, longitude }: Coordinates) {
         disabled={locating}
         className="font-medium text-white/80 underline decoration-white/30 underline-offset-4 transition-colors hover:text-white disabled:opacity-60"
       >
-        {locating ? "Localisation…" : "Afficher la distance depuis ma position"}
+        {locating ? t("Localisation…") : t("Afficher la distance depuis ma position")}
       </button>
       {error ? <span className="mt-1 block text-xs text-red-300">{error}</span> : null}
     </dd>

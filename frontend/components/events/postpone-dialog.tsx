@@ -8,6 +8,7 @@ import { FormError } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/field";
 import { longDateTime } from "@/lib/format/dates";
+import { t } from "@/lib/i18n/translate";
 
 export type PostponeDialogResult =
   | { mode: "request"; reason: string; dates: { start: string; end: string } | null }
@@ -49,7 +50,7 @@ export function PostponeDialog({
     event.preventDefault();
     setError(null);
     if (mode === "request" && !reason.trim()) {
-      setError("Expliquez la raison du report : elle est communiquée aux acheteurs.");
+      setError(t("Expliquez la raison du report : elle est communiquée aux acheteurs."));
       return;
     }
     let dates: { start: string; end: string } | null = null;
@@ -57,15 +58,15 @@ export function PostponeDialog({
       const startIso = toIso(start);
       const endIso = toIso(end);
       if (!startIso || !endIso) {
-        setError("Indiquez la date et l'heure de début et de fin.");
+        setError(t("Indiquez la date et l'heure de début et de fin."));
         return;
       }
       if (new Date(startIso) <= new Date(currentStart)) {
-        setError(`La nouvelle date doit être postérieure au ${longDateTime.format(new Date(currentStart))}.`);
+        setError(t("La nouvelle date doit être postérieure au {value}.", { value: longDateTime.format(new Date(currentStart)) }));
         return;
       }
       if (new Date(endIso) <= new Date(startIso)) {
-        setError("La fin doit être postérieure au début.");
+        setError(t("La fin doit être postérieure au début."));
         return;
       }
       dates = { start: startIso, end: endIso };
@@ -76,7 +77,7 @@ export function PostponeDialog({
         mode === "request" ? { mode, reason: reason.trim(), dates } : { mode, dates: dates as { start: string; end: string } },
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "L'envoi a échoué, veuillez réessayer.");
+      setError(err instanceof Error ? err.message : t("L'envoi a échoué, veuillez réessayer."));
     } finally {
       setSending(false);
     }
@@ -86,38 +87,36 @@ export function PostponeDialog({
     <Modal open={open} onClose={onClose} dismissible={!sending} labelledBy={`${id}-title`} className="bg-black/70 p-4 sm:p-6">
       <form onSubmit={submit} className="flex max-h-full w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-hairline-2 bg-card p-6 shadow-2xl">
         <h2 id={`${id}-title`} className="text-lg font-bold text-ink-1">
-          {mode === "request" ? "Demander le report de l'événement" : "Fixer la nouvelle date"}
+          {mode === "request" ? t("Demander le report de l'événement") : t("Fixer la nouvelle date")}
         </h2>
         <p className="mt-1 text-sm font-medium text-ink-2">{eventTitle}</p>
         <p className="mt-2 text-sm text-ink-4">
           {mode === "request"
-            ? "Votre demande est examinée par l'administration ; l'événement reste en vente en attendant. Une fois le report accepté, les acheteurs sont prévenus par email : leur billet reste valable pour la nouvelle date, et ils peuvent demander le remboursement."
-            : "Les ventes et le contrôle des billets reprennent à cette date. Les acheteurs sont prévenus par email et peuvent demander le remboursement pendant le délai prévu."}
+            ? t("Votre demande est examinée par l'administration ; l'événement reste en vente en attendant. Une fois le report accepté, les acheteurs sont prévenus par email : leur billet reste valable pour la nouvelle date, et ils peuvent demander le remboursement.")
+            : t("Les ventes et le contrôle des billets reprennent à cette date. Les acheteurs sont prévenus par email et peuvent demander le remboursement pendant le délai prévu.")}
         </p>
 
         {error ? <FormError className="mt-4">{error}</FormError> : null}
 
         {mode === "request" ? (
           <>
-            <label htmlFor={`${id}-reason`} className="mt-4 text-sm font-medium text-ink-2">
-              Motif du report *
-            </label>
+            <label htmlFor={`${id}-reason`} className="mt-4 text-sm font-medium text-ink-2">{t("Motif du report *")}</label>
             <textarea
               id={`${id}-reason`}
               rows={3}
               maxLength={2000}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Ex. : salle indisponible, artiste malade…"
+              placeholder={t("Ex. : salle indisponible, artiste malade…")}
               className={fieldClass("mt-1.5 w-full resize-none px-3 py-2")}
             />
 
             <fieldset className="mt-4">
-              <legend className="text-sm font-medium text-ink-2">Nouvelle date</legend>
+              <legend className="text-sm font-medium text-ink-2">{t("Nouvelle date")}</legend>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {[
-                  { known: true, label: "Je la connais", hint: "Elle est communiquée aux acheteurs." },
-                  { known: false, label: "Date à venir", hint: "Ventes et contrôle suspendus jusqu'à ce que vous la fixiez." },
+                  { known: true, label: t("Je la connais"), hint: t("Elle est communiquée aux acheteurs.") },
+                  { known: false, label: t("Date à venir"), hint: t("Ventes et contrôle suspendus jusqu'à ce que vous la fixiez.") },
                 ].map((option) => (
                   <label
                     key={String(option.known)}
@@ -132,8 +131,8 @@ export function PostponeDialog({
                       onChange={() => setDateKnown(option.known)}
                       className="sr-only"
                     />
-                    <span className="block font-semibold text-ink-1">{option.label}</span>
-                    <span className="mt-0.5 block text-xs text-ink-5">{option.hint}</span>
+                    <span className="block font-semibold text-ink-1">{t(option.label)}</span>
+                    <span className="mt-0.5 block text-xs text-ink-5">{t(option.hint)}</span>
                   </label>
                 ))}
               </div>
@@ -143,23 +142,17 @@ export function PostponeDialog({
 
         {needsDates ? (
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">
-              Début *
-              <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className={fieldClass("px-3 py-2.5")} />
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">{t("Début *")}<input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className={fieldClass("px-3 py-2.5")} />
             </label>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">
-              Fin *
-              <input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className={fieldClass("px-3 py-2.5")} />
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-2">{t("Fin *")}<input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className={fieldClass("px-3 py-2.5")} />
             </label>
           </div>
         ) : null}
 
         <div className="mt-6 flex justify-end gap-2">
-          <button type="button" onClick={onClose} disabled={sending} className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}>
-            Annuler
-          </button>
+          <button type="button" onClick={onClose} disabled={sending} className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}>{t("Annuler")}</button>
           <button type="submit" disabled={sending} className={buttonClass("primary", "rounded-full px-5 py-2 text-sm disabled:opacity-50")}>
-            {sending ? "Envoi…" : mode === "request" ? "Envoyer la demande" : "Enregistrer la nouvelle date"}
+            {sending ? t("Envoi…") : mode === "request" ? t("Envoyer la demande") : t("Enregistrer la nouvelle date")}
           </button>
         </div>
       </form>

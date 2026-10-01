@@ -1,11 +1,13 @@
 import { Navbar } from "@/components/layout/navbar";
 import { OrderConfirmation } from "@/components/checkout/order-confirmation";
+import { getT } from "@/lib/i18n/server";
 
 export default async function OrderConfirmationPage({
   searchParams,
 }: {
   searchParams: Promise<{ order_id?: string }>;
 }) {
+  const t = await getT();
   const { order_id } = await searchParams;
 
   return (
@@ -13,9 +15,7 @@ export default async function OrderConfirmationPage({
       <Navbar active="/evenements" />
 
       {!order_id ? (
-        <main className="flex flex-1 items-center justify-center px-6 py-10 text-center text-sm text-ink-5">
-          Aucune commande à afficher.
-        </main>
+        <main className="flex flex-1 items-center justify-center px-6 py-10 text-center text-sm text-ink-5">{t("Aucune commande à afficher.")}</main>
       ) : (
         <OrderConfirmation orderId={order_id} />
       )}

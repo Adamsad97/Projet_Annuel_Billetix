@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ApiTicketTierType } from "@/lib/api/ticket-tier-types";
+import { t } from "@/lib/i18n/translate";
 
 export function TicketTierTypeRow({
   type,
@@ -56,16 +57,12 @@ export function TicketTierTypeRow({
             disabled={busy}
             onClick={handleSave}
             className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            Enregistrer
-          </button>
+          >{t("Enregistrer")}</button>
           <button
             type="button"
             onClick={() => setEditing(false)}
             className="rounded-lg border border-hairline-2 px-3 py-1.5 text-xs font-medium text-ink-3 hover:border-hairline-4"
-          >
-            Annuler
-          </button>
+          >{t("Annuler")}</button>
         </div>
       </div>
     );
@@ -75,7 +72,7 @@ export function TicketTierTypeRow({
     <div className="grid grid-cols-[60px_1fr_90px_auto] items-center gap-3 border-b border-hairline-1 px-4 py-3 last:border-b-0">
       <span className="text-center text-xl">{type.emoji || "🏷️"}</span>
       <p className={type.is_active ? "text-sm font-medium text-ink-1" : "text-sm font-medium text-ink-5 line-through"}>
-        {type.label}
+        {t(type.label)}
       </p>
       <span className="text-center text-sm text-ink-4">{type.display_order}</span>
       <div className="flex items-center gap-2">
@@ -88,22 +85,18 @@ export function TicketTierTypeRow({
               : "rounded-full border border-hairline-2 bg-hairline-1 px-3 py-1 text-xs font-medium text-ink-4 transition-colors hover:border-hairline-4"
           }
         >
-          {type.is_active ? "Désactiver" : "Activer"}
+          {type.is_active ? t("Désactiver") : t("Activer")}
         </button>
         <button
           type="button"
           onClick={() => setEditing(true)}
           className="rounded-lg border border-hairline-2 px-2.5 py-1 text-xs font-medium text-ink-3 transition-colors hover:border-hairline-4"
-        >
-          Modifier
-        </button>
+        >{t("Modifier")}</button>
         <button
           type="button"
           onClick={() => onDelete(type.id)}
           className="rounded-lg border border-hairline-2 px-2.5 py-1 text-xs font-medium text-red-400 transition-colors hover:border-red-500/30 hover:bg-red-500/5"
-        >
-          Supprimer
-        </button>
+        >{t("Supprimer")}</button>
       </div>
     </div>
   );

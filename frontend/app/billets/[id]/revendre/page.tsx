@@ -13,6 +13,7 @@ import { Alert } from "@/components/ui/alert";
 import { BackLink } from "@/components/ui/back-link";
 import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 export default function ResellTicketPage({
   params,
@@ -35,7 +36,7 @@ export default function ResellTicketPage({
           setTicket(null);
         } else {
           setError(
-            err instanceof ApiError ? err.message : "Impossible de charger ce billet.",
+            err instanceof ApiError ? err.message : t("Impossible de charger ce billet."),
           );
         }
       });
@@ -46,7 +47,7 @@ export default function ResellTicketPage({
 
   return (
     <PageShell width="md">
-      <BackLink href={`/billets/${id}`}>Retour au billet</BackLink>
+      <BackLink href={`/billets/${id}`}>{t("Retour au billet")}</BackLink>
 
       {ticket === undefined ? (
         <MutedMessage />
@@ -57,20 +58,18 @@ export default function ResellTicketPage({
       ) : ticket === null ? (
         <div className={cardClass("p-8 text-center")}>
           <div className="mb-3 text-4xl">🎫</div>
-          <h1 className="text-lg font-bold text-ink-1">Page introuvable</h1>
-          <p className="mt-2 text-sm text-ink-5">
-            Ce billet n&apos;existe pas, ou la page que vous cherchez a changé d&apos;adresse.
-          </p>
+          <h1 className="text-lg font-bold text-ink-1">{t("Page introuvable")}</h1>
+          <p className="mt-2 text-sm text-ink-5">{t("Ce billet n'existe pas, ou la page que vous cherchez a changé d'adresse.")}</p>
         </div>
       ) : ticket.status === "valid" ? (
         <ResellForm ticket={ticket} />
       ) : (
         <p className={cardClass("px-5 py-8 text-center text-sm text-ink-5")}>
           {ticket.status === "for_resale"
-            ? "Ce billet est déjà en cours de revente."
+            ? t("Ce billet est déjà en cours de revente.")
             : ticket.status === "used"
-              ? "Ce billet a déjà été utilisé et ne peut pas être remis en revente."
-              : "Ce billet a été annulé ou remboursé et ne peut pas être remis en revente."}
+              ? t("Ce billet a déjà été utilisé et ne peut pas être remis en revente.")
+              : t("Ce billet a été annulé ou remboursé et ne peut pas être remis en revente.")}
         </p>
       )}
     </PageShell>

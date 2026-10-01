@@ -3,6 +3,7 @@
 
 import type { ListEventsParams } from "@/lib/api/events";
 import { dayMonth as shortDate } from "@/lib/format/dates";
+import { t, msg } from "@/lib/i18n/translate";
 
 export type WhenFilter = "all" | "today" | "tomorrow" | "weekend" | "week" | "month" | "custom";
 export type PriceFilter = "all" | "free" | "custom";
@@ -35,20 +36,20 @@ export const DEFAULT_FILTERS: CatalogueFilters = {
 };
 
 export const WHEN_OPTIONS: { id: WhenFilter; label: string }[] = [
-  { id: "all", label: "Toutes les dates" },
-  { id: "today", label: "Aujourd'hui" },
-  { id: "tomorrow", label: "Demain" },
-  { id: "weekend", label: "Ce week-end" },
-  { id: "week", label: "Cette semaine" },
-  { id: "month", label: "Ce mois-ci" },
-  { id: "custom", label: "Choisir des dates" },
+  { id: "all", label: msg("Toutes les dates") },
+  { id: "today", label: msg("Aujourd'hui") },
+  { id: "tomorrow", label: msg("Demain") },
+  { id: "weekend", label: msg("Ce week-end") },
+  { id: "week", label: msg("Cette semaine") },
+  { id: "month", label: msg("Ce mois-ci") },
+  { id: "custom", label: msg("Choisir des dates") },
 ];
 
 export const SORT_OPTIONS: { id: SortOrder; label: string }[] = [
-  { id: "date", label: "Date la plus proche" },
-  { id: "recent", label: "Nouveautés" },
-  { id: "price_asc", label: "Prix croissant" },
-  { id: "price_desc", label: "Prix décroissant" },
+  { id: "date", label: msg("Date la plus proche") },
+  { id: "recent", label: msg("Nouveautés") },
+  { id: "price_asc", label: msg("Prix croissant") },
+  { id: "price_desc", label: msg("Prix décroissant") },
 ];
 
 export const RADIUS_OPTIONS_KM = [5, 10, 25, 50, 100] as const;
@@ -59,7 +60,7 @@ export const MAX_RADIUS_KM = RADIUS_OPTIONS_KM[RADIUS_OPTIONS_KM.length - 1];
 
 /** « À moins de 25 km » ou « Plus de 100 km ». */
 export function distanceLabel(radiusKm: number): string {
-  return radiusKm === BEYOND_MAX_RADIUS ? `Plus de ${MAX_RADIUS_KM} km` : `À moins de ${radiusKm} km`;
+  return radiusKm === BEYOND_MAX_RADIUS ? t("Plus de {MAX_RADIUS_KM} km", { MAX_RADIUS_KM }) : t("À moins de {radiusKm} km", { radiusKm });
 }
 
 function startOfDay(date: Date): Date {
@@ -144,23 +145,23 @@ export function whenLabel(filters: CatalogueFilters): string {
   if (filters.when === "custom") {
     const from = parseDay(filters.from);
     const to = parseDay(filters.to);
-    if (from && to) return `Du ${shortDate.format(from)} au ${shortDate.format(to)}`;
-    if (from) return `À partir du ${shortDate.format(from)}`;
-    if (to) return `Jusqu'au ${shortDate.format(to)}`;
+    if (from && to) return t("Du {value} au {value2}", { value: shortDate.format(from), value2: shortDate.format(to) });
+    if (from) return t("À partir du {value}", { value: shortDate.format(from) });
+    if (to) return t("Jusqu'au {value}", { value: shortDate.format(to) });
   }
-  return WHEN_OPTIONS.find((option) => option.id === filters.when)?.label ?? "Toutes les dates";
+  return t(WHEN_OPTIONS.find((option) => option.id === filters.when)?.label ?? "Toutes les dates");
 }
 
 export function priceLabel(filters: CatalogueFilters): string {
-  if (filters.price === "free") return "Gratuit";
+  if (filters.price === "free") return t("Gratuit");
   if (filters.price === "custom") {
     const min = toNumber(filters.minPrice);
     const max = toNumber(filters.maxPrice);
     if (min !== undefined && max !== undefined) return `${min} € – ${max} €`;
-    if (min !== undefined) return `À partir de ${min} €`;
-    if (max !== undefined) return `Jusqu'à ${max} €`;
+    if (min !== undefined) return t("À partir de {min} €", { min });
+    if (max !== undefined) return t("Jusqu'à {max} €", { max });
   }
-  return "Tous les prix";
+  return t("Tous les prix");
 }
 
 // ─── URL ────────────────────────────────────────────────────────────────────

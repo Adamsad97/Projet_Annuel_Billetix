@@ -9,6 +9,7 @@ import { buttonClass } from "@/components/ui/button";
 import { fieldClass } from "@/components/ui/field";
 import { euros } from "@/lib/format/money";
 import type { ResolveDisputeInput } from "@/lib/api/admin";
+import { t } from "@/lib/i18n/translate";
 
 type Choice = "accept" | "reject" | "close";
 type Refund = "full" | "partial" | "none";
@@ -37,7 +38,7 @@ export function DisputeDecisionDialog({
     event.preventDefault();
     setError(null);
     if (!notes.trim()) {
-      setError("Expliquez votre décision : elle est envoyée à l'acheteur et à l'organisateur.");
+      setError(t("Expliquez votre décision : elle est envoyée à l'acheteur et à l'organisateur."));
       return;
     }
     const input: ResolveDisputeInput = {
@@ -48,7 +49,7 @@ export function DisputeDecisionDialog({
     if (choice === "accept" && refund === "partial") {
       const value = Number(amount.replace(",", "."));
       if (!value || value <= 0 || value > refundable + 0.001) {
-        setError(`Indiquez un montant entre 0,01 € et ${euros.format(refundable)}.`);
+        setError(t("Indiquez un montant entre 0,01 € et {value}.", { value: euros.format(refundable) }));
         return;
       }
       input.refund_amount_cents = Math.round(value * 100);
@@ -57,7 +58,7 @@ export function DisputeDecisionDialog({
     try {
       await onSubmit(input);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "La décision n'a pas pu être enregistrée.");
+      setError(err instanceof Error ? err.message : t("La décision n'a pas pu être enregistrée."));
     } finally {
       setSending(false);
     }
@@ -78,28 +79,26 @@ export function DisputeDecisionDialog({
   return (
     <Modal open={open} onClose={onClose} dismissible={!sending} labelledBy={`${id}-title`} className="bg-black/70 p-4 sm:p-6">
       <form onSubmit={submit} className="flex max-h-full w-full max-w-lg flex-col overflow-y-auto rounded-2xl border border-hairline-2 bg-card p-6 shadow-2xl">
-        <h2 id={`${id}-title`} className="text-lg font-bold text-ink-1">
-          Trancher le litige
-        </h2>
-        <p className="mt-1 text-sm text-ink-4">Le reversement de la commande est débloqué dès la décision.</p>
+        <h2 id={`${id}-title`} className="text-lg font-bold text-ink-1">{t("Trancher le litige")}</h2>
+        <p className="mt-1 text-sm text-ink-4">{t("Le reversement de la commande est débloqué dès la décision.")}</p>
 
         {error ? <FormError className="mt-4">{error}</FormError> : null}
 
         <div className="mt-4 grid gap-2">
-          {option("accept", "Donner raison à l'acheteur", "Réclamation acceptée, avec ou sans remboursement.")}
-          {option("reject", "Rejeter la réclamation", "La commande reste valable en l'état.")}
-          {option("close", "Clore sans suite", "Réclamation retirée ou devenue sans objet.")}
+          {option("accept", t("Donner raison à l'acheteur"), t("Réclamation acceptée, avec ou sans remboursement."))}
+          {option("reject", t("Rejeter la réclamation"), t("La commande reste valable en l'état."))}
+          {option("close", t("Clore sans suite"), t("Réclamation retirée ou devenue sans objet."))}
         </div>
 
         {choice === "accept" ? (
           <fieldset className="mt-4">
-            <legend className="text-sm font-medium text-ink-2">Remboursement</legend>
+            <legend className="text-sm font-medium text-ink-2">{t("Remboursement")}</legend>
             <div className="mt-2 flex flex-wrap gap-2 text-sm">
               {(
                 [
                   ["full", `Total (${euros.format(refundable)})`],
-                  ["partial", "Partiel"],
-                  ["none", "Aucun"],
+                  ["partial", t("Partiel")],
+                  ["none", t("Aucun")],
                 ] as const
               ).map(([value, label]) => (
                 <label
@@ -114,9 +113,7 @@ export function DisputeDecisionDialog({
               ))}
             </div>
             {refund === "partial" ? (
-              <label className="mt-3 flex items-center gap-2 text-sm text-ink-2">
-                Montant (€)
-                <input
+              <label className="mt-3 flex items-center gap-2 text-sm text-ink-2">{t("Montant (€)")}<input
                   inputMode="decimal"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
@@ -126,32 +123,26 @@ export function DisputeDecisionDialog({
               </label>
             ) : null}
             {refund !== "none" ? (
-              <p className="mt-2 text-xs text-ink-5">
-                Remboursé sur le moyen de paiement d&apos;origine, avec un avoir. Remboursement total : billets annulés.
-              </p>
+              <p className="mt-2 text-xs text-ink-5">{t("Remboursé sur le moyen de paiement d'origine, avec un avoir. Remboursement total : billets annulés.")}</p>
             ) : null}
           </fieldset>
         ) : null}
 
-        <label htmlFor={`${id}-notes`} className="mt-4 text-sm font-medium text-ink-2">
-          Réponse à l&apos;acheteur *
-        </label>
+        <label htmlFor={`${id}-notes`} className="mt-4 text-sm font-medium text-ink-2">{t("Réponse à l'acheteur *")}</label>
         <textarea
           id={`${id}-notes`}
           rows={3}
           maxLength={2000}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="Ex. : billets introuvables dans votre compte, nous vous remboursons."
+          placeholder={t("Ex. : billets introuvables dans votre compte, nous vous remboursons.")}
           className={fieldClass("mt-1.5 w-full resize-none px-3 py-2")}
         />
 
         <div className="mt-6 flex justify-end gap-2">
-          <button type="button" onClick={onClose} disabled={sending} className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}>
-            Annuler
-          </button>
+          <button type="button" onClick={onClose} disabled={sending} className={buttonClass("secondary", "rounded-full px-4 py-2 text-sm")}>{t("Annuler")}</button>
           <button type="submit" disabled={sending} className={buttonClass("primary", "rounded-full px-5 py-2 text-sm disabled:opacity-50")}>
-            {sending ? "Enregistrement…" : "Enregistrer la décision"}
+            {sending ? t("Enregistrement…") : t("Enregistrer la décision")}
           </button>
         </div>
       </form>

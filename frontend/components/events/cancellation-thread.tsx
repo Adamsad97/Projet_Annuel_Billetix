@@ -8,6 +8,7 @@ import { dateTime, fullDateTime } from "@/lib/format/dates";
 import { cardClass } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 export function CancellationThread({
   request,
@@ -43,28 +44,28 @@ export function CancellationThread({
   const bubble = (mine: boolean) =>
     mine ? "ml-auto bg-blue-600/15 ring-blue-500/30" : "mr-auto bg-hairline-1 ring-hairline-2";
   const author = (role: "ORGANIZER" | "ADMIN") =>
-    role === viewer ? "Vous" : role === "ADMIN" ? "Administration BilleTix" : request.organizer_name ?? "Organisateur";
+    role === viewer ? t("Vous") : role === "ADMIN" ? "Administration BilleTix" : request.organizer_name ?? t("Organisateur");
 
   return (
     <div className={cardClass()}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline-1 px-5 py-3.5">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge tone={kind.className}>{kind.badge}</Badge>
-          <p className="text-sm text-ink-4">Demande du {dateTime.format(new Date(request.created_at))}</p>
+          <Badge tone={kind.className}>{t(kind.badge)}</Badge>
+          <p className="text-sm text-ink-4">{t("Demande du {value}", { value: dateTime.format(new Date(request.created_at)) })}</p>
         </div>
-        <Badge tone={status.className}>{status.label}</Badge>
+        <Badge tone={status.className}>{t(status.label)}</Badge>
       </div>
 
       {postponement ? (
         <p className="border-b border-hairline-1 px-5 py-3 text-sm text-ink-2">
-          <span className="font-semibold text-ink-1">Nouvelle date proposée : </span>
-          {request.new_start_date ? fullDateTime.format(new Date(request.new_start_date)) : "à venir (fixée plus tard par l'organisateur)"}
+          <span className="font-semibold text-ink-1">{t("Nouvelle date proposée :")}{" "}</span>
+          {request.new_start_date ? fullDateTime.format(new Date(request.new_start_date)) : t("à venir (fixée plus tard par l'organisateur)")}
         </p>
       ) : null}
 
       <div className="flex flex-col gap-3 px-5 py-4">
         <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ring-1 ring-inset ${bubble(viewer === "ORGANIZER")}`}>
-          <p className="mb-1 text-xs font-semibold text-ink-4">{author("ORGANIZER")} · motif de la demande</p>
+          <p className="mb-1 text-xs font-semibold text-ink-4">{t("{author} · motif de la demande", { author: author("ORGANIZER") })}</p>
           <p className="whitespace-pre-line text-ink-1">{request.reason}</p>
         </div>
         {request.messages.map((message) => (
@@ -79,15 +80,13 @@ export function CancellationThread({
 
       {pending && onReply ? (
         <div className="border-t border-hairline-1 px-5 py-4">
-          <label className="sr-only" htmlFor={`reply-${request.id}`}>
-            Votre message
-          </label>
+          <label className="sr-only" htmlFor={`reply-${request.id}`}>{t("Votre message")}</label>
           <textarea
             id={`reply-${request.id}`}
             rows={2}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="Votre message…"
+            placeholder={t("Votre message…")}
             className={fieldClass("w-full resize-none px-3 py-2")}
           />
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -97,7 +96,7 @@ export function CancellationThread({
               disabled={sending || !draft.trim()}
               className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
             >
-              {sending ? "Envoi…" : "Envoyer"}
+              {sending ? t("Envoi…") : t("Envoyer")}
             </button>
             {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
           </div>

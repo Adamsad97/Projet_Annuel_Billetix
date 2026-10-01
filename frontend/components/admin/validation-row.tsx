@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import type { ApiPendingEvent } from "@/lib/api/admin";
 import { longDate as dateFormatter } from "@/lib/format/dates";
+import { t } from "@/lib/i18n/translate";
 
 export function ValidationRow({
   event,
@@ -18,11 +21,11 @@ export function ValidationRow({
   busy: boolean;
 }) {
   const metaParts = [
-    event.organizer_name ?? "Organisateur inconnu",
-    `Soumis le ${dateFormatter.format(new Date(event.validation_requested_at ?? event.created_at))}`,
+    event.organizer_name ?? t("Organisateur inconnu"),
+    t("Soumis le {value}", { value: dateFormatter.format(new Date(event.validation_requested_at ?? event.created_at)) }),
     categoryLabel,
   ];
-  if (event.is_overdue) metaParts.push("⚠️ Délai dépassé");
+  if (event.is_overdue) metaParts.push(t("⚠️ Délai dépassé"));
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-hairline-1 px-5 py-4 last:border-b-0">
@@ -35,9 +38,7 @@ export function ValidationRow({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-bold text-ink-1">{event.title}</p>
             {event.is_non_profit ? (
-              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30">
-                Non lucratif
-              </span>
+              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30">{t("Non lucratif")}</span>
             ) : null}
           </div>
           <p className="text-xs text-ink-5">{metaParts.join(" · ")}</p>
@@ -50,23 +51,17 @@ export function ValidationRow({
           onClick={() => onApprove(event.id)}
           disabled={busy}
           className="rounded-lg bg-emerald-500/15 px-3.5 py-2 text-sm font-medium text-emerald-300 ring-1 ring-inset ring-emerald-500/30 transition-colors hover:bg-emerald-500/25 disabled:opacity-50"
-        >
-          ✓ Valider
-        </button>
+        >{t("✓ Valider")}</button>
         <Link
           href={`/admin/validation/${event.id}`}
           className="rounded-lg bg-hairline-1 px-3.5 py-2 text-sm font-medium text-ink-3 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
-        >
-          ● Info
-        </Link>
+        >{t("● Info")}</Link>
         <button
           type="button"
           onClick={() => onReject(event.id)}
           disabled={busy}
           className="rounded-lg bg-red-500/15 px-3.5 py-2 text-sm font-medium text-red-300 ring-1 ring-inset ring-red-500/30 transition-colors hover:bg-red-500/25 disabled:opacity-50"
-        >
-          ✕ Rejeter
-        </button>
+        >{t("✕ Rejeter")}</button>
       </div>
     </div>
   );

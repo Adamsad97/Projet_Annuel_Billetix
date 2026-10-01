@@ -13,26 +13,27 @@ import { matchesSearch } from "@/lib/format/search";
 import { apiEventSummaryToOrganizerEvent } from "@/lib/mappers/dashboard-mappers";
 import { cardClass } from "@/components/ui/card";
 import { filterSelectClass } from "@/components/ui/field";
+import { t, msg } from "@/lib/i18n/translate";
 
 type Group = "all" | "live" | "postponed" | "draft" | "pending" | "hidden" | "past" | "cancelled";
 type SortOrder = "upcoming" | "latest" | "revenue" | "title";
 
 const GROUPS: { id: Group; label: string; statuses: string[] }[] = [
-  { id: "all", label: "Tous", statuses: [] },
-  { id: "live", label: "En vente", statuses: ["PUBLISHED"] },
-  { id: "postponed", label: "Reportés", statuses: ["POSTPONED"] },
-  { id: "draft", label: "Brouillons", statuses: ["DRAFT"] },
-  { id: "pending", label: "En validation", statuses: ["PENDING_VALIDATION"] },
-  { id: "hidden", label: "Masqués au public", statuses: [] },
-  { id: "past", label: "Terminés", statuses: ["TERMINATED", "ARCHIVED"] },
-  { id: "cancelled", label: "Annulés ou désactivés", statuses: ["CANCELLED", "SUSPENDED"] },
+  { id: "all", label: msg("Tous"), statuses: [] },
+  { id: "live", label: msg("En vente"), statuses: ["PUBLISHED"] },
+  { id: "postponed", label: msg("Reportés"), statuses: ["POSTPONED"] },
+  { id: "draft", label: msg("Brouillons"), statuses: ["DRAFT"] },
+  { id: "pending", label: msg("En validation"), statuses: ["PENDING_VALIDATION"] },
+  { id: "hidden", label: msg("Masqués au public"), statuses: [] },
+  { id: "past", label: msg("Terminés"), statuses: ["TERMINATED", "ARCHIVED"] },
+  { id: "cancelled", label: msg("Annulés ou désactivés"), statuses: ["CANCELLED", "SUSPENDED"] },
 ];
 
 const SORT_OPTIONS: { id: SortOrder; label: string }[] = [
-  { id: "upcoming", label: "Date la plus proche" },
-  { id: "latest", label: "Date la plus lointaine" },
-  { id: "revenue", label: "Chiffre d'affaires" },
-  { id: "title", label: "Titre (A → Z)" },
+  { id: "upcoming", label: msg("Date la plus proche") },
+  { id: "latest", label: msg("Date la plus lointaine") },
+  { id: "revenue", label: msg("Chiffre d'affaires") },
+  { id: "title", label: msg("Titre (A → Z)") },
 ];
 
 export function OrganizerEventsExplorer({
@@ -81,9 +82,7 @@ export function OrganizerEventsExplorer({
 
   if (events.length === 0) {
     return (
-      <div className={cardClass("px-5 py-10 text-center text-sm text-ink-5")}>
-        Vous n&apos;avez encore créé aucun événement.
-      </div>
+      <div className={cardClass("px-5 py-10 text-center text-sm text-ink-5")}>{t("Vous n'avez encore créé aucun événement.")}</div>
     );
   }
 
@@ -93,19 +92,17 @@ export function OrganizerEventsExplorer({
         <SearchField
           value={search}
           onChange={setSearch}
-          placeholder="Titre, lieu ou ville…"
+          placeholder={t("Titre, lieu ou ville…")}
           className="w-full sm:max-w-sm"
         />
-        <label className="flex items-center gap-2 text-sm text-ink-5">
-          Trier par
-          <select
+        <label className="flex items-center gap-2 text-sm text-ink-5">{t("Trier par")}<select
             value={sort}
             onChange={(event) => setSort(event.target.value as SortOrder)}
             className={filterSelectClass}
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.id} value={option.id}>
-                {option.label}
+                {t(option.label)}
               </option>
             ))}
           </select>
@@ -121,7 +118,7 @@ export function OrganizerEventsExplorer({
           ))
         ) : (
           <div className="flex flex-col items-center gap-2 px-5 py-8 text-center">
-            <p className="text-sm text-ink-5">Aucun événement ne correspond à ces critères.</p>
+            <p className="text-sm text-ink-5">{t("Aucun événement ne correspond à ces critères.")}</p>
             <button
               type="button"
               onClick={() => {
@@ -129,9 +126,7 @@ export function OrganizerEventsExplorer({
                 setGroup("all");
               }}
               className="text-sm font-medium text-link hover:text-link-hover"
-            >
-              Réinitialiser
-            </button>
+            >{t("Réinitialiser")}</button>
           </div>
         )}
       </div>

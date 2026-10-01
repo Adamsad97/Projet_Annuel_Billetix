@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { t } from "@/lib/i18n/translate";
 
 // Sous ce seuil, le décompte passe en orange (réglage d'affichage).
 const WARNING_SECONDS = 60;
@@ -42,10 +43,9 @@ export function ReservationTimer({ expiresAt, onExpire }: { expiresAt: string; o
         <circle cx="12" cy="13" r="8" />
         <path d="M12 9v4l2 2M9 2h6" />
       </svg>
-      <span>
-        Vos places sont réservées pendant{" "}
+      <span>{t("Vos places sont réservées pendant")}{" "}
         <strong className="font-mono tabular-nums">{label}</strong>
-        {warning ? " — terminez vite votre commande !" : ""}
+        {warning ? t(" — terminez vite votre commande !") : ""}
       </span>
     </div>
   );

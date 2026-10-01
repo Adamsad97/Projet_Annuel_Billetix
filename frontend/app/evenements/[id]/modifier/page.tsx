@@ -11,6 +11,7 @@ import { listCategories, type ApiCategory } from "@/lib/api/categories";
 import type { ApiEvent } from "@/lib/api/events";
 import { ApiError } from "@/lib/api/http-error";
 import { MutedMessage } from "@/components/ui/muted-message";
+import { t } from "@/lib/i18n/translate";
 
 export default function ModifierEvenementPage({
   params,
@@ -33,7 +34,7 @@ export default function ModifierEvenementPage({
           setEvent(null);
           return;
         }
-        setError(err instanceof ApiError ? err.message : "Impossible de charger cet événement.");
+        setError(err instanceof ApiError ? err.message : t("Impossible de charger cet événement."));
       });
   }, [id]);
 
@@ -45,12 +46,10 @@ export default function ModifierEvenementPage({
         <Link
           href={`/dashboard/evenements/${id}`}
           className="mx-auto mb-6 flex w-full max-w-2xl items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
-        >
-          ← Retour à l&apos;événement
-        </Link>
+        >{t("← Retour à l'événement")}</Link>
 
         <div className="mx-auto mb-10 w-full max-w-2xl text-center">
-          <h1 className="text-2xl font-bold text-ink-1">Modifier l&apos;événement</h1>
+          <h1 className="text-2xl font-bold text-ink-1">{t("Modifier l'événement")}</h1>
         </div>
 
         {error ? (
@@ -62,9 +61,7 @@ export default function ModifierEvenementPage({
         {event === undefined ? (
           <MutedMessage />
         ) : event === null ? (
-          <MutedMessage>
-            Cet événement n&apos;existe pas ou n&apos;appartient pas à votre compte.
-          </MutedMessage>
+          <MutedMessage>{t("Cet événement n'existe pas ou n'appartient pas à votre compte.")}</MutedMessage>
         ) : (
           <EditEventForm event={event} categories={categories} />
         )}

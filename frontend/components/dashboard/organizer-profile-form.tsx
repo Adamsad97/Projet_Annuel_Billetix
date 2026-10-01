@@ -13,6 +13,7 @@ import { isPersistentSession, saveSession } from "@/lib/auth/session";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
+import { t, msg } from "@/lib/i18n/translate";
 
 const fieldClassName = fieldClass("px-4 py-3");
 
@@ -20,10 +21,10 @@ const LOGO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const LOGO_MAX_SIZE = 5 * 1024 * 1024; // aligné sur la passerelle (POST /upload/avatar)
 
 const SOCIAL_FIELDS = [
-  { key: "social_instagram", label: "Instagram", placeholder: "https://instagram.com/votre-compte" },
-  { key: "social_facebook", label: "Facebook", placeholder: "https://facebook.com/votre-page" },
-  { key: "social_twitter", label: "X (Twitter)", placeholder: "https://x.com/votre-compte" },
-  { key: "social_youtube", label: "YouTube", placeholder: "https://youtube.com/@votre-chaine" },
+  { key: "social_instagram", label: msg("Instagram"), placeholder: msg("https://instagram.com/votre-compte") },
+  { key: "social_facebook", label: "Facebook", placeholder: msg("https://facebook.com/votre-page") },
+  { key: "social_twitter", label: "X (Twitter)", placeholder: msg("https://x.com/votre-compte") },
+  { key: "social_youtube", label: "YouTube", placeholder: msg("https://youtube.com/@votre-chaine") },
 ] as const;
 
 type SocialKey = (typeof SOCIAL_FIELDS)[number]["key"];
@@ -65,11 +66,11 @@ export function OrganizerProfileForm({
   function pickLogo(file: File | undefined) {
     if (!file) return;
     if (!LOGO_TYPES.includes(file.type)) {
-      setError("Logo : format non supporté — JPEG, PNG ou WebP uniquement.");
+      setError(t("Logo : format non supporté — JPEG, PNG ou WebP uniquement."));
       return;
     }
     if (file.size > LOGO_MAX_SIZE) {
-      setError("Logo : fichier trop volumineux — 5 Mo maximum.");
+      setError(t("Logo : fichier trop volumineux — 5 Mo maximum."));
       return;
     }
     setError(null);
@@ -90,7 +91,7 @@ export function OrganizerProfileForm({
 
     const name = displayName.trim();
     if (name.length < 2) {
-      setError("Le nom public doit contenir au moins 2 caractères.");
+      setError(t("Le nom public doit contenir au moins 2 caractères."));
       return;
     }
 
@@ -147,7 +148,7 @@ export function OrganizerProfileForm({
       setSaved(true);
       onSaved(result);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "L'enregistrement a échoué, veuillez réessayer.");
+      setError(err instanceof ApiError ? err.message : t("L'enregistrement a échoué, veuillez réessayer."));
     } finally {
       setSaving(false);
     }
@@ -159,32 +160,30 @@ export function OrganizerProfileForm({
         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-hairline-2 ring-1 ring-inset ring-hairline-2">
           {logoPreview ? (
             // eslint-disable-next-line @next/next/no-img-element -- logo hébergé sur MinIO ou aperçu local (blob:)
-            <img src={logoPreview} alt="Logo de l'organisateur" className="h-full w-full object-cover" />
+            <img src={logoPreview} alt={t("Logo de l'organisateur")} className="h-full w-full object-cover" />
           ) : (
             <span className="text-2xl font-bold text-ink-4">{displayName.trim().charAt(0).toUpperCase() || "?"}</span>
           )}
         </div>
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-ink-1">Logo</p>
+          <p className="text-sm font-medium text-ink-1">{t("Logo")}</p>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => logoInput.current?.click()}
               className={buttonClass("secondary", "rounded-full px-4 py-1.5 text-xs")}
             >
-              {logoPreview ? "Changer" : "Ajouter un logo"}
+              {logoPreview ? t("Changer") : t("Ajouter un logo")}
             </button>
             {logoPreview ? (
               <button
                 type="button"
                 onClick={removeLogo}
                 className="rounded-full px-3 py-1.5 text-xs font-medium text-ink-4 transition-colors hover:text-ink-1"
-              >
-                Retirer
-              </button>
+              >{t("Retirer")}</button>
             ) : null}
           </div>
-          <p className="text-xs text-ink-5">JPEG, PNG ou WebP — 5 Mo max. Un format carré rend mieux.</p>
+          <p className="text-xs text-ink-5">{t("JPEG, PNG ou WebP — 5 Mo max. Un format carré rend mieux.")}</p>
         </div>
         <input
           ref={logoInput}
@@ -199,7 +198,7 @@ export function OrganizerProfileForm({
       </div>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-accent/80">Nom public *</span>
+        <span className="text-sm font-medium text-accent/80">{t("Nom public *")}</span>
         <input
           type="text"
           required
@@ -207,38 +206,38 @@ export function OrganizerProfileForm({
           maxLength={120}
           value={displayName}
           onChange={(event) => setDisplayName(event.target.value)}
-          placeholder="Ex : Les Nuits de Paris"
+          placeholder={t("Ex : Les Nuits de Paris")}
           className={fieldClassName}
         />
-        <span className="text-xs text-ink-5">Nom sous lequel vos événements sont présentés au public.</span>
+        <span className="text-xs text-ink-5">{t("Nom sous lequel vos événements sont présentés au public.")}</span>
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-accent/80">Présentation</span>
+        <span className="text-sm font-medium text-accent/80">{t("Présentation")}</span>
         <textarea
           rows={4}
           maxLength={2000}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
-          placeholder="Qui êtes-vous, quels événements organisez-vous ?"
+          placeholder={t("Qui êtes-vous, quels événements organisez-vous ?")}
           className={`${fieldClassName} resize-none`}
         />
       </label>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-accent/80">Site web</span>
+        <span className="text-sm font-medium text-accent/80">{t("Site web")}</span>
         <input
           type="text"
           inputMode="url"
           value={website}
           onChange={(event) => setWebsite(event.target.value)}
-          placeholder="https://www.votre-site.fr"
+          placeholder={t("https://www.votre-site.fr")}
           className={fieldClassName}
         />
       </label>
 
       <div>
-        <p className="mb-3 text-sm font-semibold text-ink-2">Réseaux sociaux</p>
+        <p className="mb-3 text-sm font-semibold text-ink-2">{t("Réseaux sociaux")}</p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {SOCIAL_FIELDS.map(({ key, label, placeholder }) => (
             <label key={key} className="flex flex-col gap-1.5">
@@ -248,7 +247,7 @@ export function OrganizerProfileForm({
                 inputMode="url"
                 value={socials[key]}
                 onChange={(event) => setSocials((prev) => ({ ...prev, [key]: event.target.value }))}
-                placeholder={placeholder}
+                placeholder={t(placeholder)}
                 className={fieldClassName}
               />
             </label>
@@ -262,9 +261,7 @@ export function OrganizerProfileForm({
         </p>
       ) : null}
       {saved && profile ? (
-        <p role="status" className="rounded-xl bg-emerald-500/10 px-4 py-3 text-sm text-success ring-1 ring-inset ring-emerald-500/30">
-          Profil enregistré.
-        </p>
+        <p role="status" className="rounded-xl bg-emerald-500/10 px-4 py-3 text-sm text-success ring-1 ring-inset ring-emerald-500/30">{t("Profil enregistré.")}</p>
       ) : null}
 
       <button
@@ -272,7 +269,7 @@ export function OrganizerProfileForm({
         disabled={saving}
         className={buttonClass("primary", "self-end rounded-full px-6 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50")}
       >
-        {saving ? "Enregistrement…" : submitLabel ?? (profile ? "Enregistrer" : "Créer mon profil organisateur")}
+        {saving ? t("Enregistrement…") : submitLabel ?? (profile ? t("Enregistrer") : t("Créer mon profil organisateur"))}
       </button>
     </form>
   );

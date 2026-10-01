@@ -1,6 +1,9 @@
+"use client";
+
 import { QrPlaceholder } from "@/components/tickets/qr-placeholder";
 import { TicketQrReveal } from "@/components/tickets/ticket-qr-reveal";
 import type { TicketDetail } from "@/lib/constants/ticket-detail";
+import { t } from "@/lib/i18n/translate";
 
 export function TicketVisual({ ticket }: { ticket: TicketDetail }) {
   return (
@@ -19,19 +22,19 @@ export function TicketVisual({ ticket }: { ticket: TicketDetail }) {
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-dashed border-hairline-2 px-6 py-5 text-sm">
         <div>
-          <p className="text-xs uppercase tracking-wide text-ink-5">Date</p>
+          <p className="text-xs uppercase tracking-wide text-ink-5">{t("Date")}</p>
           <p className="font-semibold text-ink-1">{ticket.dateLabel}</p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide text-ink-5">Heure</p>
+          <p className="text-xs uppercase tracking-wide text-ink-5">{t("Heure")}</p>
           <p className="font-semibold text-ink-1">{ticket.timeLabel}</p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide text-ink-5">Lieu</p>
+          <p className="text-xs uppercase tracking-wide text-ink-5">{t("Lieu")}</p>
           <p className="font-semibold text-ink-1">{ticket.venueName}</p>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide text-ink-5">Adresse</p>
+          <p className="text-xs uppercase tracking-wide text-ink-5">{t("Adresse")}</p>
           <p className="font-semibold text-ink-1">
             {ticket.address}, {ticket.city}
           </p>
@@ -39,7 +42,7 @@ export function TicketVisual({ ticket }: { ticket: TicketDetail }) {
       </div>
 
       <div className="border-t border-dashed border-hairline-2 bg-card px-6 py-4">
-        <p className="text-xs uppercase tracking-wide text-ink-5">Porteur du billet</p>
+        <p className="text-xs uppercase tracking-wide text-ink-5">{t("Porteur du billet")}</p>
         <p className="font-bold text-ink-1">{ticket.holderName}</p>
       </div>
 
@@ -54,12 +57,12 @@ export function TicketVisual({ ticket }: { ticket: TicketDetail }) {
         ) : null}
         <p className="text-center text-xs uppercase tracking-wide text-ink-5">
           {ticket.status === "valid"
-            ? "Présentez ce code à l'entrée · usage unique"
+            ? t("Présentez ce code à l'entrée · usage unique")
             : ticket.status === "for_resale"
-              ? "Ce billet est en cours de revente"
+              ? t("Ce billet est en cours de revente")
               : ticket.status === "cancelled"
-                ? "Ce billet a été annulé ou remboursé"
-                : "Ce billet a déjà été scanné"}
+                ? t("Ce billet a été annulé ou remboursé")
+                : t("Ce billet a déjà été scanné")}
         </p>
       </div>
 

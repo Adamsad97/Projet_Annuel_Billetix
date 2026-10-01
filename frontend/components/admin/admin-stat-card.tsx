@@ -1,11 +1,14 @@
+"use client";
+
 import type { AdminStat } from "@/lib/mappers/admin-mappers";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 export function AdminStatCard({ stat }: { stat: AdminStat }) {
   return (
     <div className={cardClass("p-5")}>
       <p className="text-xs font-medium uppercase tracking-wide text-ink-5">
-        {stat.label}
+        {t(stat.label)}
       </p>
       <p className={`mt-2 text-3xl font-bold ${stat.valueClassName ?? "text-ink-1"}`}>
         {stat.value}

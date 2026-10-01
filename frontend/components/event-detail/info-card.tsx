@@ -1,5 +1,8 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { cardClass } from "@/components/ui/card";
+import { t } from "@/lib/i18n/translate";
 
 export function InfoCard({
   icon,
@@ -18,7 +21,7 @@ export function InfoCard({
         className={`mb-3 flex items-center gap-2 text-sm font-semibold ${titleClassName ?? "text-ink-2"}`}
       >
         <span className="flex items-center">{icon}</span>
-        {title}
+        {t(title)}
       </h2>
       {children}
     </div>

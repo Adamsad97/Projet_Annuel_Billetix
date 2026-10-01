@@ -7,6 +7,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { UserRole } from "@/lib/api/auth";
 import { getAccessToken, getStoredUser, SESSION_ENDED_EVENT } from "@/lib/auth/session";
 import { effectiveRole, isAdminRole, PREVIEW_CHANGED_EVENT } from "@/lib/auth/preview";
+import { t } from "@/lib/i18n/translate";
 
 /** Espace de chaque rôle — destination si on arrive sur une section d'un autre rôle. */
 export function homePathForRole(role: UserRole): string {
@@ -63,7 +64,7 @@ export function RequireAuth({ roles, children }: { roles?: UserRole[]; children:
   if (!allowed) {
     return (
       <div className="flex flex-1 items-center justify-center bg-page py-24">
-        <p className="text-sm text-ink-5">Vérification de l&apos;accès…</p>
+        <p className="text-sm text-ink-5">{t("Vérification de l'accès…")}</p>
       </div>
     );
   }

@@ -7,6 +7,7 @@ import { FeaturedEventCard } from "@/components/home/featured-event-card";
 import { filtersToUrl } from "@/lib/catalogue/filters";
 import { useEventSearch } from "@/lib/catalogue/use-event-search";
 import type { FeaturedEvent } from "@/lib/mappers/event-mappers";
+import { t } from "@/lib/i18n/translate";
 
 // Sélection de l'admin (stable : ne relance pas la recherche à chaque rendu).
 const CURATED_PARAMS = { featured: true } as const;
@@ -74,20 +75,20 @@ export function FeaturedEvents({
   }, [paused, overflowing, step]);
 
   return (
-    <section className="mx-auto max-w-7xl px-6 pb-20" aria-roledescription="carrousel" aria-label="Événements à la une">
+    <section className="mx-auto max-w-7xl px-6 pb-20" aria-roledescription="carrousel" aria-label={t("Événements à la une")}>
       <div className="mb-8">
         <EventFilterBar search={search} />
       </div>
 
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold text-ink-1">{hasActiveFilters ? "Résultats" : "À la une"}</h2>
+        <h2 className="text-2xl font-bold text-ink-1">{hasActiveFilters ? t("Résultats") : t("À la une")}</h2>
         <div className="flex items-center gap-3">
           {overflowing ? (
             <>
               <button
                 type="button"
                 onClick={() => step(-1)}
-                aria-label="Événements précédents"
+                aria-label={t("Événements précédents")}
                 className="flex h-12 w-12 items-center justify-center rounded-full border border-hairline-4 text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
               >
                 <Chevron direction="left" />
@@ -95,7 +96,7 @@ export function FeaturedEvents({
               <button
                 type="button"
                 onClick={() => step(1)}
-                aria-label="Événements suivants"
+                aria-label={t("Événements suivants")}
                 className="flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white shadow-lg shadow-brand/30 transition-opacity hover:opacity-90"
               >
                 <Chevron direction="right" />
@@ -109,15 +110,13 @@ export function FeaturedEvents({
         <div className="flex flex-col items-center gap-3 py-10 text-center">
           <p className="text-sm text-ink-5">
             {loading
-              ? "Recherche en cours…"
+              ? t("Recherche en cours…")
               : hasActiveFilters
-                ? "Aucun événement ne correspond à vos critères."
-                : "Aucun événement publié pour l'instant."}
+                ? t("Aucun événement ne correspond à vos critères.")
+                : t("Aucun événement publié pour l'instant.")}
           </p>
           {!loading && hasActiveFilters ? (
-            <button type="button" onClick={resetAll} className="text-sm font-medium text-link hover:text-link-hover">
-              Effacer les filtres
-            </button>
+            <button type="button" onClick={resetAll} className="text-sm font-medium text-link hover:text-link-hover">{t("Effacer les filtres")}</button>
           ) : null}
         </div>
       ) : (
@@ -147,9 +146,7 @@ export function FeaturedEvents({
         <Link
           href={`/evenements${filtersToUrl(search.filters)}`}
           className="rounded-xl bg-brand px-6 py-3 text-base font-semibold text-white shadow-lg shadow-brand/30 transition-opacity hover:opacity-90"
-        >
-          Voir les événements
-        </Link>
+        >{t("Voir les événements")}</Link>
       </div>
     </section>
   );

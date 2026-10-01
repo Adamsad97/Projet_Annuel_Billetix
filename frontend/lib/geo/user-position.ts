@@ -3,6 +3,8 @@
 // Position du visiteur, partagée par tout le site pour afficher la distance des événements.
 
 import { useEffect, useSyncExternalStore } from "react";
+import { t } from "@/lib/i18n/translate";
+import { localizedNumber } from "@/lib/i18n/intl";
 
 export interface UserPosition {
   lat: number;
@@ -59,7 +61,7 @@ export function setUserPosition(next: UserPosition) {
 export function requestUserPosition(): Promise<UserPosition> {
   return new Promise((resolve, reject) => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-      reject(new Error("La géolocalisation n'est pas disponible sur ce navigateur."));
+      reject(new Error(t("La géolocalisation n'est pas disponible sur ce navigateur.")));
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -68,7 +70,7 @@ export function requestUserPosition(): Promise<UserPosition> {
         setUserPosition(next);
         resolve(next);
       },
-      () => reject(new Error("Position refusée ou indisponible : autorisez la géolocalisation dans votre navigateur.")),
+      () => reject(new Error(t("Position refusée ou indisponible : autorisez la géolocalisation dans votre navigateur."))),
       { enableHighAccuracy: false, timeout: 10_000 },
     );
   });
@@ -104,12 +106,12 @@ export function distanceKm(from: UserPosition, to: UserPosition): number {
   return 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
-const kmFormat = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 });
-const roundKm = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
+const kmFormat = localizedNumber({ maximumFractionDigits: 1 });
+const roundKm = localizedNumber({ maximumFractionDigits: 0 });
 
 /** « À 800 m », « À 3,4 km », « À 125 km ». */
 export function formatDistance(km: number): string {
-  if (km < 1) return `À ${Math.max(100, Math.round(km * 10) * 100)} m`;
-  if (km < 10) return `À ${kmFormat.format(km)} km`;
-  return `À ${roundKm.format(km)} km`;
+  if (km < 1) return t("À {value} m", { value: Math.max(100, Math.round(km * 10) * 100) });
+  if (km < 10) return t("À {value} km", { value: kmFormat.format(km) });
+  return t("À {value} km", { value: roundKm.format(km) });
 }

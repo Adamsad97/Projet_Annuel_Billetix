@@ -1,3 +1,4 @@
+import { msg } from "@/lib/i18n/translate";
 // Types et libellés d'affichage des billets et commandes du profil.
 
 export type TicketStatus = "valid" | "used" | "for_resale" | "cancelled";
@@ -40,15 +41,15 @@ export const ticketStatusBadge: Record<
       "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30",
   },
   used: {
-    label: "Utilisé",
+    label: msg("Utilisé"),
     className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",
   },
   for_resale: {
-    label: "En revente",
+    label: msg("En revente"),
     className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
   },
   cancelled: {
-    label: "Annulé",
+    label: msg("Annulé"),
     className: "bg-red-500/10 text-red-300 ring-1 ring-inset ring-red-500/20",
   },
 };
@@ -58,24 +59,24 @@ export const orderStatusBadge: Record<
   { label: string; className: string }
 > = {
   sent: {
-    label: "Billets envoyés",
+    label: msg("Billets envoyés"),
     className:
       "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30",
   },
   used: {
-    label: "Utilisé",
+    label: msg("Utilisé"),
     className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",
   },
   pending: {
-    label: "Paiement en attente",
+    label: msg("Paiement en attente"),
     className: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
   },
   cancelled: {
-    label: "Annulée",
+    label: msg("Annulée"),
     className: "bg-red-500/10 text-red-300 ring-1 ring-inset ring-red-500/20",
   },
   refunded: {
-    label: "Remboursée",
+    label: msg("Remboursée"),
     className: "bg-hairline-1 text-ink-4 ring-1 ring-inset ring-hairline-2",
   },
 };

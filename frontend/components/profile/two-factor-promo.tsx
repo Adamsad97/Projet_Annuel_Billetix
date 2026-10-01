@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { get2faStatus } from "@/lib/api/two-factor";
 import { getStoredUser } from "@/lib/auth/session";
 import { effectiveRole, isAdminRole } from "@/lib/auth/preview";
+import { t } from "@/lib/i18n/translate";
 
 const DISMISS_KEY = "billetix_2fa_promo_dismissed";
 
@@ -43,7 +44,7 @@ export function TwoFactorPromo({ className = "" }: { className?: string }) {
   return (
     <div
       role="region"
-      aria-label="Sécuriser mon compte"
+      aria-label={t("Sécuriser mon compte")}
       className={`flex flex-col gap-3 rounded-2xl border border-brand/30 bg-brand/5 p-4 sm:flex-row sm:items-center ${className}`}
     >
       <div className="flex flex-1 items-start gap-3">
@@ -56,18 +57,17 @@ export function TwoFactorPromo({ className = "" }: { className?: string }) {
         <div>
           <p className="text-sm font-semibold text-ink-1">
             {forAdmin
-              ? "Protégez l'accès au back-office avec la double authentification"
+              ? t("Protégez l'accès au back-office avec la double authentification")
               : forAgent
-                ? "Protégez votre accès au contrôle avec la double authentification"
-                : "Protégez vos billets avec la double authentification"}
+                ? t("Protégez votre accès au contrôle avec la double authentification")
+                : t("Protégez vos billets avec la double authentification")}
           </p>
           <p className="mt-0.5 text-sm text-ink-4">
-            Un code de votre téléphone sera demandé à la connexion : même avec votre mot de passe,
             {forAdmin
-              ? " personne ne pourra agir sur la plateforme à votre place."
+              ? t("Un code de votre téléphone sera demandé à la connexion : même avec votre mot de passe, personne ne pourra agir sur la plateforme à votre place.")
               : forAgent
-                ? " personne ne pourra valider des entrées à votre place."
-                : " personne ne pourra accéder à vos billets."}
+                ? t("Un code de votre téléphone sera demandé à la connexion : même avec votre mot de passe, personne ne pourra valider des entrées à votre place.")
+                : t("Un code de votre téléphone sera demandé à la connexion : même avec votre mot de passe, personne ne pourra accéder à vos billets.")}
           </p>
         </div>
       </div>
@@ -83,15 +83,11 @@ export function TwoFactorPromo({ className = "" }: { className?: string }) {
             setVisible(false);
           }}
           className="rounded-full border border-hairline-3 px-4 py-2 text-sm font-medium text-ink-3 transition-colors hover:border-hairline-5 hover:text-ink-1"
-        >
-          Plus tard
-        </button>
+        >{t("Plus tard")}</button>
         <Link
           href="/profil/securite/2fa"
           className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-        >
-          Activer maintenant
-        </Link>
+        >{t("Activer maintenant")}</Link>
       </div>
     </div>
   );

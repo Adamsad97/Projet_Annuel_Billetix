@@ -24,29 +24,30 @@ import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
 import { filterSelectClass } from "@/components/ui/field";
 import { LoadMoreButton } from "@/components/ui/load-more-button";
+import { t, msg } from "@/lib/i18n/translate";
 
 const PAGE_SIZE = 50;
 
 const roleFilters: { id: string; label: string }[] = [
-  { id: "all", label: "Tous" },
-  { id: "BUYER", label: "Acheteurs" },
-  { id: "ORGANIZER", label: "Organisateurs" },
-  { id: "ADMIN", label: "Admins" },
-  { id: "AGENT", label: "Agents" },
-  { id: "SUPER_ADMIN", label: "Super-admins" },
+  { id: "all", label: msg("Tous") },
+  { id: "BUYER", label: msg("Acheteurs") },
+  { id: "ORGANIZER", label: msg("Organisateurs") },
+  { id: "ADMIN", label: msg("Admins") },
+  { id: "AGENT", label: msg("Agents") },
+  { id: "SUPER_ADMIN", label: msg("Super-admins") },
 ];
 
 const statusFilters: { id: "" | AdminUserStatusFilter; label: string }[] = [
-  { id: "", label: "Tous les statuts" },
-  { id: "active", label: "Actifs" },
-  { id: "suspended", label: "Suspendus" },
-  { id: "locked", label: "Verrouillés (échecs de connexion)" },
-  { id: "unverified", label: "Email non vérifié" },
+  { id: "", label: msg("Tous les statuts") },
+  { id: "active", label: msg("Actifs") },
+  { id: "suspended", label: msg("Suspendus") },
+  { id: "locked", label: msg("Verrouillés (échecs de connexion)") },
+  { id: "unverified", label: msg("Email non vérifié") },
 ];
 
 const sortOptions: { id: AdminUserSort; label: string }[] = [
-  { id: "recent", label: "Inscription la plus récente" },
-  { id: "oldest", label: "Inscription la plus ancienne" },
+  { id: "recent", label: msg("Inscription la plus récente") },
+  { id: "oldest", label: msg("Inscription la plus ancienne") },
   { id: "name", label: "Nom (A → Z)" },
 ];
 
@@ -91,7 +92,7 @@ export function UsersExplorer() {
         setTotal(result.total);
         setError(null);
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger les utilisateurs."));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t("Impossible de charger les utilisateurs.")));
   }
 
   // Après une action : recharge en gardant le nombre de comptes déjà affichés.
@@ -123,19 +124,19 @@ export function UsersExplorer() {
   function handleSuspend(user: ApiAdminUser) {
     setDialog({
       title: `Suspendre ${user.first_name} ${user.last_name} ?`,
-      message: "Le compte ne pourra plus se connecter tant que la suspension n'est pas levée. Le titulaire est notifié par email.",
-      confirmLabel: "Suspendre",
+      message: t("Le compte ne pourra plus se connecter tant que la suspension n'est pas levée. Le titulaire est notifié par email."),
+      confirmLabel: t("Suspendre"),
       danger: true,
       showReason: true,
       reasonRequired: true,
-      reasonPlaceholder: "Motif de la suspension…",
+      reasonPlaceholder: t("Motif de la suspension…"),
       onConfirm: async (reason) => {
         setBusyId(user.id);
         try {
           await suspendUser(user.id, reason!);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de suspendre ce compte.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de suspendre ce compte."));
         } finally {
           setBusyId(null);
         }
@@ -145,16 +146,16 @@ export function UsersExplorer() {
 
   function handleUnsuspend(user: ApiAdminUser) {
     setDialog({
-      title: `Réactiver ${user.first_name} ${user.last_name} ?`,
-      message: "Le compte retrouve immédiatement l'accès à la plateforme.",
-      confirmLabel: "Réactiver",
+      title: t("Réactiver {first_name} {last_name} ?", { first_name: user.first_name, last_name: user.last_name }),
+      message: t("Le compte retrouve immédiatement l'accès à la plateforme."),
+      confirmLabel: t("Réactiver"),
       onConfirm: async () => {
         setBusyId(user.id);
         try {
           await unsuspendUser(user.id);
           load();
         } catch (err) {
-          setError(err instanceof ApiError ? err.message : "Impossible de réactiver ce compte.");
+          setError(err instanceof ApiError ? err.message : t("Impossible de réactiver ce compte."));
         } finally {
           setBusyId(null);
         }
@@ -165,10 +166,10 @@ export function UsersExplorer() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <SearchField value={search} onChange={setSearch} placeholder="Nom, prénom ou email…" className="w-full sm:max-w-sm" />
+        <SearchField value={search} onChange={setSearch} placeholder={t("Nom, prénom ou email…")} className="w-full sm:max-w-sm" />
         <div className="flex flex-wrap items-center gap-2">
           <FilterMenu
-            label="Statut"
+            label={t("Statut")}
             value={statusFilters.find((option) => option.id === status)?.label}
             active={status !== ""}
             align="right"
@@ -184,14 +185,14 @@ export function UsersExplorer() {
                       close();
                     }}
                   >
-                    {option.label}
+                    {t(option.label)}
                   </FilterOption>
                 ))}
               </div>
             )}
           </FilterMenu>
           <label className="flex items-center gap-2 text-sm text-ink-5">
-            <span className="sr-only">Trier par</span>
+            <span className="sr-only">{t("Trier par")}</span>
             <select
               value={sort}
               onChange={(event) => setSort(event.target.value as AdminUserSort)}
@@ -199,7 +200,7 @@ export function UsersExplorer() {
             >
               {sortOptions.map((option) => (
                 <option key={option.id} value={option.id}>
-                  {option.label}
+                  {t(option.label)}
                 </option>
               ))}
             </select>
@@ -210,9 +211,7 @@ export function UsersExplorer() {
       <div className="flex flex-wrap items-center gap-3">
         <FilterPills options={roleFilters} active={role} onChange={setRole} />
         {hasFilters ? (
-          <button type="button" onClick={reset} className="text-sm font-medium text-link hover:text-link-hover">
-            Réinitialiser
-          </button>
+          <button type="button" onClick={reset} className="text-sm font-medium text-link hover:text-link-hover">{t("Réinitialiser")}</button>
         ) : null}
       </div>
 
@@ -222,7 +221,7 @@ export function UsersExplorer() {
 
       {users ? (
         <p className="text-sm text-ink-5" role="status">
-          {total} compte{total > 1 ? "s" : ""}
+          {total > 1 ? t("{count} comptes", { count: total }) : t("{count} compte", { count: total })}
         </p>
       ) : null}
 
@@ -242,7 +241,7 @@ export function UsersExplorer() {
             />
           ))
         ) : (
-          <MutedMessage variant="list">Aucun utilisateur ne correspond à ces critères.</MutedMessage>
+          <MutedMessage variant="list">{t("Aucun utilisateur ne correspond à ces critères.")}</MutedMessage>
         )}
       </div>
 

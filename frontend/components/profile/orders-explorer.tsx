@@ -10,12 +10,13 @@ import { matchesSearch } from "@/lib/format/search";
 import { apiOrderToProfileOrder } from "@/lib/mappers/profile-mappers";
 import type { ProfileOrder, OrderStatus } from "@/lib/constants/profile";
 import { cardClass } from "@/components/ui/card";
+import { t, msg } from "@/lib/i18n/translate";
 
 const filters: { id: string; label: string }[] = [
-  { id: "all", label: "Tous" },
-  { id: "sent", label: "Payées" },
-  { id: "pending", label: "En attente" },
-  { id: "cancelled", label: "Annulées/remboursées" },
+  { id: "all", label: msg("Tous") },
+  { id: "sent", label: msg("Payées") },
+  { id: "pending", label: msg("En attente") },
+  { id: "cancelled", label: msg("Annulées/remboursées") },
 ];
 
 function matchesFilter(status: OrderStatus, filterId: string): boolean {
@@ -45,7 +46,7 @@ export function OrdersExplorer() {
         if (cancelled) return;
         setOrders(sorted.map((order, index) => apiOrderToProfileOrder(order, ticketCounts[index].length)));
       } catch {
-        if (!cancelled) setError("Impossible de charger vos commandes pour le moment.");
+        if (!cancelled) setError(t("Impossible de charger vos commandes pour le moment."));
       }
     }
 
@@ -75,15 +76,15 @@ export function OrdersExplorer() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <FilterPills options={filterOptions} active={status} onChange={setStatus} />
-        <SearchField value={search} onChange={setSearch} placeholder="Référence ou événement…" className="w-full sm:max-w-xs" />
+        <SearchField value={search} onChange={setSearch} placeholder={t("Référence ou événement…")} className="w-full sm:max-w-xs" />
       </div>
 
       <div className={cardClass("overflow-hidden")}>
         {orders === null ? (
-          <p className="px-5 py-4 text-sm text-ink-5">{error ?? "Chargement…"}</p>
+          <p className="px-5 py-4 text-sm text-ink-5">{error ?? t("Chargement…")}</p>
         ) : filtered.length === 0 ? (
           <p className="px-5 py-4 text-sm text-ink-5">
-            {search.trim() ? "Aucune commande ne correspond à votre recherche." : "Aucune commande dans cette catégorie."}
+            {search.trim() ? t("Aucune commande ne correspond à votre recherche.") : t("Aucune commande dans cette catégorie.")}
           </p>
         ) : (
           filtered.map((order) => <OrderRow key={order.reference} order={order} />)

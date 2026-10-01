@@ -20,15 +20,16 @@ import { MutedMessage } from "@/components/ui/muted-message";
 import { cardClass } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LoadMoreButton } from "@/components/ui/load-more-button";
+import { t, msg } from "@/lib/i18n/translate";
 
 const PAGE_SIZE = 50;
 
 const statusFilters: { id: "all" | CancellationStatus; label: string }[] = [
-  { id: "PENDING", label: "En attente" },
-  { id: "all", label: "Toutes" },
-  { id: "APPROVED", label: "Acceptées" },
-  { id: "REJECTED", label: "Refusées" },
-  { id: "WITHDRAWN", label: "Retirées" },
+  { id: "PENDING", label: msg("En attente") },
+  { id: "all", label: msg("Toutes") },
+  { id: "APPROVED", label: msg("Acceptées") },
+  { id: "REJECTED", label: msg("Refusées") },
+  { id: "WITHDRAWN", label: msg("Retirées") },
 ];
 
 export function CancellationRequestsExplorer() {
@@ -48,7 +49,7 @@ export function CancellationRequestsExplorer() {
         setTotal(result.total);
         setError(null);
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Impossible de charger les demandes."));
+      .catch((err) => setError(err instanceof ApiError ? err.message : t("Impossible de charger les demandes.")));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
@@ -59,7 +60,7 @@ export function CancellationRequestsExplorer() {
       const result = await query(requests.length);
       setRequests([...requests, ...result.data]);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Impossible de charger la suite.");
+      setError(err instanceof ApiError ? err.message : t("Impossible de charger la suite."));
     } finally {
       setLoadingMore(false);
     }
@@ -75,7 +76,7 @@ export function CancellationRequestsExplorer() {
 
       {requests ? (
         <p className="text-sm text-ink-5" role="status">
-          {total} demande{total > 1 ? "s" : ""}
+          {total > 1 ? t("{count} demandes", { count: total }) : t("{count} demande", { count: total })}
         </p>
       ) : null}
 
@@ -84,7 +85,7 @@ export function CancellationRequestsExplorer() {
           <MutedMessage variant="list" />
         ) : requests.length === 0 ? (
           <MutedMessage variant="list">
-            {status === "PENDING" ? "Aucune demande en attente." : "Aucune demande dans cette catégorie."}
+            {status === "PENDING" ? t("Aucune demande en attente.") : t("Aucune demande dans cette catégorie.")}
           </MutedMessage>
         ) : (
           requests.map((request) => {
@@ -97,19 +98,19 @@ export function CancellationRequestsExplorer() {
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-bold text-ink-1">{request.event_title ?? "Événement"}</p>
+                    <p className="text-sm font-bold text-ink-1">{request.event_title ?? t("Événement")}</p>
                     <Badge tone={changeRequestKindLabels[request.kind ?? "CANCELLATION"].className}>
-                      {changeRequestKindLabels[request.kind ?? "CANCELLATION"].badge}
+                      {t(changeRequestKindLabels[request.kind ?? "CANCELLATION"].badge)}
                     </Badge>
-                    <Badge tone={badge.className}>{badge.label}</Badge>
+                    <Badge tone={badge.className}>{t(badge.label)}</Badge>
                   </div>
                   <p className="mt-0.5 text-xs text-ink-5">
-                    {request.organizer_name ?? "Organisateur"} · demandée le {dateTime.format(new Date(request.created_at))} ·{" "}
-                    {request.messages.length} message{request.messages.length > 1 ? "s" : ""}
+                    {request.organizer_name ?? t("Organisateur")} · {t("demandée le {date}", { date: dateTime.format(new Date(request.created_at)) })} ·{" "}
+                    {request.messages.length > 1 ? t("{count} messages", { count: request.messages.length }) : t("{count} message", { count: request.messages.length })}
                   </p>
                   <p className="mt-1 line-clamp-2 text-sm text-ink-3">
                     {lastMessage
-                      ? `${lastMessage.author_role === "ADMIN" ? "Administration" : "Organisateur"} : ${lastMessage.message}`
+                      ? `${lastMessage.author_role === "ADMIN" ? t("Administration") : t("Organisateur")} : ${lastMessage.message}`
                       : `Motif : ${request.reason}`}
                   </p>
                 </div>
@@ -117,7 +118,7 @@ export function CancellationRequestsExplorer() {
                   href={`/admin/evenements/${request.event_id}`}
                   className="shrink-0 rounded-lg bg-hairline-1 px-3 py-1.5 text-xs font-medium text-ink-2 ring-1 ring-inset ring-hairline-2 transition-colors hover:bg-hairline-2"
                 >
-                  {request.status === "PENDING" ? "Traiter" : "Consulter"}
+                  {request.status === "PENDING" ? t("Traiter") : t("Consulter")}
                 </Link>
               </div>
             );

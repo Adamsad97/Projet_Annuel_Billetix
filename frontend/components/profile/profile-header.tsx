@@ -9,13 +9,14 @@ import { getStoredUser } from "@/lib/auth/session";
 import type { AuthUser } from "@/lib/api/auth";
 import { buttonClass } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
+import { t, msg } from "@/lib/i18n/translate";
 
 const roleLabels: Record<AuthUser["role"], string> = {
-  BUYER: "Acheteur",
-  ORGANIZER: "Organisateur",
-  ADMIN: "Administrateur",
-  AGENT: "Agent de contrôle",
-  SUPER_ADMIN: "Super-administrateur",
+  BUYER: msg("Acheteur"),
+  ORGANIZER: msg("Organisateur"),
+  ADMIN: msg("Administrateur"),
+  AGENT: msg("Agent de contrôle"),
+  SUPER_ADMIN: msg("Super-administrateur"),
 };
 
 const roleStyles: Record<AuthUser["role"], string> = {
@@ -40,9 +41,7 @@ export function ProfileHeader() {
 
   if (!user) {
     return (
-      <p className="mb-8 text-sm text-ink-5">
-        Connectez-vous pour voir votre profil.
-      </p>
+      <p className="mb-8 text-sm text-ink-5">{t("Connectez-vous pour voir votre profil.")}</p>
     );
   }
 
@@ -59,7 +58,7 @@ export function ProfileHeader() {
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${roleStyles[user.role]}`}
             >
-              {roleLabels[user.role]}
+              {t(roleLabels[user.role])}
             </span>
           </div>
           <p className="mt-1.5 text-sm text-ink-5">{user.email}</p>
@@ -71,9 +70,7 @@ export function ProfileHeader() {
         <Link
           href="/profil/modifier"
           className={buttonClass("secondary", "flex items-center gap-2 rounded-full px-4 py-2 text-sm")}
-        >
-          ✏️ Modifier
-        </Link>
+        >{t("✏️ Modifier")}</Link>
       )}
     </div>
   );

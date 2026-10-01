@@ -15,13 +15,14 @@ import { matchesSearch } from "@/lib/format/search";
 import { apiTicketToProfileTicket } from "@/lib/mappers/profile-mappers";
 import type { ProfileTicket, TicketStatus } from "@/lib/constants/profile";
 import { cardClass } from "@/components/ui/card";
+import { t, msg } from "@/lib/i18n/translate";
 
 const filters = [
-  { id: "all", label: "Tous" },
-  { id: "valid", label: "Valides" },
-  { id: "used", label: "Utilisés" },
-  { id: "given", label: "Transferts" },
-  { id: "resold", label: "Revendus" },
+  { id: "all", label: msg("Tous") },
+  { id: "valid", label: msg("Valides") },
+  { id: "used", label: msg("Utilisés") },
+  { id: "given", label: msg("Transferts") },
+  { id: "resold", label: msg("Revendus") },
 ];
 
 export function TicketsExplorer() {
@@ -45,7 +46,7 @@ export function TicketsExplorer() {
         setResold(result.resold ?? []);
       })
       .catch(() => {
-        if (!cancelled) setError("Impossible de charger vos billets pour le moment.");
+        if (!cancelled) setError(t("Impossible de charger vos billets pour le moment."));
       });
     return () => {
       cancelled = true;
@@ -91,15 +92,15 @@ export function TicketsExplorer() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <FilterPills options={filterOptions} active={status} onChange={setStatus} />
-        <SearchField value={search} onChange={setSearch} placeholder="Événement, lieu ou référence…" className="w-full sm:max-w-xs" />
+        <SearchField value={search} onChange={setSearch} placeholder={t("Événement, lieu ou référence…")} className="w-full sm:max-w-xs" />
       </div>
 
       <div className={cardClass("overflow-hidden")}>
         {tickets === null ? (
-          <p className="px-5 py-4 text-sm text-ink-5">{error ?? "Chargement…"}</p>
+          <p className="px-5 py-4 text-sm text-ink-5">{error ?? t("Chargement…")}</p>
         ) : isEmpty ? (
           <p className="px-5 py-4 text-sm text-ink-5">
-            {search.trim() ? "Aucun billet ne correspond à votre recherche." : "Aucun billet dans cette catégorie."}
+            {search.trim() ? t("Aucun billet ne correspond à votre recherche.") : t("Aucun billet dans cette catégorie.")}
           </p>
         ) : (
           <>

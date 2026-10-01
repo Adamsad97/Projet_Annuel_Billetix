@@ -2,16 +2,17 @@
 
 import jsQR from "jsqr";
 import { useEffect, useRef, useState } from "react";
+import { t } from "@/lib/i18n/translate";
 
 const DECODE_INTERVAL_MS = 200;
 const MAX_FRAME_WIDTH = 640; // image réduite : décodage plus rapide, suffisant pour un QR
 
 function cameraErrorMessage(err: unknown): string {
   const name = (err as { name?: string })?.name;
-  if (name === "NotAllowedError") return "Accès à la caméra refusé : autorisez-le dans les réglages du navigateur.";
-  if (name === "NotFoundError" || name === "OverconstrainedError") return "Aucune caméra détectée sur cet appareil.";
-  if (name === "NotReadableError") return "La caméra est déjà utilisée par une autre application.";
-  return "Impossible d'ouvrir la caméra.";
+  if (name === "NotAllowedError") return t("Accès à la caméra refusé : autorisez-le dans les réglages du navigateur.");
+  if (name === "NotFoundError" || name === "OverconstrainedError") return t("Aucune caméra détectée sur cet appareil.");
+  if (name === "NotReadableError") return t("La caméra est déjà utilisée par une autre application.");
+  return t("Impossible d'ouvrir la caméra.");
 }
 
 /** Caméra arrière et décodage des QR ; paused suspend le décodage sans couper la caméra. */
@@ -36,7 +37,7 @@ export function CameraScanner({ onCode, paused }: { onCode: (text: string) => vo
 
     async function start() {
       if (!navigator.mediaDevices?.getUserMedia) {
-        setError("La caméra n'est accessible qu'en connexion sécurisée (https).");
+        setError(t("La caméra n'est accessible qu'en connexion sécurisée (https)."));
         return;
       }
       try {
@@ -88,7 +89,7 @@ export function CameraScanner({ onCode, paused }: { onCode: (text: string) => vo
           {error}
         </div>
       ) : !ready ? (
-        <div className="absolute inset-0 flex items-center justify-center text-sm text-white/80">Ouverture de la caméra…</div>
+        <div className="absolute inset-0 flex items-center justify-center text-sm text-white/80">{t("Ouverture de la caméra…")}</div>
       ) : null}
     </div>
   );

@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { searchAddress, type AddressSuggestion } from "@/lib/geo/photon";
 import { fieldClass } from "@/components/ui/field";
+import { t } from "@/lib/i18n/translate";
 
 const fieldClassName = fieldClass("px-4 py-3 disabled:cursor-not-allowed disabled:opacity-50");
 
@@ -83,7 +84,7 @@ export function AddressAutocomplete({
       {open && (loading || suggestions.length > 0) ? (
         <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-hairline-2 bg-popover shadow-xl">
           {loading ? (
-            <li className="px-4 py-2.5 text-sm text-ink-5">Recherche…</li>
+            <li className="px-4 py-2.5 text-sm text-ink-5">{t("Recherche…")}</li>
           ) : (
             suggestions.map((suggestion, index) => (
               <li key={`${suggestion.lat}-${suggestion.lng}-${index}`}>
