@@ -9,7 +9,7 @@ import { frenchValidationException } from "./common/validation/french-validation
 
 async function bootstrap() {
   // rawBody: true — nécessaire pour vérifier les signatures des webhooks
-  // (Stripe, PayPal, Wave) qui doivent être calculées sur le corps brut de
+  // Stripe, qui doivent être calculées sur le corps brut de
   // la requête, avant tout parsing JSON. Sans cette option, `req.rawBody`
   // est toujours `undefined` et la vérification de signature échoue
   // silencieusement (bug préexistant corrigé ici).

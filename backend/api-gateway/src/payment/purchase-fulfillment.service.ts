@@ -15,11 +15,6 @@ import { DEFAULT_EVENT_TIMEZONE, formatEventDate } from "../common/event-date";
 /** Libellés des moyens de paiement affichés sur la facture envoyée par email. */
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   STRIPE: "Carte bancaire",
-  APPLE_PAY: "Apple Pay",
-  GOOGLE_PAY: "Google Pay",
-  PAYPAL: "PayPal",
-  ORANGE_MONEY: "Orange Money",
-  WAVE: "Wave",
   FREE: "Gratuit",
 };
 
@@ -101,12 +96,6 @@ export class PurchaseFulfillmentService {
       this.adminClient.send<{
         stripe_fee_percent: number;
         stripe_fee_fixed_eur: number;
-        paypal_fee_percent: number;
-        paypal_fee_fixed_eur: number;
-        orange_money_fee_percent: number;
-        orange_money_fee_fixed_eur: number;
-        wave_fee_percent: number;
-        wave_fee_fixed_eur: number;
         platform_legal_name: string;
         platform_siret: string;
         platform_vat_number: string;
@@ -117,12 +106,6 @@ export class PurchaseFulfillmentService {
     ).catch(() => ({
       stripe_fee_percent: 2.9,
       stripe_fee_fixed_eur: 0.3,
-      paypal_fee_percent: 3.4,
-      paypal_fee_fixed_eur: 0.35,
-      orange_money_fee_percent: 2.0,
-      orange_money_fee_fixed_eur: 0,
-      wave_fee_percent: 1.0,
-      wave_fee_fixed_eur: 0,
       platform_legal_name: "BilleTix SAS",
       platform_siret: "",
       platform_vat_number: "",
@@ -131,26 +114,10 @@ export class PurchaseFulfillmentService {
       ticket_pdf_wait_delay_seconds: 2,
     }));
 
-    // Bug corrigé : une seule grille de frais (Stripe) était appliquée à tous
-    // les prestataires — PayPal/Orange Money/Wave ont chacun leur propre
-    // tarification, désormais configurable indépendamment via
-    // platform_settings. Apple Pay/Google Pay transitent par Stripe (cf.
-    // payment-service PaymentService.resolveProvider), donc même grille.
-    const feeGridByPaymentMethod: Record<string, { percent: number; fixed: number }> = {
-      STRIPE: { percent: platformConfig.stripe_fee_percent, fixed: platformConfig.stripe_fee_fixed_eur },
-      APPLE_PAY: { percent: platformConfig.stripe_fee_percent, fixed: platformConfig.stripe_fee_fixed_eur },
-      GOOGLE_PAY: { percent: platformConfig.stripe_fee_percent, fixed: platformConfig.stripe_fee_fixed_eur },
-      PAYPAL: { percent: platformConfig.paypal_fee_percent, fixed: platformConfig.paypal_fee_fixed_eur },
-      ORANGE_MONEY: { percent: platformConfig.orange_money_fee_percent, fixed: platformConfig.orange_money_fee_fixed_eur },
-      WAVE: { percent: platformConfig.wave_fee_percent, fixed: platformConfig.wave_fee_fixed_eur },
-    };
-
     // Un événement entièrement gratuit (total_amount_ttc = 0) ne passe jamais
     // par un prestataire de paiement (cf. tunnel gratuit CDC §4.1 : aucun
     // moyen de paiement sollicité) — donc aucun frais réel n'est jamais prélevé.
-    const feeGrid =
-      feeGridByPaymentMethod[order.payment_method] ??
-      feeGridByPaymentMethod.STRIPE;
+    const feeGrid = { percent: platformConfig.stripe_fee_percent, fixed: platformConfig.stripe_fee_fixed_eur };
     const paymentFees =
       Number(order.total_amount_ttc) === 0
         ? 0

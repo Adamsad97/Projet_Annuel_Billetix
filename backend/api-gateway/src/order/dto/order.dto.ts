@@ -19,7 +19,8 @@ import {
 
 const trim = ({ value }: { value: unknown }) => (typeof value === "string" ? value.trim() : value);
 
-export const PAYMENT_METHODS = ["STRIPE", "PAYPAL", "APPLE_PAY", "GOOGLE_PAY", "ORANGE_MONEY", "WAVE", "FREE"] as const;
+/** Stripe (carte bancaire, Apple Pay, Google Pay) ou commande gratuite. */
+export const PAYMENT_METHODS = ["STRIPE", "FREE"] as const;
 // Plafond technique d'une ligne de commande ; le maximum métier par commande
 // est celui de la catégorie de billet (max_per_order), vérifié par event-service.
 const MAX_QUANTITY_PER_LINE = 100;
