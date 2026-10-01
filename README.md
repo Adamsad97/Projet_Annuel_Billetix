@@ -15,7 +15,13 @@ cd Projet_Annuel_Billetix
 cp .env.example .env
 ```
 
-Ouvrir `.env` et renseigner au minimum les secrets cryptographiques (voir les commentaires dans `.env.example` pour la commande de génération de chacun) : `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `IBAN_ENCRYPTION_KEY`, ainsi que les mots de passe PostgreSQL/Redis/RabbitMQ/MinIO de votre choix. Les clés Stripe et Google/Facebook OAuth peuvent rester vides si ces intégrations ne sont pas utilisées.
+Ouvrir `.env` et renseigner au minimum les secrets cryptographiques, ainsi que les mots de passe PostgreSQL/Redis/RabbitMQ/MinIO de votre choix. Les clés Stripe et Google/Facebook OAuth peuvent rester vides si ces intégrations ne sont pas utilisées.
+
+| Variable | Commande de génération |
+|---|---|
+| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
+| `IBAN_ENCRYPTION_KEY` (AES-256, 64 caractères hexadécimaux) | `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `QR_SIGNING_PRIVATE_KEY` (Ed25519, PKCS#8, DER, base64) | `node -e "console.log(require('crypto').generateKeyPairSync('ed25519').privateKey.export({format:'der',type:'pkcs8'}).toString('base64'))"` |
 
 # Partie A — Avec Docker (recommandé)
 
