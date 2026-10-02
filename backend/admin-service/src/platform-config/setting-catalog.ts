@@ -12,6 +12,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
     keys: [
       'password_min_length',
       'password_max_age_days',
+      'magic_link_ttl_minutes',
       'minimum_signup_age',
       'account_lockout_threshold',
       'account_lockout_duration_minutes',
@@ -107,5 +108,6 @@ export function sectionOf(key: string): { id: string; super_admin_only: boolean 
 export function numericBoundsError(key: string, value: number): string | null {
   if (value < 0) return 'la valeur ne peut pas être négative';
   if (key.endsWith('_percent') && value > 100) return 'pourcentage attendu entre 0 et 100';
+  if (key === 'magic_link_ttl_minutes' && value > 60) return 'un lien de connexion ne doit pas rester valable plus de 60 minutes';
   return null;
 }

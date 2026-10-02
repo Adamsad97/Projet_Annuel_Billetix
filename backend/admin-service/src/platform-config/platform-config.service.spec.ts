@@ -139,5 +139,12 @@ describe('PlatformConfigService', () => {
       repo.findOne.mockResolvedValue({ key: 'stripe_fee_percent', value: '2.9', type: 'number' });
       await expect(service.update('stripe_fee_percent', '150', 'SUPER_ADMIN')).rejects.toThrow('entre 0 et 100');
     });
+
+    it("lien magique : 0 le désactive, au-delà de 60 minutes la valeur est refusée", async () => {
+      repo.findOne.mockResolvedValue({ key: 'magic_link_ttl_minutes', value: '15', type: 'number' });
+      await expect(service.update('magic_link_ttl_minutes', '0', 'SUPER_ADMIN')).resolves.toMatchObject({ value: '0' });
+      repo.findOne.mockResolvedValue({ key: 'magic_link_ttl_minutes', value: '15', type: 'number' });
+      await expect(service.update('magic_link_ttl_minutes', '120', 'SUPER_ADMIN')).rejects.toThrow('60 minutes');
+    });
   });
 });

@@ -42,6 +42,7 @@ export interface PlatformConfig {
   pdf_generation_max_retry_attempts: number;
   password_min_length: number;
   password_max_age_days: number;
+  magic_link_ttl_minutes: number;
   minimum_signup_age: number;
   session_idle_timeout_minutes: number;
   session_refresh_grace_seconds: number;
@@ -117,6 +118,7 @@ const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'session_idle_timeout_minutes',   value: '30',            type: 'number',  description: 'Durée d\'inactivité (minutes) au-delà de laquelle la session expire : déconnexion automatique, et le serveur refuse de la renouveler' },
   { key: 'minimum_signup_age',             value: '18',            type: 'number',  description: 'Âge minimum pour créer un compte (années révolues, vérifié sur la date de naissance à l\'inscription)' },
   { key: 'password_min_length',            value: '12',            type: 'number',  description: 'Longueur minimale d\'un mot de passe (inscription, réinitialisation, changement) — en plus des règles majuscule/minuscule/chiffre/caractère spécial' },
+  { key: 'magic_link_ttl_minutes',         value: '15',            type: 'number',  description: 'Validité du lien de connexion envoyé par email (minutes), à usage unique. 0 = connexion par lien magique désactivée' },
   { key: 'password_max_age_days',          value: '60',            type: 'number',  description: 'Durée de validité d\'un mot de passe (jours) : au-delà, son changement est exigé à la connexion (recommandation CNIL : 60). 0 = jamais' },
 ];
 
@@ -179,6 +181,7 @@ export class PlatformConfigService implements OnModuleInit {
       pdf_generation_max_retry_attempts: parseInt(map.pdf_generation_max_retry_attempts ?? '5'),
       password_min_length:            parseInt(map.password_min_length ?? '12'),
       password_max_age_days:          parseInt(map.password_max_age_days ?? '60'),
+      magic_link_ttl_minutes:         parseInt(map.magic_link_ttl_minutes ?? '15'),
       minimum_signup_age:             parseInt(map.minimum_signup_age ?? '18'),
       session_idle_timeout_minutes:   parseInt(map.session_idle_timeout_minutes ?? '30'),
       session_refresh_grace_seconds:  parseInt(map.session_refresh_grace_seconds ?? '30'),
