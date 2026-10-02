@@ -340,4 +340,22 @@ describe('NotificationController', () => {
     expect(options).toMatchObject({ to: 'jean@example.com', template: 'dispute-resolved-buyer' });
     expect(options.context).toMatchObject({ isLost: true, refundAmount: '45.00', ordersUrl: 'http://localhost:3000/profil/commandes' });
   });
+
+  it('lien magique : email avec le lien de connexion et sa durée de validité', async () => {
+    await controller.onMagicLink(
+      { email: 'jean@example.com', firstName: 'Jean', token: 'abc_DEF-123', expiresInMinutes: 15 },
+      rmqContext,
+    );
+
+    expect(mail.send).toHaveBeenCalledWith({
+      to: 'jean@example.com',
+      subject: 'Votre lien de connexion — BilleTix',
+      template: 'magic-link',
+      context: {
+        firstName: 'Jean',
+        loginUrl: 'http://localhost:3000/auth/magic-link?token=abc_DEF-123',
+        expiresInMinutes: 15,
+      },
+    });
+  });
 });

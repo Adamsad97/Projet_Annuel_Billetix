@@ -38,6 +38,7 @@ import { NewsletterDto } from './dto/newsletter.dto';
 import { OrderConfirmedDto } from './dto/order-confirmed.dto';
 import { AgentInvitationDto } from './dto/agent-invitation.dto';
 import { PasswordResetDto } from './dto/password-reset.dto';
+import { MagicLinkDto } from './dto/magic-link.dto';
 import { PaymentConfirmedDto } from './dto/payment-confirmed.dto';
 import { PaymentFailedDto } from './dto/payment-failed.dto';
 import { PurchaseInvoiceDto } from './dto/purchase-invoice.dto';
@@ -103,6 +104,21 @@ export class NotificationController {
       context: {
         firstName: data.firstName,
         resetUrl: `${this.appUrl}/auth/reset-password?token=${data.token}`,
+      },
+    });
+    this.ack(rmqContext);
+  }
+
+  @EventPattern('notification.magic_link')
+  async onMagicLink(@Payload() data: MagicLinkDto, @Ctx() rmqContext: RmqContext) {
+    await this.mail.send({
+      to: data.email,
+      subject: 'Votre lien de connexion — BilleTix',
+      template: 'magic-link',
+      context: {
+        firstName: data.firstName,
+        loginUrl: `${this.appUrl}/auth/magic-link?token=${encodeURIComponent(data.token)}`,
+        expiresInMinutes: data.expiresInMinutes,
       },
     });
     this.ack(rmqContext);

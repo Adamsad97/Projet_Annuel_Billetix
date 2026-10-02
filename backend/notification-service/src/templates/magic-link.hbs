@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Votre lien de connexion</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #6c3de0; padding: 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0; font-size: 28px; }
+    .body { padding: 32px; color: #333; line-height: 1.6; }
+    .btn { display: inline-block; margin: 24px 0; padding: 14px 32px; background: #6c3de0; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; }
+    .warning { background: #fff8e1; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #92400e; }
+    .footer { padding: 20px 32px; background: #f9f9f9; color: #999; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>BilleTix</h1></div>
+    <div class="body">
+      <h2>Connexion à votre compte</h2>
+      <p>Bonjour {{firstName}},</p>
+      <p>Vous avez demandé à vous connecter à BilleTix sans mot de passe. Cliquez sur le bouton ci-dessous pour ouvrir votre session.</p>
+      <a href="{{loginUrl}}" class="btn">Me connecter</a>
+      <p>Ce lien expire dans {{expiresInMinutes}} minutes et ne fonctionne qu'une seule fois.</p>
+      <div class="warning">Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet email : personne ne peut se connecter à votre compte sans ce lien. Ne le transférez à personne.</div>
+    </div>
+    <div class="footer">© {{year}} BilleTix — Tous droits réservés</div>
+  </div>
+</body>
+</html>
