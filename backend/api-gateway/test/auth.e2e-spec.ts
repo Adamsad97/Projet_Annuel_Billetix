@@ -1,4 +1,4 @@
-import { del, errorMessage, get, post } from "./support/api";
+import { API_URL, del, errorMessage, get, post } from "./support/api";
 import { Account, PASSWORD, createVerifiedAccount, login, testEmail } from "./support/fixtures";
 import { waitForLinkToken } from "./support/mailpit";
 
@@ -76,6 +76,23 @@ describe("Authentification (fonctionnel)", () => {
 
     expect((await post("/auth/login", { email: account.email, password: PASSWORD })).status).toBe(401);
     account = await login(account.email, NEW_PASSWORD);
+  });
+
+  it("exporte toutes les données du compte en JSON téléchargeable, sans aucun secret (RGPD)", async () => {
+    const response = await fetch(`${API_URL}/users/me/export`, {
+      headers: { Authorization: `Bearer ${account.token}` },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-disposition")).toMatch(
+      /^attachment; filename="billetix-mes-donnees-.+\.json"$/,
+    );
+    expect(response.headers.get("cache-control")).toBe("no-store");
+
+    const data = await response.json();
+    expect(data.account).toMatchObject({ id: account.id, email: account.email, first_name: "Test" });
+    expect(data.buyer).toEqual(expect.objectContaining({ orders: [], tickets: [] }));
+    expect(data.organizer).toBeNull();
+    expect(JSON.stringify(data)).not.toMatch(/password_hash|two_factor_secret|qr_code_token|refresh_token/);
   });
 
   it("supprime définitivement le compte à la demande de l'utilisateur (RGPD)", async () => {

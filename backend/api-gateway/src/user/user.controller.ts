@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -11,12 +12,14 @@ import {
   Patch,
   Post,
   Req,
+  Res,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { ClientProxy } from "@nestjs/microservices";
 import { assertOwnDocumentUrl } from "../upload/document-url";
 import { ConfigService } from "@nestjs/config";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
-import { Request } from "express";
+import { Request, Response } from "express";
 import { firstValueFrom } from "rxjs";
 import {
   CurrentUser,
@@ -30,6 +33,7 @@ import { UpdateNotificationPrefsDto } from "./dto/update-notification-prefs.dto"
 import { UpdateOrganizerProfileDto } from "./dto/update-organizer-profile.dto";
 import { DeleteAccountDto } from "./dto/delete-account.dto";
 import { AdminRecipients } from "../admin-alerts/admin-recipients.service";
+import { UserDataExportService } from "./data-export.service";
 
 @ApiTags("users")
 @ApiBearerAuth()
@@ -45,6 +49,7 @@ export class UserController {
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
     private readonly config: ConfigService,
     private readonly adminRecipients: AdminRecipients,
+    private readonly dataExport: UserDataExportService,
   ) {}
 
   // --- Profil acheteur ---
@@ -302,6 +307,50 @@ export class UserController {
         kyc_rejected_reason: organizerProfile.kyc_rejected_reason,
       }),
     );
+  }
+
+  // --- Droit d'accès et à la portabilité (RGPD) ---
+
+  @Get("me/export")
+  @Throttle({ default: { ttl: 60 * 60_000, limit: 5 } })
+  @ApiOperation({
+    summary: "Télécharger toutes ses données personnelles en JSON (RGPD, articles 15 et 20) — connexion récente exigée",
+  })
+  async exportMyData(@CurrentUser() user: JwtPayload, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    // Toutes les données du compte en un fichier : même exigence qu'une action sensible si le jeton a été volé.
+    const config = await firstValueFrom(
+      this.adminClient.send<{ sensitive_action_reauth_minutes: number }>("admin.get_platform_config", {}),
+    ).catch(() => ({ sensitive_action_reauth_minutes: 5 }));
+    const authTime = user.auth_time ?? user.iat ?? 0;
+    if (Date.now() / 1000 - authTime > config.sensitive_action_reauth_minutes * 60) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: "REAUTH_REQUIRED",
+        message: "Pour télécharger vos données, confirmez d'abord votre identité en vous reconnectant.",
+      });
+    }
+
+    const data = await this.dataExport.build(user);
+
+    this.adminClient
+      .send("admin.log_action", {
+        action: "USER_DATA_EXPORTED",
+        entity_type: "USER",
+        entity_id: user.sub,
+        performed_by: user.sub,
+        performed_by_email: user.email,
+        reason: "Export de ses données personnelles par l'utilisateur (RGPD)",
+        metadata: null,
+        ip_address: (req.headers["x-forwarded-for"] as string)?.split(",")[0] ?? req.ip ?? "",
+      })
+      .subscribe({ error: (err) => this.logger.warn(`Journal de l'export RGPD non enregistré : ${err?.message}`) });
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="billetix-mes-donnees-${data.generated_at.slice(0, 10)}.json"`,
+    );
+    res.setHeader("Cache-Control", "no-store");
+    return data;
   }
 
   // --- Droit à l'effacement (RGPD) ---

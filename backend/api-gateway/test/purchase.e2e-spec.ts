@@ -229,6 +229,19 @@ describe("Parcours organisateur → achat → contrôle d'entrée (fonctionnel)"
         expect(stats.body).toEqual({ admitted: 1, expected: 2 });
       });
 
+      it("l'export RGPD contient la commande et les billets de l'acheteur, l'événement de l'organisateur", async () => {
+        const buyerExport = await get("/users/me/export", buyer.token);
+        expect(buyerExport.status).toBe(200);
+        expect(buyerExport.body.buyer.orders.map((order: { id: string }) => order.id)).toContain(orderId);
+        expect(buyerExport.body.buyer.tickets.map((ticket: { id: string }) => ticket.id)).toEqual(
+          expect.arrayContaining(ticketIds),
+        );
+
+        const organizerExport = await get("/users/me/export", organizer.token);
+        expect(organizerExport.status).toBe(200);
+        expect(organizerExport.body.organizer.events.map((event: { id: string }) => event.id)).toContain(eventId);
+      });
+
       it("un acheteur ne peut pas scanner les billets d'un événement", async () => {
         const qr = await get(`/tickets/${ticketIds[1]}/qr`, buyer.token);
         const scan = await post(
