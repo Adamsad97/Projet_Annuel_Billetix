@@ -4,6 +4,8 @@ import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Matches, Max, Min, valid
 /** Configuration requise par payment-service, vérifiée au démarrage. */
 class PaymentServiceEnvironment {
   @IsString() @IsNotEmpty() DATABASE_URL: string;
+  // Verrou des tâches planifiées : une seule exécution par créneau quand le service tourne en plusieurs exemplaires.
+  @IsString() @IsNotEmpty() REDIS_URL: string;
   @IsString() @IsNotEmpty() RABBITMQ_URL: string;
   @IsString() @IsNotEmpty() FRONTEND_URL: string;
 

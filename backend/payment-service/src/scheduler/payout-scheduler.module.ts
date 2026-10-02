@@ -2,11 +2,13 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { PayoutModule } from '../payout/payout.module';
+import { JobLockModule } from './job-lock.module';
 import { PayoutSchedulerService } from './payout-scheduler.service';
 
 @Module({
   imports: [
     PayoutModule,
+    JobLockModule,
     ClientsModule.registerAsync([
       {
         name: 'USER_SERVICE',

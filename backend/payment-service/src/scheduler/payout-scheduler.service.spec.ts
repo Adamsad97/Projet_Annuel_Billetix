@@ -1,3 +1,4 @@
+import { JobLock } from './job-lock.service';
 import { Test } from '@nestjs/testing';
 import { of, throwError } from 'rxjs';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
@@ -22,6 +23,7 @@ describe('PayoutSchedulerService', () => {
   let eventClient: { send: jest.Mock };
   let notificationClient: { emit: jest.Mock };
   let platformConfig: { get: jest.Mock };
+  let jobLock: { runOncePerPeriod: jest.Mock };
 
   const duePayout = { id: 'payout-1', organizer_id: 'org-1' };
   const completedPayout = {
@@ -49,6 +51,7 @@ describe('PayoutSchedulerService', () => {
     };
     eventClient = { send: jest.fn().mockReturnValue(of({ title: 'Festival Test' })) };
     notificationClient = { emit: jest.fn() };
+    jobLock = { runOncePerPeriod: jest.fn((_name: string, _period: number, job: () => Promise<unknown>) => job()) };
     platformConfig = { get: jest.fn().mockResolvedValue({ dispute_payout_block_max_days: 30, iban_change_payout_hold_hours: 72 }) };
 
     const module = await Test.createTestingModule({
@@ -60,6 +63,7 @@ describe('PayoutSchedulerService', () => {
         { provide: 'AUTH_SERVICE', useValue: authClient },
         { provide: 'EVENT_SERVICE', useValue: eventClient },
         { provide: 'NOTIFICATION_SERVICE', useValue: notificationClient },
+        { provide: JobLock, useValue: jobLock },
       ],
     }).compile();
 
@@ -232,5 +236,23 @@ describe('PayoutSchedulerService', () => {
       await service.processDuePayouts();
       expect(payoutService.prepareBankTransfer).not.toHaveBeenCalled();
     });
+  });
+
+  it('reversements à échéance : déclenchés une seule fois par jour dans le cluster', async () => {
+    const process = jest.spyOn(service, 'processDuePayouts').mockResolvedValue(undefined);
+    await service.processDuePayoutsJob();
+    expect(jobLock.runOncePerPeriod).toHaveBeenCalledWith('process-due-payouts', 24 * 3600, expect.any(Function));
+    expect(process).toHaveBeenCalledTimes(1);
+
+    jobLock.runOncePerPeriod.mockResolvedValueOnce(false);
+    await service.processDuePayoutsJob();
+    expect(process).toHaveBeenCalledTimes(1);
+  });
+
+  it('déblocage des reversements après litige : sous le même verrou quotidien', async () => {
+    const unblock = jest.spyOn(service, 'unblockExpiredDisputePayouts').mockResolvedValue(undefined);
+    await service.unblockExpiredDisputePayoutsJob();
+    expect(jobLock.runOncePerPeriod).toHaveBeenCalledWith('unblock-expired-dispute-payouts', 24 * 3600, expect.any(Function));
+    expect(unblock).toHaveBeenCalledTimes(1);
   });
 });

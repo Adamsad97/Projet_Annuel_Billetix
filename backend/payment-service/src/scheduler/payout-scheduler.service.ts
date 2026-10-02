@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { PayoutService } from '../payout/payout.service';
 import { PayoutStatus } from '../payout/payout.entity';
+import { JobLock } from './job-lock.service';
 
 interface PayoutAccount {
   payout_method: 'BANK_TRANSFER' | 'STRIPE';
@@ -31,11 +32,17 @@ export class PayoutSchedulerService {
     @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
     @Inject('EVENT_SERVICE') private readonly eventClient: ClientProxy,
     @Inject('NOTIFICATION_SERVICE') private readonly notificationClient: ClientProxy,
+    private readonly jobLock: JobLock,
   ) {}
 
   // Tous les jours à 10h00 UTC — déclenche les reversements arrivés à échéance
   // (scheduled_at = date de fin d'événement + payout_delay_days, cf. platform-config)
+  // Verrou de cluster : un reversement déclenché deux fois serait un virement en double.
   @Cron('0 10 * * *')
+  async processDuePayoutsJob(): Promise<void> {
+    await this.jobLock.runOncePerPeriod('process-due-payouts', 24 * 3600, () => this.processDuePayouts());
+  }
+
   async processDuePayouts(): Promise<void> {
     const duePayouts = await this.payoutService.getDuePayouts();
     if (duePayouts.length === 0) return;
@@ -182,6 +189,12 @@ export class PayoutSchedulerService {
 
   // Tous les jours à 10h30 UTC : débloque les reversements bloqués pour litige au-delà du délai maximum.
   @Cron('30 10 * * *')
+  async unblockExpiredDisputePayoutsJob(): Promise<void> {
+    await this.jobLock.runOncePerPeriod('unblock-expired-dispute-payouts', 24 * 3600, () =>
+      this.unblockExpiredDisputePayouts(),
+    );
+  }
+
   async unblockExpiredDisputePayouts(): Promise<void> {
     const config = await this.platformConfig.get();
     const expired = await this.payoutService.getExpiredBlockedPayouts(
