@@ -62,7 +62,7 @@ export function CategoryExplorer({
                   <span aria-hidden="true" className={`pointer-events-none absolute -left-8 -top-8 h-20 w-20 rounded-full opacity-60 blur-2xl transition-[transform,opacity] duration-500 group-hover:scale-[2.5] group-hover:opacity-100 motion-reduce:transition-none ${tint.glow}`} />
 
                   <span aria-hidden="true" className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-transform duration-300 group-hover:scale-110 motion-reduce:transition-none ${tint.chip}`}>
-                    <CategoryIcon code={category.code} className="h-5 w-5" />
+                    <CategoryIcon code={category.code} emoji={category.emoji} className="h-5 w-5" />
                   </span>
 
                   <span className="relative min-w-0 flex-1">
