@@ -26,6 +26,7 @@ jobs:
           - auth-service
           - event-service
           - notification-service
+          - realtime-service
           - order-service
           - payment-service
           - pdf-service
@@ -76,6 +77,7 @@ jobs:
           - auth-service
           - event-service
           - notification-service
+          - realtime-service
           - order-service
           - payment-service
           - pdf-service

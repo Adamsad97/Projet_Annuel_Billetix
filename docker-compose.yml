@@ -591,6 +591,40 @@ services:
     networks:
       - billetix-net
 
+  realtime-service:
+    build:
+      context: ./backend/realtime-service
+      target: production
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${BACKEND_NODE_ENV:-development}
+      PORT: 3010
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      # Seules les pages du site peuvent ouvrir une connexion temps réel.
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      EVENT_SERVICE_HOST: event-service
+      EVENT_SERVICE_PORT: 3003
+    ports:
+      - "${REALTIME_PORT:-3010}:3010"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      event-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3010/health',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+      start_interval: 2s
+    networks:
+      - billetix-net
+
   pdf-service:
     build:
       context: ./backend/pdf-service
@@ -664,6 +698,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
         NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+        NEXT_PUBLIC_REALTIME_URL: ${NEXT_PUBLIC_REALTIME_URL:-http://localhost:3010}
         SITE_URL: ${FRONTEND_URL:-http://localhost:3000}
     restart: unless-stopped
     environment:
@@ -675,6 +710,7 @@ services:
       # la même que celle des liens d'emails.
       SITE_URL: ${FRONTEND_URL:-http://localhost:3000}
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+      NEXT_PUBLIC_REALTIME_URL: ${NEXT_PUBLIC_REALTIME_URL:-http://localhost:3010}
     ports:
       - "3000:3000"
     depends_on:

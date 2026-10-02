@@ -76,6 +76,15 @@ services:
     environment:
       NODE_ENV: development
     command: npm run start:dev
+  realtime-service:
+    build:
+      target: development
+    volumes:
+      - ./backend/realtime-service:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+    command: npm run start:dev
   pdf-service:
     build:
       target: development

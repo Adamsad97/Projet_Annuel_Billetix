@@ -27,6 +27,7 @@
     "test:ticket-service": "docker-compose exec ticket-service npm test",
     "test:payment-service": "docker-compose exec payment-service npm test",
     "test:notification-service": "docker-compose exec notification-service npm test",
+    "test:realtime-service": "docker-compose exec realtime-service npm test",
     "test:pdf-service": "docker-compose exec pdf-service npm test",
     "test:admin-service": "docker-compose exec admin-service npm test",
     "dev:all": "node scripts/dev-all.js",

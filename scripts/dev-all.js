@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Lance les 10 microservices en local hors Docker (logs préfixés, Ctrl+C arrête tout ; voir README B.2/B.3). */
+/** Lance les 11 microservices en local hors Docker (logs préfixés, Ctrl+C arrête tout ; voir README B.2/B.3). */
 const { spawn } = require('child_process');
 const path = require('path');
 
@@ -11,6 +11,7 @@ const services = [
   'ticket-service',
   'payment-service',
   'notification-service',
+  'realtime-service',
   'pdf-service',
   'admin-service',
   'api-gateway',

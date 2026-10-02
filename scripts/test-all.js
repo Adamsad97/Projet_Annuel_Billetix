@@ -10,6 +10,7 @@ const services = [
   'ticket-service',
   'payment-service',
   'notification-service',
+  'realtime-service',
   'pdf-service',
   'admin-service',
   'api-gateway',

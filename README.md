@@ -25,7 +25,7 @@ Ouvrir `.env` et renseigner au minimum les secrets cryptographiques, ainsi que l
 
 # Partie A — Avec Docker (recommandé)
 
-Toute l'infrastructure (7 bases PostgreSQL, Redis, RabbitMQ, MinIO, Mailpit) ET les 10 microservices tournent en conteneurs. C'est le mode par défaut du projet.
+Toute l'infrastructure (7 bases PostgreSQL, Redis, RabbitMQ, MinIO, Mailpit) ET les 11 microservices tournent en conteneurs. C'est le mode par défaut du projet.
 
 ## A.1 Premier démarrage
 
@@ -57,7 +57,8 @@ event-service : `docker compose up -d event-service`
 order-service : `docker compose up -d order-service`  
 ticket-service : `docker compose up -d ticket-service`  
 payment-service : `docker compose up -d payment-service`  
-notification-service : `docker compose up -d notification-service`
+notification-service : `docker compose up -d notification-service`  
+realtime-service : `docker compose up -d realtime-service`
 pdf-service : `docker compose up -d pdf-service`  
 admin-service : `docker compose up -d admin-service`  
 frontend : `docker compose up -d frontend`
@@ -75,7 +76,8 @@ event-service : `docker compose down event-service`
 order-service : `docker compose down order-service`  
 ticket-service : `docker compose down ticket-service`  
 payment-service : `docker compose down payment-service`  
-notification-service : `docker compose down notification-service`
+notification-service : `docker compose down notification-service`  
+realtime-service : `docker compose down realtime-service`
 pdf-service : `docker compose down pdf-service`  
 admin-service : `docker compose down admin-service`  
 frontend : `docker compose down frontend`
@@ -98,7 +100,7 @@ npm run dev
 
 > Testé en conditions réelles : `npm start` et `npm run dev` restent **attachés aux logs** (pas de `-d`). Fermer le terminal, ou tuer le processus, arrête **toute la stack** (confirmé : la stack est passée de 22 conteneurs à 0 quand ce processus s'est terminé). Pour démarrer en arrière-plan sans dépendre du terminal : `npm run up` (équivalent détaché).
 
-Backend seul (les 10 microservices + infrastructure, sans le frontend), testé en conditions réelles :
+Backend seul (les 11 microservices + infrastructure, sans le frontend), testé en conditions réelles :
 
 ```bash
 npm run dev:backend
@@ -143,7 +145,8 @@ event-service : `npm run test:event-service`
 order-service : `npm run test:order-service`  
 ticket-service : `npm run test:ticket-service`  
 payment-service : `npm run test:payment-service`  
-notification-service : `npm run test:notification-service`
+notification-service : `npm run test:notification-service`  
+realtime-service : `npm run test:realtime-service`
 pdf-service : `npm run test:pdf-service`  
 admin-service : `npm run test:admin-service`
 
@@ -155,7 +158,7 @@ Les services doivent déjà être démarrés (A.1/A.4) :
 npm run test:all
 ```
 
-Exécute `npm test` dans chacun des 10 microservices via `docker compose exec` (comme A.6), dans l'ordre, et rapporte en fin d'exécution la liste des services en échec (s'il y en a).
+Exécute `npm test` dans chacun des 11 microservices via `docker compose exec` (comme A.6), dans l'ordre, et rapporte en fin d'exécution la liste des services en échec (s'il y en a).
 
 ## A.8 Exécuter les migrations
 
@@ -213,7 +216,8 @@ event-service : `cd backend/event-service`
 order-service : `cd backend/order-service`  
 ticket-service : `cd backend/ticket-service`  
 payment-service : `cd backend/payment-service`  
-notification-service : `cd backend/notification-service`
+notification-service : `cd backend/notification-service`  
+realtime-service : `cd backend/realtime-service`
 pdf-service : `cd backend/pdf-service`  
 admin-service : `cd backend/admin-service`  
 frontend : `cd frontend`
@@ -237,7 +241,7 @@ Nécessite que chaque service ait déjà son `.env` local (B.2) et ses dépendan
 npm run dev:all
 ```
 
-Lance les 10 microservices backend en parallèle (`npm run start:dev` dans chacun), logs préfixés par nom de service dans un seul terminal. `Ctrl+C` arrête tous les processus d'un coup.
+Lance les 11 microservices backend en parallèle (`npm run start:dev` dans chacun), logs préfixés par nom de service dans un seul terminal. `Ctrl+C` arrête tous les processus d'un coup.
 
 ## B.6 Arrêter tous les services en une seule commande
 
