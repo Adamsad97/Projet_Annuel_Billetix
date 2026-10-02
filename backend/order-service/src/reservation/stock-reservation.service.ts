@@ -36,27 +36,7 @@ export class StockReservationService {
     event_id: string,
     items: ReservationItem[],
   ): Promise<{ reservation_token: string; expires_at: Date }> {
-    // Décrémentation atomique du quota dans event-service pour chaque catégorie
-    const decremented: ReservationItem[] = [];
-    try {
-      for (const item of items) {
-        await firstValueFrom(
-          this.eventClient.send('event.decrement_quota', {
-            id: item.ticket_category_id,
-            quantity: item.quantity,
-          }),
-        );
-        decremented.push(item);
-      }
-    } catch (quotaError) {
-      // Rollback des décrémentations déjà faites
-      await this.rollback(decremented);
-      // L'erreur distante a la forme { statusCode, message } : on affiche le vrai message d'event-service.
-      throw new RpcException({
-        statusCode: quotaError?.statusCode ?? 409,
-        message: quotaError?.message ?? 'Places insuffisantes',
-      });
-    }
+    await this.decrementAll(items);
 
     const config = await this.platformConfig.get();
     const ttl = config.stock_reservation_ttl_seconds;
@@ -138,9 +118,38 @@ export class StockReservationService {
     return restored;
   }
 
+  /** Reprend le stock d'une commande déjà annulée (paiement arrivé après l'abandon) ; 409 si les places sont reparties. */
+  async retakeItems(items: ReservationItem[]): Promise<void> {
+    await this.decrementAll(items);
+  }
+
   /** Restitue le quota d'items déjà consommés, lors de l'annulation d'une commande. */
   async restoreItems(items: ReservationItem[]): Promise<void> {
     await this.rollback(items);
+  }
+
+  /** Décrémentation atomique du quota de chaque catégorie dans event-service, défaite en cas d'échec. */
+  private async decrementAll(items: ReservationItem[]): Promise<void> {
+    const decremented: ReservationItem[] = [];
+    try {
+      for (const item of items) {
+        await firstValueFrom(
+          this.eventClient.send('event.decrement_quota', {
+            id: item.ticket_category_id,
+            quantity: item.quantity,
+          }),
+        );
+        decremented.push(item);
+      }
+    } catch (quotaError) {
+      // Rollback des décrémentations déjà faites
+      await this.rollback(decremented);
+      // L'erreur distante a la forme { statusCode, message } : on affiche le vrai message d'event-service.
+      throw new RpcException({
+        statusCode: quotaError?.statusCode ?? 409,
+        message: quotaError?.message ?? 'Places insuffisantes',
+      });
+    }
   }
 
   private async rollback(items: ReservationItem[]): Promise<void> {

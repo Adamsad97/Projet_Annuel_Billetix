@@ -15,11 +15,18 @@ describe('OrderService', () => {
     findOne: jest.Mock;
     find: jest.Mock;
     save: jest.Mock;
+    update: jest.Mock;
     createQueryBuilder: jest.Mock;
   };
   let abandonedQueryBuilder: { where: jest.Mock; andWhere: jest.Mock; getMany: jest.Mock };
   let itemRepo: { find: jest.Mock };
-  let reservationService: { restoreItems: jest.Mock; validate: jest.Mock; consume: jest.Mock; release: jest.Mock };
+  let reservationService: {
+    restoreItems: jest.Mock;
+    retakeItems: jest.Mock;
+    validate: jest.Mock;
+    consume: jest.Mock;
+    release: jest.Mock;
+  };
   let platformConfig: { get: jest.Mock };
   let eventClient: { send: jest.Mock };
   let ticketClient: { send: jest.Mock };
@@ -35,11 +42,13 @@ describe('OrderService', () => {
       findOne: jest.fn(),
       find: jest.fn().mockResolvedValue([]),
       save: jest.fn().mockImplementation((order) => Promise.resolve(order)),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
       createQueryBuilder: jest.fn().mockReturnValue(abandonedQueryBuilder),
     };
     itemRepo = { find: jest.fn().mockResolvedValue([]) };
     reservationService = {
       restoreItems: jest.fn().mockResolvedValue(undefined),
+      retakeItems: jest.fn().mockResolvedValue(undefined),
       validate: jest.fn(),
       consume: jest.fn().mockResolvedValue(undefined),
       release: jest.fn().mockResolvedValue({ success: true }),
@@ -157,6 +166,7 @@ describe('OrderService', () => {
     it('confirme normalement une commande pas encore payée', async () => {
       orderRepo.findOne.mockResolvedValue({
         id: 'order-1',
+        status: OrderStatus.PENDING_PAYMENT,
         payment_status: PaymentStatus.PENDING,
         net_organizer_amount: 45,
       });
@@ -165,6 +175,97 @@ describe('OrderService', () => {
 
       expect(result.status).toBe(OrderStatus.CONFIRMED);
       expect(result.net_organizer_amount).toBe(40);
+      expect(reservationService.retakeItems).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("confirmPayment — paiement arrivé après l'abandon automatique", () => {
+    const cancelled = {
+      id: 'order-1',
+      status: OrderStatus.CANCELLED,
+      payment_status: PaymentStatus.PENDING,
+      is_resale: false,
+      net_organizer_amount: 45,
+    };
+
+    beforeEach(() => {
+      itemRepo.find.mockResolvedValue([{ ticket_category_id: 'cat-1', quantity: 2 }]);
+    });
+
+    it('reprend le stock remis en vente puis confirme la commande', async () => {
+      orderRepo.findOne.mockResolvedValue({ ...cancelled });
+
+      const result = await service.confirmPayment('order-1', 'pi_123', 5);
+
+      expect(reservationService.retakeItems).toHaveBeenCalledWith([{ ticket_category_id: 'cat-1', quantity: 2 }]);
+      expect(result).toMatchObject({ status: OrderStatus.CONFIRMED, cancelled_at: null, cancellation_reason: null });
+    });
+
+    it("refuse (409) si les places sont reparties : aucun billet ne doit être émis", async () => {
+      orderRepo.findOne.mockResolvedValue({ ...cancelled });
+      reservationService.retakeItems.mockRejectedValue(new RpcException({ statusCode: 409, message: 'Complet' }));
+
+      await expect(service.confirmPayment('order-1', 'pi_123', 5)).rejects.toThrow(RpcException);
+      expect(orderRepo.update).not.toHaveBeenCalled();
+    });
+
+    it("refuse une commande de revente annulée : l'offre a été libérée", async () => {
+      orderRepo.findOne.mockResolvedValue({ ...cancelled, is_resale: true });
+
+      await expect(service.confirmPayment('order-1', 'pi_123', 5)).rejects.toThrow(RpcException);
+      expect(reservationService.retakeItems).not.toHaveBeenCalled();
+    });
+
+    it("abandon simultané : rejoue sur la commande annulée et reprend le stock", async () => {
+      orderRepo.findOne
+        .mockResolvedValueOnce({ ...cancelled, status: OrderStatus.PENDING_PAYMENT })
+        .mockResolvedValueOnce({ ...cancelled });
+      // Le premier passage trouve la commande déjà annulée par le nettoyage.
+      orderRepo.update.mockResolvedValueOnce({ affected: 0 }).mockResolvedValueOnce({ affected: 1 });
+
+      const result = await service.confirmPayment('order-1', 'pi_123', 5);
+
+      expect(reservationService.retakeItems).toHaveBeenCalledTimes(1);
+      expect(result.status).toBe(OrderStatus.CONFIRMED);
+    });
+
+    it("confirmation simultanée perdue : rend le stock repris en trop", async () => {
+      orderRepo.findOne
+        .mockResolvedValueOnce({ ...cancelled })
+        .mockResolvedValueOnce({ ...cancelled, payment_status: PaymentStatus.PAID });
+      orderRepo.update.mockResolvedValueOnce({ affected: 0 });
+
+      const result = await service.confirmPayment('order-1', 'pi_123', 5);
+
+      expect(reservationService.restoreItems).toHaveBeenCalledWith([{ ticket_category_id: 'cat-1', quantity: 2 }]);
+      expect(result.payment_status).toBe(PaymentStatus.PAID);
+    });
+  });
+
+  describe("changements d'état simultanés — le stock n'est rendu qu'une fois", () => {
+    it("cancel : refuse (409) sans rendre le stock si la commande vient d'être annulée ou payée", async () => {
+      orderRepo.findOne.mockResolvedValue({ id: 'order-1', buyer_id: 'buyer-1', status: OrderStatus.PENDING_PAYMENT });
+      orderRepo.update.mockResolvedValue({ affected: 0 });
+
+      await expect(service.cancel('order-1', 'buyer-1', false)).rejects.toThrow(RpcException);
+      expect(reservationService.restoreItems).not.toHaveBeenCalled();
+    });
+
+    it('markRefunded : un second passage simultané ne restaure pas le stock', async () => {
+      orderRepo.findOne.mockResolvedValue({ id: 'order-1', status: OrderStatus.CONFIRMED, is_resale: false });
+      orderRepo.update.mockResolvedValue({ affected: 0 });
+
+      await service.markRefunded('order-1');
+      expect(reservationService.restoreItems).not.toHaveBeenCalled();
+    });
+
+    it("markTicketsSent : n'écrase pas une commande remboursée entre-temps", async () => {
+      orderRepo.findOne.mockResolvedValue({ id: 'order-1', status: OrderStatus.REFUNDED });
+
+      const result = await service.markTicketsSent('order-1');
+
+      expect(orderRepo.update).toHaveBeenCalledWith({ id: 'order-1', status: OrderStatus.CONFIRMED }, { status: OrderStatus.TICKETS_SENT });
+      expect(result.status).toBe(OrderStatus.REFUNDED);
     });
   });
 
@@ -244,9 +345,10 @@ describe('OrderService', () => {
       const count = await service.releaseAbandoned();
 
       expect(count).toBe(2);
-      expect(orderRepo.save).toHaveBeenCalledTimes(2);
-      expect(orderRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ status: OrderStatus.CANCELLED, id: 'order-1' }),
+      expect(orderRepo.update).toHaveBeenCalledTimes(2);
+      expect(orderRepo.update).toHaveBeenCalledWith(
+        { id: 'order-1', status: OrderStatus.PENDING_PAYMENT },
+        expect.objectContaining({ status: OrderStatus.CANCELLED }),
       );
       expect(reservationService.restoreItems).toHaveBeenCalledWith([
         { ticket_category_id: 'cat-1', quantity: 2 },
@@ -254,6 +356,14 @@ describe('OrderService', () => {
       expect(reservationService.restoreItems).toHaveBeenCalledWith([
         { ticket_category_id: 'cat-2', quantity: 1 },
       ]);
+    });
+
+    it('ignore une commande payée ou annulée entre la lecture et la bascule (stock non rendu)', async () => {
+      abandonedQueryBuilder.getMany.mockResolvedValue([{ id: 'order-1', status: OrderStatus.PENDING_PAYMENT, is_resale: false }]);
+      orderRepo.update.mockResolvedValue({ affected: 0 });
+
+      expect(await service.releaseAbandoned()).toBe(0);
+      expect(reservationService.restoreItems).not.toHaveBeenCalled();
     });
 
     it("n'affecte aucune commande quand aucune n'est abandonnée", async () => {
@@ -526,6 +636,12 @@ describe('OrderService', () => {
       mockEventClient({ organizer_id: 'orga-1' });
       const { order } = await service.create({ ...baseDto, organizer_id: 'orga-pirate' } as any);
       expect(order.organizer_id).toBe('orga-1');
+    });
+
+    it('génère une référence ORD-année-8 caractères, sans caractères ambigus', async () => {
+      mockEventClient();
+      const { order } = await service.create(baseDto);
+      expect(order.reference).toMatch(new RegExp(`^ORD-${new Date().getFullYear()}-[A-HJ-NP-Z2-9]{8}$`));
     });
 
     it('rejette un code promo invalide et ne crée pas la commande', async () => {

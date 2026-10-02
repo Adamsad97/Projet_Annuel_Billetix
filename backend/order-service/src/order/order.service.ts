@@ -2,7 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
-import { DataSource, Repository } from 'typeorm';
+import { randomBytes } from 'crypto';
+import { DataSource, In, Not, Repository } from 'typeorm';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
 import { StockReservationService } from '../reservation/stock-reservation.service';
 import { CreateOrderDto, CreateResaleOrderDto } from './dto/create-order.dto';
@@ -14,6 +15,8 @@ function vatRateOf(event: { vat_rate?: string | number | null }): number {
   const rate = Number(event.vat_rate);
   return Number.isFinite(rate) && event.vat_rate !== null && event.vat_rate !== undefined ? rate : 0.2;
 }
+
+const REFERENCE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 /** Mêmes quantités par catégorie, quel que soit le découpage en lignes (un titulaire par ligne). */
 function sameQuantities(
@@ -492,6 +495,11 @@ export class OrderService {
   }
 
   async confirmPayment(id: string, paymentIntentId: string, fees: number): Promise<Order> {
+    return this.confirmPaymentOnce(id, paymentIntentId, fees, true);
+  }
+
+  /** Bascule conditionnelle (statut relu inchangé) : un abandon simultané fait rejouer une fois, sur la commande annulée. */
+  private async confirmPaymentOnce(id: string, paymentIntentId: string, fees: number, retry: boolean): Promise<Order> {
     const order = await this.orderRepo.findOne({ where: { id } });
     if (!order) throw new RpcException({ statusCode: 404, message: 'Commande introuvable' });
 
@@ -499,23 +507,65 @@ export class OrderService {
     if (order.payment_status === PaymentStatus.PAID) {
       return order;
     }
+    if (order.status !== OrderStatus.PENDING_PAYMENT && order.status !== OrderStatus.CANCELLED) {
+      throw new RpcException({ statusCode: 409, message: `Paiement reçu pour une commande à l'état ${order.status}` });
+    }
 
-    order.status = OrderStatus.CONFIRMED;
-    order.payment_status = PaymentStatus.PAID;
-    order.payment_intent_id = paymentIntentId;
-    order.paid_at = new Date();
-    order.total_payment_fees = fees;
-    order.net_organizer_amount = parseFloat(
-      (Number(order.net_organizer_amount) - fees).toFixed(2),
+    // Paiement arrivé après l'abandon automatique : le stock a déjà été remis en
+    // vente, il faut le reprendre avant d'émettre les billets.
+    const items = order.status === OrderStatus.CANCELLED ? await this.retakeCancelledStock(order) : null;
+
+    const changes = {
+      status: OrderStatus.CONFIRMED,
+      payment_status: PaymentStatus.PAID,
+      payment_intent_id: paymentIntentId,
+      paid_at: new Date(),
+      total_payment_fees: fees,
+      net_organizer_amount: parseFloat((Number(order.net_organizer_amount) - fees).toFixed(2)),
+      cancelled_at: null,
+      cancellation_reason: null,
+    };
+    const result = await this.orderRepo.update(
+      { id, status: order.status, payment_status: Not(PaymentStatus.PAID) },
+      changes,
     );
-    return this.orderRepo.save(order);
+    if (!result.affected) {
+      if (items) await this.reservationService.restoreItems(items);
+      if (retry) return this.confirmPaymentOnce(id, paymentIntentId, fees, false);
+      throw new RpcException({ statusCode: 409, message: "La commande a changé d'état pendant la confirmation du paiement" });
+    }
+    return Object.assign(order, changes);
   }
 
+  /** 409 si les places sont reparties entre-temps : le paiement devra être remboursé. */
+  private async retakeCancelledStock(order: Order): Promise<Array<{ ticket_category_id: string; quantity: number }>> {
+    if (order.is_resale) {
+      throw new RpcException({
+        statusCode: 409,
+        message: "Paiement reçu après l'annulation de la commande de revente : l'offre a été libérée, remboursement nécessaire.",
+      });
+    }
+    const items = (await this.itemRepo.find({ where: { order_id: order.id } })).map((item) => ({
+      ticket_category_id: item.ticket_category_id,
+      quantity: item.quantity,
+    }));
+    try {
+      await this.reservationService.retakeItems(items);
+    } catch {
+      throw new RpcException({
+        statusCode: 409,
+        message: "Paiement reçu après l'annulation de la commande et plus assez de places : remboursement nécessaire.",
+      });
+    }
+    return items;
+  }
+
+  /** Sans effet si la commande n'est plus confirmée (remboursée entre-temps, ou déjà marquée). */
   async markTicketsSent(id: string): Promise<Order> {
+    await this.orderRepo.update({ id, status: OrderStatus.CONFIRMED }, { status: OrderStatus.TICKETS_SENT });
     const order = await this.orderRepo.findOne({ where: { id } });
     if (!order) throw new RpcException({ statusCode: 404, message: 'Commande introuvable' });
-    order.status = OrderStatus.TICKETS_SENT;
-    return this.orderRepo.save(order);
+    return order;
   }
 
   async cancel(id: string, buyerId: string, isAdmin: boolean, reason?: string): Promise<Order> {
@@ -535,10 +585,14 @@ export class OrderService {
       });
     }
 
-    order.status = OrderStatus.CANCELLED;
-    order.cancelled_at = new Date();
-    order.cancellation_reason = reason ?? null;
-    const saved = await this.orderRepo.save(order);
+    // Bascule conditionnelle : face à un abandon automatique ou un paiement
+    // simultané, une seule opération l'emporte et le stock n'est rendu qu'une fois.
+    const changes = { status: OrderStatus.CANCELLED, cancelled_at: new Date(), cancellation_reason: reason ?? null };
+    const result = await this.orderRepo.update({ id, status: OrderStatus.PENDING_PAYMENT }, changes);
+    if (!result.affected) {
+      throw new RpcException({ statusCode: 409, message: "La commande vient de changer d'état — rechargez la page." });
+    }
+    const saved = Object.assign(order, changes);
 
     // Commande de revente : on libère la réservation de l'offre, pas un quota de catégorie.
     if (order.is_resale) {
@@ -573,11 +627,19 @@ export class OrderService {
       )
       .getMany();
 
+    let released = 0;
     for (const order of abandoned) {
-      order.status = OrderStatus.CANCELLED;
-      order.cancelled_at = new Date();
-      order.cancellation_reason = 'Abandon automatique (délai de paiement dépassé)';
-      await this.orderRepo.save(order);
+      // Payée ou annulée entre-temps : rien à libérer.
+      const result = await this.orderRepo.update(
+        { id: order.id, status: OrderStatus.PENDING_PAYMENT },
+        {
+          status: OrderStatus.CANCELLED,
+          cancelled_at: new Date(),
+          cancellation_reason: 'Abandon automatique (délai de paiement dépassé)',
+        },
+      );
+      if (!result.affected) continue;
+      released++;
 
       if (order.is_resale) {
         if (order.resale_id) {
@@ -593,7 +655,7 @@ export class OrderService {
       }
     }
 
-    return abandoned.length;
+    return released;
   }
 
   /** restoreStock=false pour un remboursement dû à une revente : la place reste occupée par l'acheteur. */
@@ -606,10 +668,13 @@ export class OrderService {
       return order;
     }
 
-    order.status = OrderStatus.REFUNDED;
-    order.payment_status = PaymentStatus.REFUNDED;
-    order.refunded_at = new Date();
-    const saved = await this.orderRepo.save(order);
+    // Webhook et action admin simultanés : un seul passage restaure le stock.
+    const changes = { status: OrderStatus.REFUNDED, payment_status: PaymentStatus.REFUNDED, refunded_at: new Date() };
+    const result = await this.orderRepo.update({ id, status: Not(In([OrderStatus.REFUNDED, OrderStatus.CANCELLED])) }, changes);
+    if (!result.affected) {
+      return (await this.orderRepo.findOne({ where: { id } })) ?? order;
+    }
+    const saved = Object.assign(order, changes);
 
     // Remboursement complet : restaure le stock, sauf pour une revente.
     if (!order.is_resale && restoreStock) {
@@ -643,9 +708,10 @@ export class OrderService {
     return this.orderRepo.findOne({ where: { id } });
   }
 
+  /** 8 caractères tirés au hasard cryptographique (32⁸ ≈ 10¹² combinaisons), sans 0/O ni 1/I. */
   private generateReference(): string {
     const year = new Date().getFullYear();
-    const random = Math.random().toString(36).substring(2, 7).toUpperCase();
+    const random = [...randomBytes(8)].map((byte) => REFERENCE_ALPHABET[byte % REFERENCE_ALPHABET.length]).join('');
     return `ORD-${year}-${random}`;
   }
 }
