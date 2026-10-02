@@ -11,6 +11,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
     super_admin_only: true,
     keys: [
       'password_min_length',
+      'password_max_age_days',
       'minimum_signup_age',
       'account_lockout_threshold',
       'account_lockout_duration_minutes',
