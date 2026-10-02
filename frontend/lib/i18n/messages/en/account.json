@@ -267,5 +267,12 @@
   "Carte bancaire": "Bank card",
   "Vendu": "Sold",
   "Retiré par le vendeur": "Withdrawn by the seller",
-  "Expiré (invendu)": "Expired (unsold)"
+  "Expiré (invendu)": "Expired (unsold)",
+  "← Accueil": "← Home",
+  "Mes données personnelles": "My personal data",
+  "Télécharger mes données": "Download my data",
+  "Compte, commandes, billets, transferts et reventes, dans un fichier JSON réutilisable (RGPD).": "Account, orders, tickets, transfers and resales, in a reusable JSON file (GDPR).",
+  "✓ Fichier téléchargé.": "✓ File downloaded.",
+  "Préparation…": "Preparing…",
+  "Télécharger": "Download"
 }

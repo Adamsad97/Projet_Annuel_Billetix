@@ -9,6 +9,7 @@ export const auditActionLabels: Record<string, string> = {
   USER_SUSPENDED: msg("Suspension de compte"),
   USER_UNSUSPENDED: msg("Levée de suspension"),
   USER_DELETED: msg("Suppression de compte"),
+  USER_DATA_EXPORTED: msg("Export des données personnelles"),
   USER_ROLE_CHANGED: msg("Changement de rôle"),
   USER_ACCOUNT_UNLOCKED: msg("Déverrouillage de compte"),
   USER_ACCOUNT_ACTIVATED: msg("Activation de compte"),

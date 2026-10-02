@@ -828,5 +828,10 @@
   "QR affichés": "QR codes shown",
   "Billets téléchargés": "Tickets downloaded",
   "Factures téléchargées": "Invoices downloaded",
-  "Billet {reference}": "Ticket {reference}"
+  "Billet {reference}": "Ticket {reference}",
+  "Renouvellement obligatoire du mot de passe": "Mandatory password renewal",
+  "Changement exigé à la connexion au-delà de ce délai (CNIL : 60). 0 = jamais": "Change required at login beyond this period (CNIL: 60). 0 = never",
+  "Validité du lien de connexion par email": "Validity of the email login link",
+  "Connexion sans mot de passe, lien à usage unique (60 au maximum). 0 = désactivée": "Passwordless login, single-use link (60 maximum). 0 = disabled",
+  "Export des données personnelles": "Personal data export"
 }

@@ -87,6 +87,8 @@ export const SECTIONS: Record<string, SectionMeta> = {
 export const FIELDS: Record<string, FieldMeta> = {
   // Sécurité
   password_min_length: { label: msg("Longueur minimale du mot de passe"), unit: msg("caractères"), help: msg("En plus d'une majuscule, d'une minuscule, d'un chiffre et d'un caractère spécial") },
+  password_max_age_days: { label: msg("Renouvellement obligatoire du mot de passe"), unit: msg("jours"), help: msg("Changement exigé à la connexion au-delà de ce délai (CNIL : 60). 0 = jamais") },
+  magic_link_ttl_minutes: { label: msg("Validité du lien de connexion par email"), unit: msg("minutes"), help: msg("Connexion sans mot de passe, lien à usage unique (60 au maximum). 0 = désactivée") },
   minimum_signup_age: { label: msg("Âge minimum pour s'inscrire"), unit: msg("ans"), help: msg("Vérifié sur la date de naissance à l'inscription") },
   account_lockout_threshold: { label: msg("Tentatives avant verrouillage du compte"), unit: msg("échecs") },
   account_lockout_duration_minutes: { label: msg("Durée du verrouillage"), unit: msg("minutes") },
