@@ -17,7 +17,7 @@ const columns = [
   {
     title: msg("Aide & contact"),
     links: [
-      { href: "/aide", label: msg("Centre d'aide") },
+      { href: "/aide", label: msg("FAQ") },
       { href: "/contact", label: msg("Nous contacter") },
     ],
   },
