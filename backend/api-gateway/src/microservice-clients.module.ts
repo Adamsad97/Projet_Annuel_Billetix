@@ -86,6 +86,18 @@ import { ClientsModule, Transport } from "@nestjs/microservices";
           noAck: true,
         },
       },
+      {
+        name: "REALTIME_SERVICE",
+        transport: Transport.RMQ,
+        options: {
+          urls: [
+            process.env.RABBITMQ_URL ?? "amqp://guest:guest@localhost:5672",
+          ],
+          queue: "realtime_queue",
+          queueOptions: { durable: true },
+          noAck: true,
+        },
+      },
     ]),
   ],
   exports: [ClientsModule],

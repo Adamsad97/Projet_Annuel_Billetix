@@ -10,7 +10,7 @@ import { AdminAlertsModule } from "./admin-alerts/admin-alerts.module";
 import { CreditNotesModule } from "./credit-notes/credit-notes.module";
 import { MicroserviceClientsModule } from "./microservice-clients.module";
 import { UploadModule } from "./upload/upload.module";
-import { EventsModule } from "./events/events.module";
+import { RealtimeModule } from "./realtime/realtime.module";
 import { EventModule } from "./event/event.module";
 import { OrderModule } from "./order/order.module";
 import { PaymentModule } from "./payment/payment.module";
@@ -47,7 +47,7 @@ import { TimeoutInterceptor } from "./common/interceptors/timeout.interceptor";
     OrderModule,
     TicketModule,
     PaymentModule,
-    EventsModule,
+    RealtimeModule,
     AdminModule,
     UploadModule,
     HealthModule,

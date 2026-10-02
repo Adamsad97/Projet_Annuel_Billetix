@@ -13,7 +13,7 @@ describe("PurchaseFulfillmentService — commande de revente (bug webhook)", () 
   let adminClient: { send: jest.Mock };
   let eventClient: { send: jest.Mock };
   let authClient: { send: jest.Mock };
-  let ticketsGateway: { notifyDashboardUpdate: jest.Mock };
+  let realtime: { dashboardChanged: jest.Mock };
 
   const baseOrder = {
     id: "order-1",
@@ -49,7 +49,7 @@ describe("PurchaseFulfillmentService — commande de revente (bug webhook)", () 
       send: jest.fn().mockReturnValue(of({ is_first_sale: false })),
     };
     authClient = { send: jest.fn() };
-    ticketsGateway = { notifyDashboardUpdate: jest.fn() };
+    realtime = { dashboardChanged: jest.fn() };
 
     service = new PurchaseFulfillmentService(
       paymentClient as any,
@@ -60,7 +60,7 @@ describe("PurchaseFulfillmentService — commande de revente (bug webhook)", () 
       adminClient as any,
       eventClient as any,
       authClient as any,
-      ticketsGateway as any,
+      realtime as any,
       { readStoredFile: jest.fn().mockResolvedValue(Buffer.from("%PDF")) } as any,
     );
   });

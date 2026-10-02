@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ClientProxy } from "@nestjs/microservices";
 import { firstValueFrom } from "rxjs";
-import { TicketsGateway } from "../events/tickets.gateway";
+import { RealtimePublisher } from "../realtime/realtime.publisher";
 import { UploadService } from "../upload/upload.service";
 import { DEFAULT_EVENT_TIMEZONE, formatEventDate } from "../common/event-date";
 
@@ -26,7 +26,7 @@ export class PurchaseFulfillmentService {
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
     @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
     @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
-    private readonly ticketsGateway: TicketsGateway,
+    private readonly realtime: RealtimePublisher,
     private readonly uploads: UploadService,
   ) {}
 
@@ -186,7 +186,7 @@ export class PurchaseFulfillmentService {
     }>;
 
     // Signal temps réel — le dashboard organisateur ouvert sur cet événement se rafraîchit
-    this.ticketsGateway.notifyDashboardUpdate(order.event_id, "sale");
+    this.realtime.dashboardChanged(order.event_id, "sale");
 
     // Sécurité : ni billet ni QR par email, seulement un accès à l'application puis la facture.
     this.notifClient.emit("notification.ticket_ready", {

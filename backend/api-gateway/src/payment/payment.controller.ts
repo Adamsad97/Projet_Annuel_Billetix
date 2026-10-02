@@ -23,7 +23,7 @@ import {
   CurrentUser,
   JwtPayload,
 } from "../common/decorators/current-user.decorator";
-import { TicketsGateway } from "../events/tickets.gateway";
+import { RealtimePublisher } from "../realtime/realtime.publisher";
 import { CreatePaymentIntentDto } from "./dto/create-payment-intent.dto";
 import { PurchaseFulfillmentService } from "./purchase-fulfillment.service";
 import { ReasonDto } from "../common/dto/common.dto";
@@ -47,7 +47,7 @@ export class PaymentController {
     @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     @Inject("TICKET_SERVICE") private readonly ticketClient: ClientProxy,
     @Inject("EVENT_SERVICE") private readonly eventClient: ClientProxy,
-    private readonly ticketsGateway: TicketsGateway,
+    private readonly realtime: RealtimePublisher,
     private readonly fulfillment: PurchaseFulfillmentService,
     private readonly creditNotes: CreditNoteIssuer,
     private readonly disputes: DisputeWorkflow,
@@ -373,10 +373,10 @@ export class PaymentController {
     ]);
 
     if ((count as number) >= config.refund_alert_threshold_24h) {
-      this.ticketsGateway.notifyAdminAlert({
+      this.realtime.adminAlert({
         type: "mass_refunds",
         severity: "critical",
-        message: `${count} remboursement(s) sur les dernières 24h — seuil d'alerte : ${config.refund_alert_threshold_24h}`,
+        data: { count: count as number, threshold: config.refund_alert_threshold_24h },
       });
     }
   }
@@ -393,10 +393,10 @@ export class PaymentController {
     ]);
 
     if ((count as number) >= config.dispute_alert_threshold) {
-      this.ticketsGateway.notifyAdminAlert({
+      this.realtime.adminAlert({
         type: "dispute_spike",
         severity: "warning",
-        message: `${count} litige(s) ouvert(s) — seuil d'alerte : ${config.dispute_alert_threshold}`,
+        data: { count: count as number, threshold: config.dispute_alert_threshold },
       });
     }
   }

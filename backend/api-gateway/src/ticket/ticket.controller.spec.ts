@@ -2,7 +2,7 @@ import { ForbiddenException } from "@nestjs/common";
 import { of, throwError } from "rxjs";
 import { TicketController } from "./ticket.controller";
 import type { JwtPayload } from "../common/decorators/current-user.decorator";
-import type { TicketsGateway } from "../events/tickets.gateway";
+import type { RealtimePublisher } from "../realtime/realtime.publisher";
 
 // Instanciation directe : seules notifyResaleSold() et wantsResaleUpdates() sont testées ici.
 describe("TicketController — notification de revente (préférences niveau 2)", () => {
@@ -68,7 +68,7 @@ describe("TicketController — notification de revente (préférences niveau 2)"
       authClient as any,
       userClient as any,
       adminClient as any,
-      {} as TicketsGateway,
+      {} as RealtimePublisher,
       { issueInBackground: jest.fn() } as any,
     );
   });
@@ -182,7 +182,7 @@ describe("TicketController — marketplace de revente (listing enrichi)", () => 
       {} as any,
       {} as any,
       {} as any,
-      {} as TicketsGateway,
+      {} as RealtimePublisher,
       { issueInBackground: jest.fn() } as any,
     );
   });
@@ -250,7 +250,7 @@ describe("TicketController — consultation restreinte au propriétaire (bug cor
       {} as any,
       {} as any,
       {} as any,
-      {} as TicketsGateway,
+      {} as RealtimePublisher,
       { issueInBackground: jest.fn() } as any,
     );
   });
@@ -358,7 +358,7 @@ describe("TicketController — QR code sur demande uniquement", () => {
       {} as any,
       {} as any,
       adminClient as any,
-      {} as TicketsGateway,
+      {} as RealtimePublisher,
       { issueInBackground: jest.fn() } as any,
     );
   };
@@ -467,7 +467,7 @@ describe("TicketController — offrir un billet", () => {
       authClient as any,
       {} as any,
       adminClient as any,
-      {} as TicketsGateway,
+      {} as RealtimePublisher,
       { issueInBackground: jest.fn() } as any,
     );
   };
@@ -545,7 +545,7 @@ describe("TicketController — achat en revente", () => {
       {} as any,
       {} as any,
       {} as any,
-      {} as TicketsGateway,
+      {} as RealtimePublisher,
       { issueInBackground: jest.fn() } as any,
     );
     for (const role of ["ADMIN", "SUPER_ADMIN"]) {
@@ -591,7 +591,7 @@ describe("TicketController — finalisation d'une revente (remboursement du vend
       authClient as any,
       userClient as any,
       adminClient as any,
-      {} as TicketsGateway,
+      {} as RealtimePublisher,
       { issueInBackground: jest.fn() } as any,
     );
   }

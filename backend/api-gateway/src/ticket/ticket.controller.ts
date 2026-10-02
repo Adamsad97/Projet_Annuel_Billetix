@@ -27,7 +27,7 @@ import {
   JwtPayload,
 } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
-import { TicketsGateway } from "../events/tickets.gateway";
+import { RealtimePublisher } from "../realtime/realtime.publisher";
 import { formatEventDate, formatEventDateTime } from "../common/event-date";
 import { GiftTicketDto } from "./dto/gift-ticket.dto";
 import { RequestTransferRevertDto } from "./dto/transfer-revert.dto";
@@ -132,7 +132,7 @@ export class TicketController {
     @Inject("AUTH_SERVICE") private readonly authClient: ClientProxy,
     @Inject("USER_SERVICE") private readonly userClient: ClientProxy,
     @Inject("ADMIN_SERVICE") private readonly adminClient: ClientProxy,
-    private readonly ticketsGateway: TicketsGateway,
+    private readonly realtime: RealtimePublisher,
     private readonly creditNotes: CreditNoteIssuer,
   ) {}
 
@@ -905,16 +905,13 @@ export class TicketController {
     // Push temps réel vers le profil de l'acheteur si scan valide
     if (response.result === ScanResult.SUCCESS && response.ticket) {
       const scannedTicket = response.ticket;
-      this.ticketsGateway.notifyTicketScanned(scannedTicket.buyer_id, {
+      this.realtime.ticketScanned(scannedTicket.buyer_id, {
         ticket_id: scannedTicket.id,
         event_name: scannedTicket.event_name,
         ticket_category_name: scannedTicket.ticket_category_name,
-        holder_first_name: scannedTicket.holder_first_name,
-        holder_last_name: scannedTicket.holder_last_name,
         scanned_at: scannedTicket.scanned_at,
-        status: scannedTicket.status,
       });
-      this.ticketsGateway.notifyDashboardUpdate(dto.event_id, "scan");
+      this.realtime.dashboardChanged(dto.event_id, "scan");
 
       // CDC §9 : email au titulaire lors du scan de son billet.
       if (scannedTicket.buyer_email) {
@@ -945,10 +942,10 @@ export class TicketController {
     // Alerte active (pas seulement journalisée) en cas de tentative de double
     // scan — signe possible de fraude (billet partagé/photographié).
     if (response.result === ScanResult.ALREADY_USED) {
-      this.ticketsGateway.notifyAdminAlert({
+      this.realtime.adminAlert({
         type: "duplicate_scan",
         severity: "warning",
-        message: `Tentative de double scan détectée (billet ${response.ticket_id}, événement ${dto.event_id})`,
+        data: { ticket_id: response.ticket_id, event_id: dto.event_id },
       });
     }
 

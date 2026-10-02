@@ -1,7 +1,6 @@
 import { HttpAdapterHost, NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-import { IoAdapter } from "@nestjs/platform-socket.io";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
 import { RpcExceptionFilter } from "./common/filters/rpc-exception.filter";
@@ -12,7 +11,6 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.enableShutdownHooks();
-  app.useWebSocketAdapter(new IoAdapter(app));
   app.use(helmet());
   app.useGlobalFilters(new RpcExceptionFilter(app.get(HttpAdapterHost).httpAdapter));
 
