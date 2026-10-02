@@ -14,7 +14,14 @@ import { cardClass } from "@/components/ui/card";
 import { fieldClass } from "@/components/ui/field";
 import { t } from "@/lib/i18n/translate";
 
-export function ResetPasswordForm({ token }: { token: string | null }) {
+export function ResetPasswordForm({
+  token,
+  expiredAfterDays = null,
+}: {
+  token: string | null;
+  /** Renseigné quand la connexion a exigé le changement (mot de passe trop ancien). */
+  expiredAfterDays?: number | null;
+}) {
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,10 +82,17 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
   return (
     <div className={cardClass("w-full max-w-md p-8")}>
       <div className="mb-6 text-center">
-        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">{t("Nouveau mot de passe")}{" "}<span>🔑</span>
+        <h1 className="flex items-center justify-center gap-2 text-2xl font-bold text-ink-1">
+          {expiredAfterDays ? t("Votre mot de passe a expiré") : t("Nouveau mot de passe")}{" "}<span>🔑</span>
         </h1>
         <p className="mt-1 text-sm text-accent/70">{t("Choisissez un nouveau mot de passe pour votre compte BilleTix.")}</p>
       </div>
+
+      {expiredAfterDays ? (
+        <div role="status" className="mb-4 rounded-xl bg-warning/10 px-4 py-3 text-sm text-warning ring-1 ring-inset ring-warning/30">
+          {t("Pour protéger votre compte, le mot de passe doit être renouvelé tous les {days} jours. Choisissez-en un différent de l'ancien ; ce lien n'est valable que quelques minutes.", { days: expiredAfterDays })}
+        </div>
+      ) : null}
 
       {!token ? (
         <FormError>{t("Ce lien est invalide ou incomplet — demandez un nouvel email depuis")}{" "}

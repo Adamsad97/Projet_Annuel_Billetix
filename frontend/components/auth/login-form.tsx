@@ -3,9 +3,17 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { postLoginPath, rememberOAuthNext } from "@/lib/auth/post-login";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { PasswordInput } from "@/components/ui/password-input";
-import { isAuthSession, loginUser, resendVerificationEmail } from "@/lib/api/auth";
+import {
+  expiredPasswordPath,
+  getSessionPolicy,
+  isAuthSession,
+  isPasswordExpired,
+  loginUser,
+  requestMagicLink,
+  resendVerificationEmail,
+} from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/http-error";
 import { saveSession } from "@/lib/auth/session";
 import { FormError } from "@/components/ui/alert";
@@ -37,6 +45,38 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
   } | null>(null);
   const [twoFactorCode, setTwoFactorCode] = useState("");
 
+  // Connexion par lien envoyé par email, proposée seulement si l'admin ne l'a pas désactivée.
+  const [magicLinkEnabled, setMagicLinkEnabled] = useState(false);
+  const [mode, setMode] = useState<"password" | "magic">("password");
+  const [magicLinkSentTo, setMagicLinkSentTo] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getSessionPolicy()
+      .then((policy) => {
+        if (!cancelled) setMagicLinkEnabled(policy.magic_link_enabled === true);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleMagicLinkSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    const email = String(new FormData(event.currentTarget).get("email") ?? "").trim();
+    setLoading(true);
+    try {
+      await requestMagicLink(email);
+      setMagicLinkSentTo(email);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("Envoi impossible, veuillez réessayer."));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -53,6 +93,8 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
       if (isAuthSession(result)) {
         saveSession(result, rememberMe);
         router.push(postLoginPath(next));
+      } else if (isPasswordExpired(result)) {
+        router.push(expiredPasswordPath(result));
       } else {
         setPendingCredentials({ email, password, method: result.two_factor_method });
       }
@@ -97,8 +139,10 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
       if (isAuthSession(result)) {
         saveSession(result, rememberMe);
         router.push(postLoginPath(next));
+      } else if (isPasswordExpired(result)) {
+        router.push(expiredPasswordPath(result));
       } else {
-        setError("Code 2FA invalide.");
+        setError(t("Code 2FA invalide."));
       }
     } catch (err) {
       setError(
@@ -213,7 +257,50 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {mode === "magic" ? (
+        magicLinkSentTo ? (
+          <div role="status" className="rounded-xl bg-emerald-500/10 px-4 py-4 text-sm text-ink-2 ring-1 ring-inset ring-emerald-500/30">
+            <p className="font-semibold text-ink-1">{t("Consultez votre boîte mail")}</p>
+            <p className="mt-1">{t("Si un compte existe pour {email}, un lien de connexion vient de lui être envoyé. Il ne fonctionne qu'une fois et expire au bout de quelques minutes.", { email: magicLinkSentTo })}</p>
+          </div>
+        ) : (
+          <form onSubmit={handleMagicLinkSubmit} className="flex flex-col gap-4">
+            <p className="text-sm text-ink-4">{t("Recevez par email un lien qui vous connecte sans mot de passe.")}</p>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-accent/80">{t("Adresse email")}</span>
+              <input
+                type="email"
+                name="email"
+                required
+                autoFocus
+                placeholder="jean.dupont@email.com"
+                className={fieldClass("px-4 py-3")}
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={loading}
+              className={buttonClass("primary", "w-full rounded-xl py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60")}
+            >
+              {loading ? t("Envoi en cours…") : t("Recevoir le lien de connexion")}
+            </button>
+          </form>
+        )
+      ) : null}
+
+      {mode === "magic" ? (
+        <button
+          type="button"
+          onClick={() => {
+            setMode("password");
+            setMagicLinkSentTo(null);
+            setError(null);
+          }}
+          className="mt-4 w-full text-center text-sm font-medium text-link transition-colors hover:text-link-hover"
+        >{t("← Se connecter avec le mot de passe")}</button>
+      ) : null}
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4" hidden={mode === "magic"}>
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-accent/80">{t("Adresse email")}</span>
           <input
@@ -257,6 +344,17 @@ export function LoginForm({ sessionMessage, next }: { sessionMessage?: string; n
         >
           {loading ? t("Connexion…") : t("Se connecter →")}
         </button>
+
+        {magicLinkEnabled ? (
+          <button
+            type="button"
+            onClick={() => {
+              setMode("magic");
+              setError(null);
+            }}
+            className="w-full rounded-xl border border-hairline-2 py-3 text-sm font-medium text-ink-2 transition-colors hover:border-hairline-5 hover:text-ink-1"
+          >{t("✉️ Recevoir un lien de connexion par email")}</button>
+        ) : null}
       </form>
 
       <p className="mt-5 text-center text-sm text-ink-5">{t("Pas encore de compte ?")}{" "}

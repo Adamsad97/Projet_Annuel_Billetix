@@ -51,8 +51,16 @@ export interface LoginPayload {
   two_factor_code?: string;
 }
 
+/** Mot de passe plus ancien que la durée réglée par l'admin : aucun jeton de session, seulement un lien de changement. */
+export interface PasswordExpiredResult {
+  password_expired: true;
+  password_change_token: string;
+  password_max_age_days: number;
+}
+
 export type LoginResult =
   | AuthSession
+  | PasswordExpiredResult
   | { requires_2fa: true; two_factor_method: string };
 
 async function getJson<T>(path: string): Promise<T> {
@@ -133,6 +141,15 @@ export function isAuthSession(result: LoginResult): result is AuthSession {
   return "access_token" in result;
 }
 
+export function isPasswordExpired(result: LoginResult): result is PasswordExpiredResult {
+  return "password_expired" in result;
+}
+
+/** Page de changement du mot de passe expiré (jeton à usage unique, valable quelques minutes). */
+export function expiredPasswordPath(result: PasswordExpiredResult): string {
+  return `/auth/reset-password?token=${encodeURIComponent(result.password_change_token)}&expire=${result.password_max_age_days}`;
+}
+
 export function requestPasswordReset(email: string): Promise<{ success?: boolean }> {
   return postJson("/auth/forgot-password", { email });
 }
@@ -152,7 +169,12 @@ export function refreshTokens(refreshToken: string): Promise<RefreshResult> {
 }
 
 /** Durées de session : inactivité et durée maximale (platform_settings). */
-export function getSessionPolicy(): Promise<{ idle_timeout_minutes: number; max_duration_hours: number }> {
+export function getSessionPolicy(): Promise<{
+  idle_timeout_minutes: number;
+  max_duration_hours: number;
+  /** Connexion par lien envoyé par email proposée (réglage magic_link_ttl_minutes > 0). */
+  magic_link_enabled?: boolean;
+}> {
   return getJson("/auth/session-policy");
 }
 
@@ -205,6 +227,18 @@ export function isOAuthPending2fa(result: OAuthExchangeResult): result is OAuthP
 
 export function isOAuthPendingBirthDate(result: OAuthExchangeResult): result is OAuthPendingBirthDate {
   return "requires_birth_date" in result;
+}
+
+// ─── Lien magique : connexion sans mot de passe par un lien reçu par email ───
+
+/** Même réponse que le compte existe ou non. */
+export function requestMagicLink(email: string): Promise<{ success: boolean }> {
+  return postJson("/auth/magic-link", { email });
+}
+
+/** Ouvre la session, ou demande le code 2FA (à valider par verifyOAuth2fa avec le pending_token). */
+export function verifyMagicLink(token: string): Promise<AuthSession | OAuthPending2fa> {
+  return postJson("/auth/magic-link/verify", { token });
 }
 
 export function verifyEmail(token: string): Promise<{ success?: boolean }> {
