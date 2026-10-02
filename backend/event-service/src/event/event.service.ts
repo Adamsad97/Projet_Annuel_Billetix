@@ -734,7 +734,7 @@ export class EventService implements OnApplicationBootstrap {
     if (new Date(event.start_date).getTime() < Date.now()) {
       throw new RpcException({
         statusCode: 400,
-        message: "La date de début de cet événement est déjà passée — rejette-le plutôt que de le valider.",
+        message: "La date de début de cet événement est déjà passée : veuillez le rejeter plutôt que de le valider.",
       });
     }
     event.commission_rate = await this.computeCommissionRate(event.total_capacity, event.non_profit_verified);
