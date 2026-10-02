@@ -5,14 +5,6 @@ export default async function MentionsLegalesPage() {
   const t = await getT();
   return (
     <LegalPage title={t("Mentions légales")} updatedLabel={t("1 juillet 2026")}>
-      <LegalSection title={t("Éditeur du site")}>
-        <p>{t("BilleTix SAS, immatriculée sous le numéro SIRET 123 456 789 00012, dont le siège social est situé au 1 rue de la Billetterie, 75001 Paris. Numéro de TVA intracommunautaire : FR12345678900.")}</p>
-      </LegalSection>
-
-      <LegalSection title={t("Directeur de la publication")}>
-        <p>{t("Le représentant légal de BilleTix SAS.")}</p>
-      </LegalSection>
-
       <LegalSection title={t("Hébergement")}>
         <p>{t("Le site et les services associés sont hébergés sur une infrastructure cloud sécurisée au sein de l'Union européenne.")}</p>
       </LegalSection>

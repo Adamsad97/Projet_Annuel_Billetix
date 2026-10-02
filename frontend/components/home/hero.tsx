@@ -11,7 +11,7 @@ export function Hero() {
           <span className="text-blue-400">{t("commence ici")}</span>
         </h1>
 
-        <p className="max-w-xl text-lg text-ink-4">{t("Concerts, festivals, spectacles près de chez vous. Paiement sécurisé et billet QR code reçu par email en 5 minutes.")}</p>
+        <p className="max-w-xl text-lg text-ink-4">{t("Concerts, festivals, spectacles près de chez vous. Paiement sécurisé.")}</p>
       </div>
     </section>
   );

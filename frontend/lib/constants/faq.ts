@@ -67,12 +67,12 @@ export const faqCategories: FaqCategory[] = [
       {
         question: msg("Quand suis-je payé ?"),
         answer:
-          msg("Les reversements sont possibles au plus tôt 2 jours ouvrés (J+2) après la fin de votre événement, une fois votre vérification d'identité (KYC) complétée dans Paiements."),
+          msg("Les reversements sont possibles après la fin de votre événement, une fois votre vérification d'identité (KYC) complétée dans Paiements."),
       },
       {
         question: msg("Quelle commission BilleTix prélève-t-elle ?"),
         answer:
-          msg("5,5 % + 0,30 € par transaction en carte bancaire. Les événements associatifs à but non lucratif peuvent être exonérés sur justificatif."),
+          msg("Les événements associatifs à but non lucratif peuvent être exonérés sur justificatif."),
       },
     ],
   },

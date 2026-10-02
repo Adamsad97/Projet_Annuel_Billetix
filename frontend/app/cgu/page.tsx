@@ -14,7 +14,7 @@ export default async function CguPage() {
       </LegalSection>
 
       <LegalSection title={t("3. Billets et paiement")}>
-        <p>{t("Chaque billet acheté est associé à un QR code signé et à usage unique, envoyé par email dans les 5 minutes suivant le paiement. Le paiement se fait par carte bancaire, via la plateforme de paiement sécurisée Stripe.")}</p>
+        <p>{t("Chaque billet acheté est associé à un QR code signé et à usage unique. Le paiement se fait par carte bancaire, via la plateforme de paiement sécurisée Stripe.")}</p>
       </LegalSection>
 
       <LegalSection title={t("4. Annulation et remboursement")}>
@@ -26,7 +26,7 @@ export default async function CguPage() {
       </LegalSection>
 
       <LegalSection title={t("6. Reversements aux organisateurs")}>
-        <p>{t("Les fonds collectés sont reversés aux organisateurs après déduction de la commission de la plateforme, au plus tôt deux jours ouvrés (J+2) après la fin de l'événement.")}</p>
+        <p>{t("Les fonds collectés sont reversés aux organisateurs après déduction de la commission de la plateforme, après la fin de l'événement.")}</p>
       </LegalSection>
     </LegalPage>
   );

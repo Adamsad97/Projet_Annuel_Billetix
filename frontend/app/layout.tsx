@@ -30,7 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: SITE_URL,
     title: t("BilleTix — Votre prochain événement commence ici"),
     description: t(
-      "Concerts, festivals, spectacles près de chez vous. Paiement sécurisé et billet QR code reçu par email en 5 minutes.",
+      "Concerts, festivals, spectacles près de chez vous. Paiement sécurisé.",
     ),
     openGraph: { ...SHARED_OPEN_GRAPH, url: "/" },
   };
