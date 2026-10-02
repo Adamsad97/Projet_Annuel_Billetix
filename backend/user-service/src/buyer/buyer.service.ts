@@ -16,8 +16,14 @@ export class BuyerService {
   async getOrCreate(userId: string): Promise<BuyerProfile> {
     let profile = await this.repo.findOne({ where: { user_id: userId } });
     if (!profile) {
-      profile = this.repo.create({ user_id: userId });
-      await this.repo.save(profile);
+      try {
+        profile = await this.repo.save(this.repo.create({ user_id: userId }));
+      } catch (error) {
+        // Créé au même instant par une requête parallèle (contrainte d'unicité) : on relit celui-là.
+        if ((error as { code?: string }).code !== '23505') throw error;
+        profile = await this.repo.findOne({ where: { user_id: userId } });
+        if (!profile) throw error;
+      }
     }
     return profile;
   }

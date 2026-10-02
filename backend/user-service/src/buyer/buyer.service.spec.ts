@@ -36,6 +36,23 @@ describe('BuyerService', () => {
     service = module.get(BuyerService);
   });
 
+  describe('getOrCreate', () => {
+    it('deux requêtes simultanées pour un nouveau compte : la seconde relit le profil créé par la première', async () => {
+      const created = { user_id: 'user-1', notification_preferences: {} };
+      repo.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(created);
+      repo.save.mockRejectedValueOnce(Object.assign(new Error('duplicate key'), { code: '23505' }));
+
+      await expect(service.getOrCreate('user-1')).resolves.toBe(created);
+    });
+
+    it('ne masque pas une autre erreur de base de données', async () => {
+      repo.findOne.mockResolvedValue(null);
+      repo.save.mockRejectedValueOnce(Object.assign(new Error('connexion perdue'), { code: '08006' }));
+
+      await expect(service.getOrCreate('user-1')).rejects.toThrow('connexion perdue');
+    });
+  });
+
   describe('getNotificationPrefs', () => {
     it("renvoie un objet vide pour un acheteur n'ayant jamais rien modifié", async () => {
       repo.findOne.mockResolvedValue({ user_id: 'user-1', notification_preferences: null });
