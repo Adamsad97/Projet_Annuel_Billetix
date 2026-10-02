@@ -483,6 +483,51 @@ describe('OrderService', () => {
       expect(order.total_commission).toBe(8);
     });
 
+    it('refuse plus de billets que ceux réservés (seul le stock réservé a été décompté)', async () => {
+      mockEventClient();
+      await expect(
+        service.create({ ...baseDto, items: [{ ticket_category_id: 'cat-1', quantity: 50 }] } as any),
+      ).rejects.toThrow(RpcException);
+      expect(dataSource.transaction).not.toHaveBeenCalled();
+    });
+
+    it("refuse une autre catégorie que celle réservée, même au même prix", async () => {
+      mockEventClient({
+        categories: [
+          { id: 'cat-1', name: 'Standard', price_ht: 50 },
+          { id: 'cat-2', name: 'VIP', price_ht: 50 },
+        ],
+      });
+      await expect(
+        service.create({ ...baseDto, items: [{ ticket_category_id: 'cat-2', quantity: 2 }] } as any),
+      ).rejects.toThrow(RpcException);
+      expect(dataSource.transaction).not.toHaveBeenCalled();
+    });
+
+    it('accepte la réservation découpée en plusieurs lignes (un titulaire par billet)', async () => {
+      mockEventClient();
+      const { items } = await service.create({
+        ...baseDto,
+        items: [
+          { ticket_category_id: 'cat-1', quantity: 1, holder_first_name: 'A', holder_last_name: 'A' },
+          { ticket_category_id: 'cat-1', quantity: 1, holder_first_name: 'B', holder_last_name: 'B' },
+        ],
+      } as any);
+      expect(items).toHaveLength(2);
+    });
+
+    it("refuse un event_id différent de celui de la réservation (infos et organisateur d'un autre événement)", async () => {
+      mockEventClient();
+      await expect(service.create({ ...baseDto, event_id: 'event-2' } as any)).rejects.toThrow(RpcException);
+      expect(dataSource.transaction).not.toHaveBeenCalled();
+    });
+
+    it("prend l'organisateur de l'événement réservé, jamais celui transmis avec la commande", async () => {
+      mockEventClient({ organizer_id: 'orga-1' });
+      const { order } = await service.create({ ...baseDto, organizer_id: 'orga-pirate' } as any);
+      expect(order.organizer_id).toBe('orga-1');
+    });
+
     it('rejette un code promo invalide et ne crée pas la commande', async () => {
       mockEventClient({
         promoResult: { valid: false, message: 'Ce code promo est expiré.' },

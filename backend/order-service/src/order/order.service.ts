@@ -15,6 +15,18 @@ function vatRateOf(event: { vat_rate?: string | number | null }): number {
   return Number.isFinite(rate) && event.vat_rate !== null && event.vat_rate !== undefined ? rate : 0.2;
 }
 
+/** Mêmes quantités par catégorie, quel que soit le découpage en lignes (un titulaire par ligne). */
+function sameQuantities(
+  ordered: Array<{ ticket_category_id: string; quantity: number }>,
+  reserved: Array<{ ticket_category_id: string; quantity: number }>,
+): boolean {
+  const totals = (items: typeof ordered) =>
+    items.reduce((map, item) => map.set(item.ticket_category_id, (map.get(item.ticket_category_id) ?? 0) + item.quantity), new Map<string, number>());
+  const a = totals(ordered);
+  const b = totals(reserved);
+  return a.size === b.size && [...a].every(([categoryId, quantity]) => b.get(categoryId) === quantity);
+}
+
 @Injectable()
 export class OrderService {
   constructor(
@@ -29,6 +41,21 @@ export class OrderService {
 
   async create(dto: CreateOrderDto): Promise<{ order: Order; items: OrderItem[] }> {
     const reservation = await this.reservationService.validate(dto.reservation_token, dto.buyer_id);
+
+    // Les infos d'événement (organisateur, nom, lieu) sont relues par la passerelle
+    // depuis dto.event_id : il doit être celui de la réservation.
+    if (dto.event_id !== reservation.event_id) {
+      throw new RpcException({ statusCode: 400, message: "La commande ne correspond pas à l'événement réservé." });
+    }
+    // Seul le stock réservé a été décompté (quota, maximum par commande, dates de
+    // vente) : la commande doit reprendre exactement les mêmes billets.
+    if (!sameQuantities(dto.items, reservation.items)) {
+      throw new RpcException({
+        statusCode: 400,
+        message: 'Les billets de la commande ne correspondent pas à ceux réservés — veuillez recommencer.',
+      });
+    }
+
     const config = await this.platformConfig.get();
 
     // Taux de commission jamais fourni par le client : relu depuis l'événement.
@@ -154,7 +181,8 @@ export class OrderService {
         buyer_id: dto.buyer_id,
         event_id: reservation.event_id,
         vat_rate: vat_rate.toFixed(4),
-        organizer_id: dto.organizer_id ?? null,
+        // Relu depuis l'événement réservé : c'est lui qui reçoit le reversement.
+        organizer_id: event.organizer_id ?? null,
         event_name: dto.event_name,
         event_start_at: dto.event_start_at,
         event_end_at: dto.event_end_at ?? null,

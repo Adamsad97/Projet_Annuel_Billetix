@@ -149,6 +149,61 @@ describe("Parcours organisateur → achat → contrôle d'entrée (fonctionnel)"
       expect(event.body.status).toBe("PUBLISHED");
     });
 
+    it("la commande reprend exactement les billets réservés et l'événement de la réservation", async () => {
+      const reserved = [{ ticket_category_id: categoryId, quantity: 1 }];
+      const reserve = await post("/orders/reserve", { event_id: eventId, items: reserved }, buyer.token);
+      expect({ status: reserve.status, body: reserve.body }).toMatchObject({ status: 201 });
+      const token = reserve.body.reservation_token;
+      const order = (overrides: Record<string, unknown>) =>
+        post(
+          "/orders",
+          {
+            event_id: eventId,
+            reservation_token: token,
+            items: reserved,
+            billing_first_name: "Test",
+            billing_last_name: "Acheteur",
+            billing_email: buyer.email,
+            billing_address_line1: "1 rue des Tests",
+            billing_city: "Paris",
+            billing_postal_code: "75001",
+            billing_country: "France",
+            payment_method: "STRIPE",
+            ...overrides,
+          },
+          buyer.token,
+        );
+
+      // 1 billet réservé, 5 commandés : refusé (le stock n'en a décompté qu'un).
+      expect((await order({ items: [{ ticket_category_id: categoryId, quantity: 5 }] })).status).toBe(400);
+
+      // Autre événement : son organisateur recevrait le reversement de cette vente.
+      const other = await post(
+        "/events",
+        {
+          title: `E2E ${RUN_ID} Autre`,
+          description: "Événement leurre des tests fonctionnels automatisés.",
+          category: "CONCERT",
+          start_date: minutesFromNow(60 * 24),
+          end_date: minutesFromNow(60 * 26),
+          venue_name: "Salle E2E",
+          venue_address_line1: "1 rue des Tests",
+          venue_city: "Paris",
+          venue_postal_code: "75001",
+          venue_country: "France",
+          poster_url: (await get(`/events/${eventId}`)).body.poster_url,
+          total_capacity: 10,
+          refund_policy: "NON_REFUNDABLE",
+        },
+        organizer.token,
+      );
+      expect({ status: other.status, body: other.body }).toMatchObject({ status: 201 });
+      expect((await order({ event_id: other.body.id })).status).toBe(400);
+
+      // Le jeton reste valable après ces refus : on libère le stock.
+      expect((await del(`/orders/reserve/${token}`, undefined, buyer.token)).status).toBe(200);
+    });
+
     const withStripe = STRIPE_SECRET_KEY?.startsWith("sk_test_") ? describe : describe.skip;
     withStripe("achat payé par carte (Stripe, mode test)", () => {
       let orderId: string;
