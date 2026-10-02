@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { JobLockModule } from './job-lock.module';
 import { Event } from '../event/event.entity';
 import { EventModule } from '../event/event.module';
 import { EventLifecycleService } from './event-lifecycle.service';
@@ -9,6 +10,7 @@ import { EventLifecycleService } from './event-lifecycle.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Event]),
+    JobLockModule,
     EventModule,
     ClientsModule.registerAsync([
       {

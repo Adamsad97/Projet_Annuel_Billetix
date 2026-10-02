@@ -1,3 +1,4 @@
+import { JobLock } from './job-lock.service';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { of } from 'rxjs';
@@ -8,6 +9,7 @@ import { EventLifecycleService } from './event-lifecycle.service';
 
 describe('EventLifecycleService', () => {
   let service: EventLifecycleService;
+  let jobLock: { runOncePerPeriod: jest.Mock };
   let queryBuilder: { update: jest.Mock; set: jest.Mock; where: jest.Mock; andWhere: jest.Mock; execute: jest.Mock };
   let repo: { createQueryBuilder: jest.Mock; update: jest.Mock };
   let eventService: { listPending: jest.Mock };
@@ -29,6 +31,7 @@ describe('EventLifecycleService', () => {
     eventService = { listPending: jest.fn().mockResolvedValue([]) };
     platformConfig = { get: jest.fn().mockResolvedValue({ event_archive_delay_days: 30 }) };
     adminClient = { send: jest.fn().mockReturnValue(of({})) };
+    jobLock = { runOncePerPeriod: jest.fn((_name: string, _period: number, job: () => Promise<unknown>) => job()) };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -37,6 +40,7 @@ describe('EventLifecycleService', () => {
         { provide: EventService, useValue: eventService },
         { provide: PlatformConfigCache, useValue: platformConfig },
         { provide: 'ADMIN_SERVICE', useValue: adminClient },
+        { provide: JobLock, useValue: jobLock },
       ],
     }).compile();
 
@@ -94,5 +98,16 @@ describe('EventLifecycleService', () => {
     await service.run();
 
     expect(adminClient.send).not.toHaveBeenCalled();
+  });
+
+  it('déclenchement horaire : une seule exécution par heure dans le cluster', async () => {
+    const run = jest.spyOn(service, 'run').mockResolvedValue(undefined);
+    await service.runJob();
+    expect(jobLock.runOncePerPeriod).toHaveBeenCalledWith('event-lifecycle', 3600, expect.any(Function));
+    expect(run).toHaveBeenCalledTimes(1);
+
+    jobLock.runOncePerPeriod.mockResolvedValueOnce(false);
+    await service.runJob();
+    expect(run).toHaveBeenCalledTimes(1);
   });
 });

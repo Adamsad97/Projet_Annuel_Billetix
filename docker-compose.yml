@@ -390,6 +390,7 @@ services:
       NODE_ENV: ${BACKEND_NODE_ENV:-development}
       PORT: 3003
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@event-db:5432/events
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       MINIO_ENDPOINT: minio
       # Hôte MinIO joignable depuis le navigateur, distinct de MINIO_ENDPOINT (réseau Docker).
@@ -409,6 +410,8 @@ services:
       USER_SERVICE_PORT: 3002
     depends_on:
       event-db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
@@ -524,6 +527,7 @@ services:
       NODE_ENV: ${BACKEND_NODE_ENV:-development}
       PORT: 3006
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@payment-db:5432/payments
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
@@ -538,6 +542,8 @@ services:
       EVENT_SERVICE_PORT: 3003
     depends_on:
       payment-db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy

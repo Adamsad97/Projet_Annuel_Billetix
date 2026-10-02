@@ -4,6 +4,8 @@ import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, validateSync }
 /** Configuration requise par event-service, vérifiée au démarrage (variable manquante = arrêt avec message clair). */
 class EventServiceEnvironment {
   @IsString() @IsNotEmpty() DATABASE_URL: string;
+  // Verrou des tâches planifiées : une seule exécution par créneau quand le service tourne en plusieurs exemplaires.
+  @IsString() @IsNotEmpty() REDIS_URL: string;
   @IsString() @IsNotEmpty() RABBITMQ_URL: string;
 
   @IsOptional() @IsIn(['development', 'production', 'test']) NODE_ENV?: string;

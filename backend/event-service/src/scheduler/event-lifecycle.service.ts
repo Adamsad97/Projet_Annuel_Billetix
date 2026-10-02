@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { EventService } from '../event/event.service';
 import { Event, EventStatus } from '../event/event.entity';
 import { PlatformConfigCache } from '../platform-config/platform-config.cache';
+import { JobLock } from './job-lock.service';
 
 @Injectable()
 export class EventLifecycleService {
@@ -16,9 +17,14 @@ export class EventLifecycleService {
     private readonly eventService: EventService,
     private readonly platformConfig: PlatformConfigCache,
     @Inject('ADMIN_SERVICE') private readonly adminClient: ClientProxy,
+    private readonly jobLock: JobLock,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
+  async runJob(): Promise<void> {
+    await this.jobLock.runOncePerPeriod('event-lifecycle', 3600, () => this.run());
+  }
+
   async run(): Promise<void> {
     await this.terminatePastEvents();
     await this.archiveOldTerminatedEvents();
