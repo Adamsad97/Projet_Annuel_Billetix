@@ -4,6 +4,8 @@ import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, validateSync }
 /** Configuration requise par ticket-service, vérifiée au démarrage (variable manquante = arrêt avec message clair). */
 class TicketServiceEnvironment {
   @IsString() @IsNotEmpty() DATABASE_URL: string;
+  // Verrou des tâches planifiées : une seule exécution par créneau quand le service tourne en plusieurs exemplaires.
+  @IsString() @IsNotEmpty() REDIS_URL: string;
   // Clé privée Ed25519 (PKCS#8, DER, base64) qui signe les QR codes.
   @IsString() @IsNotEmpty() QR_SIGNING_PRIVATE_KEY: string;
 
