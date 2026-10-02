@@ -116,7 +116,8 @@ export class UserDataExportService {
 
   private call(client: ClientProxy, pattern: string, payload: Record<string, unknown>): Promise<unknown> {
     return firstValueFrom(client.send(pattern, payload)).catch((error: { message?: string }) => {
-      throw Object.assign(new Error(`${pattern} : ${error?.message ?? "erreur inconnue"}`), error);
+      // Message posé en dernier : le nom de l'appel fautif apparaît dans le journal, statusCode conservé.
+      throw Object.assign(new Error(), error, { message: `${pattern} : ${error?.message ?? "erreur inconnue"}` });
     });
   }
 

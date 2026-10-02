@@ -78,6 +78,27 @@ describe("Authentification (fonctionnel)", () => {
     account = await login(account.email, NEW_PASSWORD);
   });
 
+  it("connexion par lien magique : lien reçu par email, à usage unique, seul le dernier demandé valable", async () => {
+    const unknown = await post("/auth/magic-link", { email: testEmail("inconnu") });
+    expect(unknown.status).toBe(200);
+
+    expect((await post("/auth/magic-link", { email: account.email })).body).toEqual(unknown.body);
+    const first = await waitForLinkToken(account.email, "/auth/magic-link");
+
+    expect((await post("/auth/magic-link", { email: account.email })).status).toBe(200);
+    const second = await waitForLinkToken(account.email, "/auth/magic-link", [first.id]);
+
+    expect((await post("/auth/magic-link/verify", { token: first.token })).status).toBe(400);
+
+    const session = await post("/auth/magic-link/verify", { token: second.token });
+    expect(session.status).toBe(200);
+    expect(session.body.user).toMatchObject({ id: account.id, email: account.email });
+    expect((await get("/auth/me", session.body.access_token)).status).toBe(200);
+
+    expect((await post("/auth/magic-link/verify", { token: second.token })).status).toBe(400);
+    account = { ...account, token: session.body.access_token, refreshToken: session.body.refresh_token };
+  });
+
   it("exporte toutes les données du compte en JSON téléchargeable, sans aucun secret (RGPD)", async () => {
     const response = await fetch(`${API_URL}/users/me/export`, {
       headers: { Authorization: `Bearer ${account.token}` },

@@ -34,6 +34,7 @@ import { ChangePasswordDto } from "./dto/change-password.dto";
 import { CompleteOAuthBirthDateDto } from "./dto/complete-oauth-birth-date.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
+import { RequestMagicLinkDto, VerifyMagicLinkDto } from "./dto/magic-link.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { ResendVerificationDto } from "./dto/resend-verification.dto";
@@ -125,6 +126,34 @@ export class AuthController {
   @ApiResponse({ status: 200, description: "Email envoyé si le compte existe" })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return firstValueFrom(this.authClient.send("auth.forgot_password", dto));
+  }
+
+  @Public()
+  @Post("magic-link")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  @ApiOperation({
+    summary: "Recevoir par email un lien de connexion sans mot de passe (usage unique, durée réglée par l'admin)",
+  })
+  @ApiResponse({ status: 200, description: "Même réponse que le compte existe ou non" })
+  @ApiResponse({ status: 403, description: "Connexion par lien magique désactivée par l'admin" })
+  requestMagicLink(@Body() dto: RequestMagicLinkDto) {
+    return firstValueFrom(this.authClient.send("auth.request_magic_link", dto));
+  }
+
+  @Public()
+  @Post("magic-link/verify")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @ApiOperation({ summary: "Ouvrir la session avec le lien reçu par email" })
+  @ApiResponse({
+    status: 200,
+    description:
+      "Tokens de session ; ou { requires_2fa, two_factor_method, pending_token } à compléter par POST /auth/oauth/verify-2fa",
+  })
+  @ApiResponse({ status: 400, description: "Lien invalide, déjà utilisé ou expiré" })
+  verifyMagicLink(@Body() dto: VerifyMagicLinkDto) {
+    return firstValueFrom(this.authClient.send("auth.verify_magic_link", dto));
   }
 
   @Public()
@@ -282,12 +311,12 @@ export class AuthController {
     );
   }
 
-  // Second temps d'une connexion OAuth avec 2FA (pending_token issu de l'échange).
+  // Second temps d'une connexion OAuth ou par lien magique avec 2FA (pending_token).
   @Public()
   @Post("oauth/verify-2fa")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: "Valider le code 2FA après une connexion OAuth qui l'exige",
+    summary: "Valider le code 2FA après une connexion OAuth ou par lien magique qui l'exige",
   })
   verifyOAuth2fa(@Body() dto: OAuthTwoFactorDto) {
     return firstValueFrom(
