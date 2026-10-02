@@ -1,3 +1,4 @@
+import { JobLock } from './job-lock.service';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { of, throwError } from 'rxjs';
@@ -19,6 +20,7 @@ describe('ReminderService — rappel J-1', () => {
     const module = await Test.createTestingModule({
       providers: [
         ReminderService,
+        { provide: JobLock, useValue: { runOncePerPeriod: jest.fn() } },
         { provide: getRepositoryToken(Order), useValue: orderRepo },
         { provide: 'NOTIFICATION_SERVICE', useValue: notifClient },
         { provide: 'USER_SERVICE', useValue: userClient },
@@ -113,5 +115,16 @@ describe('ReminderService — rappel J-1', () => {
 
       expect(notifClient.emit).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('déclenchement planifié : passe par le verrou de cluster, une fois par jour', async () => {
+    const { jobLock } = service as unknown as { jobLock: { runOncePerPeriod: jest.Mock } };
+    const send = jest.spyOn(service, 'sendDayBeforeReminders').mockResolvedValue(undefined);
+    jobLock.runOncePerPeriod.mockImplementation((_name: string, _period: number, job: () => Promise<void>) => job());
+
+    await service.sendDayBeforeRemindersJob();
+
+    expect(jobLock.runOncePerPeriod).toHaveBeenCalledWith('day-before-reminders', 24 * 3600, expect.any(Function));
+    expect(send).toHaveBeenCalledTimes(1);
   });
 });

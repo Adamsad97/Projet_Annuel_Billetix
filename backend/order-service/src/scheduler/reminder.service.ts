@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Between, In, Repository } from 'typeorm';
 import { Order, OrderStatus } from '../order/order.entity';
+import { JobLock } from './job-lock.service';
 
 @Injectable()
 export class ReminderService {
@@ -17,6 +18,7 @@ export class ReminderService {
     private readonly notifClient: ClientProxy,
     @Inject('USER_SERVICE')
     private readonly userClient: ClientProxy,
+    private readonly jobLock: JobLock,
   ) {}
 
   /** Échec de lecture des préférences : on envoie quand même le rappel (fail-open). */
@@ -38,6 +40,10 @@ export class ReminderService {
 
   // Tous les jours à 9h00 UTC
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  async sendDayBeforeRemindersJob(): Promise<void> {
+    await this.jobLock.runOncePerPeriod('day-before-reminders', 24 * 3600, () => this.sendDayBeforeReminders());
+  }
+
   async sendDayBeforeReminders(): Promise<void> {
     const tomorrow = new Date();
     tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);

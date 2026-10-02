@@ -3,11 +3,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Order } from '../order/order.entity';
+import { JobLockModule } from './job-lock.module';
 import { RecommendationService } from './recommendation.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order]),
+    JobLockModule,
     ClientsModule.registerAsync([
       {
         name: 'NOTIFICATION_SERVICE',

@@ -1,3 +1,4 @@
+import { JobLock } from './job-lock.service';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { of, throwError } from 'rxjs';
@@ -50,6 +51,7 @@ describe('RecommendationService — suggestions hebdomadaires par email', () => 
     const module = await Test.createTestingModule({
       providers: [
         RecommendationService,
+        { provide: JobLock, useValue: { runOncePerPeriod: jest.fn() } },
         { provide: getRepositoryToken(Order), useValue: orderRepo },
         { provide: 'NOTIFICATION_SERVICE', useValue: notifClient },
         { provide: 'USER_SERVICE', useValue: userClient },

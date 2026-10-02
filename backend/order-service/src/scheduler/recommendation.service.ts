@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { In, Repository } from 'typeorm';
 import { Order, OrderStatus } from '../order/order.entity';
+import { JobLock } from './job-lock.service';
 
 const MAX_RECOMMENDATIONS_PER_EMAIL = 5;
 const MAX_CANDIDATES_PER_CATEGORY = 3;
@@ -22,6 +23,7 @@ export class RecommendationService {
     private readonly userClient: ClientProxy,
     @Inject('EVENT_SERVICE')
     private readonly eventClient: ClientProxy,
+    private readonly jobLock: JobLock,
     @Inject('AUTH_SERVICE')
     private readonly authClient: ClientProxy,
   ) {}
@@ -45,6 +47,10 @@ export class RecommendationService {
 
   // Une fois par semaine, dimanche à 8h00 UTC
   @Cron(CronExpression.EVERY_WEEK)
+  async sendWeeklyRecommendationsJob(): Promise<void> {
+    await this.jobLock.runOncePerPeriod('weekly-recommendations', 7 * 24 * 3600, () => this.sendWeeklyRecommendations());
+  }
+
   async sendWeeklyRecommendations(): Promise<void> {
     const orders = await this.orderRepo.find({
       where: { status: In([OrderStatus.CONFIRMED, OrderStatus.TICKETS_SENT]) },

@@ -2,12 +2,14 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { RedisModule } from '../redis/redis.module';
+import { JobLockModule } from '../scheduler/job-lock.module';
 import { ReservationCleanupService } from './reservation-cleanup.service';
 import { StockReservationService } from './stock-reservation.service';
 
 @Module({
   imports: [
     RedisModule,
+    JobLockModule,
     ClientsModule.registerAsync([
       {
         name: 'EVENT_SERVICE',
