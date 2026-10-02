@@ -135,7 +135,11 @@ export async function apiFetchBlob(path: string, isRetry = false): Promise<Blob>
     } catch {
       // Réponse sans corps JSON.
     }
-    throw new ApiError(response.status, extractErrorMessage(data, t("Fichier inaccessible, veuillez réessayer.")));
+    throw new ApiError(
+      response.status,
+      extractErrorMessage(data, t("Fichier inaccessible, veuillez réessayer.")),
+      extractErrorCode(data),
+    );
   }
   return response.blob();
 }

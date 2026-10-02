@@ -11,6 +11,7 @@ import { Panel } from "@/components/profile/panel";
 import { TicketRow } from "@/components/profile/ticket-row";
 import { OrderRow } from "@/components/profile/order-row";
 import { SecurityPanel } from "@/components/profile/security-panel";
+import { PersonalDataPanel } from "@/components/profile/personal-data-panel";
 import { getMyOrdersSynced, type ApiOrder } from "@/lib/api/orders";
 import { getMyTickets, getTicketsByOrder } from "@/lib/api/tickets";
 import { apiOrderToProfileOrder, apiTicketToProfileTicket } from "@/lib/mappers/profile-mappers";
@@ -94,7 +95,7 @@ export default function ProfilPage() {
         href={isAgent ? "/scan" : "/"}
         className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-link transition-colors hover:text-link-hover"
       >
-        {isAgent ? t("← Contrôle des billets") : "← Accueil"}
+        {isAgent ? t("← Contrôle des billets") : t("← Accueil")}
       </Link>
 
       <ProfileHeader />
@@ -186,6 +187,8 @@ export default function ProfilPage() {
         )}
 
         <SecurityPanel />
+
+        <PersonalDataPanel />
 
         {/* Préférences d'emails d'achat : sans objet pour un agent de contrôle. */}
         {isAgent ? null : (
