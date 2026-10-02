@@ -5,11 +5,15 @@ on:
     branches: [main, develop]
     paths:
       - 'backend/**'
+      - 'docker-compose.yml'
+      - 'scripts/ci-e2e-env.sh'
       - '.github/workflows/ci.yml'
   pull_request:
     branches: [main, develop]
     paths:
       - 'backend/**'
+      - 'docker-compose.yml'
+      - 'scripts/ci-e2e-env.sh'
       - '.github/workflows/ci.yml'
   workflow_dispatch:
 
@@ -60,9 +64,57 @@ jobs:
       - name: Test
         run: npm test -- --ci
 
+  functional-tests:
+    name: tests fonctionnels (pile complète)
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      E2E_API_URL: http://localhost:4000/api/v1
+      E2E_MAILPIT_URL: http://localhost:8025
+      E2E_ADMIN_EMAIL: admin.e2e@billetix.local
+      E2E_ADMIN_PASSWORD: E2e-Admin-Ci-${{ github.run_id }}!
+      E2E_STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/api-gateway/package-lock.json
+
+      - name: Préparer l'environnement (secrets propres à l'exécution, emails vers Mailpit)
+        run: bash scripts/ci-e2e-env.sh
+
+      - name: Démarrer la pile backend
+        run: >-
+          docker compose up -d --build --wait --wait-timeout 900
+          api-gateway auth-service user-service event-service order-service ticket-service
+          payment-service notification-service realtime-service pdf-service admin-service mailpit
+
+      - name: Installer les dépendances des tests
+        working-directory: backend/api-gateway
+        run: npm ci --legacy-peer-deps
+
+      - name: Tests fonctionnels
+        working-directory: backend/api-gateway
+        run: npm run test:e2e -- --ci
+
+      - name: Journaux des services en cas d'échec
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+
+      - name: Arrêter la pile
+        if: always()
+        run: docker compose down -v
+
   publish:
     name: publish ${{ matrix.service }}
-    needs: build-and-test
+    needs: [build-and-test, functional-tests]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
