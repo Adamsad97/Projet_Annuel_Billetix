@@ -1,8 +1,9 @@
 import { Navbar } from "@/components/layout/navbar";
 import { Hero } from "@/components/home/hero";
 import { FeaturedEvents } from "@/components/home/featured-events";
+import { CategoryExplorer } from "@/components/home/category-explorer";
 import { SiteFooter } from "@/components/layout/site-footer";
-import { listCategories } from "@/lib/api/categories";
+import { listCategories, type ApiCategory } from "@/lib/api/categories";
 import { getEventCategories, listPublishedEvents } from "@/lib/api/events";
 import { apiEventToFeatured, type FeaturedEvent } from "@/lib/mappers/event-mappers";
 import { getLocale } from "@/lib/i18n/server";
@@ -19,12 +20,14 @@ export default async function Home() {
   // Sélection « À la une » de l'admin ; s'il n'en a fait aucune, les
   // prochains événements (l'accueil n'est jamais vide).
   let curated = false;
+  let categories: ApiCategory[] = [];
   try {
     const [selection, referential] = await Promise.all([
       listPublishedEvents({ featured: true }),
       // Libellés des catégories tels que définis par l'administration.
       listCategories().catch(() => []),
     ]);
+    categories = referential;
     curated = selection.data.length > 0;
     const { data } = curated ? selection : await listPublishedEvents({});
     const withCategories = await Promise.all(
@@ -45,6 +48,7 @@ export default async function Home() {
       <main className="flex-1">
         <Hero />
         <FeaturedEvents events={featured} curated={curated} />
+        <CategoryExplorer categories={categories} />
       </main>
       <SiteFooter />
     </div>
