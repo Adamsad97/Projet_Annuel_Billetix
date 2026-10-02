@@ -41,14 +41,11 @@ export function CategoryExplorer({
   if (active.length === 0) return null;
 
   return (
-    <section className="relative overflow-hidden border-t border-hairline-2 bg-card">
-      {/* Halo de marque discret derrière le titre. */}
-      <div aria-hidden="true" className="pointer-events-none absolute -left-32 -top-32 h-80 w-80 rounded-full bg-brand/10 blur-3xl" />
-
-      <div className="relative mx-auto max-w-7xl px-6 py-14">
+    <section aria-labelledby="category-explorer-title">
+      <div className="mx-auto max-w-7xl px-6 pb-20">
         <div className="mb-8 max-w-2xl">
           <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand ring-1 ring-inset ring-brand/25">{t("Catégories")}</span>
-          <h2 className="text-3xl font-extrabold tracking-tight text-ink-1 sm:text-4xl">{t("Explorer par catégorie")}</h2>
+          <h2 id="category-explorer-title" className="text-3xl font-extrabold tracking-tight text-ink-1 sm:text-4xl">{t("Explorer par catégorie")}</h2>
           <p className="mt-3 text-base text-ink-4">{t("Trouvez l'événement qui vous ressemble, en un clic.")}</p>
         </div>
 

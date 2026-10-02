@@ -139,10 +139,14 @@
   "À {value} m": "{value} m away",
   "À {value} km": "{value} km away",
   "useTheme() doit être utilisé sous ThemeProvider": "useTheme() must be used within ThemeProvider",
-  "© 2026 BilleTix — Plateforme de billetterie sécurisée.": "© 2026 BilleTix — Secure ticketing platform.",
   "Explorer par catégorie": "Browse by category",
   "Trouvez l'événement qui vous ressemble, en un clic.": "Find the event that suits you, in one click.",
   "Découvrir": "Discover",
   "1 événement": "1 event",
-  "{count} événements": "{count} events"
+  "{count} événements": "{count} events",
+  "Aide & contact": "Help & contact",
+  "Conditions d'utilisation": "Terms of use",
+  "La billetterie simple et sécurisée pour découvrir, acheter et revendre vos billets en toute confiance.": "Simple, secure ticketing to discover, buy and resell your tickets with confidence.",
+  "© {year} BilleTix. Tous droits réservés.": "© {year} BilleTix. All rights reserved.",
+  "Paiement sécurisé": "Secure payment"
 }
