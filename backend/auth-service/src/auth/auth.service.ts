@@ -361,7 +361,17 @@ export class AuthService {
     // Deux onglets qui renouvellent avec le même jeton reçoivent la même nouvelle paire pendant un court délai.
     const rotated = await this.redis.get(`rotated:${payload.jti}`);
     if (rotated) {
-      return JSON.parse(rotated) as ReturnType<AuthService["generateTokens"]>;
+      const pair = JSON.parse(rotated) as ReturnType<AuthService["generateTokens"]>;
+      // Session fermée entre-temps (déconnexion de la nouvelle paire) : le délai de grâce ne la rouvre pas.
+      const next = this.jwtService.decode(pair.refresh_token) as { jti?: string } | null;
+      if (next?.jti && (await this.redis.get(`blacklist:${next.jti}`))) {
+        throw new RpcException({
+          statusCode: 401,
+          code: "REFRESH_REVOKED",
+          message: "Refresh token révoqué",
+        });
+      }
+      return pair;
     }
 
     const blacklisted = await this.redis.get(`blacklist:${payload.jti}`);
@@ -445,6 +455,8 @@ export class AuthService {
       if (ttl > 0) {
         await this.redis.set(`blacklist:${payload.jti}`, "1", "EX", ttl);
       }
+      // Jeton déjà renouvelé : sa paire gardée pour le délai de grâce ne doit plus être servie.
+      await this.redis.del(`rotated:${payload.jti}`);
     }
     return { success: true };
   }

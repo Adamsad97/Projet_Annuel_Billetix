@@ -40,7 +40,7 @@ describe("AuthService", () => {
     verifyTotp: jest.Mock;
     verify: jest.Mock;
   };
-  let jwtService: { sign: jest.Mock; verify: jest.Mock };
+  let jwtService: { sign: jest.Mock; verify: jest.Mock; decode: jest.Mock };
   let redis: { get: jest.Mock; set: jest.Mock; del: jest.Mock };
   let platformConfig: { get: jest.Mock };
 
@@ -84,6 +84,7 @@ describe("AuthService", () => {
     jwtService = {
       sign: jest.fn().mockReturnValue("signed-token"),
       verify: jest.fn(),
+      decode: jest.fn().mockReturnValue({ jti: "jti-2" }),
     };
     redis = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
     platformConfig = {
@@ -531,10 +532,22 @@ describe("AuthService", () => {
       jwtService.verify.mockReturnValue({ sub: "user-1", jti: "jti-1", exp: 9999999999 });
       const pair = { access_token: "access-2", refresh_token: "refresh-2" };
       redis.get.mockImplementation((key: string) =>
-        Promise.resolve(key === "rotated:jti-1" ? JSON.stringify(pair) : key.startsWith("blacklist:") ? "1" : null),
+        Promise.resolve(key === "rotated:jti-1" ? JSON.stringify(pair) : key === "blacklist:jti-1" ? "1" : null),
       );
 
       await expect(service.refresh({ refresh_token: "token" })).resolves.toEqual(pair);
+    });
+
+    it("après déconnexion de la nouvelle session, l'ancien jeton ne la rouvre pas pendant le délai de grâce", async () => {
+      jwtService.verify.mockReturnValue({ sub: "user-1", jti: "jti-1", exp: 9999999999 });
+      const pair = { access_token: "access-2", refresh_token: "refresh-2" };
+      redis.get.mockImplementation((key: string) =>
+        Promise.resolve(key === "rotated:jti-1" ? JSON.stringify(pair) : key === "blacklist:jti-2" ? "1" : null),
+      );
+
+      await expect(service.refresh({ refresh_token: "token" })).rejects.toMatchObject({
+        error: { code: "REFRESH_REVOKED" },
+      });
     });
 
     it("mémorise la nouvelle paire pendant le délai de grâce réglé par l'admin", async () => {
@@ -664,6 +677,14 @@ describe("AuthService", () => {
       await service.logout({ refresh_token: "token" });
 
       expect(redis.set).toHaveBeenCalledWith("blacklist:jti-1", "1", "EX", expect.any(Number));
+    });
+
+    it("oublie la paire gardée pour le délai de grâce : un jeton déjà renouvelé puis déconnecté ne sert plus", async () => {
+      jwtService.verify.mockReturnValue({ jti: "jti-1", exp: 9999999999 });
+
+      await service.logout({ refresh_token: "token" });
+
+      expect(redis.del).toHaveBeenCalledWith("rotated:jti-1");
     });
   });
 
