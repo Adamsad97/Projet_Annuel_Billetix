@@ -5,7 +5,7 @@ import { JwtService } from "@nestjs/jwt";
 import { ClientProxy, RpcException } from "@nestjs/microservices";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
-import { randomBytes, randomUUID } from "crypto";
+import { createHash, randomBytes, randomUUID } from "crypto";
 import { Redis } from "ioredis";
 import { In, Repository } from "typeorm";
 import { REDIS_CLIENT } from "../redis/redis.module";
@@ -15,6 +15,7 @@ import { assertCanManageTarget } from "./assert-can-manage-target";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
+import { RequestMagicLinkDto, VerifyMagicLinkDto } from "./dto/magic-link.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
@@ -47,6 +48,9 @@ const OAUTH_2FA_PENDING_TTL = 300;
 // Le temps de saisir sa date de naissance à la première connexion
 // Google/Facebook — au-delà, il suffit de relancer la connexion.
 const OAUTH_BIRTH_DATE_PENDING_TTL = 15 * 60;
+
+/** Le lien magique n'est conservé que sous forme d'empreinte : une fuite de Redis ne donne aucun lien utilisable. */
+const magicLinkKey = (token: string) => `magic_link:${createHash("sha256").update(token).digest("hex")}`;
 
 // Deux formes possibles selon que le compte a la 2FA activée ou non — voir
 // AuthService.oauthLogin().
@@ -336,11 +340,14 @@ export class AuthService {
   }
 
   /** Durée d'inactivité avant expiration, exposée au frontend (platform_settings). */
-  async getSessionPolicy(): Promise<{ idle_timeout_minutes: number; max_duration_hours: number }> {
-    const { session_idle_timeout_minutes, session_max_duration_hours } = await this.platformConfig.get();
+  async getSessionPolicy(): Promise<{ idle_timeout_minutes: number; max_duration_hours: number; magic_link_enabled: boolean }> {
+    const { session_idle_timeout_minutes, session_max_duration_hours, magic_link_ttl_minutes } =
+      await this.platformConfig.get();
     return {
       idle_timeout_minutes: session_idle_timeout_minutes,
       max_duration_hours: session_max_duration_hours,
+      // Le site n'affiche « Recevoir un lien de connexion » que si l'admin ne l'a pas désactivé.
+      magic_link_enabled: magic_link_ttl_minutes > 0,
     };
   }
 
@@ -502,7 +509,7 @@ export class AuthService {
       return this.requireOAuthBirthDate({ user_id: user.id }, user.first_name);
     }
 
-    return this.finishOAuthLogin(user);
+    return this.finishPasswordlessLogin(user);
   }
 
   private async requireOAuthBirthDate(pending: OAuthBirthDatePending, firstName: string) {
@@ -576,10 +583,11 @@ export class AuthService {
       });
     }
 
-    return this.finishOAuthLogin(user);
+    return this.finishPasswordlessLogin(user);
   }
 
-  private async finishOAuthLogin(user: User) {
+  /** Fin d'une connexion sans mot de passe (OAuth, lien magique) : 2FA exigée si activée, sinon session ouverte. */
+  private async finishPasswordlessLogin(user: User) {
 
     // 2FA exigée aussi en OAuth : renvoie une référence opaque à usage unique, échangée avec le code (verifyOauth2fa).
     if (user.two_factor_enabled) {
@@ -624,6 +632,15 @@ export class AuthService {
       });
     }
 
+    // Les codes 2FA erronés verrouillent le compte : ce verrou vaut aussi pour OAuth et le lien magique.
+    if (user.locked_until && user.locked_until > new Date()) {
+      const remainingMinutes = Math.ceil((user.locked_until.getTime() - Date.now()) / 60000);
+      throw new RpcException({
+        statusCode: 429,
+        message: `Compte temporairement verrouillé suite à trop de tentatives échouées — réessayez dans ${remainingMinutes} min`,
+      });
+    }
+
     const validCode = await this.twoFactorService.verify(user.id, code);
     if (!validCode) {
       await this.registerFailedLoginAttempt(user);
@@ -631,6 +648,62 @@ export class AuthService {
     }
 
     return { ...this.generateTokens(user), user: this.sanitize(user) };
+  }
+
+  /** Lien de connexion par email, sans mot de passe ; même réponse que le compte existe ou non. */
+  async requestMagicLink(dto: RequestMagicLinkDto) {
+    const { magic_link_ttl_minutes: ttlMinutes } = await this.platformConfig.get();
+    if (!ttlMinutes || ttlMinutes <= 0) {
+      throw new RpcException({
+        statusCode: 403,
+        message: "La connexion par lien envoyé par email n'est pas disponible. Veuillez vous connecter avec votre mot de passe.",
+      });
+    }
+
+    const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    if (!user || !user.is_active || user.is_suspended) return { success: true };
+
+    // Seul le dernier lien demandé reste valable.
+    const previous = await this.redis.get(`magic_link_user:${user.id}`);
+    if (previous) await this.redis.del(previous);
+
+    const token = randomBytes(32).toString("base64url");
+    const key = magicLinkKey(token);
+    await this.redis.set(key, user.id, "EX", ttlMinutes * 60);
+    await this.redis.set(`magic_link_user:${user.id}`, key, "EX", ttlMinutes * 60);
+
+    this.notifClient.emit("notification.magic_link", {
+      email: user.email,
+      firstName: user.first_name,
+      token,
+      expiresInMinutes: ttlMinutes,
+    });
+    return { success: true };
+  }
+
+  /** Usage unique garanti par GETDEL : deux clics simultanés n'ouvrent jamais deux sessions. */
+  async verifyMagicLink(dto: VerifyMagicLinkDto) {
+    const userId = await this.redis.getdel(magicLinkKey(dto.token));
+    if (!userId) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "Ce lien de connexion est invalide, déjà utilisé ou expiré. Veuillez en demander un nouveau.",
+      });
+    }
+    await this.redis.del(`magic_link_user:${userId}`);
+
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user || !user.is_active || user.is_suspended) {
+      throw new RpcException({ statusCode: 403, message: "Compte suspendu ou désactivé" });
+    }
+
+    // Cliquer sur le lien reçu prouve la possession de l'adresse.
+    if (!user.is_email_verified) {
+      user.is_email_verified = true;
+      await this.userRepo.update(user.id, { is_email_verified: true });
+    }
+
+    return this.finishPasswordlessLogin(user);
   }
 
   /** Jamais de jetons en clair dans l'URL de redirection OAuth : code opaque à usage unique, échangé côté serveur. */

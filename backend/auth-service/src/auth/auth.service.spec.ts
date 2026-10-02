@@ -4,6 +4,7 @@ import { JwtService } from "@nestjs/jwt";
 import { RpcException } from "@nestjs/microservices";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
+import { createHash } from "crypto";
 import { REDIS_CLIENT } from "../redis/redis.module";
 import {
   OAuthProvider,
@@ -41,7 +42,8 @@ describe("AuthService", () => {
     verify: jest.Mock;
   };
   let jwtService: { sign: jest.Mock; verify: jest.Mock; decode: jest.Mock };
-  let redis: { get: jest.Mock; set: jest.Mock; del: jest.Mock };
+  let redis: { get: jest.Mock; set: jest.Mock; del: jest.Mock; getdel: jest.Mock };
+  let notifClient: { emit: jest.Mock };
   let platformConfig: { get: jest.Mock };
 
   const baseUser: Partial<User> = {
@@ -86,7 +88,8 @@ describe("AuthService", () => {
       verify: jest.fn(),
       decode: jest.fn().mockReturnValue({ jti: "jti-2" }),
     };
-    redis = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
+    redis = { get: jest.fn(), set: jest.fn(), del: jest.fn(), getdel: jest.fn() };
+    notifClient = { emit: jest.fn() };
     platformConfig = {
       get: jest.fn().mockResolvedValue({
         password_min_length: 12,
@@ -115,7 +118,7 @@ describe("AuthService", () => {
           provide: REDIS_CLIENT,
           useValue: redis,
         },
-        { provide: "NOTIFICATION_SERVICE", useValue: { emit: jest.fn() } },
+        { provide: "NOTIFICATION_SERVICE", useValue: notifClient },
         {
           provide: "ADMIN_SERVICE",
           useValue: { send: jest.fn().mockReturnValue({ subscribe: jest.fn() }) },
@@ -612,10 +615,15 @@ describe("AuthService", () => {
     });
 
     it("expose les durées configurées au frontend", async () => {
-      platformConfig.get.mockResolvedValue({ session_idle_timeout_minutes: 45, session_max_duration_hours: 8 });
+      platformConfig.get.mockResolvedValue({
+        session_idle_timeout_minutes: 45,
+        session_max_duration_hours: 8,
+        magic_link_ttl_minutes: 0,
+      });
       await expect(service.getSessionPolicy()).resolves.toEqual({
         idle_timeout_minutes: 45,
         max_duration_hours: 8,
+        magic_link_enabled: false,
       });
     });
 
@@ -778,6 +786,121 @@ describe("AuthService", () => {
         }),
       ).rejects.toThrow(RpcException);
       expect(repo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("connexion par lien magique (magic_link_ttl_minutes)", () => {
+    const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
+    const withTtl = (minutes: number) =>
+      platformConfig.get.mockResolvedValue({ password_min_length: 12, magic_link_ttl_minutes: minutes });
+
+    it("désactivée quand le réglage vaut 0", async () => {
+      withTtl(0);
+      await expect(service.requestMagicLink({ email: "jean@example.com" })).rejects.toMatchObject({
+        error: { statusCode: 403 },
+      });
+      expect(notifClient.emit).not.toHaveBeenCalled();
+    });
+
+    it("même réponse pour une adresse inconnue, sans rien envoyer", async () => {
+      withTtl(15);
+      repo.findOne.mockResolvedValue(null);
+      await expect(service.requestMagicLink({ email: "inconnu@example.com" })).resolves.toEqual({ success: true });
+      expect(redis.set).not.toHaveBeenCalled();
+      expect(notifClient.emit).not.toHaveBeenCalled();
+    });
+
+    it("n'envoie rien à un compte suspendu", async () => {
+      withTtl(15);
+      repo.findOne.mockResolvedValue({ ...baseUser, is_suspended: true });
+      await expect(service.requestMagicLink({ email: "jean@example.com" })).resolves.toEqual({ success: true });
+      expect(notifClient.emit).not.toHaveBeenCalled();
+    });
+
+    it("envoie un lien dont seule l'empreinte est conservée, valable la durée réglée", async () => {
+      withTtl(10);
+      repo.findOne.mockResolvedValue({ ...baseUser, first_name: "Jean" });
+
+      await service.requestMagicLink({ email: "jean@example.com" });
+
+      const [, payload] = notifClient.emit.mock.calls[0];
+      expect(notifClient.emit).toHaveBeenCalledWith("notification.magic_link", {
+        email: "jean@example.com",
+        firstName: "Jean",
+        token: expect.any(String),
+        expiresInMinutes: 10,
+      });
+      expect(payload.token.length).toBeGreaterThanOrEqual(40);
+      expect(redis.set).toHaveBeenCalledWith(`magic_link:${sha256(payload.token)}`, "user-1", "EX", 600);
+      expect(JSON.stringify(redis.set.mock.calls)).not.toContain(payload.token);
+    });
+
+    it("seul le dernier lien demandé reste valable", async () => {
+      withTtl(15);
+      repo.findOne.mockResolvedValue(baseUser);
+      redis.get.mockImplementation((key: string) =>
+        Promise.resolve(key === "magic_link:user-1" ? null : key === "magic_link_user:user-1" ? "magic_link:ancien" : null),
+      );
+
+      await service.requestMagicLink({ email: "jean@example.com" });
+
+      expect(redis.del).toHaveBeenCalledWith("magic_link:ancien");
+    });
+
+    it("refuse un lien inconnu, déjà utilisé ou expiré", async () => {
+      redis.getdel.mockResolvedValue(null);
+      await expect(service.verifyMagicLink({ token: "x".repeat(43) })).rejects.toMatchObject({
+        error: { statusCode: 400 },
+      });
+      expect(jwtService.sign).not.toHaveBeenCalled();
+    });
+
+    it("ouvre la session et consomme le lien en une seule opération (usage unique)", async () => {
+      const token = "t".repeat(43);
+      redis.getdel.mockResolvedValue("user-1");
+      repo.findOne.mockResolvedValue(baseUser);
+
+      const result = await service.verifyMagicLink({ token });
+
+      expect(redis.getdel).toHaveBeenCalledWith(`magic_link:${sha256(token)}`);
+      expect(redis.del).toHaveBeenCalledWith("magic_link_user:user-1");
+      expect(result).toHaveProperty("access_token");
+      expect(result).toHaveProperty("refresh_token");
+    });
+
+    it("exige encore le code 2FA quand elle est activée, sans ouvrir de session", async () => {
+      redis.getdel.mockResolvedValue("user-1");
+      repo.findOne.mockResolvedValue({ ...baseUser, two_factor_enabled: true, two_factor_method: TwoFactorMethod.TOTP });
+
+      const result = await service.verifyMagicLink({ token: "t".repeat(43) });
+
+      expect(result).toEqual({ requires_2fa: true, two_factor_method: TwoFactorMethod.TOTP, pending_token: expect.any(String) });
+      expect(result).not.toHaveProperty("access_token");
+    });
+
+    it("cliquer le lien prouve la possession de l'adresse : email marqué vérifié", async () => {
+      redis.getdel.mockResolvedValue("user-1");
+      repo.findOne.mockResolvedValue({ ...baseUser, is_email_verified: false });
+
+      await service.verifyMagicLink({ token: "t".repeat(43) });
+
+      expect(repo.update).toHaveBeenCalledWith("user-1", { is_email_verified: true });
+    });
+
+    it("refuse un compte suspendu entre la demande et le clic", async () => {
+      redis.getdel.mockResolvedValue("user-1");
+      repo.findOne.mockResolvedValue({ ...baseUser, is_suspended: true });
+      await expect(service.verifyMagicLink({ token: "t".repeat(43) })).rejects.toMatchObject({
+        error: { statusCode: 403 },
+      });
+    });
+
+    it("le verrouillage après codes 2FA erronés s'applique au second temps (OAuth et lien magique)", async () => {
+      redis.get.mockResolvedValue("user-1");
+      repo.findOne.mockResolvedValue({ ...baseUser, two_factor_enabled: true, locked_until: new Date(Date.now() + 10 * 60000) });
+
+      await expect(service.verifyOauth2fa("pending", "123456")).rejects.toMatchObject({ error: { statusCode: 429 } });
+      expect(twoFactorService.verify).not.toHaveBeenCalled();
     });
   });
 

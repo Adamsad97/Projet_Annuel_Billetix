@@ -3,6 +3,7 @@ import { MessagePattern, Payload } from "@nestjs/microservices";
 import { AuthService } from "./auth.service";
 import { TwoFactorService } from "./two-factor.service";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
+import { RequestMagicLinkDto, VerifyMagicLinkDto } from "./dto/magic-link.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
@@ -57,6 +58,16 @@ export class AuthController {
   @MessagePattern("auth.forgot_password")
   forgotPassword(@Payload() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);
+  }
+
+  @MessagePattern("auth.request_magic_link")
+  requestMagicLink(@Payload() dto: RequestMagicLinkDto) {
+    return this.authService.requestMagicLink(dto);
+  }
+
+  @MessagePattern("auth.verify_magic_link")
+  verifyMagicLink(@Payload() dto: VerifyMagicLinkDto) {
+    return this.authService.verifyMagicLink(dto);
   }
 
   @MessagePattern("auth.reset_password")
