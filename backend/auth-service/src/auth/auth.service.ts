@@ -24,6 +24,20 @@ import { TwoFactorService } from "./two-factor.service";
 
 const BCRYPT_ROUNDS = 12;
 const RESET_TOKEN_TTL = 60 * 60; // 1 heure
+// Lien de changement remis à la connexion quand le mot de passe a expiré : à utiliser aussitôt.
+const PASSWORD_EXPIRED_TOKEN_TTL = 15 * 60;
+
+/** Mot de passe plus ancien que la durée réglée (0 = jamais) ; sans date connue, celle de création du compte. */
+export function isPasswordExpired(
+  user: { password_changed_at?: Date | null; created_at?: Date },
+  maxAgeDays: number | undefined,
+  now = new Date(),
+): boolean {
+  if (!maxAgeDays || maxAgeDays <= 0) return false;
+  const since = user.password_changed_at ?? user.created_at;
+  if (!since) return false;
+  return now.getTime() - new Date(since).getTime() > maxAgeDays * 24 * 60 * 60 * 1000;
+}
 const EMAIL_VERIFY_TTL = 24 * 60 * 60; // 24 heures
 // Court délai avant expiration du code d'échange OAuth — le temps d'une
 // redirection navigateur, pas plus (usage unique de toute façon).
@@ -108,6 +122,16 @@ export class AuthService {
     }
   }
 
+  /** Le nouveau mot de passe doit différer de l'actuel (sinon le renouvellement n'aurait aucun effet). */
+  private async assertNewPasswordDiffers(newPassword: string, currentHash: string | null): Promise<void> {
+    if (currentHash && (await bcrypt.compare(newPassword, currentHash))) {
+      throw new RpcException({
+        statusCode: 400,
+        message: "Le nouveau mot de passe doit être différent de l'ancien.",
+      });
+    }
+  }
+
   async register(dto: RegisterDto) {
     const existing = await this.userRepo.findOne({
       where: { email: dto.email },
@@ -127,6 +151,7 @@ export class AuthService {
     const user = this.userRepo.create({
       email: dto.email,
       password_hash,
+      password_changed_at: new Date(),
       first_name: dto.first_name,
       last_name: dto.last_name,
       birth_date: dto.birth_date,
@@ -278,6 +303,18 @@ export class AuthService {
       // Reflète le reset dans la réponse : l'objet user en mémoire a été chargé avant la mise à jour.
       user.failed_login_attempts = 0;
       user.locked_until = null;
+    }
+
+    // CNIL : mot de passe trop ancien → aucun jeton de session, seulement un lien de changement à usage unique.
+    const { password_max_age_days } = await this.platformConfig.get();
+    if (isPasswordExpired(user, password_max_age_days)) {
+      const token = randomUUID();
+      await this.redis.set(`reset_password:${token}`, user.id, "EX", PASSWORD_EXPIRED_TOKEN_TTL);
+      return {
+        password_expired: true,
+        password_change_token: token,
+        password_max_age_days,
+      };
     }
 
     return { ...this.generateTokens(user), user: this.sanitize(user) };
@@ -771,7 +808,11 @@ export class AuthService {
       });
     }
 
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo
+      .createQueryBuilder("u")
+      .addSelect("u.password_hash")
+      .where("u.id = :id", { id: userId })
+      .getOne();
     if (!user) {
       throw new RpcException({
         statusCode: 404,
@@ -780,8 +821,10 @@ export class AuthService {
     }
 
     await this.assertPasswordPolicy(dto.new_password, user);
+    await this.assertNewPasswordDiffers(dto.new_password, user.password_hash);
 
     user.password_hash = await bcrypt.hash(dto.new_password, BCRYPT_ROUNDS);
+    user.password_changed_at = new Date();
     // Lien reçu par email et suivi : l'adresse est confirmée (cas d'un agent
     // invité, dont le compte est créé sans vérification préalable).
     if (!user.is_email_verified) {
@@ -829,8 +872,10 @@ export class AuthService {
     }
 
     await this.assertPasswordPolicy(dto.new_password, user);
+    await this.assertNewPasswordDiffers(dto.new_password, user.password_hash);
 
     user.password_hash = await bcrypt.hash(dto.new_password, BCRYPT_ROUNDS);
+    user.password_changed_at = new Date();
     await this.userRepo.save(user);
 
     // CDC §10.3 : journalisation sans attente, un échec ne fait jamais échouer le changement.

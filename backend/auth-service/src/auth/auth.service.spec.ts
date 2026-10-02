@@ -11,7 +11,7 @@ import {
   User,
   UserRole,
 } from "../user/user.entity";
-import { AuthService } from "./auth.service";
+import { AuthService, isPasswordExpired } from "./auth.service";
 import { TwoFactorService } from "./two-factor.service";
 import { PlatformConfigCache } from "../platform-config/platform-config.cache";
 
@@ -760,6 +760,94 @@ describe("AuthService", () => {
     });
   });
 
+  describe("renouvellement du mot de passe (CNIL, password_max_age_days)", () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    const daysAgo = (days: number) => new Date(Date.now() - days * DAY);
+
+    async function loginWith(user: Partial<User>, config: Record<string, unknown>, twoFactorCode?: string) {
+      const hash = await bcrypt.hash("pw", 4);
+      queryBuilder.getOne.mockResolvedValue({ ...baseUser, password_hash: hash, ...user });
+      platformConfig.get.mockResolvedValue({ password_min_length: 12, ...config });
+      return service.login({ email: baseUser.email!, password: "pw", ...(twoFactorCode ? { two_factor_code: twoFactorCode } : {}) });
+    }
+
+    it("exige le changement quand le mot de passe date de plus de 60 jours, sans ouvrir de session", async () => {
+      const result = await loginWith({ password_changed_at: daysAgo(61) }, { password_max_age_days: 60 });
+
+      expect(result).toEqual({
+        password_expired: true,
+        password_change_token: expect.any(String),
+        password_max_age_days: 60,
+      });
+      expect(result).not.toHaveProperty("access_token");
+      expect(jwtService.sign).not.toHaveBeenCalled();
+      // Lien à usage unique et de courte durée, utilisable par la réinitialisation existante.
+      const token = (result as { password_change_token: string }).password_change_token;
+      expect(redis.set).toHaveBeenCalledWith(`reset_password:${token}`, "user-1", "EX", 15 * 60);
+    });
+
+    it("ouvre la session normalement tant que le mot de passe est récent", async () => {
+      const result = await loginWith({ password_changed_at: daysAgo(59) }, { password_max_age_days: 60 });
+      expect(result).toHaveProperty("access_token");
+    });
+
+    it("jamais une valeur figée : suit le réglage de l'admin, et 0 désactive l'expiration", async () => {
+      await expect(loginWith({ password_changed_at: daysAgo(40) }, { password_max_age_days: 30 })).resolves.toHaveProperty("password_expired", true);
+      await expect(loginWith({ password_changed_at: daysAgo(400) }, { password_max_age_days: 0 })).resolves.toHaveProperty("access_token");
+    });
+
+    it("ne contourne pas la 2FA : le code est demandé avant le changement de mot de passe", async () => {
+      const expired = { password_changed_at: daysAgo(90), two_factor_enabled: true, two_factor_method: TwoFactorMethod.TOTP };
+      await expect(loginWith(expired, { password_max_age_days: 60 })).resolves.toEqual({
+        requires_2fa: true,
+        two_factor_method: TwoFactorMethod.TOTP,
+      });
+      expect(redis.set).not.toHaveBeenCalled();
+
+      twoFactorService.verify.mockResolvedValue(true);
+      await expect(loginWith(expired, { password_max_age_days: 60 }, "123456")).resolves.toHaveProperty("password_expired", true);
+    });
+
+    it("sans date de changement connue, part de la création du compte", () => {
+      expect(isPasswordExpired({ password_changed_at: null, created_at: daysAgo(100) }, 60)).toBe(true);
+      expect(isPasswordExpired({ password_changed_at: null, created_at: daysAgo(10) }, 60)).toBe(false);
+      expect(isPasswordExpired({}, 60)).toBe(false);
+    });
+
+    it("la réinitialisation enregistre la date du changement", async () => {
+      redis.get.mockResolvedValue("user-1");
+      queryBuilder.getOne.mockResolvedValue({ ...baseUser, password_hash: await bcrypt.hash("Ancien-Mdp-2025!", 4) });
+      repo.save.mockImplementation((user) => Promise.resolve(user));
+
+      await service.resetPassword({ token: "tok", new_password: "Nouveau-Mdp-2026!" });
+
+      const saved = repo.save.mock.calls[0][0];
+      expect(saved.password_changed_at).toBeInstanceOf(Date);
+      expect(Date.now() - saved.password_changed_at.getTime()).toBeLessThan(5000);
+      expect(redis.del).toHaveBeenCalledWith("reset_password:tok");
+    });
+
+    it("refuse de reprendre le même mot de passe, à la réinitialisation comme au changement", async () => {
+      const hash = await bcrypt.hash("Meme-Mdp-2026!", 4);
+      redis.get.mockResolvedValue("user-1");
+      queryBuilder.getOne.mockResolvedValue({ ...baseUser, password_hash: hash });
+
+      await expect(service.resetPassword({ token: "tok", new_password: "Meme-Mdp-2026!" })).rejects.toThrow(
+        "Le nouveau mot de passe doit être différent de l'ancien.",
+      );
+      await expect(
+        service.changePassword("user-1", { current_password: "Meme-Mdp-2026!", new_password: "Meme-Mdp-2026!" }),
+      ).rejects.toThrow("Le nouveau mot de passe doit être différent de l'ancien.");
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("le changement depuis le profil enregistre aussi la date", async () => {
+      queryBuilder.getOne.mockResolvedValue({ ...baseUser, password_hash: await bcrypt.hash("ancien-mdp", 4) });
+      await service.changePassword("user-1", { current_password: "ancien-mdp", new_password: "Nouveau-Mdp-2026" });
+      expect(repo.save.mock.calls[0][0].password_changed_at).toBeInstanceOf(Date);
+    });
+  });
+
   describe("politique de mot de passe — longueur issue de platform_settings", () => {
     const registerWith = (password: string) =>
       service.register({
@@ -865,7 +953,7 @@ describe("AuthService", () => {
 
     it("rejette à la réinitialisation un mot de passe contenant le prénom", async () => {
       redis.get.mockResolvedValue("user-1");
-      repo.findOne.mockResolvedValue({ ...baseUser, first_name: "Éloïse", last_name: "Martin" });
+      queryBuilder.getOne.mockResolvedValue({ ...baseUser, first_name: "Éloïse", last_name: "Martin" });
 
       await expect(
         service.resetPassword({ token: "tok", new_password: "Eloise-2026-Secret!" }),

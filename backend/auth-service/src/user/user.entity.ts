@@ -84,6 +84,10 @@ export class User {
   @Column({ nullable: true })
   locked_until: Date | null;
 
+  // Dernier changement du mot de passe : renouvellement exigé à la connexion après password_max_age_days.
+  @Column({ nullable: true })
+  password_changed_at: Date | null;
+
   // État du compte
   @Column({ default: true })
   is_active: boolean;

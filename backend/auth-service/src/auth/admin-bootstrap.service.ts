@@ -47,6 +47,7 @@ export class AdminBootstrapService implements OnModuleInit {
       this.userRepo.create({
         email,
         password_hash,
+        password_changed_at: new Date(),
         first_name: "Admin",
         last_name: "BilleTix",
         role: UserRole.SUPER_ADMIN,
