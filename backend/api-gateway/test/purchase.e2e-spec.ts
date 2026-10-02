@@ -81,7 +81,7 @@ describe("Parcours organisateur → achat → contrôle d'entrée (fonctionnel)"
     const form = new FormData();
     form.append("file", new Blob([new Uint8Array(pngImage())], { type: "image/png" }), "affiche.png");
     const poster = await api("POST", "/upload/poster", { form, token: organizer.token });
-    expect(poster.status).toBe(201);
+    expect({ status: poster.status, body: poster.body }).toMatchObject({ status: 201 });
 
     // Début proche : les entrées sont ouvertes (scan_opens_before_minutes) et le scan peut être testé.
     const start = minutesFromNow(30);
@@ -106,7 +106,7 @@ describe("Parcours organisateur → achat → contrôle d'entrée (fonctionnel)"
       },
       organizer.token,
     );
-    expect(created.status).toBe(201);
+    expect({ status: created.status, body: created.body }).toMatchObject({ status: 201 });
     expect(created.body.status).toBe("DRAFT");
     eventId = created.body.id;
 
@@ -115,13 +115,13 @@ describe("Parcours organisateur → achat → contrôle d'entrée (fonctionnel)"
       { name: "Standard", price_ht: 20, quota: 50, max_per_order: 5, visibility: "PUBLIC" },
       organizer.token,
     );
-    expect(category.status).toBe(201);
+    expect({ status: category.status, body: category.body }).toMatchObject({ status: 201 });
     categoryId = category.body.id;
     priceTtc = Number(category.body.price_ttc);
     expect(priceTtc).toBeCloseTo(24, 2);
 
     const submitted = await post(`/events/${eventId}/submit`, {}, organizer.token);
-    expect(submitted.status).toBe(200);
+    expect({ status: submitted.status, body: submitted.body }).toMatchObject({ status: 200 });
     expect(submitted.body.status).toBe("PENDING_VALIDATION");
   });
 
@@ -157,7 +157,7 @@ describe("Parcours organisateur → achat → contrôle d'entrée (fonctionnel)"
       it("réserve, commande et paie deux billets ; la commande est confirmée et les billets émis", async () => {
         const items = [{ ticket_category_id: categoryId, quantity: 2 }];
         const reserve = await post("/orders/reserve", { event_id: eventId, items }, buyer.token);
-        expect(reserve.status).toBe(201);
+        expect({ status: reserve.status, body: reserve.body }).toMatchObject({ status: 201 });
 
         const order = await post(
           "/orders",
@@ -176,13 +176,13 @@ describe("Parcours organisateur → achat → contrôle d'entrée (fonctionnel)"
           },
           buyer.token,
         );
-        expect(order.status).toBe(201);
+        expect({ status: order.status, body: order.body }).toMatchObject({ status: 201 });
         orderId = order.body.order.id;
         expect(order.body.order.status).toBe("PENDING_PAYMENT");
         expect(Number(order.body.order.total_amount_ttc)).toBeCloseTo(2 * priceTtc, 2);
 
         const intent = await post("/payments/intent", { order_id: orderId }, buyer.token);
-        expect(intent.status).toBe(201);
+        expect({ status: intent.status, body: intent.body }).toMatchObject({ status: 201 });
         expect(await confirmStripePayment(intent.body.client_secret)).toBe("succeeded");
         await post(`/payments/orders/${orderId}/sync`, {}, buyer.token);
 
