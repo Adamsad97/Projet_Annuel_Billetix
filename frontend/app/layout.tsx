@@ -8,6 +8,7 @@ import { AgentSpaceGuard } from "@/components/auth/agent-space-guard";
 import { PreviewBanner } from "@/components/admin/preview-banner";
 import { I18nProvider } from "@/lib/i18n/provider";
 import { getLocale, getT } from "@/lib/i18n/server";
+import { RealtimeNotifier } from "@/components/realtime/realtime-notifier";
 
 // Script synchrone avant le premier rendu pour éviter un flash sombre en mode clair.
 const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem("billetix-theme");if(t==="light"||(!t&&window.matchMedia("(prefers-color-scheme: light)").matches)){document.documentElement.setAttribute("data-theme","light");}}catch(e){}})();`;
@@ -57,6 +58,7 @@ export default async function RootLayout({
             {children}
             <SessionManager />
             <AgentSpaceGuard />
+            <RealtimeNotifier />
           </ThemeProvider>
         </I18nProvider>
       </body>

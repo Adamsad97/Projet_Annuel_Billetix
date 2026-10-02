@@ -2,7 +2,7 @@
 
 // Gestion d'un événement câblée sur son dashboard, ses participants et les actions organisateur.
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthHeader } from "@/components/layout/auth-header";
@@ -49,6 +49,8 @@ import { buttonClass } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { fieldClass } from "@/components/ui/field";
 import { t } from "@/lib/i18n/translate";
+import { useDashboardSubscription, useRealtimeEvent, type DashboardChangedMessage } from "@/lib/realtime/socket";
+import { LiveBadge } from "@/components/realtime/live-badge";
 
 export default function DashboardEventDetailPage({
   params,
@@ -105,6 +107,15 @@ export default function DashboardEventDetailPage({
   }
 
   useEffect(load, [id]);
+
+  // Vente ou entrée en direct : rechargement groupé (plusieurs scans rapprochés = un seul rechargement).
+  const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useDashboardSubscription(id);
+  useRealtimeEvent<DashboardChangedMessage>("dashboard:changed", (message) => {
+    if (message.event_id !== id) return;
+    if (reloadTimer.current) clearTimeout(reloadTimer.current);
+    reloadTimer.current = setTimeout(load, 800);
+  });
 
   function handleSubmit() {
     setDialog({
@@ -286,6 +297,7 @@ export default function DashboardEventDetailPage({
                         <Badge tone={badge.className} size="md">
                           {t(badge.label)}
                         </Badge>
+                        <LiveBadge />
                         {event.status !== "POSTPONED" ? (
                           <span className="rounded-full bg-hairline-1 px-2.5 py-1 text-xs font-medium text-ink-3 ring-1 ring-inset ring-hairline-2">
                             {eventTiming(event.start_date, event.end_date)}

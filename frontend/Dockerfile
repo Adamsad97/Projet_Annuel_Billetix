@@ -14,12 +14,14 @@ FROM base AS builder
 # Les NEXT_PUBLIC_* sont figées au build : ces ARG sont nécessaires côté navigateur.
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ARG NEXT_PUBLIC_REALTIME_URL
 # Adresse publique du site : base des aperçus de partage des pages
 # pré-générées au build (aussi passée au runtime pour les pages dynamiques).
 ARG SITE_URL
 ENV SITE_URL=$SITE_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_REALTIME_URL=$NEXT_PUBLIC_REALTIME_URL
 COPY . .
 RUN npm run build
 

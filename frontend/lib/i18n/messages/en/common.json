@@ -33,5 +33,17 @@
   "{count} annonce": "{count} listing",
   "{count} comptes": "{count} accounts",
   "{count} compte": "{count} account",
-  "Commandes & billets": "Orders & tickets"
+  "Commandes & billets": "Orders & tickets",
+  "Les ventes et les entrées s'affichent ici en temps réel.": "Sales and entries are shown here in real time.",
+  "En direct": "Live",
+  "Alerte : remboursements massifs": "Alert: mass refunds",
+  "{count} remboursements sur les dernières 24 h (seuil d'alerte : {threshold}).": "{count} refunds in the last 24 hours (alert threshold: {threshold}).",
+  "Alerte : litiges en hausse": "Alert: disputes rising",
+  "{count} litiges ouverts (seuil d'alerte : {threshold}).": "{count} open disputes (alert threshold: {threshold}).",
+  "Alerte : double scan": "Alert: duplicate scan",
+  "Un billet déjà utilisé a été présenté de nouveau à l'entrée : possible fraude.": "A ticket that was already used was presented again at the entrance: possible fraud.",
+  "Billet scanné ✓": "Ticket scanned ✓",
+  "Votre billet {category} pour « {event} » vient d'être validé à l'entrée à {time}.": "Your {category} ticket for \"{event}\" was just checked in at {time}.",
+  "Voir le détail →": "See details →",
+  "Fermer la notification": "Close the notification"
 }

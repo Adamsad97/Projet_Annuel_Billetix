@@ -19,6 +19,7 @@ import { MutedMessage } from "@/components/ui/muted-message";
 import { buttonClass } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
 import { t } from "@/lib/i18n/translate";
+import { useRealtimeEvent, type TicketScannedMessage } from "@/lib/realtime/socket";
 
 export default function TicketDetailPage({
   params,
@@ -54,6 +55,11 @@ export default function TicketDetailPage({
       cancelled = true;
     };
   }, [id]);
+
+  // Billet validé à l'entrée : son statut passe à « déjà scanné » sans recharger la page.
+  useRealtimeEvent<TicketScannedMessage>("ticket:scanned", (message) => {
+    if (message.ticket_id === id) reloadTicket();
+  });
 
   // Recharge le billet après un retrait de vente réussi (repasse en "valid").
   function reloadTicket() {
