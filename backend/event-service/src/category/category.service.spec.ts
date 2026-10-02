@@ -7,7 +7,7 @@ import { CategoryService } from './category.service';
 
 describe('CategoryService', () => {
   let service: CategoryService;
-  let repo: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock; find: jest.Mock; remove: jest.Mock; manager: { transaction: jest.Mock } };
+  let repo: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock; find: jest.Mock; remove: jest.Mock; count: jest.Mock; manager: { transaction: jest.Mock } };
   let manager: { update: jest.Mock; save: jest.Mock };
   let eventRepo: { count: jest.Mock };
 
@@ -18,6 +18,7 @@ describe('CategoryService', () => {
       findOne: jest.fn(),
       find: jest.fn(),
       remove: jest.fn(),
+      count: jest.fn(),
       manager: { transaction: jest.fn() },
     };
     manager = {
@@ -108,6 +109,21 @@ describe('CategoryService', () => {
       await service.update('c1', { label: 'Concerts' });
       expect(repo.manager.transaction).not.toHaveBeenCalled();
       expect(repo.save).toHaveBeenCalledWith(expect.objectContaining({ label: 'Concerts' }));
+    });
+  });
+
+  describe('catégories de départ (base neuve sans migrations)', () => {
+    it('crée les 7 catégories de départ, dont Concert, quand la table est vide', async () => {
+      repo.count.mockResolvedValue(0);
+      await service.onModuleInit();
+      const saved = repo.save.mock.calls[0][0] as Array<{ code: string }>;
+      expect(saved.map((category) => category.code)).toEqual(['CONCERT', 'FESTIVAL', 'THEATRE', 'SPORT', 'CONFERENCE', 'DANSE', 'AUTRE']);
+    });
+
+    it("ne touche jamais aux catégories déjà gérées par l'admin", async () => {
+      repo.count.mockResolvedValue(3);
+      await service.onModuleInit();
+      expect(repo.save).not.toHaveBeenCalled();
     });
   });
 });

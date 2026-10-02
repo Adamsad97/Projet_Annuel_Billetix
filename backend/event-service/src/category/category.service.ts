@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -7,14 +7,39 @@ import { Category } from './category.entity';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
+/** Catégories de départ, identiques à la migration AddCategoriesTable ; modifiables ensuite par l'admin. */
+const DEFAULT_CATEGORIES: Array<Pick<Category, 'code' | 'label' | 'emoji' | 'display_order'>> = [
+  { code: 'CONCERT', label: 'Concert', emoji: '🎵', display_order: 1 },
+  { code: 'FESTIVAL', label: 'Festival', emoji: '🎪', display_order: 2 },
+  { code: 'THEATRE', label: 'Théâtre', emoji: '🎭', display_order: 3 },
+  { code: 'SPORT', label: 'Sport', emoji: '⚽', display_order: 4 },
+  { code: 'CONFERENCE', label: 'Conférence', emoji: '💡', display_order: 5 },
+  { code: 'DANSE', label: 'Danse', emoji: '💃', display_order: 6 },
+  { code: 'AUTRE', label: 'Autre', emoji: '✨', display_order: 7 },
+];
+
 @Injectable()
-export class CategoryService {
+export class CategoryService implements OnModuleInit {
+  private readonly logger = new Logger(CategoryService.name);
+
   constructor(
     @InjectRepository(Category)
     private readonly repo: Repository<Category>,
     @InjectRepository(Event)
     private readonly eventRepo: Repository<Event>,
   ) {}
+
+  /** Base neuve créée sans les migrations (synchronize en développement, CI) : catégories de départ, sinon aucun événement possible. */
+  async onModuleInit(): Promise<void> {
+    try {
+      if ((await this.repo.count()) === 0) {
+        await this.repo.save(DEFAULT_CATEGORIES.map((category) => this.repo.create(category)));
+        this.logger.log(`${DEFAULT_CATEGORIES.length} catégories de départ créées`);
+      }
+    } catch (err) {
+      this.logger.error(`Création des catégories de départ échouée : ${(err as Error).message}`);
+    }
+  }
 
   /** Catégories actives, pour le dropdown organisateur et le catalogue public. */
   listActive(): Promise<Category[]> {

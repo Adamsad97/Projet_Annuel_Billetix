@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -7,14 +7,34 @@ import { CreateTicketTierTypeDto } from './dto/create-ticket-tier-type.dto';
 import { UpdateTicketTierTypeDto } from './dto/update-ticket-tier-type.dto';
 import { TicketTierType } from './ticket-tier-type.entity';
 
+/** Types de billets de départ, identiques à la migration AddTicketTierTypes ; modifiables ensuite par l'admin. */
+const DEFAULT_TIER_TYPES: Array<Pick<TicketTierType, 'label' | 'emoji' | 'display_order'>> = [
+  { label: 'Standard', emoji: '🎫', display_order: 1 },
+  { label: 'VIP', emoji: '⭐', display_order: 2 },
+];
+
 @Injectable()
-export class TicketTierTypeService {
+export class TicketTierTypeService implements OnModuleInit {
+  private readonly logger = new Logger(TicketTierTypeService.name);
+
   constructor(
     @InjectRepository(TicketTierType)
     private readonly repo: Repository<TicketTierType>,
     @InjectRepository(TicketCategory)
     private readonly ticketCategoryRepo: Repository<TicketCategory>,
   ) {}
+
+  /** Base neuve créée sans les migrations (synchronize en développement, CI) : types de départ, sinon aucun billet possible. */
+  async onModuleInit(): Promise<void> {
+    try {
+      if ((await this.repo.count()) === 0) {
+        await this.repo.save(DEFAULT_TIER_TYPES.map((tier) => this.repo.create(tier)));
+        this.logger.log(`${DEFAULT_TIER_TYPES.length} types de billets de départ créés`);
+      }
+    } catch (err) {
+      this.logger.error(`Création des types de billets de départ échouée : ${(err as Error).message}`);
+    }
+  }
 
   /** Noms actifs, pour le dropdown organisateur à la création d'une catégorie de billet. */
   listActive(): Promise<TicketTierType[]> {

@@ -7,7 +7,7 @@ import { TicketTierTypeService } from './ticket-tier-type.service';
 
 describe('TicketTierTypeService', () => {
   let service: TicketTierTypeService;
-  let repo: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock; find: jest.Mock; remove: jest.Mock };
+  let repo: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock; find: jest.Mock; remove: jest.Mock; count: jest.Mock };
   let ticketCategoryRepo: { count: jest.Mock };
 
   beforeEach(async () => {
@@ -17,6 +17,7 @@ describe('TicketTierTypeService', () => {
       findOne: jest.fn(),
       find: jest.fn(),
       remove: jest.fn(),
+      count: jest.fn(),
     };
     ticketCategoryRepo = { count: jest.fn().mockResolvedValue(0) };
 
@@ -79,6 +80,20 @@ describe('TicketTierTypeService', () => {
 
       expect(result).toEqual({ success: true });
       expect(repo.remove).toHaveBeenCalledWith(type);
+    });
+  });
+
+  describe('types de billets de départ (base neuve sans migrations)', () => {
+    it('crée Standard et VIP quand la table est vide', async () => {
+      repo.count.mockResolvedValue(0);
+      await service.onModuleInit();
+      expect((repo.save.mock.calls[0][0] as Array<{ label: string }>).map((tier) => tier.label)).toEqual(['Standard', 'VIP']);
+    });
+
+    it("ne touche jamais aux types déjà gérés par l'admin", async () => {
+      repo.count.mockResolvedValue(2);
+      await service.onModuleInit();
+      expect(repo.save).not.toHaveBeenCalled();
     });
   });
 });
