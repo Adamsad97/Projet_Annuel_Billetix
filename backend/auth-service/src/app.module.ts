@@ -44,7 +44,8 @@ import { validateEnvironment } from "./common/env.validation";
         synchronize: config.get("NODE_ENV") !== "production",
         migrations: [join(__dirname, "migrations", "*{.ts,.js}")],
         migrationsRun: config.get("NODE_ENV") === "production",
-        logging: config.get("NODE_ENV") === "development",
+        // Requêtes SQL affichées seulement à la demande (DB_LOGGING=true) ; erreurs et migrations toujours visibles.
+        logging: config.get("DB_LOGGING") === "true" ? "all" : ["error", "warn", "migration"],
       }),
     }),
     PlatformConfigModule,

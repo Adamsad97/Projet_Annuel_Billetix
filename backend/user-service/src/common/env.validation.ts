@@ -11,6 +11,7 @@ class UserServiceEnvironment {
   IBAN_ENCRYPTION_KEY: string;
 
   @IsOptional() @IsIn(['development', 'production', 'test']) NODE_ENV?: string;
+  @IsOptional() @IsIn(['true', 'false']) DB_LOGGING?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(65535) PORT?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(65535) HEALTH_PORT?: number;
 }

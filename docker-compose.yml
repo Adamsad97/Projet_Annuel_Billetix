@@ -229,6 +229,7 @@ services:
   # ── SERVICES MÉTIER ──
 
   # NODE_ENV « development » par défaut (synchronize) ; passer BACKEND_NODE_ENV=production une fois les migrations à jour.
+  # DB_LOGGING=true affiche toutes les requêtes SQL (débogage ponctuel) ; désactivé par défaut.
   api-gateway:
     build:
       context: ./backend/api-gateway
@@ -308,6 +309,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: ${BACKEND_NODE_ENV:-development}
+      DB_LOGGING: ${DB_LOGGING:-false}
       PORT: 3001
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@auth-db:5432/auth
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
@@ -351,6 +353,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: ${BACKEND_NODE_ENV:-development}
+      DB_LOGGING: ${DB_LOGGING:-false}
       PORT: 3002
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@user-db:5432/users
       IBAN_ENCRYPTION_KEY: ${IBAN_ENCRYPTION_KEY}
@@ -388,6 +391,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: ${BACKEND_NODE_ENV:-development}
+      DB_LOGGING: ${DB_LOGGING:-false}
       PORT: 3003
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@event-db:5432/events
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
@@ -436,6 +440,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: ${BACKEND_NODE_ENV:-development}
+      DB_LOGGING: ${DB_LOGGING:-false}
       PORT: 3004
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@order-db:5432/orders
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
@@ -487,6 +492,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: ${BACKEND_NODE_ENV:-development}
+      DB_LOGGING: ${DB_LOGGING:-false}
       PORT: 3005
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@ticket-db:5432/tickets
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
@@ -525,6 +531,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: ${BACKEND_NODE_ENV:-development}
+      DB_LOGGING: ${DB_LOGGING:-false}
       PORT: 3006
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@payment-db:5432/payments
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
@@ -679,6 +686,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: ${BACKEND_NODE_ENV:-development}
+      DB_LOGGING: ${DB_LOGGING:-false}
       PORT: 3009
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@admin-db:5432/admin_logs
       RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672

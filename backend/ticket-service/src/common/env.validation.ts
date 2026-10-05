@@ -10,6 +10,7 @@ class TicketServiceEnvironment {
   @IsString() @IsNotEmpty() QR_SIGNING_PRIVATE_KEY: string;
 
   @IsOptional() @IsIn(['development', 'production', 'test']) NODE_ENV?: string;
+  @IsOptional() @IsIn(['true', 'false']) DB_LOGGING?: string;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(65535) PORT?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(65535) HEALTH_PORT?: number;
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) OFFLINE_SYNC_MAX_HOURS?: number;
