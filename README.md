@@ -2,26 +2,104 @@
 
 Backend en microservices NestJS (10 services + API Gateway), une base PostgreSQL dédiée par service, frontend Next.js.
 
-## 1. Cloner le projet
+# Démarrage rapide
 
-```bash
+Toutes les étapes pour lancer le projet à partir d'un dépôt fraîchement cloné. Les commandes sont données pour Windows (PowerShell) ; les différences pour macOS/Linux sont indiquées.
+
+## Prérequis
+
+À installer une seule fois :
+
+- [Git](https://git-scm.com/)
+- [Node.js](https://nodejs.org/) 22 ou plus (sert uniquement à générer les clés de l'étape 4 à 6)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/), **lancé** avant l'étape 8
+
+## Étapes
+
+**1. Cloner le dépôt**
+
+```powershell
 git clone https://github.com/Adamsad97/Projet_Annuel_Billetix.git
+```
+
+**2. Entrer dans le dossier**
+
+```powershell
 cd Projet_Annuel_Billetix
 ```
 
-## 2. Créer le fichier d'environnement
+**3. Créer le fichier d'environnement**
 
-```bash
-cp .env.example .env
+```powershell
+Copy-Item .env.example .env
 ```
 
-Ouvrir `.env` et renseigner au minimum les secrets cryptographiques, ainsi que les mots de passe PostgreSQL/Redis/RabbitMQ/MinIO de votre choix. Les clés Stripe et Google/Facebook OAuth peuvent rester vides si ces intégrations ne sont pas utilisées.
+macOS/Linux : `cp .env.example .env`, puis remplacer le `;` de la première ligne par `:` (`COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml`), sinon Docker ne charge pas la configuration de développement.
 
-| Variable | Commande de génération |
+**4. Générer les deux secrets JWT** (lancer la commande deux fois)
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
+Copier les deux résultats dans `JWT_ACCESS_SECRET` et `JWT_REFRESH_SECRET` du fichier `.env`.
+
+**5. Générer la clé de chiffrement des IBAN** (AES-256)
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Copier le résultat dans `IBAN_ENCRYPTION_KEY`.
+
+**6. Générer la clé de signature des QR codes** (Ed25519)
+
+```powershell
+node -e "console.log(require('crypto').generateKeyPairSync('ed25519').privateKey.export({format:'der',type:'pkcs8'}).toString('base64'))"
+```
+
+Copier le résultat dans `QR_SIGNING_PRIVATE_KEY`.
+
+**7. Compléter le reste de `.env`**
+
+```powershell
+notepad .env
+```
+
+- Remplacer les mots de passe `changeme_...` (PostgreSQL, Redis, RabbitMQ, MinIO) par des valeurs de votre choix — 8 caractères minimum pour MinIO.
+- Choisir `BOOTSTRAP_ADMIN_EMAIL` et `BOOTSTRAP_ADMIN_PASSWORD` : compte administrateur créé automatiquement au premier démarrage.
+- Paiements : renseigner les clés Stripe **de test** (`sk_test_...`, `pk_test_...`, `whsec_...`). Les clés Google/Facebook peuvent rester telles quelles si la connexion sociale n'est pas testée.
+
+**8. Construire et lancer le projet**
+
+```powershell
+docker compose up --build
+```
+
+Premier lancement : 5 à 10 minutes (téléchargement des images, installation des dépendances). Le projet est prêt quand tous les conteneurs sont « Healthy » et que la ligne `[API Gateway] En écoute sur le port 4000` apparaît.
+
+**Base de données** : rien à faire. Au démarrage, chaque service crée ses tables dans sa propre base (voir A.8 pour le détail et le mode production).
+
+**9. Ouvrir le site** : http://localhost:3000 — se connecter avec le compte administrateur de l'étape 7.
+
+## Adresses utiles
+
+| Outil | Adresse |
 |---|---|
-| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
-| `IBAN_ENCRYPTION_KEY` (AES-256, 64 caractères hexadécimaux) | `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `QR_SIGNING_PRIVATE_KEY` (Ed25519, PKCS#8, DER, base64) | `node -e "console.log(require('crypto').generateKeyPairSync('ed25519').privateKey.export({format:'der',type:'pkcs8'}).toString('base64'))"` |
+| Site | http://localhost:3000 |
+| Documentation de l'API (Swagger) | http://localhost:4000/api/docs |
+| Emails envoyés par la plateforme (Mailpit) | http://localhost:8025 |
+| Interface RabbitMQ | http://localhost:15672 |
+| Console MinIO | http://localhost:9001 |
+
+## Relancer et arrêter
+
+- Relancer sans reconstruire : `docker compose up`
+- Arrêter : `Ctrl+C`, puis `docker compose down`
+- Repartir de bases vides (efface **toutes** les données) : `docker compose down -v`
+- Afficher toutes les requêtes SQL pour déboguer : mettre `DB_LOGGING=true` dans `.env` puis relancer
+
+---
 
 # Partie A — Avec Docker (recommandé)
 
@@ -29,11 +107,7 @@ Toute l'infrastructure (7 bases PostgreSQL, Redis, RabbitMQ, MinIO, Mailpit) ET 
 
 ## A.1 Premier démarrage
 
-```bash
-npm start
-```
-
-Premier lancement : 5 à 10 minutes (téléchargement des images Docker + installation des dépendances de chaque service). Une fois démarré :
+Suivre le **démarrage rapide** en haut de ce document (étape 8 : `docker compose up --build`). Une fois démarré :
 
 - API (healthcheck) : http://localhost:4000/health — `http://localhost:4000` seul renvoie 404, aucune route n'est déclarée sur `/`
 - Documentation Swagger (liste de toutes les routes) : http://localhost:4000/api/docs
@@ -44,7 +118,7 @@ Premier lancement : 5 à 10 minutes (téléchargement des images Docker + instal
 
 ## A.2 Démarrer un service en particulier
 
-> Le fichier `.env` (créé à l'étape 2) contient `COMPOSE_FILE=docker-compose.yml;docker-compose.dev.yml` : Docker charge donc automatiquement la config dev, sans avoir besoin de répéter `-f` à chaque commande. Testé en conditions réelles : sans ce réglage, Docker recrée le conteneur en config **production**.
+> Le fichier `.env` (créé à l'étape 3 du démarrage rapide) contient `COMPOSE_FILE=docker-compose.yml;docker-compose.dev.yml` : Docker charge donc automatiquement la config dev, sans avoir besoin de répéter `-f` à chaque commande. Testé en conditions réelles : sans ce réglage, Docker recrée le conteneur en config **production**.
 
 ```bash
 docker compose up -d <nom-du-service>
@@ -162,7 +236,14 @@ Exécute `npm test` dans chacun des 11 microservices via `docker compose exec` (
 
 ## A.8 Exécuter les migrations
 
-Les migrations s'exécutent **automatiquement** au démarrage de chaque service en conteneur (`NODE_ENV=production` déclenche `migrationsRun: true`) — rien à faire manuellement dans ce mode.
+Rien ne se passe à la construction des images : la base est préparée **au démarrage de chaque service**, selon `BACKEND_NODE_ENV` dans `.env`.
+
+| Mode | Réglage | Schéma de la base |
+|---|---|---|
+| Développement (par défaut) | `BACKEND_NODE_ENV` absent ou `development` | `synchronize: true` : tables créées et mises à jour depuis les entités, migrations non exécutées |
+| Production | `BACKEND_NODE_ENV=production` | `synchronize: false` et `migrationsRun: true` : chaque service applique ses migrations au démarrage |
+
+Le mode production ne s'utilise que sur une **base neuve** : une base créée en développement n'a pas d'historique de migrations (voir la remarque ci-dessous).
 
 Pour forcer une migration manuellement (ex: après avoir ajouté une migration sans redémarrer le conteneur) :
 
