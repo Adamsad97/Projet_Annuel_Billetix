@@ -50,7 +50,7 @@ export default async function Home() {
       <Navbar active="/evenements" />
       <main className="flex-1">
         <Hero />
-        <FeaturedEvents events={featured} curated={curated} />
+        <FeaturedEvents events={featured} curated={curated} categories={categories} categoryCounts={categoryCounts} />
         <CategoryExplorer categories={categories} counts={categoryCounts} />
       </main>
       <SiteFooter />

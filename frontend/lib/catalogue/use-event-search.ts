@@ -28,14 +28,26 @@ export interface EventSearchOptions {
   initialEvents?: FeaturedEvent[];
   /** Paramètres ajoutés tant qu'aucun filtre n'est actif (ex. sélection « À la une »). */
   unfilteredParams?: ListEventsParams;
+  /** Catégories déjà chargées par le serveur : pas de second appel. */
+  initialCategories?: ApiCategory[];
+  /** Nombres par catégorie déjà calculés par le serveur pour les filtres de départ. */
+  initialCategoryCounts?: Record<string, number>;
 }
 
-export function useEventSearch({ syncUrl = false, initialEvents, unfilteredParams }: EventSearchOptions = {}) {
+const byDisplayOrder = (list: ApiCategory[]) => [...list].sort((a, b) => a.display_order - b.display_order);
+
+export function useEventSearch({
+  syncUrl = false,
+  initialEvents,
+  unfilteredParams,
+  initialCategories,
+  initialCategoryCounts,
+}: EventSearchOptions = {}) {
   const [filters, setFilters] = useState<CatalogueFilters>(DEFAULT_FILTERS);
   const [ready, setReady] = useState(!syncUrl);
-  const [categories, setCategories] = useState<ApiCategory[]>([]);
+  const [categories, setCategories] = useState<ApiCategory[]>(() => byDisplayOrder(initialCategories ?? []));
   // Événements à venir par catégorie ; null tant que non chargé (pas de badge).
-  const [categoryCounts, setCategoryCounts] = useState<Record<string, number> | null>(null);
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number> | null>(initialCategoryCounts ?? null);
   // Événements par période du filtre Date (« today », « weekend »…).
   const [periodCounts, setPeriodCounts] = useState<Record<string, number> | null>(null);
 
@@ -54,6 +66,12 @@ export function useEventSearch({ syncUrl = false, initialEvents, unfilteredParam
   const requestId = useRef(0);
   // Premier passage avec des événements fournis par le serveur : déjà à jour.
   const skipInitialFetch = useRef(Boolean(initialEvents));
+  const skipInitialCategoryCounts = useRef(Boolean(initialCategoryCounts));
+  // Référentiel lu par fetchPage sans relancer la recherche quand il arrive.
+  const categoriesRef = useRef(categories);
+  useEffect(() => {
+    categoriesRef.current = categories;
+  }, [categories]);
 
   useEffect(() => {
     if (syncUrl) {
@@ -61,8 +79,9 @@ export function useEventSearch({ syncUrl = false, initialEvents, unfilteredParam
       setFilters(filtersFromUrl(window.location.search));
       setReady(true);
     }
+    if (categoriesRef.current.length > 0) return;
     listCategories()
-      .then((list) => setCategories([...list].sort((a, b) => a.display_order - b.display_order)))
+      .then((list) => setCategories(byDisplayOrder(list)))
       .catch(() => undefined);
   }, [syncUrl]);
 
@@ -97,9 +116,10 @@ export function useEventSearch({ syncUrl = false, initialEvents, unfilteredParam
 
   const fetchPage = useCallback(
     async (pageNumber: number) => {
+      const known = categoriesRef.current;
       const [{ data, total: count }, referential] = await Promise.all([
         listPublishedEvents({ ...apiParams, page: pageNumber }),
-        listCategories().catch(() => []),
+        known.length > 0 ? known : listCategories().catch(() => []),
       ]);
       const cards = await Promise.all(
         data.map(async (event) => apiEventToFeatured(event, await getEventCategories(event.id).catch(() => []), referential)),
@@ -144,12 +164,17 @@ export function useEventSearch({ syncUrl = false, initialEvents, unfilteredParam
     let cancelled = false;
     // Le tri ne change pas les nombres : retiré de la requête.
     const countFilters = { ...apiParams, sort: undefined };
+    // Premier passage : nombres par catégorie déjà fournis par le serveur.
+    const reuseCategoryCounts = skipInitialCategoryCounts.current;
+    skipInitialCategoryCounts.current = false;
     const timeout = setTimeout(() => {
-      getCategoryCounts(countFilters)
-        .then((counts) => {
-          if (!cancelled) setCategoryCounts(counts);
-        })
-        .catch(() => undefined);
+      if (!reuseCategoryCounts) {
+        getCategoryCounts(countFilters)
+          .then((counts) => {
+            if (!cancelled) setCategoryCounts(counts);
+          })
+          .catch(() => undefined);
+      }
       countEventsByPeriod(presetPeriods(), countFilters)
         .then((counts) => {
           if (!cancelled) setPeriodCounts(counts);

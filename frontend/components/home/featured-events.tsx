@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EventFilterBar } from "@/components/catalogue/event-filter-bar";
 import { FeaturedEventCard } from "@/components/home/featured-event-card";
 import { filtersToUrl } from "@/lib/catalogue/filters";
+import type { ApiCategory } from "@/lib/api/categories";
 import { useEventSearch } from "@/lib/catalogue/use-event-search";
 import type { FeaturedEvent } from "@/lib/mappers/event-mappers";
 import { t } from "@/lib/i18n/translate";
@@ -20,14 +21,25 @@ const AUTOPLAY_DELAY_MS = 5000;
 export function FeaturedEvents({
   events: initialEvents,
   curated = false,
+  categories,
+  categoryCounts,
 }: {
   events: FeaturedEvent[];
   /** Sélection faite par l'admin : montrée tant qu'aucun filtre n'est actif. */
   curated?: boolean;
+  /** Référentiel et nombres déjà chargés par la page (évite de les redemander). */
+  categories?: ApiCategory[];
+  categoryCounts?: Record<string, number>;
 }) {
   // Mêmes filtres que le catalogue, appliqués directement au carrousel. Sans
   // filtre : la sélection « À la une » de l'admin ; avec : tous les événements.
-  const search = useEventSearch({ initialEvents, unfilteredParams: curated ? CURATED_PARAMS : undefined });
+  const search = useEventSearch({
+    initialEvents,
+    unfilteredParams: curated ? CURATED_PARAMS : undefined,
+    initialCategories: categories,
+    // Calculés sans le filtre « À la une » : réutilisables seulement hors sélection.
+    initialCategoryCounts: curated ? undefined : categoryCounts,
+  });
   const { events, loading, hasActiveFilters, resetAll } = search;
   const trackRef = useRef<HTMLUListElement>(null);
   const [paused, setPaused] = useState(false);
