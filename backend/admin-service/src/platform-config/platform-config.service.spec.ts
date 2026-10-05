@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { PlatformSetting } from './platform-config.entity';
-import { PlatformConfigService } from './platform-config.service';
+import { DEFAULTS, PlatformConfigService } from './platform-config.service';
 
 describe('PlatformConfigService', () => {
   let service: PlatformConfigService;
@@ -28,25 +28,36 @@ describe('PlatformConfigService', () => {
 
   describe('onModuleInit', () => {
     it('ne recrée pas un paramètre déjà présent en base (pas de valeur écrasée)', async () => {
-      repo.findOne.mockResolvedValue({ key: 'stripe_fee_percent', value: '3.1' });
+      repo.find.mockResolvedValue([{ key: 'stripe_fee_percent' }]);
+
+      await service.onModuleInit();
+
+      const [inserted] = repo.save.mock.calls[0];
+      expect(inserted.map((setting: { key: string }) => setting.key)).not.toContain('stripe_fee_percent');
+    });
+
+    it("n'écrit rien quand tous les paramètres existent déjà", async () => {
+      repo.find.mockResolvedValue(DEFAULTS.map((setting) => ({ key: setting.key })));
 
       await service.onModuleInit();
 
       expect(repo.save).not.toHaveBeenCalled();
     });
 
-    it('insère les paramètres manquants avec leur valeur par défaut', async () => {
-      repo.findOne.mockResolvedValue(null);
+    it('insère les paramètres manquants avec leur valeur par défaut, en une seule écriture', async () => {
+      repo.find.mockResolvedValue([]);
 
       await service.onModuleInit();
 
-      expect(repo.save).toHaveBeenCalledWith(
+      expect(repo.find).toHaveBeenCalledTimes(1);
+      expect(repo.save).toHaveBeenCalledTimes(1);
+      expect(repo.save.mock.calls[0][0]).toContainEqual(
         expect.objectContaining({ key: 'fill_thresholds', value: '[25,50,75,100]' }),
       );
     });
 
     it("supprime les réglages retirés du produit (QR fixe : plus d'option « rotation activée »)", async () => {
-      repo.findOne.mockResolvedValue({ key: 'x', value: 'y' });
+      repo.find.mockResolvedValue([]);
 
       await service.onModuleInit();
 

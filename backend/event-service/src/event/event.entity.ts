@@ -130,7 +130,8 @@ export class Event {
 
   // Taux de TVA des billets (fraction : 0.055 pour 5,5 %), recopié depuis la
   // liste de l'admin au choix de l'organisateur ; figé après validation.
-  @Column({ type: 'decimal', precision: 6, scale: 4, default: 0.2 })
+  // Défaut en expression SQL : un nombre JS ferait croire à TypeORM que la colonne diffère (ALTER à chaque démarrage).
+  @Column({ type: 'decimal', precision: 6, scale: 4, default: () => '0.2' })
   vat_rate: string;
 
   @Column({ type: 'varchar', length: 80, nullable: true })

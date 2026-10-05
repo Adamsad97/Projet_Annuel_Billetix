@@ -53,7 +53,8 @@ export class Order {
 
   // Taux de TVA appliqué (fraction : 0.055 pour 5,5 %), celui de l'événement
   // au moment de l'achat : factures et avoirs le reprennent tel quel.
-  @Column({ type: 'decimal', precision: 6, scale: 4, default: 0.2 })
+  // Défaut en expression SQL : un nombre JS ferait croire à TypeORM que la colonne diffère (ALTER à chaque démarrage).
+  @Column({ type: 'decimal', precision: 6, scale: 4, default: () => '0.2' })
   vat_rate: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })

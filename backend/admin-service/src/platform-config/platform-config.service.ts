@@ -70,7 +70,7 @@ const OBSOLETE_KEYS = [
   'wave_fee_fixed_eur',
 ];
 
-const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
+export const DEFAULTS: Array<Omit<PlatformSetting, 'updated_at'>> = [
   { key: 'free_ticket_fee_eur',            value: '0.50',          type: 'number',  description: 'Frais fixes par billet gratuit (€)' },
   { key: 'commission_standard_percent',    value: '10',            type: 'number',  description: 'Commission standard prélevée sur le prix HT (%)' },
   { key: 'commission_large_event_percent', value: '8',             type: 'number',  description: 'Commission grande jauge (> seuil) (%)' },
@@ -131,11 +131,12 @@ export class PlatformConfigService implements OnModuleInit {
 
   async onModuleInit(): Promise<void> {
     await this.repo.delete({ key: In(OBSOLETE_KEYS) });
-    for (const setting of DEFAULTS) {
-      const exists = await this.repo.findOne({ where: { key: setting.key } });
-      if (!exists) {
-        await this.repo.save(this.repo.create(setting));
-      }
+    // Une lecture et une insertion groupées : les valeurs déjà en base ne sont jamais écrasées.
+    const existing = await this.repo.find({ select: { key: true } });
+    const existingKeys = new Set(existing.map((setting) => setting.key));
+    const missing = DEFAULTS.filter((setting) => !existingKeys.has(setting.key));
+    if (missing.length > 0) {
+      await this.repo.save(missing.map((setting) => this.repo.create(setting)));
     }
   }
 
