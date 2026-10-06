@@ -10,6 +10,7 @@ import {
   EventIdPayload,
   IdPayload,
   IssueCreditNotePayload,
+  LatePaymentRefundPayload,
   OrderCreditNotesPayload,
   MarkRefundedPayload,
   PartialRefundPayload,
@@ -127,6 +128,11 @@ export class OrderController {
   @MessagePattern('order.mark_refunded')
   markRefunded(@Payload() data: MarkRefundedPayload) {
     return this.orderService.markRefunded(data.id, data.restore_stock ?? true);
+  }
+
+  @MessagePattern('order.mark_late_payment_refunded')
+  markLatePaymentRefunded(@Payload() data: LatePaymentRefundPayload) {
+    return this.orderService.markLatePaymentRefunded(data.id, data.payment_intent_id);
   }
 
   @MessagePattern('order.record_partial_refund')

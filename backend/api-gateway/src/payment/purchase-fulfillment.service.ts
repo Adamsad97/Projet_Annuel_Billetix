@@ -123,13 +123,23 @@ export class PurchaseFulfillmentService {
 
     // 2c. Marquer la commande comme payée (bug corrigé : jamais appelé auparavant —
     // le statut/paid_at de la commande ne changeait jamais après un vrai paiement)
-    await firstValueFrom(
-      this.orderClient.send("order.confirm_payment", {
-        id: orderId,
-        payment_intent_id: paymentIntentId,
-        fees: paymentFees,
-      }),
-    );
+    try {
+      await firstValueFrom(
+        this.orderClient.send("order.confirm_payment", {
+          id: orderId,
+          payment_intent_id: paymentIntentId,
+          fees: paymentFees,
+        }),
+      );
+    } catch (err) {
+      // 409 : payé après l'annulation automatique, places reparties entre-temps.
+      // Aucun billet ne sera émis : l'acheteur est remboursé intégralement.
+      if ((err as { statusCode?: number })?.statusCode === 409 && Number(order.total_amount_ttc) > 0) {
+        await this.refundRejectedPayment(order, paymentIntentId, err);
+        return;
+      }
+      throw err;
+    }
 
     // CDC §9 : notification « première vente » une seule fois, sans attente.
     if (order.organizer_id) {
@@ -316,6 +326,28 @@ export class PurchaseFulfillmentService {
       billingAddress,
       orderId,
       invoicePdfBase64: invoicePdf ? invoicePdf.toString("base64") : undefined,
+    });
+  }
+
+  private async refundRejectedPayment(
+    order: { id: string; reference: string; buyer_email: string; buyer_first_name: string; event_name: string; total_amount_ttc: number },
+    paymentIntentId: string,
+    reason: unknown,
+  ): Promise<void> {
+    this.logger.warn(
+      `Paiement refusé à la confirmation, remboursement de la commande ${order.reference} : ${(reason as { message?: string })?.message}`,
+    );
+    await firstValueFrom(this.paymentClient.send("payment.refund", { order_id: order.id }));
+    // Trace côté commande : l'acheteur et l'admin voient qu'elle a été remboursée.
+    await firstValueFrom(
+      this.orderClient.send("order.mark_late_payment_refunded", { id: order.id, payment_intent_id: paymentIntentId }),
+    );
+    this.notifClient.emit("notification.refund_completed", {
+      email: order.buyer_email,
+      firstName: order.buyer_first_name,
+      orderReference: order.reference,
+      eventName: order.event_name,
+      amount: Number(order.total_amount_ttc).toFixed(2),
     });
   }
 

@@ -36,10 +36,19 @@ export class PaymentService {
     // Montant relu depuis order-service, jamais fourni par le client.
     const { order } = await firstValueFrom(
       this.orderClient.send('order.get', { id: data.order_id }),
-    ) as { order: { buyer_id: string; total_amount_ttc: number; payment_method: string } };
+    ) as { order: { buyer_id: string; status: string; total_amount_ttc: number; payment_method: string } };
 
     if (order.buyer_id !== data.buyer_id) {
       throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
+    }
+
+    // Commande annulée (délai de paiement dépassé) : son stock a été remis en
+    // vente, un nouveau paiement risquerait d'émettre des billets sans place.
+    if (order.status !== 'PENDING_PAYMENT') {
+      throw new RpcException({
+        statusCode: 409,
+        message: "Cette commande n'est plus en attente de paiement — veuillez recommencer votre achat.",
+      });
     }
 
     // Défense en profondeur : une commande gratuite ne passe jamais par Stripe (CDC §4.1).

@@ -40,6 +40,10 @@ export class ConfirmPaymentPayload extends IdPayload {
   @Type(() => Number) @IsNumber() @Min(0) fees: number;
 }
 
+export class LatePaymentRefundPayload extends IdPayload {
+  @IsString() @MaxLength(200) payment_intent_id: string;
+}
+
 export class CancelOrderPayload extends IdPayload {
   @IsUUID() buyer_id: string;
   @IsOptional() @IsBoolean() is_admin?: boolean;

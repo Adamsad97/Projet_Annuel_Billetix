@@ -69,9 +69,20 @@ describe('PaymentService', () => {
   });
 
   describe('createIntent — montant recalculé côté serveur', () => {
+    it("refuse une commande qui n'est plus en attente de paiement (annulée, stock remis en vente)", async () => {
+      orderClient.send.mockReturnValue(
+        of({ order: { buyer_id: 'buyer-1', status: 'CANCELLED', total_amount_ttc: 50, payment_method: 'STRIPE' } }),
+      );
+
+      await expect(
+        service.createIntent({ order_id: 'order-1', buyer_id: 'buyer-1', buyer_email: 'jean@example.com' }),
+      ).rejects.toThrow(RpcException);
+      expect(stripeProvider.createPayment).not.toHaveBeenCalled();
+    });
+
     it("ignore tout montant client et utilise le total réel de la commande (Stripe)", async () => {
       orderClient.send.mockReturnValue(
-        of({ order: { buyer_id: 'buyer-1', total_amount_ttc: 123.45, payment_method: 'STRIPE' } }),
+        of({ order: { buyer_id: 'buyer-1', status: 'PENDING_PAYMENT', total_amount_ttc: 123.45, payment_method: 'STRIPE' } }),
       );
 
       const result = await service.createIntent({ order_id: 'order-1', buyer_id: 'buyer-1', buyer_email: 'jean@example.com' });
@@ -85,7 +96,7 @@ describe('PaymentService', () => {
 
     it('refuse un moyen de paiement non supporté', async () => {
       orderClient.send.mockReturnValue(
-        of({ order: { buyer_id: 'buyer-1', total_amount_ttc: 50, payment_method: 'PAYPAL' } }),
+        of({ order: { buyer_id: 'buyer-1', status: 'PENDING_PAYMENT', total_amount_ttc: 50, payment_method: 'PAYPAL' } }),
       );
 
       await expect(

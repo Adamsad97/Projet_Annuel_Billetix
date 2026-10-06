@@ -687,6 +687,34 @@ export class OrderService {
     return saved;
   }
 
+  /**
+   * Paiement reçu après l'annulation automatique puis remboursé intégralement : la commande
+   * garde la trace du remboursement (montant, date, paiement Stripe). Aucun mouvement de stock,
+   * les places n'ont jamais été reprises. Idempotent.
+   */
+  async markLatePaymentRefunded(id: string, paymentIntentId: string): Promise<Order> {
+    const order = await this.orderRepo.findOne({ where: { id } });
+    if (!order) throw new RpcException({ statusCode: 404, message: 'Commande introuvable' });
+    if (order.status === OrderStatus.REFUNDED) return order;
+    if (order.status !== OrderStatus.CANCELLED || order.payment_status === PaymentStatus.PAID) {
+      throw new RpcException({ statusCode: 409, message: `Remboursement de paiement tardif impossible à l'état ${order.status}` });
+    }
+
+    const changes = {
+      status: OrderStatus.REFUNDED,
+      payment_status: PaymentStatus.REFUNDED,
+      payment_intent_id: paymentIntentId || order.payment_intent_id,
+      refunded_amount: Number(order.total_amount_ttc),
+      refunded_at: new Date(),
+    };
+    const result = await this.orderRepo.update(
+      { id, status: OrderStatus.CANCELLED, payment_status: Not(PaymentStatus.PAID) },
+      changes,
+    );
+    if (!result.affected) return (await this.orderRepo.findOne({ where: { id } })) ?? order;
+    return Object.assign(order, changes);
+  }
+
   /** Remboursement partiel sans annulation (billet revendu) : seul le montant est enregistré et déduit du CA. */
   async recordPartialRefund(id: string, amountTtc: number): Promise<Order> {
     const order = await this.orderRepo.findOne({ where: { id } });

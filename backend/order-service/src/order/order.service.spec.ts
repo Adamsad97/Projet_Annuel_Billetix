@@ -332,6 +332,52 @@ describe('OrderService', () => {
     });
   });
 
+  describe('markLatePaymentRefunded — trace du remboursement d\'un paiement tardif', () => {
+    const cancelled = {
+      id: 'order-1',
+      status: OrderStatus.CANCELLED,
+      payment_status: PaymentStatus.PENDING,
+      payment_intent_id: null,
+      total_amount_ttc: 48,
+      is_resale: false,
+    };
+
+    it('passe la commande annulée en remboursée avec montant, date et paiement Stripe, sans toucher au stock', async () => {
+      orderRepo.findOne.mockResolvedValue({ ...cancelled });
+
+      const result = await service.markLatePaymentRefunded('order-1', 'pi_123');
+
+      expect(result).toMatchObject({
+        status: OrderStatus.REFUNDED,
+        payment_status: PaymentStatus.REFUNDED,
+        payment_intent_id: 'pi_123',
+        refunded_amount: 48,
+      });
+      expect(result.refunded_at).toBeInstanceOf(Date);
+      expect(orderRepo.update).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'order-1', status: OrderStatus.CANCELLED }),
+        expect.objectContaining({ status: OrderStatus.REFUNDED }),
+      );
+      expect(reservationService.restoreItems).not.toHaveBeenCalled();
+    });
+
+    it('ne fait rien sur une commande déjà remboursée (webhook rejoué)', async () => {
+      orderRepo.findOne.mockResolvedValue({ ...cancelled, status: OrderStatus.REFUNDED });
+
+      const result = await service.markLatePaymentRefunded('order-1', 'pi_123');
+
+      expect(result.status).toBe(OrderStatus.REFUNDED);
+      expect(orderRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('refuse une commande payée normalement : elle relève du remboursement classique', async () => {
+      orderRepo.findOne.mockResolvedValue({ ...cancelled, status: OrderStatus.CONFIRMED, payment_status: PaymentStatus.PAID });
+
+      await expect(service.markLatePaymentRefunded('order-1', 'pi_123')).rejects.toThrow(RpcException);
+      expect(orderRepo.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe('releaseAbandoned — libération automatique du stock', () => {
     it('annule les commandes PENDING_PAYMENT dépassant le délai configuré et restaure leur stock', async () => {
       abandonedQueryBuilder.getMany.mockResolvedValue([
