@@ -12,11 +12,11 @@ export class OrderCleanupService {
     private readonly jobLock: JobLock,
   ) {}
 
-  // Fréquence de vérification — pas un paramètre métier, cf. délai
-  // configurable order_abandon_timeout_minutes qui, lui, l'est.
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  // Fréquence de vérification — pas un paramètre métier : chaque minute, pour remettre
+  // en vente les places d'une commande non payée peu après son échéance.
+  @Cron(CronExpression.EVERY_MINUTE)
   async releaseAbandonedOrdersJob(): Promise<void> {
-    await this.jobLock.runOncePerPeriod('release-abandoned-orders', 10 * 60, () => this.releaseAbandonedOrders());
+    await this.jobLock.runOncePerPeriod('release-abandoned-orders', 60, () => this.releaseAbandonedOrders());
   }
 
   async releaseAbandonedOrders(): Promise<void> {

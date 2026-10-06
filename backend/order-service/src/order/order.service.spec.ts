@@ -539,6 +539,21 @@ describe('OrderService', () => {
       expect(order).toMatchObject({ total_amount_ttc: 42.2, vat_rate: '0.0550' });
     });
 
+    it("reprend l'échéance de la réservation comme échéance de paiement", async () => {
+      const expiresAt = '2030-01-01T10:05:00.000Z';
+      reservationService.validate.mockResolvedValue({
+        buyer_id: 'buyer-1',
+        event_id: 'event-1',
+        items: [{ ticket_category_id: 'cat-1', quantity: 2 }],
+        expires_at: expiresAt,
+      });
+      mockEventClient();
+
+      const { order } = await service.create(baseDto);
+
+      expect(order.payment_deadline).toEqual(new Date(expiresAt));
+    });
+
     it('événement antérieur à la liste des taux : 20 %', async () => {
       mockEventClient({ categories: [{ id: 'cat-1', name: 'Standard', price_ht: 20 }] });
       const { order } = await service.create(baseDto);

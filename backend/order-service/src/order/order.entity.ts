@@ -108,6 +108,10 @@ export class Order {
   @Column({ nullable: true })
   payment_intent_id: string | null;
 
+  // Échéance de paiement, reprise de la réservation : au-delà, la commande est annulée et ses places remises en vente.
+  @Column({ type: 'timestamp', nullable: true })
+  payment_deadline: Date | null;
+
   @Column({ nullable: true })
   paid_at: Date | null;
 

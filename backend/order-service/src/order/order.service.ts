@@ -215,6 +215,8 @@ export class OrderService {
         billing_postal_code: dto.billing_postal_code?.trim() || null,
         billing_country: dto.billing_country?.trim() || null,
         payment_method: isFree ? PaymentMethod.FREE : dto.payment_method,
+        // Même échéance que la réservation : un seul décompte de la sélection au paiement.
+        payment_deadline: new Date(reservation.expires_at),
       });
 
       await manager.save(order);
@@ -618,12 +620,15 @@ export class OrderService {
     // Commande de revente abandonnée au même rythme que la réservation de l'offre côté ticket-service.
     const resaleThreshold = new Date(Date.now() - resale_reservation_minutes * 60 * 1000);
 
+    // Commande issue d'une réservation : échéance reprise de celle-ci ; sans échéance (antérieure), délai d'abandon.
     const abandoned = await this.orderRepo
       .createQueryBuilder('o')
       .where('o.status = :status', { status: OrderStatus.PENDING_PAYMENT })
       .andWhere(
-        '(o.is_resale = false AND o.created_at < :threshold) OR (o.is_resale = true AND o.created_at < :resaleThreshold)',
-        { threshold, resaleThreshold },
+        `(o.is_resale = false AND o.payment_deadline IS NOT NULL AND o.payment_deadline <= :now)
+          OR (o.is_resale = false AND o.payment_deadline IS NULL AND o.created_at < :threshold)
+          OR (o.is_resale = true AND o.created_at < :resaleThreshold)`,
+        { now: new Date(), threshold, resaleThreshold },
       )
       .getMany();
 
