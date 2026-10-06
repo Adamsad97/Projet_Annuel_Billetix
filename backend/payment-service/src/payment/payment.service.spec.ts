@@ -80,6 +80,25 @@ describe('PaymentService', () => {
       expect(stripeProvider.createPayment).not.toHaveBeenCalled();
     });
 
+    it("refuse une commande dont l'échéance de paiement est dépassée, même pas encore annulée", async () => {
+      orderClient.send.mockReturnValue(
+        of({
+          order: {
+            buyer_id: 'buyer-1',
+            status: 'PENDING_PAYMENT',
+            total_amount_ttc: 50,
+            payment_method: 'STRIPE',
+            payment_deadline: new Date(Date.now() - 1000).toISOString(),
+          },
+        }),
+      );
+
+      await expect(
+        service.createIntent({ order_id: 'order-1', buyer_id: 'buyer-1', buyer_email: 'jean@example.com' }),
+      ).rejects.toThrow(RpcException);
+      expect(stripeProvider.createPayment).not.toHaveBeenCalled();
+    });
+
     it("ignore tout montant client et utilise le total réel de la commande (Stripe)", async () => {
       orderClient.send.mockReturnValue(
         of({ order: { buyer_id: 'buyer-1', status: 'PENDING_PAYMENT', total_amount_ttc: 123.45, payment_method: 'STRIPE' } }),

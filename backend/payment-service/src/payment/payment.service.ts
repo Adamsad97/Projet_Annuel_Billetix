@@ -36,7 +36,15 @@ export class PaymentService {
     // Montant relu depuis order-service, jamais fourni par le client.
     const { order } = await firstValueFrom(
       this.orderClient.send('order.get', { id: data.order_id }),
-    ) as { order: { buyer_id: string; status: string; total_amount_ttc: number; payment_method: string } };
+    ) as {
+      order: {
+        buyer_id: string;
+        status: string;
+        total_amount_ttc: number;
+        payment_method: string;
+        payment_deadline?: string | Date | null;
+      };
+    };
 
     if (order.buyer_id !== data.buyer_id) {
       throw new RpcException({ statusCode: 403, message: 'Non autorisé' });
@@ -48,6 +56,13 @@ export class PaymentService {
       throw new RpcException({
         statusCode: 409,
         message: "Cette commande n'est plus en attente de paiement — veuillez recommencer votre achat.",
+      });
+    }
+    // Échéance dépassée mais pas encore annulée par le nettoyage : les places vont être remises en vente.
+    if (order.payment_deadline && new Date(order.payment_deadline).getTime() <= Date.now()) {
+      throw new RpcException({
+        statusCode: 409,
+        message: 'Le délai de paiement de cette commande est dépassé — veuillez recommencer votre achat.',
       });
     }
 
