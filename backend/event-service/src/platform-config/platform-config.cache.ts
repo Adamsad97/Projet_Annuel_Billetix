@@ -34,7 +34,7 @@ const FALLBACK: PlatformConfig = {
   payout_delay_days: 5,
   stripe_fee_percent: 2.9,
   stripe_fee_fixed_eur: 0.30,
-  stock_reservation_ttl_seconds: 600,
+  stock_reservation_ttl_seconds: 300,
   cancel_deadline_hours: 24,
   fill_thresholds: [25, 50, 75, 100],
   email_max_retry_attempts: 3,
