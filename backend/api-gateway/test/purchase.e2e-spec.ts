@@ -193,6 +193,8 @@ describe("Parcours organisateur → achat → contrôle d'entrée (fonctionnel)"
           venue_country: "France",
           poster_url: (await get(`/events/${eventId}`)).body.poster_url,
           total_capacity: 10,
+          sales_start_date: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+          sales_end_date: minutesFromNow(60 * 24),
           refund_policy: "NON_REFUNDABLE",
         },
         organizer.token,
