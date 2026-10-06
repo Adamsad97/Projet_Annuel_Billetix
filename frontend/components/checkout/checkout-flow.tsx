@@ -10,6 +10,7 @@ import { ReservationTimer } from "@/components/checkout/reservation-timer";
 import { StripePaymentForm } from "@/components/checkout/stripe-payment-form";
 import { getCart, cartTotal, clearCart, type Cart } from "@/lib/checkout/cart";
 import { createPaymentIntent } from "@/lib/api/payments";
+import { cancelOrder } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/http-error";
 import { getStripe } from "@/lib/stripe/client";
 import { euros as currency } from "@/lib/format/money";
@@ -35,6 +36,10 @@ export function CheckoutFlow() {
   function handleReservationExpired() {
     clearCart();
     setReservationExpired(true);
+    // Commande créée mais non payée : ses places sont remises en vente sans attendre le nettoyage automatique.
+    if (orderId) {
+      cancelOrder(orderId, "Délai de paiement dépassé").catch(() => undefined);
+    }
   }
 
   useEffect(() => {
@@ -111,9 +116,11 @@ export function CheckoutFlow() {
       <CheckoutStepper current={step === "billing" ? "identification" : "paiement"} free={cartTotal(cart) === 0} />
 
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+        {/* Même échéance pour la réservation et la commande : un seul décompte jusqu'au paiement. */}
+        <ReservationTimer expiresAt={cart.expiresAt} onExpire={handleReservationExpired} />
+
         {step === "billing" ? (
           <>
-            <ReservationTimer expiresAt={cart.expiresAt} onExpire={handleReservationExpired} />
             <BillingForm
               cart={cart}
               onOrderCreated={handleOrderCreated}

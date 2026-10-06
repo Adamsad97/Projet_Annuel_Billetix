@@ -102,6 +102,11 @@ export function createOrder(payload: CreateOrderPayload): Promise<OrderDetailRes
   return apiPost<OrderDetailResult>("/orders", payload);
 }
 
+/** Annule sa commande en attente de paiement : ses places sont aussitôt remises en vente. */
+export function cancelOrder(id: string, reason?: string): Promise<ApiOrder> {
+  return apiPost<ApiOrder>(`/orders/${id}/cancel`, { reason });
+}
+
 export function getOrder(id: string): Promise<OrderDetailResult> {
   return apiGet<OrderDetailResult>(`/orders/${id}`);
 }

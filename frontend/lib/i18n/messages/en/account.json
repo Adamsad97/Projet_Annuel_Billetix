@@ -111,8 +111,6 @@
   "Total payé": "Total paid",
   "Vos billets sont disponibles dans « Mes billets ».": "Your tickets are available in \"My tickets\".",
   " Votre facture vous est envoyée par email.": " Your invoice is sent to you by email.",
-  "Vos places sont réservées pendant": "Your seats are reserved for",
-  " — terminez vite votre commande !": " — complete your order quickly!",
   "Le paiement a échoué, veuillez réessayer.": "The payment failed, please try again.",
   "Paiement par carte": "Card payment",
   "Traitement…": "Processing…",
@@ -274,5 +272,11 @@
   "Compte, commandes, billets, transferts et reventes, dans un fichier JSON réutilisable (RGPD).": "Account, orders, tickets, transfers and resales, in a reusable JSON file (GDPR).",
   "✓ Fichier téléchargé.": "✓ File downloaded.",
   "Préparation…": "Preparing…",
-  "Télécharger": "Download"
+  "Télécharger": "Download",
+  "Temps restant :": "Time remaining:",
+  "{n} minute": "{n} minute",
+  "{n} minutes": "{n} minutes",
+  "{n} seconde": "{n} second",
+  "{n} secondes": "{n} seconds",
+  "Terminez vite votre commande !": "Complete your order quickly!"
 }
