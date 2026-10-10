@@ -174,7 +174,9 @@ services:
     networks:
       - billetix-net
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      # Lancé en tant que rabbitmq : en root, la sonde crée le .erlang.cookie
+      # avant le serveur, qui ne peut plus le lire (eacces au 1er démarrage).
+      test: ["CMD", "su-exec", "rabbitmq", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
       interval: 30s
       timeout: 10s
       retries: 5
